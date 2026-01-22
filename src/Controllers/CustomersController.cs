@@ -99,10 +99,79 @@ public class CustomersController : ControllerBase
 
             results["PodmiotyTypeFound"] = podmiotyType.FullName ?? "unknown";
 
-            // Try to get Podmioty manager
+            // Check PodajObiektTypu method signatures
+            object sferaObj = _sferaService.GetSfera();
+            Type sferaType = sferaObj.GetType();
+            var podajMethods = new List<object>();
+            foreach (var m in sferaType.GetMethods())
+            {
+                if (m.Name == "PodajObiektTypu")
+                {
+                    var paramList = new List<string>();
+                    foreach (var p in m.GetParameters())
+                    {
+                        paramList.Add($"{p.ParameterType.Name} {p.Name}");
+                    }
+                    var paramInfo = string.Join(", ", paramList);
+                    podajMethods.Add(new {
+                        Signature = $"{m.Name}({paramInfo}) -> {m.ReturnType.Name}",
+                        IsGeneric = m.IsGenericMethod,
+                        GenericArgCount = m.IsGenericMethod ? m.GetGenericArguments().Length : 0,
+                        ParamCount = m.GetParameters().Length
+                    });
+                }
+            }
+            results["PodajObiektTypuSignatures"] = podajMethods;
+
+            // Try to get Podmioty manager using generic method
+            object? podmioty = null;
             try
             {
-                var podmioty = sfera.PodajObiektTypu(podmiotyType);
+                // First try: find generic method with 0 parameters
+                System.Reflection.MethodInfo? genericMethod = null;
+                foreach (var m in sferaType.GetMethods())
+                {
+                    if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
+                    {
+                        genericMethod = m;
+                        break;
+                    }
+                }
+
+                if (genericMethod != null)
+                {
+                    var concreteMethod = genericMethod.MakeGenericMethod(podmiotyType);
+                    podmioty = concreteMethod.Invoke(sferaObj, null);
+                    results["MethodUsed"] = "Generic<T>() with 0 params";
+                }
+                else
+                {
+                    // Second try: find method that takes Type parameter
+                    System.Reflection.MethodInfo? typeParamMethod = null;
+                    foreach (var m in sferaType.GetMethods())
+                    {
+                        if (m.Name == "PodajObiektTypu" && !m.IsGenericMethod && m.GetParameters().Length == 1)
+                        {
+                            var paramType = m.GetParameters()[0].ParameterType;
+                            if (paramType == typeof(Type) || paramType.Name == "Type")
+                            {
+                                typeParamMethod = m;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (typeParamMethod != null)
+                    {
+                        podmioty = typeParamMethod.Invoke(sferaObj, new object[] { podmiotyType });
+                        results["MethodUsed"] = "PodajObiektTypu(Type)";
+                    }
+                    else
+                    {
+                        results["MethodUsed"] = "No suitable method found";
+                    }
+                }
+
                 if (podmioty != null)
                 {
                     Type mgrType = podmioty.GetType();
@@ -155,6 +224,10 @@ public class CustomersController : ControllerBase
                     {
                         results["PodmiotyDane"] = new { Found = false, Error = ex.Message };
                     }
+                }
+                else
+                {
+                    results["PodmiotyManager"] = new { Found = false, Error = "podmioty object is null" };
                 }
             }
             catch (Exception ex)
