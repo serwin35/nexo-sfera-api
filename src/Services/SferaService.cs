@@ -134,7 +134,7 @@ public class SferaService : ISferaService, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting manager {MethodName}", managerMethodName);
-            return null;
+            throw; // Re-throw so we can see the real error
         }
     }
 
