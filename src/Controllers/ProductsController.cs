@@ -71,9 +71,15 @@ public class ProductsController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<ProductDto>();
+            foreach (var item in items)
+            {
+                mappedItems.Add(MapToDto(item));
+            }
+
             var response = new PagedResponse<ProductDto>
             {
-                Data = items.Select(MapToDto).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount

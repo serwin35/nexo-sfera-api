@@ -74,9 +74,15 @@ public class OrdersController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<SupplierOrderDto>();
+            foreach (var item in items)
+            {
+                mappedItems.Add(MapSupplierOrderToDto(item));
+            }
+
             var response = new PagedResponse<SupplierOrderDto>
             {
-                Data = items.Select(MapSupplierOrderToDto).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -280,9 +286,15 @@ public class OrdersController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<CommercialOfferDto>();
+            foreach (var item in items)
+            {
+                mappedItems.Add(MapOfferToDto(item));
+            }
+
             var response = new PagedResponse<CommercialOfferDto>
             {
-                Data = items.Select(MapOfferToDto).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount

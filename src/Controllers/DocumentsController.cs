@@ -76,9 +76,15 @@ public class DocumentsController : ControllerBase
                 .Take(query.PageSize)
                 .ToList();
 
+            var mappedItems = new List<DocumentDto>();
+            foreach (var item in items)
+            {
+                mappedItems.Add(MapDocumentToDto(item));
+            }
+
             var response = new PagedResponse<DocumentDto>
             {
-                Data = items.Select(MapDocumentToDto).ToList(),
+                Data = mappedItems,
                 Page = query.Page,
                 PageSize = query.PageSize,
                 TotalCount = totalCount
@@ -205,7 +211,7 @@ public class DocumentsController : ControllerBase
 
                 if ((bool)faktura.Zapisz())
                 {
-                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                     _logger.LogInformation("Created sales invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
@@ -269,7 +275,7 @@ public class DocumentsController : ControllerBase
 
                 if ((bool)zamowienie.Zapisz())
                 {
-                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                     _logger.LogInformation("Created customer order {Number}", fullNumber);
 
                     return CreatedAtAction(
@@ -338,7 +344,7 @@ public class DocumentsController : ControllerBase
 
                 if ((bool)faktura.Zapisz())
                 {
-                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                     _logger.LogInformation("Created purchase invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
@@ -418,7 +424,7 @@ public class DocumentsController : ControllerBase
 
             if ((bool)korekta.Zapisz())
             {
-                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                 _logger.LogInformation("Created sales invoice correction {Number}", fullNumber);
 
                 return CreatedAtAction(
@@ -494,7 +500,7 @@ public class DocumentsController : ControllerBase
 
             if ((bool)korekta.Zapisz())
             {
-                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                 _logger.LogInformation("Created purchase invoice correction {Number}", fullNumber);
 
                 return CreatedAtAction(
@@ -568,7 +574,7 @@ public class DocumentsController : ControllerBase
 
             if ((bool)paragon.Zapisz())
             {
-                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                 _logger.LogInformation("Created receipt {Number}", fullNumber);
 
                 return CreatedAtAction(
@@ -638,7 +644,7 @@ public class DocumentsController : ControllerBase
 
             if ((bool)zwrot.Zapisz())
             {
-                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                 _logger.LogInformation("Created receipt return {Number}", fullNumber);
 
                 return CreatedAtAction(
@@ -710,7 +716,7 @@ public class DocumentsController : ControllerBase
 
                 if ((bool)faktura.Zapisz())
                 {
-                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                     _logger.LogInformation("Created advance invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
@@ -780,7 +786,7 @@ public class DocumentsController : ControllerBase
 
                 if ((bool)faktura.Zapisz())
                 {
-                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
                     _logger.LogInformation("Created VAT margin invoice {Number}", fullNumber);
 
                     return CreatedAtAction(

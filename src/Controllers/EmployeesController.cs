@@ -77,12 +77,17 @@ public class EmployeesController : ControllerBase
                 })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => MapEmployeeSummary(p))
                 .ToList();
+
+            var mappedItems = new List<EmployeeSummaryDto>();
+            foreach (var p in items)
+            {
+                mappedItems.Add(MapEmployeeSummary(p));
+            }
 
             return Ok(new PagedResponse<EmployeeSummaryDto>
             {
-                Data = items,
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -272,20 +277,21 @@ public class EmployeesController : ControllerBase
         }
 
         // Map contacts
-        if (includeContacts && kontakty.Any())
+        if (includeContacts && kontakty.Count > 0)
         {
-            dto.Contacts = kontakty.Select(k =>
+            dto.Contacts = new List<EmployeeContactDto>();
+            foreach (var k in kontakty)
             {
                 var rodzaj = DynamicPropertyHelper.GetProperty(k, "Rodzaj");
-                return new EmployeeContactDto
+                dto.Contacts.Add(new EmployeeContactDto
                 {
                     Id = DynamicPropertyHelper.GetId(k),
                     Type = rodzaj != null ? DynamicPropertyHelper.GetString(rodzaj, "Nazwa") : null,
                     Value = DynamicPropertyHelper.GetString(k, "Wartosc"),
                     IsPrimary = DynamicPropertyHelper.GetNullableBool(k, "Podstawowy") ?? false,
                     Comment = DynamicPropertyHelper.GetString(k, "Komentarz")
-                };
-            }).ToList();
+                });
+            }
         }
 
         return dto;

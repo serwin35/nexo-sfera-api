@@ -59,13 +59,17 @@ public class DiscountsController : ControllerBase
             }).ToList();
 
             var totalCount = allRabaty.Count;
-            var items = allRabaty
+            var pagedRabaty = allRabaty
                 .OrderBy(r => DynamicPropertyHelper.GetString(r, "Symbol"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
-                .Select(r => MapDiscount(r, false))
                 .ToList();
+
+            var items = new List<DiscountDto>();
+            foreach (var r in pagedRabaty)
+            {
+                items.Add(MapDiscount(r, false));
+            }
 
             return Ok(new PagedResponse<DiscountDto>
             {
@@ -186,13 +190,22 @@ public class DiscountsController : ControllerBase
                 {
                     var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty").ToList();
                     // No subjects = applies to all, OR contractor is in the list
-                    return !podmioty.Any() ||
-                           podmioty.Any(p => DynamicPropertyHelper.GetId(p) == contractorId);
+                    if (!podmioty.Any()) return true;
+                    foreach (var p in podmioty)
+                    {
+                        if (DynamicPropertyHelper.GetId(p) == contractorId) return true;
+                    }
+                    return false;
                 })
-                .Select(r => MapDiscount(r, false))
                 .ToList();
 
-            return Ok(ApiResponse<List<DiscountDto>>.Ok(applicableDiscounts));
+            var applicableDiscountDtos = new List<DiscountDto>();
+            foreach (var r in applicableDiscounts)
+            {
+                applicableDiscountDtos.Add(MapDiscount(r, false));
+            }
+
+            return Ok(ApiResponse<List<DiscountDto>>.Ok(applicableDiscountDtos));
         }
         catch (Exception ex)
         {
@@ -219,17 +232,19 @@ public class DiscountsController : ControllerBase
             var cechyManager = sfera.CechyAsortymentu();
             var allCechy = ((IEnumerable<dynamic>)cechyManager.Dane.Wszystkie()).ToList();
 
-            var dtos = allCechy.Select(c =>
+            var dtos = new List<ProductAttributeDto>();
+            foreach (var c in allCechy)
             {
                 var zbiory = DynamicPropertyHelper.GetCollection(c, "ZbioryAsortymentu");
-                return new ProductAttributeDto
+                dtos.Add(new ProductAttributeDto
                 {
                     Id = DynamicPropertyHelper.GetId(c),
                     Name = DynamicPropertyHelper.GetString(c, "Nazwa"),
                     IsActive = true,
                     ProductCount = zbiory.Count()
-                };
-            }).OrderBy(c => c.Name).ToList();
+                });
+            }
+            dtos = dtos.OrderBy(c => c.Name).ToList();
 
             return Ok(ApiResponse<List<ProductAttributeDto>>.Ok(dtos));
         }
@@ -313,13 +328,18 @@ public class DiscountsController : ControllerBase
                 }
             }
 
-            var dtos = grupyDict.Values.Select(g => new ContractorGroupDto
+            var dtos = new List<ContractorGroupDto>();
+            foreach (var g in grupyDict.Values)
             {
-                Id = DynamicPropertyHelper.GetId(g),
-                Symbol = DynamicPropertyHelper.GetString(g, "Symbol"),
-                Name = DynamicPropertyHelper.GetString(g, "Nazwa"),
-                IsActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywna") ?? true
-            }).OrderBy(g => g.Symbol).ToList();
+                dtos.Add(new ContractorGroupDto
+                {
+                    Id = DynamicPropertyHelper.GetId(g),
+                    Symbol = DynamicPropertyHelper.GetString(g, "Symbol"),
+                    Name = DynamicPropertyHelper.GetString(g, "Nazwa"),
+                    IsActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywna") ?? true
+                });
+            }
+            dtos = dtos.OrderBy(g => g.Symbol).ToList();
 
             return Ok(ApiResponse<List<ContractorGroupDto>>.Ok(dtos));
         }
@@ -348,18 +368,36 @@ public class DiscountsController : ControllerBase
             var allKontrahenci = ((IEnumerable<dynamic>)kontrahenciManager.Dane.Wszystkie()).ToList();
 
             // Filter contractors in the specified group
-            var kontrahenci = allKontrahenci.Where(k =>
+            var kontrahenci = new List<dynamic>();
+            foreach (var k in allKontrahenci)
             {
-                var grupy = DynamicPropertyHelper.GetCollection(k, "GrupyKontrahenta");
-                return grupy.Any(g => DynamicPropertyHelper.GetId(g) == groupId);
-            }).ToList();
+                var grupy = DynamicPropertyHelper.GetCollection(k, "GrupyKontrahenta").ToList();
+                bool inGroup = false;
+                foreach (var g in grupy)
+                {
+                    if (DynamicPropertyHelper.GetId(g) == groupId)
+                    {
+                        inGroup = true;
+                        break;
+                    }
+                }
+                if (inGroup)
+                {
+                    kontrahenci.Add(k);
+                }
+            }
 
             var totalCount = kontrahenci.Count;
-            var items = kontrahenci
+            var pagedKontrahenci = kontrahenci
                 .OrderBy(k => DynamicPropertyHelper.GetString(k, "NazwaSkrocona"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(k => new CustomerDto
+                .ToList();
+
+            var items = new List<CustomerDto>();
+            foreach (var k in pagedKontrahenci)
+            {
+                items.Add(new CustomerDto
                 {
                     Id = DynamicPropertyHelper.GetId(k),
                     Symbol = DynamicPropertyHelper.GetString(k, "Symbol"),
@@ -367,7 +405,8 @@ public class DiscountsController : ControllerBase
                     FullName = DynamicPropertyHelper.GetString(k, "NazwaPelna"),
                     TaxId = DynamicPropertyHelper.GetString(k, "NIP"),
                     IsActive = DynamicPropertyHelper.GetBool(k, "Aktywny")
-                }).ToList();
+                });
+            }
 
             return Ok(new PagedResponse<CustomerDto>
             {
@@ -422,15 +461,19 @@ public class DiscountsController : ControllerBase
         if (includeDetails)
         {
             var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty").ToList();
-            if (podmioty.Any())
+            if (podmioty.Count > 0)
             {
-                dto.Subjects = podmioty.Select(p => new DiscountSubjectDto
+                dto.Subjects = new List<DiscountSubjectDto>();
+                foreach (var p in podmioty)
                 {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    SubjectType = "Contractor",
-                    SubjectId = DynamicPropertyHelper.GetId(p),
-                    SubjectName = DynamicPropertyHelper.GetString(p, "NazwaSkrocona")
-                }).ToList();
+                    dto.Subjects.Add(new DiscountSubjectDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        SubjectType = "Contractor",
+                        SubjectId = DynamicPropertyHelper.GetId(p),
+                        SubjectName = DynamicPropertyHelper.GetString(p, "NazwaSkrocona")
+                    });
+                }
             }
         }
 

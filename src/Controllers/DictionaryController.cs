@@ -42,18 +42,31 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allStawki = allStawki.Where(s => DynamicPropertyHelper.GetBool(s, "Aktywna")).ToList();
+                var filteredStawki = new List<dynamic>();
+                foreach (var s in allStawki)
+                {
+                    if (DynamicPropertyHelper.GetBool(s, "Aktywna"))
+                    {
+                        filteredStawki.Add(s);
+                    }
+                }
+                allStawki = filteredStawki;
             }
 
-            var dtos = allStawki.Select(s => new VatRateDto
+            var dtos = new List<VatRateDto>();
+            foreach (var s in allStawki)
             {
-                Id = DynamicPropertyHelper.GetId(s),
-                Symbol = DynamicPropertyHelper.GetString(s, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
-                Rate = DynamicPropertyHelper.GetNullableDecimal(s, "Procent") ?? 0,
-                IsActive = DynamicPropertyHelper.GetBool(s, "Aktywna"),
-                Type = MapVatRateType(DynamicPropertyHelper.GetString(s, "Symbol"))
-            }).OrderBy(v => v.Rate).ToList();
+                dtos.Add(new VatRateDto
+                {
+                    Id = DynamicPropertyHelper.GetId(s),
+                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
+                    Rate = DynamicPropertyHelper.GetNullableDecimal(s, "Procent") ?? 0,
+                    IsActive = DynamicPropertyHelper.GetBool(s, "Aktywna"),
+                    Type = MapVatRateType(DynamicPropertyHelper.GetString(s, "Symbol"))
+                });
+            }
+            dtos = dtos.OrderBy(v => v.Rate).ToList();
 
             return Ok(ApiResponse<List<VatRateDto>>.Ok(dtos));
         }
@@ -136,17 +149,30 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allJednostki = allJednostki.Where(j => DynamicPropertyHelper.GetBool(j, "Aktywna")).ToList();
+                var filteredJednostki = new List<dynamic>();
+                foreach (var j in allJednostki)
+                {
+                    if (DynamicPropertyHelper.GetBool(j, "Aktywna"))
+                    {
+                        filteredJednostki.Add(j);
+                    }
+                }
+                allJednostki = filteredJednostki;
             }
 
-            var dtos = allJednostki.Select(j => new UnitOfMeasureDto
+            var dtos = new List<UnitOfMeasureDto>();
+            foreach (var j in allJednostki)
             {
-                Id = DynamicPropertyHelper.GetId(j),
-                Symbol = DynamicPropertyHelper.GetString(j, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(j, "Nazwa"),
-                DecimalPlaces = DynamicPropertyHelper.GetInt(j, "MiejscPoPrzecinku"),
-                IsActive = DynamicPropertyHelper.GetBool(j, "Aktywna")
-            }).OrderBy(u => u.Symbol).ToList();
+                dtos.Add(new UnitOfMeasureDto
+                {
+                    Id = DynamicPropertyHelper.GetId(j),
+                    Symbol = DynamicPropertyHelper.GetString(j, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(j, "Nazwa"),
+                    DecimalPlaces = DynamicPropertyHelper.GetInt(j, "MiejscPoPrzecinku"),
+                    IsActive = DynamicPropertyHelper.GetBool(j, "Aktywna")
+                });
+            }
+            dtos = dtos.OrderBy(u => u.Symbol).ToList();
 
             return Ok(ApiResponse<List<UnitOfMeasureDto>>.Ok(dtos));
         }
@@ -217,15 +243,24 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allGrupy = allGrupy.Where(g => DynamicPropertyHelper.GetBool(g, "Aktywna")).ToList();
+                var filteredGrupy = new List<dynamic>();
+                foreach (var g in allGrupy)
+                {
+                    if (DynamicPropertyHelper.GetBool(g, "Aktywna"))
+                    {
+                        filteredGrupy.Add(g);
+                    }
+                }
+                allGrupy = filteredGrupy;
             }
 
-            var dtos = allGrupy.Select(g =>
+            var dtos = new List<ProductGroupDto>();
+            foreach (var g in allGrupy)
             {
                 var grupaNadrzedna = DynamicPropertyHelper.GetProperty(g, "GrupaNadrzedna");
                 var asortymenty = DynamicPropertyHelper.GetCollection(g, "Asortymenty");
 
-                return new ProductGroupDto
+                dtos.Add(new ProductGroupDto
                 {
                     Id = DynamicPropertyHelper.GetId(g),
                     Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? string.Empty,
@@ -235,8 +270,8 @@ public class DictionaryController : ControllerBase
                     ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
                     IsActive = DynamicPropertyHelper.GetBool(g, "Aktywna"),
                     ProductCount = asortymenty.Count()
-                };
-            }).ToList();
+                });
+            }
 
             if (hierarchical == true)
             {
@@ -332,19 +367,32 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allPoziomy = allPoziomy.Where(p => DynamicPropertyHelper.GetBool(p, "Aktywny")).ToList();
+                var filteredPoziomy = new List<dynamic>();
+                foreach (var p in allPoziomy)
+                {
+                    if (DynamicPropertyHelper.GetBool(p, "Aktywny"))
+                    {
+                        filteredPoziomy.Add(p);
+                    }
+                }
+                allPoziomy = filteredPoziomy;
             }
 
-            var dtos = allPoziomy.Select(p => new PriceLevelDto
+            var dtos = new List<PriceLevelDto>();
+            foreach (var p in allPoziomy)
             {
-                Id = DynamicPropertyHelper.GetId(p),
-                Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
-                Description = DynamicPropertyHelper.GetString(p, "Opis"),
-                IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslny"),
-                IsActive = DynamicPropertyHelper.GetBool(p, "Aktywny"),
-                Priority = DynamicPropertyHelper.GetNullableInt(p, "Priorytet") ?? 0
-            }).OrderBy(p => p.Priority).ToList();
+                dtos.Add(new PriceLevelDto
+                {
+                    Id = DynamicPropertyHelper.GetId(p),
+                    Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(p, "Opis"),
+                    IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslny"),
+                    IsActive = DynamicPropertyHelper.GetBool(p, "Aktywny"),
+                    Priority = DynamicPropertyHelper.GetNullableInt(p, "Priorytet") ?? 0
+                });
+            }
+            dtos = dtos.OrderBy(p => p.Priority).ToList();
 
             return Ok(ApiResponse<List<PriceLevelDto>>.Ok(dtos));
         }
@@ -415,15 +463,24 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allCenniki = allCenniki.Where(c => DynamicPropertyHelper.GetBool(c, "Aktywny")).ToList();
+                var filteredCenniki = new List<dynamic>();
+                foreach (var c in allCenniki)
+                {
+                    if (DynamicPropertyHelper.GetBool(c, "Aktywny"))
+                    {
+                        filteredCenniki.Add(c);
+                    }
+                }
+                allCenniki = filteredCenniki;
             }
 
-            var dtos = allCenniki.Select(c =>
+            var dtos = new List<PriceListDto>();
+            foreach (var c in allCenniki)
             {
                 var waluta = DynamicPropertyHelper.GetProperty(c, "Waluta");
                 var pozycje = DynamicPropertyHelper.GetCollection(c, "Pozycje");
 
-                return new PriceListDto
+                dtos.Add(new PriceListDto
                 {
                     Id = DynamicPropertyHelper.GetId(c),
                     Symbol = DynamicPropertyHelper.GetString(c, "Symbol") ?? string.Empty,
@@ -434,8 +491,9 @@ public class DictionaryController : ControllerBase
                     IsActive = DynamicPropertyHelper.GetBool(c, "Aktywny"),
                     CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
                     ItemCount = pozycje.Count()
-                };
-            }).OrderBy(c => c.Symbol).ToList();
+                });
+            }
+            dtos = dtos.OrderBy(c => c.Symbol).ToList();
 
             return Ok(ApiResponse<List<PriceListDto>>.Ok(dtos));
         }
@@ -522,47 +580,60 @@ public class DictionaryController : ControllerBase
 
             if (productId.HasValue)
             {
-                pozycje = pozycje.Where(p =>
+                var filteredPozycje = new List<dynamic>();
+                foreach (var p in pozycje)
                 {
                     var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                    return asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value;
-                }).ToList();
+                    if (asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value)
+                    {
+                        filteredPozycje.Add(p);
+                    }
+                }
+                pozycje = filteredPozycje;
             }
 
             if (!string.IsNullOrEmpty(productSymbol))
             {
-                pozycje = pozycje.Where(p =>
+                var filteredPozycje = new List<dynamic>();
+                foreach (var p in pozycje)
                 {
                     var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                    return asortyment != null && DynamicPropertyHelper.GetString(asortyment, "Symbol") == productSymbol;
-                }).ToList();
+                    if (asortyment != null && DynamicPropertyHelper.GetString(asortyment, "Symbol") == productSymbol)
+                    {
+                        filteredPozycje.Add(p);
+                    }
+                }
+                pozycje = filteredPozycje;
             }
 
             var totalCount = pozycje.Count;
-            var items = pozycje
+            var pagedPozycje = pozycje
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p =>
-                {
-                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                    var stawkaVat = asortyment != null ? DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy") : null;
+                .ToList();
 
-                    return new PriceListItemDto
-                    {
-                        Id = DynamicPropertyHelper.GetId(p),
-                        PriceListId = DynamicPropertyHelper.GetId(cennik),
-                        ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
-                        ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                        ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
-                        PriceNet = DynamicPropertyHelper.GetNullableDecimal(p, "CenaNetto") ?? 0,
-                        PriceGross = DynamicPropertyHelper.GetNullableDecimal(p, "CenaBrutto") ?? 0,
-                        VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
-                        MinQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscOd"),
-                        MaxQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscDo"),
-                        ValidFrom = DynamicPropertyHelper.GetDateTime(p, "DataOd"),
-                        ValidTo = DynamicPropertyHelper.GetDateTime(p, "DataDo")
-                    };
-                }).ToList();
+            var items = new List<PriceListItemDto>();
+            foreach (var p in pagedPozycje)
+            {
+                var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                var stawkaVat = asortyment != null ? DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy") : null;
+
+                items.Add(new PriceListItemDto
+                {
+                    Id = DynamicPropertyHelper.GetId(p),
+                    PriceListId = DynamicPropertyHelper.GetId(cennik),
+                    ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                    ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                    ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                    PriceNet = DynamicPropertyHelper.GetNullableDecimal(p, "CenaNetto") ?? 0,
+                    PriceGross = DynamicPropertyHelper.GetNullableDecimal(p, "CenaBrutto") ?? 0,
+                    VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
+                    MinQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscOd"),
+                    MaxQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscDo"),
+                    ValidFrom = DynamicPropertyHelper.GetDateTime(p, "DataOd"),
+                    ValidTo = DynamicPropertyHelper.GetDateTime(p, "DataDo")
+                });
+            }
 
             return Ok(new PagedResponse<PriceListItemDto>
             {
@@ -598,19 +669,32 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allWaluty = allWaluty.Where(w => DynamicPropertyHelper.GetBool(w, "Aktywna")).ToList();
+                var filteredWaluty = new List<dynamic>();
+                foreach (var w in allWaluty)
+                {
+                    if (DynamicPropertyHelper.GetBool(w, "Aktywna"))
+                    {
+                        filteredWaluty.Add(w);
+                    }
+                }
+                allWaluty = filteredWaluty;
             }
 
-            var dtos = allWaluty.Select(w => new CurrencyDto
+            var dtos = new List<CurrencyDto>();
+            foreach (var w in allWaluty)
             {
-                Id = DynamicPropertyHelper.GetId(w),
-                Symbol = DynamicPropertyHelper.GetString(w, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(w, "Nazwa"),
-                IsoCode = DynamicPropertyHelper.GetString(w, "Symbol"),
-                ExchangeRate = DynamicPropertyHelper.GetNullableDecimal(w, "OstatniKurs"),
-                IsDefault = DynamicPropertyHelper.GetBool(w, "Bazowa"),
-                IsActive = DynamicPropertyHelper.GetBool(w, "Aktywna")
-            }).OrderBy(c => c.Symbol).ToList();
+                dtos.Add(new CurrencyDto
+                {
+                    Id = DynamicPropertyHelper.GetId(w),
+                    Symbol = DynamicPropertyHelper.GetString(w, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(w, "Nazwa"),
+                    IsoCode = DynamicPropertyHelper.GetString(w, "Symbol"),
+                    ExchangeRate = DynamicPropertyHelper.GetNullableDecimal(w, "OstatniKurs"),
+                    IsDefault = DynamicPropertyHelper.GetBool(w, "Bazowa"),
+                    IsActive = DynamicPropertyHelper.GetBool(w, "Aktywna")
+                });
+            }
+            dtos = dtos.OrderBy(c => c.Symbol).ToList();
 
             return Ok(ApiResponse<List<CurrencyDto>>.Ok(dtos));
         }
@@ -640,19 +724,32 @@ public class DictionaryController : ControllerBase
 
             if (activeOnly == true)
             {
-                allFormy = allFormy.Where(f => DynamicPropertyHelper.GetBool(f, "Aktywna")).ToList();
+                var filteredFormy = new List<dynamic>();
+                foreach (var f in allFormy)
+                {
+                    if (DynamicPropertyHelper.GetBool(f, "Aktywna"))
+                    {
+                        filteredFormy.Add(f);
+                    }
+                }
+                allFormy = filteredFormy;
             }
 
-            var dtos = allFormy.Select(f => new PaymentMethodDto
+            var dtos = new List<PaymentMethodDto>();
+            foreach (var f in allFormy)
             {
-                Id = DynamicPropertyHelper.GetId(f),
-                Symbol = DynamicPropertyHelper.GetString(f, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(f, "Nazwa"),
-                Type = MapPaymentMethodType(DynamicPropertyHelper.GetNullableInt(f, "Typ")),
-                DefaultDueDays = DynamicPropertyHelper.GetNullableInt(f, "DomyslnyTermin"),
-                IsActive = DynamicPropertyHelper.GetBool(f, "Aktywna"),
-                IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslna")
-            }).OrderBy(p => p.Symbol).ToList();
+                dtos.Add(new PaymentMethodDto
+                {
+                    Id = DynamicPropertyHelper.GetId(f),
+                    Symbol = DynamicPropertyHelper.GetString(f, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(f, "Nazwa"),
+                    Type = MapPaymentMethodType(DynamicPropertyHelper.GetNullableInt(f, "Typ")),
+                    DefaultDueDays = DynamicPropertyHelper.GetNullableInt(f, "DomyslnyTermin"),
+                    IsActive = DynamicPropertyHelper.GetBool(f, "Aktywna"),
+                    IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslna")
+                });
+            }
+            dtos = dtos.OrderBy(p => p.Symbol).ToList();
 
             return Ok(ApiResponse<List<PaymentMethodDto>>.Ok(dtos));
         }

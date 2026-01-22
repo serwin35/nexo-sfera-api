@@ -90,8 +90,15 @@ public class InventoryController : ControllerBase
 
                 if (magazynFilterId.HasValue)
                 {
-                    stany = stany.Where(s =>
-                        DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value).ToList();
+                    var filteredStany = new List<dynamic>();
+                    foreach (var s in stany)
+                    {
+                        if (DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value)
+                        {
+                            filteredStany.Add(s);
+                        }
+                    }
+                    stany = filteredStany;
                 }
 
                 foreach (var stan in stany)
@@ -223,12 +230,20 @@ public class InventoryController : ControllerBase
                 if (magazynFilter != null)
                 {
                     var magazynFilterId = DynamicPropertyHelper.GetId(magazynFilter);
-                    stany = stany.Where(s =>
-                        DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId).ToList();
+                    var filteredStany = new List<dynamic>();
+                    foreach (var s in stany)
+                    {
+                        if (DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId)
+                        {
+                            filteredStany.Add(s);
+                        }
+                    }
+                    stany = filteredStany;
                 }
             }
 
-            var items = stany.Select(stan =>
+            var items = new List<InventoryItemDto>();
+            foreach (var stan in stany)
             {
                 var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
                 dynamic? magazyn = null;
@@ -242,7 +257,7 @@ public class InventoryController : ControllerBase
                 var iloscZarezerwowanaIlosciowo = DynamicPropertyHelper.GetDecimal(stan, "IloscZarezerwowanaIlosciowo");
                 var iloscZadysponowana = DynamicPropertyHelper.GetDecimal(stan, "IloscZadysponowana");
 
-                return new InventoryItemDto
+                items.Add(new InventoryItemDto
                 {
                     ProductId = DynamicPropertyHelper.GetId(produkt),
                     ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
@@ -256,8 +271,8 @@ public class InventoryController : ControllerBase
                     Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
                     MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
                     MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
-                };
-            }).ToList();
+                });
+            }
 
             return Ok(ApiResponse<List<InventoryItemDto>>.Ok(items));
         }
@@ -295,13 +310,17 @@ public class InventoryController : ControllerBase
             dynamic sfera = _sferaService.GetSfera();
             var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
 
-            var dtos = magazyny.Select(m => new WarehouseDto
+            var dtos = new List<WarehouseDto>();
+            foreach (var m in magazyny)
             {
-                Id = DynamicPropertyHelper.GetId(m),
-                Symbol = DynamicPropertyHelper.GetString(m, "Symbol"),
-                Name = DynamicPropertyHelper.GetString(m, "Nazwa"),
-                IsActive = DynamicPropertyHelper.GetBool(m, "Aktywny")
-            }).ToList();
+                dtos.Add(new WarehouseDto
+                {
+                    Id = DynamicPropertyHelper.GetId(m),
+                    Symbol = DynamicPropertyHelper.GetString(m, "Symbol"),
+                    Name = DynamicPropertyHelper.GetString(m, "Nazwa"),
+                    IsActive = DynamicPropertyHelper.GetBool(m, "Aktywny")
+                });
+            }
 
             return Ok(ApiResponse<List<WarehouseDto>>.Ok(dtos));
         }
@@ -493,33 +512,52 @@ public class InventoryController : ControllerBase
 
             // Get batches from przyjecia (warehouse receipts)
             var allPrzyjecia = ((IEnumerable<dynamic>)sfera.PrzyjeciaZewnetrzne().Dane.Wszystkie()).ToList();
-            var przyjecia = allPrzyjecia.Where(p =>
+            var przyjecia = new List<dynamic>();
+            foreach (var p in allPrzyjecia)
             {
                 var pozycje = DynamicPropertyHelper.GetCollection(p, "Pozycje");
-                return pozycje.Any(poz =>
+                bool hasProduct = false;
+                foreach (var poz in pozycje)
                 {
                     var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-                    return asortyment != null && DynamicPropertyHelper.GetId(asortyment) == produktId;
-                });
-            }).ToList();
+                    if (asortyment != null && DynamicPropertyHelper.GetId(asortyment) == produktId)
+                    {
+                        hasProduct = true;
+                        break;
+                    }
+                }
+                if (hasProduct)
+                {
+                    przyjecia.Add(p);
+                }
+            }
 
             if (!string.IsNullOrEmpty(warehouseSymbol))
             {
-                przyjecia = przyjecia.Where(p =>
+                var filteredPrzyjecia = new List<dynamic>();
+                foreach (var p in przyjecia)
                 {
                     var magazyn = DynamicPropertyHelper.GetProperty(p, "Magazyn");
-                    return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == warehouseSymbol;
-                }).ToList();
+                    if (magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == warehouseSymbol)
+                    {
+                        filteredPrzyjecia.Add(p);
+                    }
+                }
+                przyjecia = filteredPrzyjecia;
             }
 
             foreach (var przyjecie in przyjecia)
             {
-                var pozycje = DynamicPropertyHelper.GetCollection(przyjecie, "Pozycje")
-                    .Where(poz =>
+                var allPozycje = DynamicPropertyHelper.GetCollection(przyjecie, "Pozycje");
+                var pozycje = new List<dynamic>();
+                foreach (var poz in allPozycje)
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+                    if (asortyment != null && DynamicPropertyHelper.GetId(asortyment) == produktId)
                     {
-                        var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-                        return asortyment != null && DynamicPropertyHelper.GetId(asortyment) == produktId;
-                    });
+                        pozycje.Add(poz);
+                    }
+                }
 
                 foreach (var pozycja in pozycje)
                 {
@@ -530,7 +568,8 @@ public class InventoryController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error getting batches for product {ProductId}", DynamicPropertyHelper.GetId(produkt));
+            int productIdValue = DynamicPropertyHelper.GetId(produkt);
+            _logger.LogWarning(ex, "Error getting batches for product {ProductId}", productIdValue);
         }
 
         return partie;
@@ -734,24 +773,35 @@ public class InventoryController : ControllerBase
 
                 if (magazynFilterId.HasValue)
                 {
-                    stany = stany.Where(s =>
-                        DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value).ToList();
+                    var filteredStany = new List<dynamic>();
+                    foreach (var s in stany)
+                    {
+                        if (DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value)
+                        {
+                            filteredStany.Add(s);
+                        }
+                    }
+                    stany = filteredStany;
                 }
 
-                if (!stany.Any())
+                if (stany.Count == 0)
                 {
                     summary.ProductsOutOfStock++;
                     continue;
                 }
 
-                var totalStock = stany.Sum(s =>
-                    DynamicPropertyHelper.GetDecimal(s, "IloscDostepna") +
-                    DynamicPropertyHelper.GetDecimal(s, "IloscZarezerwowanaIlosciowo") +
-                    DynamicPropertyHelper.GetDecimal(s, "IloscZadysponowana"));
-                var totalReserved = stany.Sum(s =>
-                    DynamicPropertyHelper.GetDecimal(s, "IloscZarezerwowanaIlosciowo") +
-                    DynamicPropertyHelper.GetDecimal(s, "IloscZadysponowana"));
-                var totalAvailable = stany.Sum(s => DynamicPropertyHelper.GetDecimal(s, "IloscDostepna"));
+                decimal totalStock = 0;
+                decimal totalReserved = 0;
+                decimal totalAvailable = 0;
+                foreach (var s in stany)
+                {
+                    var iloscDostepna = DynamicPropertyHelper.GetDecimal(s, "IloscDostepna");
+                    var iloscZarezerwowanaIlosciowo = DynamicPropertyHelper.GetDecimal(s, "IloscZarezerwowanaIlosciowo");
+                    var iloscZadysponowana = DynamicPropertyHelper.GetDecimal(s, "IloscZadysponowana");
+                    totalStock += iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana;
+                    totalReserved += iloscZarezerwowanaIlosciowo + iloscZadysponowana;
+                    totalAvailable += iloscDostepna;
+                }
 
                 summary.TotalProducts++;
                 summary.TotalStockQuantity += totalStock;

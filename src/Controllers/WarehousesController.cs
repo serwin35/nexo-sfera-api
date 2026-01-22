@@ -37,14 +37,18 @@ public class WarehousesController : ControllerBase
             var magazyny = sfera.Magazyny();
             var allMagazyny = ((IEnumerable<dynamic>)magazyny.Dane.Wszystkie()).ToList();
 
-            var items = allMagazyny.Select(m => new WarehouseDto
+            var items = new List<WarehouseDto>();
+            foreach (var m in allMagazyny)
             {
-                Id = DynamicPropertyHelper.GetId(m),
-                Symbol = DynamicPropertyHelper.GetString(m, "Symbol"),
-                Name = DynamicPropertyHelper.GetString(m, "Nazwa"),
-                Description = DynamicPropertyHelper.GetString(m, "Opis"),
-                IsActive = DynamicPropertyHelper.GetNullableBool(m, "Aktywny") ?? true
-            }).ToList();
+                items.Add(new WarehouseDto
+                {
+                    Id = DynamicPropertyHelper.GetId(m),
+                    Symbol = DynamicPropertyHelper.GetString(m, "Symbol"),
+                    Name = DynamicPropertyHelper.GetString(m, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(m, "Opis"),
+                    IsActive = DynamicPropertyHelper.GetNullableBool(m, "Aktywny") ?? true
+                });
+            }
 
             return Ok(ApiResponse<List<WarehouseDto>>.Ok(items));
         }

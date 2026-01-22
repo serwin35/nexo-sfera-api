@@ -88,13 +88,17 @@ public class KsefController : ControllerBase
             }
 
             var totalCount = allDokumenty.Count;
-            var items = allDokumenty
+            var pagedDokumenty = allDokumenty
                 .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia") ?? DateTime.MinValue)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
-                .Select(MapElectronicDocument)
                 .ToList();
+
+            var items = new List<ElectronicDocumentDto>();
+            foreach (var d in pagedDokumenty)
+            {
+                items.Add(MapElectronicDocument(d));
+            }
 
             return Ok(new PagedResponse<ElectronicDocumentDto>
             {
@@ -264,18 +268,28 @@ public class KsefController : ControllerBase
 
             var wyniki = generator.WygenerujEFaktury(dokumenty.ToArray(), parametry);
 
-            var results = ((IEnumerable<dynamic>)wyniki).Select(w => new EInvoiceGenerationResultDto
+            var results = new List<EInvoiceGenerationResultDto>();
+            foreach (var w in (IEnumerable<dynamic>)wyniki)
             {
-                DocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentId"),
-                DocumentNumber = dokumenty.FirstOrDefault(d =>
-                    DynamicPropertyHelper.GetId(d) == DynamicPropertyHelper.GetInt(w, "DokumentId")) != null
-                    ? DynamicPropertyHelper.GetString(dokumenty.First(d =>
-                        DynamicPropertyHelper.GetId(d) == DynamicPropertyHelper.GetInt(w, "DokumentId")), "Numer", "PelnaSygnatura")
-                    : null,
-                Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
-                ElectronicDocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentElektronicznyId"),
-                Errors = GetErrorsFromResult(w)
-            }).ToList();
+                var docId = DynamicPropertyHelper.GetInt(w, "DokumentId");
+                string? docNumber = null;
+                foreach (var d in dokumenty)
+                {
+                    if (DynamicPropertyHelper.GetId(d) == docId)
+                    {
+                        docNumber = DynamicPropertyHelper.GetString(d, "Numer", "PelnaSygnatura");
+                        break;
+                    }
+                }
+                results.Add(new EInvoiceGenerationResultDto
+                {
+                    DocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentId"),
+                    DocumentNumber = docNumber,
+                    Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
+                    ElectronicDocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentElektronicznyId"),
+                    Errors = GetErrorsFromResult(w)
+                });
+            }
 
             return Ok(ApiResponse<List<EInvoiceGenerationResultDto>>.Ok(results));
         }
@@ -355,17 +369,27 @@ public class KsefController : ControllerBase
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var wyniki = koordynator.PrzekazDoWysylki(dokumenty.ToArray(), null);
 
-            var results = ((IEnumerable<dynamic>)wyniki).Select(w => new KsefSendResultDto
+            var results = new List<KsefSendResultDto>();
+            foreach (var w in (IEnumerable<dynamic>)wyniki)
             {
-                DocumentNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu"),
-                ElectronicDocumentId = dokumenty.FirstOrDefault(d =>
-                    DynamicPropertyHelper.GetString(d, "NumerDokumentu") == DynamicPropertyHelper.GetString(w, "NumerDokumentu")) != null
-                    ? DynamicPropertyHelper.GetId(dokumenty.First(d =>
-                        DynamicPropertyHelper.GetString(d, "NumerDokumentu") == DynamicPropertyHelper.GetString(w, "NumerDokumentu")))
-                    : null,
-                Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
-                Errors = GetErrorsFromResult(w)
-            }).ToList();
+                var docNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu");
+                int? elecDocId = null;
+                foreach (var d in dokumenty)
+                {
+                    if (DynamicPropertyHelper.GetString(d, "NumerDokumentu") == docNumber)
+                    {
+                        elecDocId = DynamicPropertyHelper.GetId(d);
+                        break;
+                    }
+                }
+                results.Add(new KsefSendResultDto
+                {
+                    DocumentNumber = docNumber,
+                    ElectronicDocumentId = elecDocId,
+                    Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
+                    Errors = GetErrorsFromResult(w)
+                });
+            }
 
             return Ok(ApiResponse<List<KsefSendResultDto>>.Ok(results));
         }
@@ -394,16 +418,20 @@ public class KsefController : ControllerBase
 
             var statusy = koordynator.SprawdzStatus();
 
-            var results = ((IEnumerable<dynamic>)statusy).Select(s => new KsefStatusResultDto
+            var results = new List<KsefStatusResultDto>();
+            foreach (var s in (IEnumerable<dynamic>)statusy)
             {
-                DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId"),
-                DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
-                KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
-                ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
-                Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
-                Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
-                Errors = GetErrorsFromResult(s)
-            }).ToList();
+                results.Add(new KsefStatusResultDto
+                {
+                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId"),
+                    DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
+                    KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
+                    ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
+                    Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
+                    Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
+                    Errors = GetErrorsFromResult(s)
+                });
+            }
 
             return Ok(ApiResponse<List<KsefStatusResultDto>>.Ok(results));
         }
@@ -437,16 +465,20 @@ public class KsefController : ControllerBase
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var statusy = koordynator.SprawdzStatus(dokumenty.ToArray());
 
-            var results = ((IEnumerable<dynamic>)statusy).Select(s => new KsefStatusResultDto
+            var results = new List<KsefStatusResultDto>();
+            foreach (var s in (IEnumerable<dynamic>)statusy)
             {
-                DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId"),
-                DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
-                KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
-                ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
-                Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
-                Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
-                Errors = GetErrorsFromResult(s)
-            }).ToList();
+                results.Add(new KsefStatusResultDto
+                {
+                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId"),
+                    DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
+                    KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
+                    ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
+                    Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
+                    Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
+                    Errors = GetErrorsFromResult(s)
+                });
+            }
 
             return Ok(ApiResponse<List<KsefStatusResultDto>>.Ok(results));
         }
@@ -486,13 +518,17 @@ public class KsefController : ControllerBase
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var wyniki = koordynator.PobierzUpo(dokumenty.ToArray());
 
-            var results = ((IEnumerable<dynamic>)wyniki).Select(w => new KsefUpoResultDto
+            var results = new List<KsefUpoResultDto>();
+            foreach (var w in (IEnumerable<dynamic>)wyniki)
             {
-                DocumentNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu"),
-                KsefNumber = DynamicPropertyHelper.GetString(w, "NumerKsef"),
-                Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
-                Errors = GetErrorsFromResult(w)
-            }).ToList();
+                results.Add(new KsefUpoResultDto
+                {
+                    DocumentNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu"),
+                    KsefNumber = DynamicPropertyHelper.GetString(w, "NumerKsef"),
+                    Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
+                    Errors = GetErrorsFromResult(w)
+                });
+            }
 
             return Ok(ApiResponse<List<KsefUpoResultDto>>.Ok(results));
         }
@@ -520,14 +556,25 @@ public class KsefController : ControllerBase
             var dokumentyManager = sfera.DokumentyElektroniczne();
             var dokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
 
+            int pendingSend = 0, sent = 0, withKsefNumber = 0, withUpo = 0, errors = 0;
+            foreach (var d in dokumenty)
+            {
+                var status = DynamicPropertyHelper.GetInt(d, "EStatus");
+                if (status == StatusDoWyslania) pendingSend++;
+                else if (status == StatusWyslana) sent++;
+                else if (status == StatusPobranyNumerKsef) withKsefNumber++;
+                else if (status == StatusPobraneUpo) withUpo++;
+                else if (status == StatusBlad) errors++;
+            }
+
             var summary = new KsefSummaryDto
             {
                 TotalDocuments = dokumenty.Count,
-                PendingSend = dokumenty.Count(d => DynamicPropertyHelper.GetInt(d, "EStatus") == StatusDoWyslania),
-                Sent = dokumenty.Count(d => DynamicPropertyHelper.GetInt(d, "EStatus") == StatusWyslana),
-                WithKsefNumber = dokumenty.Count(d => DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef),
-                WithUpo = dokumenty.Count(d => DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobraneUpo),
-                Errors = dokumenty.Count(d => DynamicPropertyHelper.GetInt(d, "EStatus") == StatusBlad)
+                PendingSend = pendingSend,
+                Sent = sent,
+                WithKsefNumber = withKsefNumber,
+                WithUpo = withUpo,
+                Errors = errors
             };
 
             return Ok(ApiResponse<KsefSummaryDto>.Ok(summary));

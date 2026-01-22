@@ -115,9 +115,15 @@ public class PaymentsController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<PaymentDto>();
+            foreach (var o in items)
+            {
+                mappedItems.Add(MapCashOperationToDto(o));
+            }
+
             var response = new PagedResponse<PaymentDto>
             {
-                Data = items.Select(o => MapCashOperationToDto(o)).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -366,9 +372,15 @@ public class PaymentsController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<PaymentDto>();
+            foreach (var o in items)
+            {
+                mappedItems.Add(MapBankOperationToDto(o));
+            }
+
             var response = new PagedResponse<PaymentDto>
             {
-                Data = items.Select(o => MapBankOperationToDto(o)).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -653,9 +665,15 @@ public class PaymentsController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<ReceivableDto>();
+            foreach (var item in items)
+            {
+                mappedItems.Add(MapReceivableToDto(item));
+            }
+
             var response = new PagedResponse<ReceivableDto>
             {
-                Data = items.Select(MapReceivableToDto).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -727,36 +745,68 @@ public class PaymentsController : ControllerBase
                 .ToList();
 
             var today = DateTime.Today;
-            var receivables = allRozrachunki.Where(r =>
-                DynamicPropertyHelper.GetInt(r, "Typ") == (int)TypRozrachunku.Naleznosc).ToList();
-            var payables = allRozrachunki.Where(r =>
-                DynamicPropertyHelper.GetInt(r, "Typ") == (int)TypRozrachunku.Zobowiazanie).ToList();
+            var receivables = new List<dynamic>();
+            var payables = new List<dynamic>();
+            foreach (var r in allRozrachunki)
+            {
+                var typ = DynamicPropertyHelper.GetInt(r, "Typ");
+                if (typ == (int)TypRozrachunku.Naleznosc)
+                {
+                    receivables.Add(r);
+                }
+                else if (typ == (int)TypRozrachunku.Zobowiazanie)
+                {
+                    payables.Add(r);
+                }
+            }
+
+            decimal totalReceivables = 0;
+            decimal overdueReceivables = 0;
+            int openReceivablesCount = 0;
+            foreach (var r in receivables)
+            {
+                var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                totalReceivables += doRozl;
+                if (doRozl > 0)
+                {
+                    openReceivablesCount++;
+                    var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
+                    if (data.HasValue && data.Value < today)
+                    {
+                        overdueReceivables += doRozl;
+                    }
+                }
+            }
+
+            decimal totalPayables = 0;
+            decimal overduePayables = 0;
+            int openPayablesCount = 0;
+            foreach (var r in payables)
+            {
+                var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                totalPayables += doRozl;
+                if (doRozl > 0)
+                {
+                    openPayablesCount++;
+                    var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
+                    if (data.HasValue && data.Value < today)
+                    {
+                        overduePayables += doRozl;
+                    }
+                }
+            }
 
             var balance = new ContractorBalanceDto
             {
                 ContractorId = contractorId,
                 ContractorName = DynamicPropertyHelper.GetString(kontrahent, "NazwaSkrocona"),
                 ContractorNIP = DynamicPropertyHelper.GetString(kontrahent, "NIP"),
-                TotalReceivables = receivables.Sum(r => DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia")),
-                TotalPayables = payables.Sum(r => DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia")),
-                OverdueReceivables = receivables
-                    .Where(r =>
-                    {
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
-                        var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
-                        return data.HasValue && data.Value < today && doRozl > 0;
-                    })
-                    .Sum(r => DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia")),
-                OverduePayables = payables
-                    .Where(r =>
-                    {
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
-                        var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
-                        return data.HasValue && data.Value < today && doRozl > 0;
-                    })
-                    .Sum(r => DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia")),
-                OpenReceivablesCount = receivables.Count(r => DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia") > 0),
-                OpenPayablesCount = payables.Count(r => DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia") > 0)
+                TotalReceivables = totalReceivables,
+                TotalPayables = totalPayables,
+                OverdueReceivables = overdueReceivables,
+                OverduePayables = overduePayables,
+                OpenReceivablesCount = openReceivablesCount,
+                OpenPayablesCount = openPayablesCount
             };
 
             balance.Balance = balance.TotalReceivables - balance.TotalPayables;
@@ -812,9 +862,15 @@ public class PaymentsController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
+            var mappedItems = new List<ReceivableDto>();
+            foreach (var item in items)
+            {
+                mappedItems.Add(MapReceivableToDto(item));
+            }
+
             var response = new PagedResponse<ReceivableDto>
             {
-                Data = items.Select(MapReceivableToDto).ToList(),
+                Data = mappedItems,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount

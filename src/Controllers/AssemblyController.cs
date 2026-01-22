@@ -112,8 +112,8 @@ public class AssemblyController : ControllerBase
                     Notes = request.Notes
                 };
 
-                var productSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol") ?? "";
-                var componentCount = request.Components.Count;
+                string productSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol") ?? "";
+                int componentCount = request.Components.Count;
                 _logger.LogInformation("Created assembly for product {ProductSymbol} with {ComponentCount} components",
                     productSymbol, componentCount);
 
@@ -213,7 +213,7 @@ public class AssemblyController : ControllerBase
                     Notes = request.Notes
                 };
 
-                var productSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol") ?? "";
+                string productSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol") ?? "";
                 _logger.LogInformation("Created disassembly for product {ProductSymbol}", productSymbol);
 
                 return CreatedAtAction(nameof(GetAssembly), new { id = dto.Id }, ApiResponse<AssemblyDto>.Ok(dto));

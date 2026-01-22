@@ -49,65 +49,100 @@ public class OffersController : ControllerBase
 
             if (customerId.HasValue)
             {
-                oferty = oferty.Where(o => {
-                    try { return o.Podmiot?.Id == customerId.Value; }
-                    catch { return false; }
-                }).ToList();
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
+                    try { if (o.Podmiot?.Id == customerId.Value) filtered.Add(o); }
+                    catch { }
+                }
+                oferty = filtered;
             }
 
             if (dateFrom.HasValue)
             {
-                oferty = oferty.Where(o => {
-                    try { return (DateTime?)o.DataWystawienia >= dateFrom.Value; }
-                    catch { return false; }
-                }).ToList();
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
+                    try { if ((DateTime?)o.DataWystawienia >= dateFrom.Value) filtered.Add(o); }
+                    catch { }
+                }
+                oferty = filtered;
             }
 
             if (dateTo.HasValue)
             {
-                oferty = oferty.Where(o => {
-                    try { return (DateTime?)o.DataWystawienia <= dateTo.Value; }
-                    catch { return false; }
-                }).ToList();
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
+                    try { if ((DateTime?)o.DataWystawienia <= dateTo.Value) filtered.Add(o); }
+                    catch { }
+                }
+                oferty = filtered;
             }
 
             if (closedOnly.HasValue && closedOnly.Value)
             {
-                oferty = oferty.Where(o => {
-                    try { return (bool?)o.Zamkniety == true; }
-                    catch { return false; }
-                }).ToList();
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
+                    try { if ((bool?)o.Zamkniety == true) filtered.Add(o); }
+                    catch { }
+                }
+                oferty = filtered;
             }
 
             if (acceptedOnly.HasValue && acceptedOnly.Value)
             {
-                oferty = oferty.Where(o => {
-                    try { return (bool?)o.Zaakceptowany == true; }
-                    catch { return false; }
-                }).ToList();
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
+                    try { if ((bool?)o.Zaakceptowany == true) filtered.Add(o); }
+                    catch { }
+                }
+                oferty = filtered;
             }
 
             if (validOnly.HasValue && validOnly.Value)
             {
                 var now = DateTime.Now;
-                oferty = oferty.Where(o => {
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
                     try
                     {
                         var od = (DateTime?)o.ObowiazujeOd;
                         var doo = (DateTime?)o.ObowiazujeDo;
-                        return (!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now);
+                        if ((!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now))
+                        {
+                            filtered.Add(o);
+                        }
                     }
-                    catch { return false; }
-                }).ToList();
+                    catch { }
+                }
+                oferty = filtered;
             }
 
+            // Sort by DataWystawienia descending
+            var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
+            foreach (var o in oferty)
+            {
+                DateTime? data = null;
+                try { data = (DateTime?)o.DataWystawienia; } catch { }
+                sortedOferty.Add((o, data));
+            }
+            sortedOferty = sortedOferty.OrderByDescending(x => x.data).ToList();
+
             var totalCount = oferty.Count;
-            var items = oferty
-                .OrderByDescending(o => { try { return (DateTime?)o.DataWystawienia; } catch { return null; } })
+            var pagedOferty = sortedOferty
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(MapOfferSummary)
                 .ToList();
+
+            var items = new List<OfferSummaryDto>();
+            foreach (var item in pagedOferty)
+            {
+                items.Add(MapOfferSummary(item.oferta));
+            }
 
             return Ok(new PagedResponse<OfferSummaryDto>
             {
@@ -204,31 +239,50 @@ public class OffersController : ControllerBase
         {
             dynamic sfera = _sferaService.GetSfera();
             var ofertyManager = sfera.Oferty();
-            var oferty = ((IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie())
-                .Where(o => {
-                    try { return o.Podmiot?.Id == customerId; }
-                    catch { return false; }
-                }).ToList();
+            var allOferty = ((IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie()).ToList();
+            var oferty = new List<dynamic>();
+            foreach (var o in allOferty)
+            {
+                try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
+                catch { }
+            }
 
             if (validOnly.HasValue && validOnly.Value)
             {
                 var now = DateTime.Now;
-                oferty = oferty.Where(o => {
+                var filtered = new List<dynamic>();
+                foreach (var o in oferty)
+                {
                     try
                     {
                         var od = (DateTime?)o.ObowiazujeOd;
                         var doo = (DateTime?)o.ObowiazujeDo;
                         var zamkniety = (bool?)o.Zamkniety;
-                        return (!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now) && zamkniety != true;
+                        if ((!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now) && zamkniety != true)
+                        {
+                            filtered.Add(o);
+                        }
                     }
-                    catch { return false; }
-                }).ToList();
+                    catch { }
+                }
+                oferty = filtered;
             }
 
-            var items = oferty
-                .OrderByDescending(o => { try { return (DateTime?)o.DataWystawienia; } catch { return null; } })
-                .Select(MapOfferSummary)
-                .ToList();
+            // Sort by DataWystawienia descending
+            var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
+            foreach (var o in oferty)
+            {
+                DateTime? data = null;
+                try { data = (DateTime?)o.DataWystawienia; } catch { }
+                sortedOferty.Add((o, data));
+            }
+            sortedOferty = sortedOferty.OrderByDescending(x => x.data).ToList();
+
+            var items = new List<OfferSummaryDto>();
+            foreach (var item in sortedOferty)
+            {
+                items.Add(MapOfferSummary(item.oferta));
+            }
 
             return Ok(ApiResponse<List<OfferSummaryDto>>.Ok(items));
         }

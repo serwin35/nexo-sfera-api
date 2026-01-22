@@ -63,11 +63,16 @@ public class CustomersController : ControllerBase
             }
 
             var totalCount = allPodmioty.Count;
-            var items = allPodmioty
+            var pagedPodmioty = allPodmioty
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => MapToDto(p))
                 .ToList();
+
+            var items = new List<CustomerDto>();
+            foreach (var p in pagedPodmioty)
+            {
+                items.Add(MapToDto(p));
+            }
 
             var response = new PagedResponse<CustomerDto>
             {

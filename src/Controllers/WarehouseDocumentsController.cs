@@ -70,7 +70,10 @@ public class WarehouseDocumentsController : ControllerBase
                     .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
                     .Take(query.PageSize)
                     .ToList();
-                documents.AddRange(wzDocs.Select(d => MapWZToDto(d)));
+                foreach (var d in wzDocs)
+                {
+                    documents.Add(MapWZToDto(d));
+                }
             }
 
             // Query PZ documents
@@ -105,7 +108,10 @@ public class WarehouseDocumentsController : ControllerBase
                     .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
                     .Take(query.PageSize)
                     .ToList();
-                documents.AddRange(pzDocs.Select(d => MapPZToDto(d)));
+                foreach (var d in pzDocs)
+                {
+                    documents.Add(MapPZToDto(d));
+                }
             }
 
             var response = new PagedResponse<WarehouseDocumentDto>

@@ -42,19 +42,32 @@ public class FinanceReportsController : ControllerBase
 
             if (activeOnly == true)
             {
-                allStanowiska = allStanowiska.Where(s => DynamicPropertyHelper.GetBool(s, "Aktywne")).ToList();
+                var filteredStanowiska = new List<dynamic>();
+                foreach (var s in allStanowiska)
+                {
+                    if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
+                    {
+                        filteredStanowiska.Add(s);
+                    }
+                }
+                allStanowiska = filteredStanowiska;
             }
 
-            var dtos = allStanowiska.Select(s => new CashRegisterDto
+            var dtos = new List<CashRegisterDto>();
+            foreach (var s in allStanowiska)
             {
-                Id = DynamicPropertyHelper.GetId(s),
-                Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
-                Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
-                CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol"),
-                CurrentBalance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
-                IsActive = DynamicPropertyHelper.GetBool(s, "Aktywne"),
-                IsDefault = DynamicPropertyHelper.GetBool(s, "Domyslne")
-            }).OrderBy(c => c.Symbol).ToList();
+                dtos.Add(new CashRegisterDto
+                {
+                    Id = DynamicPropertyHelper.GetId(s),
+                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
+                    Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
+                    CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol"),
+                    CurrentBalance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
+                    IsActive = DynamicPropertyHelper.GetBool(s, "Aktywne"),
+                    IsDefault = DynamicPropertyHelper.GetBool(s, "Domyslne")
+                });
+            }
+            dtos = dtos.OrderBy(c => c.Symbol).ToList();
 
             return Ok(ApiResponse<List<CashRegisterDto>>.Ok(dtos));
         }
@@ -118,13 +131,17 @@ public class FinanceReportsController : ControllerBase
             }
 
             var totalCount = allRaporty.Count;
-            var items = allRaporty
+            var pagedRaporty = allRaporty
                 .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "DataOd") ?? DateTime.MinValue)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
-                .Select(r => MapCashReport(r, false))
                 .ToList();
+
+            var items = new List<CashReportDto>();
+            foreach (var r in pagedRaporty)
+            {
+                items.Add(MapCashReport(r, false));
+            }
 
             return Ok(new PagedResponse<CashReportDto>
             {
@@ -235,22 +252,35 @@ public class FinanceReportsController : ControllerBase
 
             if (activeOnly == true)
             {
-                allRachunki = allRachunki.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
+                var filteredRachunki = new List<dynamic>();
+                foreach (var r in allRachunki)
+                {
+                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    {
+                        filteredRachunki.Add(r);
+                    }
+                }
+                allRachunki = filteredRachunki;
             }
 
-            var dtos = allRachunki.Select(r => new BankAccountDto
+            var dtos = new List<BankAccountDto>();
+            foreach (var r in allRachunki)
             {
-                Id = DynamicPropertyHelper.GetId(r),
-                Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
-                Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
-                AccountNumber = DynamicPropertyHelper.GetString(r, "NumerRachunku"),
-                BankName = DynamicPropertyHelper.GetString(r, "NazwaBanku"),
-                BankSwift = DynamicPropertyHelper.GetString(r, "Swift"),
-                CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol"),
-                CurrentBalance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
-                IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
-                IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
-            }).OrderBy(b => b.Symbol).ToList();
+                dtos.Add(new BankAccountDto
+                {
+                    Id = DynamicPropertyHelper.GetId(r),
+                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+                    Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                    AccountNumber = DynamicPropertyHelper.GetString(r, "NumerRachunku"),
+                    BankName = DynamicPropertyHelper.GetString(r, "NazwaBanku"),
+                    BankSwift = DynamicPropertyHelper.GetString(r, "Swift"),
+                    CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol"),
+                    CurrentBalance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
+                    IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                    IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
+                });
+            }
+            dtos = dtos.OrderBy(b => b.Symbol).ToList();
 
             return Ok(ApiResponse<List<BankAccountDto>>.Ok(dtos));
         }
@@ -314,13 +344,17 @@ public class FinanceReportsController : ControllerBase
             }
 
             var totalCount = allWyciagi.Count;
-            var items = allWyciagi
+            var pagedWyciagi = allWyciagi
                 .OrderByDescending(w => DynamicPropertyHelper.GetDateTime(w, "DataWyciagu") ?? DateTime.MinValue)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
-                .Select(w => MapBankStatement(w, false))
                 .ToList();
+
+            var items = new List<BankStatementDto>();
+            foreach (var w in pagedWyciagi)
+            {
+                items.Add(MapBankStatement(w, false));
+            }
 
             return Ok(new PagedResponse<BankStatementDto>
             {
@@ -435,19 +469,57 @@ public class FinanceReportsController : ControllerBase
 
             // Get cash register balances
             var stanowiskaManager = sfera.StanowiskaKasowe();
-            var stanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList()
-                .Where(s => DynamicPropertyHelper.GetBool(s, "Aktywne"))
-                .ToList();
+            var allStanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
+            var stanowiska = new List<dynamic>();
+            foreach (var s in allStanowiska)
+            {
+                if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
+                {
+                    stanowiska.Add(s);
+                }
+            }
 
-            var cashBalance = stanowiska.Sum(s => DynamicPropertyHelper.GetDecimal(s, "StanKasy"));
+            decimal cashBalance = 0;
+            var cashRegisterBalances = new List<BalanceItemDto>();
+            foreach (var s in stanowiska)
+            {
+                var stanKasy = DynamicPropertyHelper.GetDecimal(s, "StanKasy");
+                cashBalance += stanKasy;
+                cashRegisterBalances.Add(new BalanceItemDto
+                {
+                    Name = DynamicPropertyHelper.GetString(s, "Nazwa") ?? DynamicPropertyHelper.GetString(s, "Symbol") ?? "Unknown",
+                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
+                    Balance = stanKasy,
+                    CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol") ?? "PLN"
+                });
+            }
 
             // Get bank account balances
             var rachunkiManager = sfera.RachunkiBankowe();
-            var rachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList()
-                .Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny"))
-                .ToList();
+            var allRachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
+            var rachunki = new List<dynamic>();
+            foreach (var r in allRachunki)
+            {
+                if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                {
+                    rachunki.Add(r);
+                }
+            }
 
-            var bankBalance = rachunki.Sum(r => DynamicPropertyHelper.GetDecimal(r, "StanRachunku"));
+            decimal bankBalance = 0;
+            var bankAccountBalances = new List<BalanceItemDto>();
+            foreach (var r in rachunki)
+            {
+                var stanRachunku = DynamicPropertyHelper.GetDecimal(r, "StanRachunku");
+                bankBalance += stanRachunku;
+                bankAccountBalances.Add(new BalanceItemDto
+                {
+                    Name = DynamicPropertyHelper.GetString(r, "Nazwa") ?? DynamicPropertyHelper.GetString(r, "Symbol") ?? "Unknown",
+                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+                    Balance = stanRachunku,
+                    CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol") ?? "PLN"
+                });
+            }
 
             var summary = new FinanceSummaryDto
             {
@@ -456,20 +528,8 @@ public class FinanceReportsController : ControllerBase
                 TotalBalance = cashBalance + bankBalance,
                 CashRegisterCount = stanowiska.Count,
                 BankAccountCount = rachunki.Count,
-                CashRegisterBalances = stanowiska.Select(s => new BalanceItemDto
-                {
-                    Name = DynamicPropertyHelper.GetString(s, "Nazwa") ?? DynamicPropertyHelper.GetString(s, "Symbol") ?? "Unknown",
-                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
-                    Balance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
-                    CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol") ?? "PLN"
-                }).ToList(),
-                BankAccountBalances = rachunki.Select(r => new BalanceItemDto
-                {
-                    Name = DynamicPropertyHelper.GetString(r, "Nazwa") ?? DynamicPropertyHelper.GetString(r, "Symbol") ?? "Unknown",
-                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
-                    Balance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
-                    CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol") ?? "PLN"
-                }).ToList()
+                CashRegisterBalances = cashRegisterBalances,
+                BankAccountBalances = bankAccountBalances
             };
 
             return Ok(ApiResponse<FinanceSummaryDto>.Ok(summary));
