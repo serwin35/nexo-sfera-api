@@ -122,7 +122,6 @@ public class SferaService : ISferaService, IDisposable
                 "PrzyjeciaZewnetrzne" => _sfera.PrzyjeciaZewnetrzne(),
                 "WydaniaMiedzymagazynowe" => _sfera.WydaniaMiedzymagazynowe(),
                 "RozchodyWewnetrzne" => _sfera.RozchodyWewnetrzne(),
-                "PrzychodWewnetrzne" => _sfera.PrzychodWewnetrzne(),
                 "ZamowieniaOdKlientow" => _sfera.ZamowieniaOdKlientow(),
                 "ZamowieniaDoDostawcow" => _sfera.ZamowieniaDoDostawcow(),
                 "Oferty" => _sfera.Oferty(),
