@@ -244,6 +244,81 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Explore Szczegoly (detailed address) properties
+    /// </summary>
+    [HttpGet("debug/address-details/{id}")]
+    public ActionResult<object> GetAddressSzczegoly(int id)
+    {
+        try
+        {
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
+            }
+
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
+
+            if (podmiot == null)
+            {
+                return NotFound(new { Error = $"Customer {id} not found" });
+            }
+
+            var adresPodmiotu = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
+            if (adresPodmiotu == null)
+            {
+                return Ok(new { CustomerId = id, AdresPodstawowy = "null" });
+            }
+
+            var szczegoly = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Szczegoly");
+            if (szczegoly == null)
+            {
+                return Ok(new {
+                    CustomerId = id,
+                    Szczegoly = "null",
+                    Linia1 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia1"),
+                    Linia2 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia2"),
+                    LiniaCalosc = DynamicPropertyHelper.GetString(adresPodmiotu, "LiniaCalosc")
+                });
+            }
+
+            Type szczegolyType = szczegoly.GetType();
+            var props = new Dictionary<string, string>();
+            foreach (var prop in szczegolyType.GetProperties())
+            {
+                try
+                {
+                    var value = prop.GetValue(szczegoly);
+                    props[prop.Name] = value?.ToString() ?? "null";
+                }
+                catch (Exception ex)
+                {
+                    props[prop.Name] = $"Error: {ex.Message}";
+                }
+            }
+
+            return Ok(new
+            {
+                CustomerId = id,
+                SzczegolyType = szczegolyType.FullName,
+                Properties = props.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Explore AdresPodstawowy properties for a customer
     /// </summary>
     [HttpGet("debug/address/{id}")]
@@ -1069,30 +1144,57 @@ public class CustomersController : ControllerBase
         };
 
         // Map address - AdresPodstawowy is directly available on entity
-        dynamic? adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
+        dynamic? adresPodmiotu = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
 
         // Fallback: try first from Adresy collection
-        if (adresGlowny == null)
+        if (adresPodmiotu == null)
         {
             var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
             foreach (var adr in adresy)
             {
-                adresGlowny = adr;
-                break; // Take first address
+                adresPodmiotu = adr;
+                break;
             }
         }
 
-        if (adresGlowny != null)
+        if (adresPodmiotu != null)
         {
-            dto.Address = new AddressDto
+            // SDK uses AdresPodmiotu with Szczegoly (AdresSzczegoly) for detailed address
+            // or Linia1/Linia2/LiniaCalosc for formatted lines
+            var szczegoly = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Szczegoly");
+
+            if (szczegoly != null)
             {
-                Street = DynamicPropertyHelper.GetString(adresGlowny, "Ulica"),
-                BuildingNumber = DynamicPropertyHelper.GetString(adresGlowny, "NumerDomu"),
-                ApartmentNumber = DynamicPropertyHelper.GetString(adresGlowny, "NumerLokalu"),
-                City = DynamicPropertyHelper.GetString(adresGlowny, "Miejscowosc"),
-                PostalCode = DynamicPropertyHelper.GetString(adresGlowny, "KodPocztowy"),
-                Country = DynamicPropertyHelper.GetString(adresGlowny, "Kraj")
-            };
+                // Try to get detailed address from Szczegoly
+                dto.Address = new AddressDto
+                {
+                    Street = DynamicPropertyHelper.GetString(szczegoly, "Ulica"),
+                    BuildingNumber = DynamicPropertyHelper.GetString(szczegoly, "NumerDomu"),
+                    ApartmentNumber = DynamicPropertyHelper.GetString(szczegoly, "NumerLokalu"),
+                    City = DynamicPropertyHelper.GetString(szczegoly, "Miejscowosc"),
+                    PostalCode = DynamicPropertyHelper.GetString(szczegoly, "KodPocztowy"),
+                    Country = DynamicPropertyHelper.GetString(szczegoly, "NazwaPanstwa")
+                        ?? DynamicPropertyHelper.GetString(szczegoly, "Kraj")
+                };
+            }
+
+            // If Szczegoly didn't provide data, use Linia fields
+            if (dto.Address == null || string.IsNullOrEmpty(dto.Address.Street))
+            {
+                var linia1 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia1"); // Usually street + number
+                var linia2 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia2"); // Usually postal + city
+
+                // Try to get country from Panstwo relation
+                var panstwo = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Panstwo");
+                var country = panstwo != null ? DynamicPropertyHelper.GetString(panstwo, "Nazwa") : null;
+
+                dto.Address = new AddressDto
+                {
+                    Street = linia1,
+                    City = linia2,
+                    Country = country
+                };
+            }
         }
 
         // Map contacts from Kontakty collection
