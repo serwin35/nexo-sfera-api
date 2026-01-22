@@ -77,6 +77,12 @@
     <Reference Include="InsERT.Moria.Security.Core">
       <HintPath>lib\nexo-sdk\InsERT.Moria.Security.Core.dll</HintPath>
     </Reference>
+    <Reference Include="InsERT.Moria.Security">
+      <HintPath>lib\nexo-sdk\InsERT.Moria.Security.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Security.Sql">
+      <HintPath>lib\nexo-sdk\InsERT.Mox.Security.Sql.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <!-- Copy SDK DLLs to output directory -->
