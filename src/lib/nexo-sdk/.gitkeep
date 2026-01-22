@@ -1,0 +1,4 @@
+# This directory should contain InsERT Nexo SDK DLLs
+# Run scripts/setup-sdk.ps1 to copy required DLLs from SDK installation
+# Or configure NEXO_SDK_URL secret for GitHub Actions builds
+# See docs/CI-CD-SETUP.md for details
