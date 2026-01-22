@@ -465,9 +465,9 @@ public class FinanceReportsController : ControllerBase
         [FromQuery] string? type,           // receivable/payable
         [FromQuery] int? customerId,
         [FromQuery] bool? overdueOnly,
-        [FromQuery] bool? unpaidOnly = true,
         [FromQuery] DateTime? dueDateFrom,
         [FromQuery] DateTime? dueDateTo,
+        [FromQuery] bool? unpaidOnly = true,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
