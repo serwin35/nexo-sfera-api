@@ -7,6 +7,14 @@ using NexoSferaApi.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Add environment variables as configuration source with custom prefix mapping
+builder.Configuration
+    .AddEnvironmentVariables()
+    .AddEnvironmentVariables("SFERA_"); // For SFERA_* variables
+
+// Map environment variables to configuration (for backward compatibility)
+MapEnvironmentToConfiguration(builder.Configuration);
+
 // Add services to the container
 builder.Services.AddControllers();
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
@@ -169,3 +177,38 @@ catch (Exception ex)
 }
 
 app.Run();
+
+// Helper function to map environment variables to configuration
+static void MapEnvironmentToConfiguration(ConfigurationManager config)
+{
+    // Map SFERA_* environment variables to Sfera:* configuration
+    var envMappings = new Dictionary<string, string>
+    {
+        { "SFERA_SERVER", "Sfera:Server" },
+        { "SFERA_DATABASE", "Sfera:Database" },
+        { "SFERA_USE_WINDOWS_AUTH", "Sfera:UseWindowsAuth" },
+        { "SFERA_SQL_LOGIN", "Sfera:SqlLogin" },
+        { "SFERA_SQL_PASSWORD", "Sfera:SqlPassword" },
+        { "SFERA_NEXO_LOGIN", "Sfera:NexoLogin" },
+        { "SFERA_NEXO_PASSWORD", "Sfera:NexoPassword" },
+        { "SFERA_PRODUCT", "Sfera:Product" },
+        { "API_KEY", "ApiKeys:Keys:0:Key" },
+        { "API_PORT", "Kestrel:Endpoints:Http:Url" }
+    };
+
+    foreach (var mapping in envMappings)
+    {
+        var envValue = Environment.GetEnvironmentVariable(mapping.Key);
+        if (!string.IsNullOrEmpty(envValue))
+        {
+            if (mapping.Key == "API_PORT")
+            {
+                config[mapping.Value] = $"http://0.0.0.0:{envValue}";
+            }
+            else
+            {
+                config[mapping.Value] = envValue;
+            }
+        }
+    }
+}
