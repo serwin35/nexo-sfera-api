@@ -2,7 +2,7 @@ namespace NexoSferaApi.Models.Dto;
 
 /// <summary>
 /// Lightweight document DTO for list views (minimal fields for performance)
-/// Matches v1 API list view
+/// Matches v1 API list view with essential business fields
 /// </summary>
 public class DocumentListItemDto
 {
@@ -11,16 +11,28 @@ public class DocumentListItemDto
     public string? Number { get; set; }
     public string? ExternalNumber { get; set; }
     public string? ReferenceNumber { get; set; }
+    public string? Title { get; set; }
     public DateTime? IssueDate { get; set; }
+    public DateTime? SaleDate { get; set; }
+    public DateTime? DueDate { get; set; }
     public int? CustomerId { get; set; }
     public string? CustomerName { get; set; }
+    public string? CustomerNIP { get; set; }
+    public string? WarehouseSymbol { get; set; }
+    public decimal TotalNet { get; set; }
+    public decimal TotalGross { get; set; }
     public decimal AmountToPay { get; set; }
+    public decimal? PaidAmount { get; set; }
+    public string? Currency { get; set; }
     public int? StatusId { get; set; }
+    public string? StatusSymbol { get; set; }
+    public bool? IsPaid { get; set; }
+    public bool? IsOverdue { get; set; }
 }
 
 /// <summary>
 /// Full document DTO with all available fields (for detail view)
-/// Matches v1 API detail view
+/// Matches v1 API detail view with extended fields from InsERT SDK
 /// </summary>
 public class DocumentDto
 {
@@ -31,12 +43,15 @@ public class DocumentDto
     public string? FullNumber { get; set; }
     public string? ExternalNumber { get; set; }
     public string? ReferenceNumber { get; set; }
+    public string? Title { get; set; }
 
     // Type and status
     public DocumentType Type { get; set; }
     public int? StatusId { get; set; }
     public string? Status { get; set; }
+    public string? StatusSymbol { get; set; }
     public string? ConfigurationId { get; set; }
+    public string? ConfigurationSymbol { get; set; }
 
     // Dates
     public DateTime? EntryDate { get; set; }
@@ -44,6 +59,8 @@ public class DocumentDto
     public DateTime? SaleDate { get; set; }
     public DateTime? DueDate { get; set; }
     public DateTime? Deadline { get; set; }
+    public DateTime? DeliveryDate { get; set; }
+    public DateTime? ReceiptDate { get; set; }
 
     // Customer/Supplier
     public int? CustomerId { get; set; }
@@ -52,9 +69,14 @@ public class DocumentDto
     public string? CustomerNIP { get; set; }
     public CustomerDto? Customer { get; set; }
 
+    // Recipient (different from customer - for delivery purposes)
+    public int? RecipientId { get; set; }
+    public string? RecipientName { get; set; }
+
     // Warehouse
     public int? WarehouseId { get; set; }
     public string? WarehouseSymbol { get; set; }
+    public string? WarehouseName { get; set; }
 
     // Amounts - Goods
     public decimal GoodsAmountNet { get; set; }
@@ -80,26 +102,116 @@ public class DocumentDto
     // Currency
     public string Currency { get; set; } = "PLN";
     public decimal? ExchangeRate { get; set; }
+    public DateTime? ExchangeRateDate { get; set; }
 
     // Payment
     public string? PaymentMethod { get; set; }
+    public int? PaymentMethodId { get; set; }
     public DateTime? PaymentDate { get; set; }
+    public int? PaymentDays { get; set; }
     public decimal? PaidAmount { get; set; }
     public decimal? RemainingAmount { get; set; }
+
+    // Payment breakdown
+    public PaymentBreakdownDto? PaymentBreakdown { get; set; }
+
+    // Split payment (Mechanizm Podzielonej Platnosci)
+    public bool? SplitPayment { get; set; }
+
+    // KSeF (Krajowy System e-Faktur) - E-invoicing
+    public KsefStatusDto? KsefStatus { get; set; }
 
     // Personnel
     public string? IssuedBy { get; set; }
     public string? ReceivedBy { get; set; }
+    public string? CreatedBy { get; set; }
+    public string? ModifiedBy { get; set; }
+
+    // Delivery address
+    public AddressDto? DeliveryAddress { get; set; }
+
+    // Intrastat (EU trade statistics)
+    public bool? SubjectToIntrastat { get; set; }
+    public DateTime? IntrastatDate { get; set; }
+
+    // JPK (Jednolity Plik Kontrolny) - Polish tax reporting
+    public string? JpkProductGroup { get; set; }
+    public string? JpkProcedure { get; set; }
 
     // Notes
     public string? Notes { get; set; }
+    public string? InternalNotes { get; set; }
 
     // Items
     public List<DocumentItemDto> Items { get; set; } = new();
 
+    // Related documents
+    public List<RelatedDocumentDto>? RelatedDocuments { get; set; }
+
     // Timestamps
     public DateTime? CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
+
+    // Flags
+    public bool? IsPrinted { get; set; }
+    public bool? IsSent { get; set; }
+    public bool? IsConfirmed { get; set; }
+    public bool? IsCanceled { get; set; }
+}
+
+/// <summary>
+/// Payment breakdown by method
+/// </summary>
+public class PaymentBreakdownDto
+{
+    public decimal Cash { get; set; }
+    public decimal Card { get; set; }
+    public decimal BankTransfer { get; set; }
+    public decimal Prepayment { get; set; }
+    public decimal QuickPayment { get; set; }
+    public decimal OwnVoucher { get; set; }
+    public decimal ExternalVoucher { get; set; }
+    public decimal Other { get; set; }
+}
+
+/// <summary>
+/// KSeF (National e-Invoice System) status
+/// </summary>
+public class KsefStatusDto
+{
+    public string? Status { get; set; }
+    public string? KsefNumber { get; set; }
+    public DateTime? SendDate { get; set; }
+    public DateTime? AcceptanceDate { get; set; }
+    public string? SessionId { get; set; }
+    public string? ErrorMessage { get; set; }
+    public bool? IsRequired { get; set; }
+}
+
+/// <summary>
+/// Simplified address DTO for delivery/correspondence
+/// </summary>
+public class AddressDto
+{
+    public string? Street { get; set; }
+    public string? Building { get; set; }
+    public string? Apartment { get; set; }
+    public string? City { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; }
+    public string? CountryCode { get; set; }
+}
+
+/// <summary>
+/// Related document reference
+/// </summary>
+public class RelatedDocumentDto
+{
+    public int Id { get; set; }
+    public string? Number { get; set; }
+    public string? Symbol { get; set; }
+    public string? RelationType { get; set; }
+    public DateTime? Date { get; set; }
 }
 
 /// <summary>

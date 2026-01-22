@@ -895,6 +895,162 @@ public class InventoryController : ControllerBase
     }
 
     #endregion
+
+    #region Free Quantity (IMagazynier)
+
+    /// <summary>
+    /// Get free (available) quantity for a product via IMagazynier service
+    /// </summary>
+    [HttpGet("free-quantity")]
+    [ProducesResponseType(typeof(ApiResponse<FreeQuantityDto>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<FreeQuantityDto>> GetFreeQuantity(
+        [FromQuery] int productId,
+        [FromQuery] string? warehouseSymbol)
+    {
+        try
+        {
+            // Get product
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<FreeQuantityDto>.Error("Failed to get Asortymenty manager"));
+            }
+
+            dynamic? produkt = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(a) == productId)
+                {
+                    produkt = a;
+                    break;
+                }
+            }
+
+            if (produkt == null)
+            {
+                return NotFound(ApiResponse<FreeQuantityDto>.Error($"Product with ID {productId} not found"));
+            }
+
+            // Get warehouse if specified
+            dynamic? magazyn = null;
+            if (!string.IsNullOrEmpty(warehouseSymbol))
+            {
+                var magazynyManager = _sferaService.GetManager("Magazyny");
+                if (magazynyManager != null)
+                {
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                        {
+                            magazyn = m;
+                            break;
+                        }
+                    }
+                }
+
+                if (magazyn == null)
+                {
+                    return NotFound(ApiResponse<FreeQuantityDto>.Error($"Warehouse '{warehouseSymbol}' not found"));
+                }
+            }
+
+            // Try to use IMagazynier.IloscWolna if available
+            decimal freeQuantity = 0;
+            try
+            {
+                var magazynier = _sferaService.GetManagerByType("InsERT.Moria.API", "InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
+                if (magazynier != null)
+                {
+                    if (magazyn != null)
+                    {
+                        freeQuantity = magazynier.IloscWolna(produkt, magazyn);
+                    }
+                    else
+                    {
+                        freeQuantity = magazynier.IloscWolna(produkt);
+                    }
+                }
+                else
+                {
+                    // Fallback: calculate from stock levels
+                    freeQuantity = CalculateFreeQuantityFromStock(produkt, warehouseSymbol);
+                }
+            }
+            catch
+            {
+                // Fallback: calculate from stock levels
+                freeQuantity = CalculateFreeQuantityFromStock(produkt, warehouseSymbol);
+            }
+
+            var dto = new FreeQuantityDto
+            {
+                ProductId = productId,
+                ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
+                ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
+                WarehouseSymbol = warehouseSymbol,
+                FreeQuantity = freeQuantity,
+                Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt."
+            };
+
+            return Ok(ApiResponse<FreeQuantityDto>.Ok(dto));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting free quantity for product {ProductId}", productId);
+            return StatusCode(500, ApiResponse<FreeQuantityDto>.Error("Error retrieving free quantity", new List<string> { ex.Message }));
+        }
+    }
+
+    private decimal CalculateFreeQuantityFromStock(dynamic produkt, string? warehouseSymbol)
+    {
+        var stany = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
+        decimal total = 0;
+
+        int? magazynFilterId = null;
+        if (!string.IsNullOrEmpty(warehouseSymbol))
+        {
+            var magazynyManager = _sferaService.GetManager("Magazyny");
+            if (magazynyManager != null)
+            {
+                foreach (var m in magazynyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                    {
+                        magazynFilterId = DynamicPropertyHelper.GetId(m);
+                        break;
+                    }
+                }
+            }
+        }
+
+        foreach (var stan in stany)
+        {
+            if (magazynFilterId.HasValue)
+            {
+                var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
+                if (magazynId != magazynFilterId.Value)
+                    continue;
+            }
+            total += DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
+        }
+
+        return total;
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Free quantity DTO
+/// </summary>
+public class FreeQuantityDto
+{
+    public int ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+    public string? ProductName { get; set; }
+    public string? WarehouseSymbol { get; set; }
+    public decimal FreeQuantity { get; set; }
+    public string Unit { get; set; } = "szt.";
 }
 
 /// <summary>

@@ -114,6 +114,20 @@ public class CurrencyDto
 }
 
 /// <summary>
+/// Exchange rate DTO
+/// </summary>
+public class ExchangeRateDto
+{
+    public int Id { get; set; }
+    public string CurrencySymbol { get; set; } = string.Empty;
+    public DateTime? Date { get; set; }
+    public decimal Rate { get; set; }
+    public int Multiplier { get; set; } = 1;
+    public string? Source { get; set; }
+    public string? TableNumber { get; set; }
+}
+
+/// <summary>
 /// Payment method DTO
 /// </summary>
 public class PaymentMethodDto

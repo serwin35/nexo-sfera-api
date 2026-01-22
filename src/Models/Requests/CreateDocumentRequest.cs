@@ -83,12 +83,51 @@ public class DocumentQueryRequest
 
     public DocumentType? Type { get; set; }
     public int? CustomerId { get; set; }
+
+    /// <summary>
+    /// Filter by customer NIP
+    /// </summary>
+    public string? CustomerNIP { get; set; }
+
+    /// <summary>
+    /// Filter by issue date from
+    /// </summary>
     public DateTime? DateFrom { get; set; }
+
+    /// <summary>
+    /// Filter by issue date to
+    /// </summary>
     public DateTime? DateTo { get; set; }
+
+    /// <summary>
+    /// Filter by sale date from
+    /// </summary>
+    public DateTime? SaleDateFrom { get; set; }
+
+    /// <summary>
+    /// Filter by sale date to
+    /// </summary>
+    public DateTime? SaleDateTo { get; set; }
+
+    /// <summary>
+    /// Filter by payment due date from
+    /// </summary>
+    public DateTime? DueDateFrom { get; set; }
+
+    /// <summary>
+    /// Filter by payment due date to
+    /// </summary>
+    public DateTime? DueDateTo { get; set; }
+
     public string? Status { get; set; }
     public int? StatusId { get; set; }
     public string? WarehouseSymbol { get; set; }
     public int? WarehouseId { get; set; }
+
+    /// <summary>
+    /// Filter by currency symbol (e.g., PLN, EUR, USD)
+    /// </summary>
+    public string? Currency { get; set; }
 
     /// <summary>
     /// Show only paid documents
@@ -99,6 +138,36 @@ public class DocumentQueryRequest
     /// Show only unpaid documents
     /// </summary>
     public bool UnpaidOnly { get; set; }
+
+    /// <summary>
+    /// Show only overdue documents (unpaid and past due date)
+    /// </summary>
+    public bool OverdueOnly { get; set; }
+
+    /// <summary>
+    /// Filter by KSeF status (sent, not_sent, error)
+    /// </summary>
+    public string? KsefStatus { get; set; }
+
+    /// <summary>
+    /// Show only canceled documents
+    /// </summary>
+    public bool? IsCanceled { get; set; }
+
+    /// <summary>
+    /// Filter by minimum total gross amount
+    /// </summary>
+    public decimal? MinAmount { get; set; }
+
+    /// <summary>
+    /// Filter by maximum total gross amount
+    /// </summary>
+    public decimal? MaxAmount { get; set; }
+
+    /// <summary>
+    /// Sort order: date_desc (default), date_asc, amount_desc, amount_asc, number_desc, number_asc
+    /// </summary>
+    public string SortBy { get; set; } = "date_desc";
 
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;

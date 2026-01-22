@@ -5,6 +5,10 @@ using InsERT.Moria.Asortymenty;
 using InsERT.Moria.Klienci;
 using InsERT.Moria.Dokumenty;
 using InsERT.Moria.Logistyka;
+using InsERT.Moria.Slowniki;
+using InsERT.Moria.Finanse;
+using InsERT.Moria.Cenniki;
+using InsERT.Moria.Rabaty;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 
@@ -107,8 +111,11 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Asortymenty
                 "Asortymenty" => _sfera.Asortymenty(),
                 "SzablonyAsortymentu" => _sfera.SzablonyAsortymentu(),
+                "GrupyAsortymentu" => _sfera.GrupyAsortymentu(),
+                "CechyAsortymentu" => _sfera.CechyAsortymentu(),
                 // InsERT.Moria.Klienci
                 "Podmioty" => _sfera.Podmioty(),
+                "GrupyKontrahentow" => _sfera.GrupyKontrahentow(),
                 // InsERT.Moria.Dokumenty
                 "Dokumenty" => _sfera.Dokumenty(),
                 "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
@@ -125,6 +132,27 @@ public class SferaService : ISferaService, IDisposable
                 "ZamowieniaOdKlientow" => _sfera.ZamowieniaOdKlientow(),
                 "ZamowieniaDoDostawcow" => _sfera.ZamowieniaDoDostawcow(),
                 "Oferty" => _sfera.Oferty(),
+                // InsERT.Moria.Slowniki
+                "StawkiVat" => _sfera.StawkiVat(),
+                "JednostkiMiar" => _sfera.JednostkiMiar(),
+                "Waluty" => _sfera.Waluty(),
+                "KursyWalut" => _sfera.KursyWalut(),
+                "FormyPlatnosci" => _sfera.FormyPlatnosci(),
+                // InsERT.Moria.Cenniki
+                "Cenniki" => _sfera.Cenniki(),
+                "PoziomyCen" => _sfera.PoziomyCen(),
+                // InsERT.Moria.Rabaty
+                "Rabaty" => _sfera.Rabaty(),
+                // InsERT.Moria.Finanse
+                "OperacjeKasowe" => _sfera.OperacjeKasowe(),
+                "OperacjeBankowe" => _sfera.OperacjeBankowe(),
+                "Rozrachunki" => _sfera.Rozrachunki(),
+                "StanowiskaKasowe" => _sfera.StanowiskaKasowe(),
+                "RachunkiBankowe" => _sfera.RachunkiBankowe(),
+                "RaportyKasowe" => _sfera.RaportyKasowe(),
+                "WyciagiBankowe" => _sfera.WyciagiBankowe(),
+                "RodzajeOperacjiKasowych" => _sfera.RodzajeOperacjiKasowych(),
+                "RodzajeOperacjiBankowych" => _sfera.RodzajeOperacjiBankowych(),
                 // Methods that don't have extension methods - need different approach
                 "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
                 "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),

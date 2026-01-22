@@ -705,6 +705,142 @@ public class DictionaryController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Get exchange rates for a currency
+    /// </summary>
+    [HttpGet("currencies/{symbol}/rates")]
+    [ProducesResponseType(typeof(ApiResponse<List<ExchangeRateDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public ActionResult<ApiResponse<List<ExchangeRateDto>>> GetExchangeRates(
+        string symbol,
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] int limit = 30)
+    {
+        try
+        {
+            var kursyManager = _sferaService.GetManager("KursyWalut");
+            if (kursyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Failed to get KursyWalut manager"));
+            }
+
+            var allKursy = new List<dynamic>();
+            foreach (var k in kursyManager.Dane.Wszystkie())
+            {
+                var waluta = DynamicPropertyHelper.GetProperty(k, "Waluta");
+                if (waluta != null && DynamicPropertyHelper.GetString(waluta, "Symbol") == symbol)
+                {
+                    allKursy.Add(k);
+                }
+            }
+
+            if (dateFrom.HasValue)
+            {
+                allKursy = allKursy.Where(k =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(k, "Data");
+                    return data.HasValue && data.Value >= dateFrom.Value;
+                }).ToList();
+            }
+
+            if (dateTo.HasValue)
+            {
+                allKursy = allKursy.Where(k =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(k, "Data");
+                    return data.HasValue && data.Value <= dateTo.Value;
+                }).ToList();
+            }
+
+            var rates = allKursy
+                .OrderByDescending(k => DynamicPropertyHelper.GetDateTime(k, "Data") ?? DateTime.MinValue)
+                .Take(limit)
+                .Select(k => new ExchangeRateDto
+                {
+                    Id = DynamicPropertyHelper.GetId(k),
+                    CurrencySymbol = symbol,
+                    Date = DynamicPropertyHelper.GetDateTime(k, "Data"),
+                    Rate = DynamicPropertyHelper.GetDecimal(k, "Kurs"),
+                    Multiplier = DynamicPropertyHelper.GetInt(k, "Przelicznik"),
+                    Source = DynamicPropertyHelper.GetString(k, "Zrodlo") ?? "NBP",
+                    TableNumber = DynamicPropertyHelper.GetString(k, "NumerTabeli")
+                })
+                .ToList();
+
+            return Ok(ApiResponse<List<ExchangeRateDto>>.Ok(rates));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting exchange rates for {Symbol}", symbol);
+            return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Error retrieving exchange rates", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get current exchange rate for a currency on specific date
+    /// </summary>
+    [HttpGet("currencies/{symbol}/rate")]
+    [ProducesResponseType(typeof(ApiResponse<ExchangeRateDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public ActionResult<ApiResponse<ExchangeRateDto>> GetExchangeRate(
+        string symbol,
+        [FromQuery] DateTime? date)
+    {
+        try
+        {
+            var targetDate = date ?? DateTime.Today;
+            var kursyManager = _sferaService.GetManager("KursyWalut");
+            if (kursyManager == null)
+            {
+                return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Failed to get KursyWalut manager"));
+            }
+
+            dynamic? latestKurs = null;
+            DateTime? latestDate = null;
+
+            foreach (var k in kursyManager.Dane.Wszystkie())
+            {
+                var waluta = DynamicPropertyHelper.GetProperty(k, "Waluta");
+                if (waluta != null && DynamicPropertyHelper.GetString(waluta, "Symbol") == symbol)
+                {
+                    var kursDate = DynamicPropertyHelper.GetDateTime(k, "Data");
+                    if (kursDate.HasValue && kursDate.Value <= targetDate)
+                    {
+                        if (!latestDate.HasValue || kursDate.Value > latestDate.Value)
+                        {
+                            latestDate = kursDate;
+                            latestKurs = k;
+                        }
+                    }
+                }
+            }
+
+            if (latestKurs == null)
+            {
+                return NotFound(ApiResponse<ExchangeRateDto>.Error($"No exchange rate found for {symbol}"));
+            }
+
+            var dto = new ExchangeRateDto
+            {
+                Id = DynamicPropertyHelper.GetId(latestKurs),
+                CurrencySymbol = symbol,
+                Date = latestDate,
+                Rate = DynamicPropertyHelper.GetDecimal(latestKurs, "Kurs"),
+                Multiplier = DynamicPropertyHelper.GetInt(latestKurs, "Przelicznik"),
+                Source = DynamicPropertyHelper.GetString(latestKurs, "Zrodlo") ?? "NBP",
+                TableNumber = DynamicPropertyHelper.GetString(latestKurs, "NumerTabeli")
+            };
+
+            return Ok(ApiResponse<ExchangeRateDto>.Ok(dto));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting exchange rate for {Symbol}", symbol);
+            return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Error retrieving exchange rate", new List<string> { ex.Message }));
+        }
+    }
+
     #endregion
 
     #region Payment Methods
