@@ -714,13 +714,16 @@ public class CustomersController : ControllerBase
         dynamic? glownyRachunek = null;
         foreach (var r in rachunki)
         {
+            if (glownyRachunek == null)
+            {
+                glownyRachunek = r; // Take first as fallback
+            }
             if (DynamicPropertyHelper.GetBool(r, "Glowny"))
             {
-                glownyRachunek = r;
+                glownyRachunek = r; // Prefer the main account
                 break;
             }
         }
-        glownyRachunek ??= rachunki.FirstOrDefault();
         if (glownyRachunek != null)
         {
             dto.BankAccount = DynamicPropertyHelper.GetString(glownyRachunek, "NumerRachunku");
