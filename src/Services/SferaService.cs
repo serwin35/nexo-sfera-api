@@ -101,7 +101,7 @@ public class SferaService : ISferaService, IDisposable
             // Call extension methods on static Uchwyt type (not dynamic!)
             // Extension methods are resolved at compile time
             // Extension methods are in InsERT.Moria.* namespaces
-            // They extend Uchwyt and must be called on static type
+            // They extend Uchwyt and must be called on static type (not dynamic!)
             return managerMethodName switch
             {
                 // InsERT.Moria.Asortymenty
@@ -113,7 +113,6 @@ public class SferaService : ISferaService, IDisposable
                 "Dokumenty" => _sfera.Dokumenty(),
                 "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
                 "DokumentyZakupu" => _sfera.DokumentyZakupu(),
-                "DokumentyHandlowe" => _sfera.DokumentyHandlowe(),
                 "DokumentyElektroniczne" => _sfera.DokumentyElektroniczne(),
                 "KorektyDokumentowSprzedazy" => _sfera.KorektyDokumentowSprzedazy(),
                 "KorektyDokumentowZakupu" => _sfera.KorektyDokumentowZakupu(),
@@ -123,11 +122,13 @@ public class SferaService : ISferaService, IDisposable
                 "PrzyjeciaZewnetrzne" => _sfera.PrzyjeciaZewnetrzne(),
                 "WydaniaMiedzymagazynowe" => _sfera.WydaniaMiedzymagazynowe(),
                 "RozchodyWewnetrzne" => _sfera.RozchodyWewnetrzne(),
-                "PrzychodWewnetrzny" => _sfera.PrzychodWewnetrzny(),
+                "PrzychodWewnetrzne" => _sfera.PrzychodWewnetrzne(),
                 "ZamowieniaOdKlientow" => _sfera.ZamowieniaOdKlientow(),
                 "ZamowieniaDoDostawcow" => _sfera.ZamowieniaDoDostawcow(),
                 "Oferty" => _sfera.Oferty(),
-                "OfertyDlaKlientow" => _sfera.OfertyDlaKlientow(),
+                // Methods that don't have extension methods - need different approach
+                "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
+                "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),
                 _ => throw new ArgumentException($"Unknown manager: {managerMethodName}")
             };
         }
