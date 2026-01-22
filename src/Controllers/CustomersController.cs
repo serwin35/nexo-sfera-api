@@ -437,8 +437,16 @@ public class CustomersController : ControllerBase
 
         // Map bank account
         var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "RachunkiBankowe").ToList();
-        var glownyRachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetBool(r, "Glowny"))
-                           ?? rachunki.FirstOrDefault();
+        dynamic? glownyRachunek = null;
+        foreach (var r in rachunki)
+        {
+            if (DynamicPropertyHelper.GetBool(r, "Glowny"))
+            {
+                glownyRachunek = r;
+                break;
+            }
+        }
+        glownyRachunek ??= rachunki.FirstOrDefault();
         if (glownyRachunek != null)
         {
             dto.BankAccount = DynamicPropertyHelper.GetString(glownyRachunek, "NumerRachunku");

@@ -173,7 +173,7 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)wz.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(wz.Dane, "NumerWewnetrzny");
-                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
                     _logger.LogInformation("Created WZ {Number}", docNumber);
 
                     return CreatedAtAction(
@@ -241,7 +241,7 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)pz.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pz.Dane, "NumerWewnetrzny");
-                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
                     _logger.LogInformation("Created PZ {Number}", docNumber);
 
                     return CreatedAtAction(
@@ -301,7 +301,7 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)rw.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(rw.Dane, "NumerWewnetrzny");
-                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
                     _logger.LogInformation("Created RW {Number}", docNumber);
 
                     return CreatedAtAction(
@@ -361,7 +361,7 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)pw.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pw.Dane, "NumerWewnetrzny");
-                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
                     _logger.LogInformation("Created PW {Number}", docNumber);
 
                     return CreatedAtAction(
@@ -445,7 +445,7 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)mm.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(mm.Dane, "NumerWewnetrzny");
-                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
                     _logger.LogInformation("Created MM {Number}", docNumber);
 
                     return CreatedAtAction(
