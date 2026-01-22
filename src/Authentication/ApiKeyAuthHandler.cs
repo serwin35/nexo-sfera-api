@@ -11,8 +11,10 @@ namespace NexoSferaApi.Authentication;
 /// </summary>
 public static class ApiKeyAuthenticationDefaults
 {
-    public const string AuthenticationScheme = "ApiKey";
-    public const string HeaderName = "X-API-Key";
+    public const string AuthenticationScheme = "Bearer";
+    public const string HeaderName = "Authorization";
+    public const string BearerPrefix = "Bearer ";
+    public const string LegacyHeaderName = "X-API-Key";
 }
 
 /// <summary>
@@ -23,7 +25,8 @@ public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
 }
 
 /// <summary>
-/// API Key authentication handler
+/// API Key authentication handler supporting Bearer token format
+/// Supports: Authorization: Bearer {api-key}, X-API-Key: {api-key}, ?api_key={api-key}
 /// </summary>
 public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
 {
@@ -41,22 +44,33 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
 
     protected override Task<AuthenticateResult> HandleAuthenticateAsync()
     {
-        // Check for API key in header
-        if (!Request.Headers.TryGetValue(ApiKeyAuthenticationDefaults.HeaderName, out var apiKeyHeaderValues))
+        string? providedApiKey = null;
+
+        // 1. Check Authorization: Bearer {api-key} header (preferred)
+        if (Request.Headers.TryGetValue(ApiKeyAuthenticationDefaults.HeaderName, out var authHeaderValues))
         {
-            // Also check query parameter for easier testing
-            if (!Request.Query.TryGetValue("api_key", out var apiKeyQueryValues))
+            var authHeader = authHeaderValues.FirstOrDefault();
+            if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith(ApiKeyAuthenticationDefaults.BearerPrefix, StringComparison.OrdinalIgnoreCase))
             {
-                return Task.FromResult(AuthenticateResult.Fail("API Key not provided"));
+                providedApiKey = authHeader[ApiKeyAuthenticationDefaults.BearerPrefix.Length..].Trim();
             }
-            apiKeyHeaderValues = apiKeyQueryValues!;
         }
 
-        var providedApiKey = apiKeyHeaderValues.FirstOrDefault();
+        // 2. Fallback to X-API-Key header (legacy support)
+        if (string.IsNullOrEmpty(providedApiKey) && Request.Headers.TryGetValue(ApiKeyAuthenticationDefaults.LegacyHeaderName, out var legacyHeaderValues))
+        {
+            providedApiKey = legacyHeaderValues.FirstOrDefault();
+        }
+
+        // 3. Fallback to query parameter (for testing/webhooks)
+        if (string.IsNullOrEmpty(providedApiKey) && Request.Query.TryGetValue("api_key", out var queryValues))
+        {
+            providedApiKey = queryValues.FirstOrDefault();
+        }
 
         if (string.IsNullOrEmpty(providedApiKey))
         {
-            return Task.FromResult(AuthenticateResult.Fail("API Key not provided"));
+            return Task.FromResult(AuthenticateResult.Fail("API Key not provided. Use 'Authorization: Bearer {api-key}' header."));
         }
 
         // Validate API key

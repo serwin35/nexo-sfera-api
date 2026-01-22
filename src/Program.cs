@@ -30,7 +30,10 @@ builder.Services.AddSwaggerGen(c =>
 - **Assembly (ZM)** - Assembly and disassembly operations
 
 ## Authentication
-This API uses API Key authentication. Include your API key in the `X-API-Key` header.
+This API uses Bearer token authentication. Include your API key in the `Authorization` header:
+```
+Authorization: Bearer your-api-key-here
+```
 ",
         Contact = new OpenApiContact
         {
@@ -43,13 +46,15 @@ This API uses API Key authentication. Include your API key in the `X-API-Key` he
         }
     });
 
-    // Add API Key authentication to Swagger
-    c.AddSecurityDefinition("ApiKey", new OpenApiSecurityScheme
+    // Add Bearer token authentication to Swagger
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Type = SecuritySchemeType.ApiKey,
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "API Key",
         In = ParameterLocation.Header,
-        Name = ApiKeyAuthenticationDefaults.HeaderName,
-        Description = "API Key authentication. Enter your API key in the header."
+        Name = "Authorization",
+        Description = "Enter your API key (without 'Bearer ' prefix - it will be added automatically)"
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -60,7 +65,7 @@ This API uses API Key authentication. Include your API key in the `X-API-Key` he
                 Reference = new OpenApiReference
                 {
                     Type = ReferenceType.SecurityScheme,
-                    Id = "ApiKey"
+                    Id = "Bearer"
                 }
             },
             Array.Empty<string>()
