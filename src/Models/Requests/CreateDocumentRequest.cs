@@ -71,12 +71,35 @@ public class CreateDocumentItemRequest
 
 public class DocumentQueryRequest
 {
+    /// <summary>
+    /// Filter by document symbol (e.g., FS, FZ, ZK, ZD, PZ, WZ, etc.)
+    /// </summary>
+    public string? Symbol { get; set; }
+
+    /// <summary>
+    /// Search by document number or customer name
+    /// </summary>
+    public string? Search { get; set; }
+
     public DocumentType? Type { get; set; }
     public int? CustomerId { get; set; }
     public DateTime? DateFrom { get; set; }
     public DateTime? DateTo { get; set; }
     public string? Status { get; set; }
+    public int? StatusId { get; set; }
     public string? WarehouseSymbol { get; set; }
+    public int? WarehouseId { get; set; }
+
+    /// <summary>
+    /// Show only paid documents
+    /// </summary>
+    public bool PaidOnly { get; set; }
+
+    /// <summary>
+    /// Show only unpaid documents
+    /// </summary>
+    public bool UnpaidOnly { get; set; }
+
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;
 }
