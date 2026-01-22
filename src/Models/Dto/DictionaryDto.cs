@@ -35,22 +35,6 @@ public class UnitOfMeasureDto
 }
 
 /// <summary>
-/// Product group/category DTO
-/// </summary>
-public class ProductGroupDto
-{
-    public int Id { get; set; }
-    public string Symbol { get; set; } = string.Empty;
-    public string? Name { get; set; }
-    public string? Description { get; set; }
-    public int? ParentId { get; set; }
-    public string? ParentSymbol { get; set; }
-    public bool IsActive { get; set; }
-    public int ProductCount { get; set; }
-    public List<ProductGroupDto>? Children { get; set; }
-}
-
-/// <summary>
 /// Price level DTO
 /// </summary>
 public class PriceLevelDto

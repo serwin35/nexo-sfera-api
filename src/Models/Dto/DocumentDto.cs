@@ -189,20 +189,6 @@ public class KsefStatusDto
 }
 
 /// <summary>
-/// Simplified address DTO for delivery/correspondence
-/// </summary>
-public class AddressDto
-{
-    public string? Street { get; set; }
-    public string? Building { get; set; }
-    public string? Apartment { get; set; }
-    public string? City { get; set; }
-    public string? PostalCode { get; set; }
-    public string? Country { get; set; }
-    public string? CountryCode { get; set; }
-}
-
-/// <summary>
 /// Related document reference
 /// </summary>
 public class RelatedDocumentDto
