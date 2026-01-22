@@ -34,7 +34,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.Dokumenty");
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Dokumenty manager"));
@@ -129,7 +129,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.Dokumenty");
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Dokumenty manager"));
@@ -167,7 +167,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.Dokumenty");
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Dokumenty manager"));
@@ -206,7 +206,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentySprzedazy");
+            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
             if (dokumentySprzedazy == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
@@ -222,7 +222,7 @@ public class DocumentsController : ControllerBase
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    var magazyny = _sferaService.GetManager("Magazyny");
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
@@ -293,13 +293,13 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var zamowieniaManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaOdKlientow");
+            var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
             if (zamowieniaManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
 
-            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
 
             using (var zamowienie = konfiguracja != null ? zamowieniaManager.Utworz(konfiguracja) : zamowieniaManager.Utworz())
@@ -312,7 +312,7 @@ public class DocumentsController : ControllerBase
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    var magazyny = _sferaService.GetManager("Magazyny");
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
@@ -372,7 +372,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentyZakupu = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyZakupu");
+            var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
             if (dokumentyZakupu == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyZakupu manager"));
@@ -388,7 +388,7 @@ public class DocumentsController : ControllerBase
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    var magazyny = _sferaService.GetManager("Magazyny");
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
@@ -454,7 +454,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var korektyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.KorektyDokumentowSprzedazy");
+            var korektyManager = _sferaService.GetManager("KorektyDokumentowSprzedazy");
             if (korektyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get KorektyDokumentowSprzedazy manager"));
@@ -465,7 +465,7 @@ public class DocumentsController : ControllerBase
             // If we have original document, create correction for it
             if (request.OriginalDocumentId.HasValue)
             {
-                var dokumentySprzedazy = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentySprzedazy");
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
                 if (dokumentySprzedazy == null)
                 {
                     return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
@@ -547,7 +547,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var korektyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.KorektyDokumentowZakupu");
+            var korektyManager = _sferaService.GetManager("KorektyDokumentowZakupu");
             if (korektyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get KorektyDokumentowZakupu manager"));
@@ -557,7 +557,7 @@ public class DocumentsController : ControllerBase
 
             if (request.OriginalDocumentId.HasValue)
             {
-                var dokumentyZakupu = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyZakupu");
+                var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
                 if (dokumentyZakupu == null)
                 {
                     return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyZakupu manager"));
@@ -637,7 +637,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentySprzedazy");
+            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
             if (dokumentySprzedazy == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
@@ -661,7 +661,7 @@ public class DocumentsController : ControllerBase
             // Set warehouse
             if (!string.IsNullOrEmpty(request.WarehouseSymbol))
             {
-                var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                var magazyny = _sferaService.GetManager("Magazyny");
                 if (magazyny != null)
                 {
                     dynamic? magazyn = null;
@@ -724,7 +724,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var korektyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.KorektyDokumentowSprzedazy");
+            var korektyManager = _sferaService.GetManager("KorektyDokumentowSprzedazy");
             if (korektyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get KorektyDokumentowSprzedazy manager"));
@@ -734,7 +734,7 @@ public class DocumentsController : ControllerBase
 
             if (request.OriginalDocumentId.HasValue)
             {
-                var dokumentySprzedazy = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentySprzedazy");
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
                 if (dokumentySprzedazy == null)
                 {
                     return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
@@ -808,7 +808,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentySprzedazy");
+            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
             if (dokumentySprzedazy == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
@@ -822,7 +822,7 @@ public class DocumentsController : ControllerBase
 
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    var magazyny = _sferaService.GetManager("Magazyny");
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
@@ -894,7 +894,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentySprzedazy");
+            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
             if (dokumentySprzedazy == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
@@ -908,7 +908,7 @@ public class DocumentsController : ControllerBase
 
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    var magazyny = _sferaService.GetManager("Magazyny");
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
@@ -975,7 +975,7 @@ public class DocumentsController : ControllerBase
     {
         if (customerId.HasValue || !string.IsNullOrEmpty(customerNIP))
         {
-            var podmiotyManager = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmiotyManager = _sferaService.GetManager("Podmioty");
             if (podmiotyManager == null) return;
 
             dynamic? podmiot = null;
@@ -1013,7 +1013,7 @@ public class DocumentsController : ControllerBase
     {
         if (items == null || !items.Any()) return;
 
-        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
         if (asortymentyManager == null) return;
 
         foreach (var item in items)
@@ -1073,7 +1073,7 @@ public class DocumentsController : ControllerBase
     {
         if (items == null || !items.Any()) return;
 
-        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
         if (asortymentyManager == null) return;
 
         foreach (var item in items)
@@ -1129,7 +1129,7 @@ public class DocumentsController : ControllerBase
     {
         if (items == null || !items.Any()) return;
 
-        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
 
         foreach (var item in items)
         {
@@ -1214,7 +1214,7 @@ public class DocumentsController : ControllerBase
     {
         if (items == null || !items.Any()) return;
 
-        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
         if (asortymentyManager == null) return;
 
         foreach (var item in items)

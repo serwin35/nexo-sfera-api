@@ -51,7 +51,7 @@ public class AssemblyController : ControllerBase
             }
 
             // Get warehouse
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (magazynyManager == null)
             {
                 return StatusCode(500, ApiResponse<AssemblyDto>.Error("Failed to get Magazyny manager"));
@@ -164,7 +164,7 @@ public class AssemblyController : ControllerBase
             }
 
             // Get warehouse
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (magazynyManager == null)
             {
                 return StatusCode(500, ApiResponse<AssemblyDto>.Error("Failed to get Magazyny manager"));
@@ -431,7 +431,7 @@ public class AssemblyController : ControllerBase
 
     private dynamic? FindAsortyment(int? id, string? symbol, string? ean)
     {
-        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
         if (asortymentyManager == null) return null;
 
         foreach (var a in asortymentyManager.Dane.Wszystkie())

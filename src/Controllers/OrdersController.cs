@@ -39,7 +39,7 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaDoDostawcow");
+            var zamowienia = _sferaService.GetManager("ZamowieniaDoDostawcow");
             if (zamowienia == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
@@ -112,7 +112,7 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaDoDostawcow");
+            var zamowienia = _sferaService.GetManager("ZamowieniaDoDostawcow");
             if (zamowienia == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
@@ -146,18 +146,18 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaDoDostawcow");
+            var zamowienia = _sferaService.GetManager("ZamowieniaDoDostawcow");
             if (zamowienia == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
             }
 
-            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieDoDostawcy;
 
             using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())
             {
-                var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+                var podmioty = _sferaService.GetManager("Podmioty");
 
                 // Set supplier
                 if (request.SupplierId.HasValue && podmioty != null)
@@ -196,7 +196,7 @@ public class OrdersController : ControllerBase
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    var magazyny = _sferaService.GetManager("Magazyny");
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
@@ -226,7 +226,7 @@ public class OrdersController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+                var asortymenty = _sferaService.GetManager("Asortymenty");
                 foreach (var item in request.Items)
                 {
                     dynamic? asortyment = null;
@@ -309,7 +309,7 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var oferty = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.OfertyDlaKlientow");
+            var oferty = _sferaService.GetManager("OfertyDlaKlientow");
             if (oferty == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
@@ -382,18 +382,18 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var oferty = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.OfertyDlaKlientow");
+            var oferty = _sferaService.GetManager("OfertyDlaKlientow");
             if (oferty == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
             }
 
-            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.OfertaDlaKlienta;
 
             using (var oferta = konfiguracja != null ? oferty.Utworz(konfiguracja) : oferty.Utworz())
             {
-                var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+                var podmioty = _sferaService.GetManager("Podmioty");
 
                 // Set customer
                 if (request.CustomerId.HasValue && podmioty != null)
@@ -445,7 +445,7 @@ public class OrdersController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+                var asortymenty = _sferaService.GetManager("Asortymenty");
                 foreach (var item in request.Items)
                 {
                     dynamic? asortyment = null;

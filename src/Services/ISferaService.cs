@@ -9,7 +9,13 @@ public interface ISferaService
     bool IsConnected { get; }
 
     /// <summary>
-    /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call
+    /// Gets a manager by calling the corresponding method on Sfera (e.g., "Asortymenty" calls sfera.Asortymenty())
     /// </summary>
-    dynamic? GetManager(string assemblyName, string typeName);
+    dynamic? GetManager(string managerMethodName);
+
+    /// <summary>
+    /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call
+    /// Use this for interfaces/services, not for standard managers
+    /// </summary>
+    dynamic? GetManagerByType(string assemblyName, string typeName);
 }

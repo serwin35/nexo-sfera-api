@@ -39,7 +39,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -102,7 +102,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -140,7 +140,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -169,7 +169,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -207,7 +207,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -227,7 +227,7 @@ public class ProductsController : ControllerBase
                 // Apply template if specified
                 if (!string.IsNullOrEmpty(request.TemplateSymbol))
                 {
-                    var szablonyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.SzablonyAsortymentu");
+                    var szablonyManager = _sferaService.GetManager("SzablonyAsortymentu");
                     if (szablonyManager != null)
                     {
                         dynamic? szablon = null;
@@ -327,7 +327,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -424,7 +424,7 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -475,7 +475,7 @@ public class ProductsController : ControllerBase
     {
         if (string.IsNullOrEmpty(symbol)) return null;
 
-        var jednostkiManager = _sferaService.GetManager("InsERT.Moria.ModelDanych", "InsERT.Moria.ModelDanych.Jednostki");
+        var jednostkiManager = _sferaService.GetManagerByType("InsERT.Moria.ModelDanych", "InsERT.Moria.ModelDanych.Jednostki");
         if (jednostkiManager == null) return null;
 
         foreach (var j in jednostkiManager.Dane.Wszystkie())

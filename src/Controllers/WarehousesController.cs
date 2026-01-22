@@ -33,7 +33,7 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var magazyny = _sferaService.GetManager("Magazyny");
             if (magazyny == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Magazyny manager"));
@@ -69,7 +69,7 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var magazyny = _sferaService.GetManager("Magazyny");
             if (magazyny == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Magazyny manager"));
@@ -116,7 +116,7 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            var asortymenty = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymenty = _sferaService.GetManager("Asortymenty");
             if (asortymenty == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));

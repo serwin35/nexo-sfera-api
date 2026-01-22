@@ -81,9 +81,39 @@ public class SferaService : ISferaService, IDisposable
     }
 
     /// <summary>
-    /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call
+    /// Gets a manager by calling the corresponding method on Sfera (e.g., "Asortymenty" calls sfera.Asortymenty())
     /// </summary>
-    public dynamic? GetManager(string assemblyName, string typeName)
+    public dynamic? GetManager(string managerMethodName)
+    {
+        if (_sfera == null)
+        {
+            throw new InvalidOperationException("Sfera is not initialized. Call InitializeAsync first.");
+        }
+
+        try
+        {
+            // Use reflection to call the method by name on Sfera
+            var method = _sfera.GetType().GetMethod(managerMethodName, Type.EmptyTypes);
+            if (method != null)
+            {
+                return method.Invoke(_sfera, null);
+            }
+
+            _logger.LogWarning("Manager method {MethodName} not found on Sfera", managerMethodName);
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting manager {MethodName}", managerMethodName);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call
+    /// Use this for interfaces/services, not for standard managers
+    /// </summary>
+    public dynamic? GetManagerByType(string assemblyName, string typeName)
     {
         if (_sfera == null)
         {

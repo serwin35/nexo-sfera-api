@@ -255,7 +255,7 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
@@ -324,7 +324,7 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null)
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
@@ -362,7 +362,7 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null)
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
@@ -402,7 +402,7 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null)
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
@@ -540,7 +540,7 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null)
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
@@ -617,7 +617,7 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null)
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
@@ -678,8 +678,26 @@ public class CustomersController : ControllerBase
             IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true
         };
 
-        // Map address
-        var adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "AdresGlowny");
+        // Map address - try different property names
+        dynamic? adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "AdresGlowny");
+        if (adresGlowny == null)
+        {
+            adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "Adres");
+        }
+        if (adresGlowny == null)
+        {
+            // Try to get from Adresy collection
+            var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
+            foreach (var adr in adresy)
+            {
+                // Take first address or the one marked as main
+                if (adresGlowny == null || DynamicPropertyHelper.GetBool(adr, "Glowny"))
+                {
+                    adresGlowny = adr;
+                    if (DynamicPropertyHelper.GetBool(adr, "Glowny")) break;
+                }
+            }
+        }
         if (adresGlowny != null)
         {
             dto.Address = new AddressDto
@@ -688,7 +706,8 @@ public class CustomersController : ControllerBase
                 BuildingNumber = DynamicPropertyHelper.GetString(adresGlowny, "NumerDomu"),
                 ApartmentNumber = DynamicPropertyHelper.GetString(adresGlowny, "NumerLokalu"),
                 City = DynamicPropertyHelper.GetString(adresGlowny, "Miejscowosc"),
-                PostalCode = DynamicPropertyHelper.GetString(adresGlowny, "KodPocztowy")
+                PostalCode = DynamicPropertyHelper.GetString(adresGlowny, "KodPocztowy"),
+                Country = DynamicPropertyHelper.GetString(adresGlowny, "Kraj")
             };
         }
 

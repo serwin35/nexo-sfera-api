@@ -43,7 +43,7 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Oferty manager"));
@@ -177,7 +177,7 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
@@ -218,7 +218,7 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
@@ -265,7 +265,7 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<OfferSummaryDto>>.Error("Failed to get Oferty manager"));
@@ -338,9 +338,9 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
-            var podmiotyManager = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
+            var podmiotyManager = _sferaService.GetManager("Podmioty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
@@ -465,7 +465,7 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
@@ -522,7 +522,7 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var ofertyManager = _sferaService.GetManager("Oferty");
             if (ofertyManager == null)
             {
                 return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));

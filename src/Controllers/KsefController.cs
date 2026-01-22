@@ -49,7 +49,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -127,7 +127,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<ElectronicDocumentDto>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -168,7 +168,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<ElectronicDocumentDto>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -214,7 +214,7 @@ public class KsefController : ControllerBase
         try
         {
             // Find the document
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyHandlowe");
+            var dokumentyManager = _sferaService.GetManager("DokumentyHandlowe");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<EInvoiceGenerationResultDto>.Error("Failed to get DokumentyHandlowe manager"));
@@ -287,7 +287,7 @@ public class KsefController : ControllerBase
         try
         {
             // Find documents
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyHandlowe");
+            var dokumentyManager = _sferaService.GetManager("DokumentyHandlowe");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error("Failed to get DokumentyHandlowe manager"));
@@ -364,7 +364,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<KsefSendResultDto>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -423,7 +423,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -530,7 +530,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -592,7 +592,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
@@ -652,7 +652,7 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
             if (dokumentyManager == null)
             {
                 return StatusCode(500, ApiResponse<KsefSummaryDto>.Error("Failed to get DokumentyElektroniczne manager"));

@@ -42,8 +42,8 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -229,8 +229,8 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<InventoryItemDto>>.Error("Failed to get Asortymenty manager"));
@@ -348,7 +348,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (magazynyManager == null)
             {
                 return StatusCode(500, ApiResponse<List<WarehouseDto>>.Error("Failed to get Magazyny manager"));
@@ -383,7 +383,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (magazynyManager == null)
             {
                 return StatusCode(500, ApiResponse<WarehouseDto>.Error("Failed to get Magazyny manager"));
@@ -441,7 +441,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
@@ -568,7 +568,7 @@ public class InventoryController : ControllerBase
         try
         {
             var produktId = DynamicPropertyHelper.GetId(produkt);
-            var przyjeciaManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.PrzyjeciaZewnetrzne");
+            var przyjeciaManager = _sferaService.GetManager("PrzyjeciaZewnetrzne");
             if (przyjeciaManager == null)
                 return partie;
 
@@ -644,7 +644,7 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var zamowieniaManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaOdKlientow");
+            var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
             if (zamowieniaManager == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
@@ -791,8 +791,8 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
-            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
             if (asortymentyManager == null)
             {
                 return StatusCode(500, ApiResponse<InventorySummaryDto>.Error("Failed to get Asortymenty manager"));
