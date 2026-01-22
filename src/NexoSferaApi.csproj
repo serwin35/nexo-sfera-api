@@ -8,6 +8,12 @@
     <SelfContained>false</SelfContained>
   </PropertyGroup>
 
+  <!-- Configurable SDK Path - can be overridden via command line or environment -->
+  <!-- Usage: dotnet build -p:NexoSdkPath="C:\Path\To\SDK" -->
+  <PropertyGroup>
+    <NexoSdkPath Condition="'$(NexoSdkPath)' == ''">lib\nexo-sdk</NexoSdkPath>
+  </PropertyGroup>
+
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
@@ -24,70 +30,70 @@
   <ItemGroup>
     <!-- Nexo Sfera SDK References (included in lib/nexo-sdk) -->
     <Reference Include="InsERT.Moria.API">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.API.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.API.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Sfera">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Sfera.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Sfera.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.ModelDanych">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.ModelDanych.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.ModelDanych.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Asortymenty">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Asortymenty.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Asortymenty.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Klienci">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Klienci.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Klienci.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.ModelOrganizacyjny">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.ModelOrganizacyjny.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.ModelOrganizacyjny.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Promocje">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Promocje.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Promocje.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Logistyka">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Logistyka.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Logistyka.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Finanse">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Finanse.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Finanse.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Kasa">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Kasa.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Kasa.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Bank">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Bank.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Bank.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Rozrachunki">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Rozrachunki.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Rozrachunki.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Mox.Core">
-      <HintPath>lib\nexo-sdk\InsERT.Mox.Core.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Mox.Core.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Common.Product">
-      <HintPath>lib\nexo-sdk\InsERT.Common.Product.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Common.Product.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Mox.EntityFrameworkSupport">
-      <HintPath>lib\nexo-sdk\InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.DaneDomyslne">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.DaneDomyslne.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.DaneDomyslne.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Mox.EntityFramework.Core">
-      <HintPath>lib\nexo-sdk\InsERT.Mox.EntityFramework.Core.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Mox.EntityFramework.Core.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Security.Core">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Security.Core.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Security.Core.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Moria.Security">
-      <HintPath>lib\nexo-sdk\InsERT.Moria.Security.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Security.dll</HintPath>
     </Reference>
     <Reference Include="InsERT.Mox.Security.Sql">
-      <HintPath>lib\nexo-sdk\InsERT.Mox.Security.Sql.dll</HintPath>
+      <HintPath>$(NexoSdkPath)\InsERT.Mox.Security.Sql.dll</HintPath>
     </Reference>
   </ItemGroup>
 
   <!-- Copy SDK DLLs to output directory -->
   <ItemGroup>
-    <None Include="lib\nexo-sdk\*.dll">
+    <None Include="$(NexoSdkPath)\*.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
