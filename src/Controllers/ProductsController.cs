@@ -4,9 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.Asortymenty;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -41,23 +39,34 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
-            var query = activeOnly == true
-                ? asortymenty.Dane.WszystkieDostepne()
-                : asortymenty.Dane.Wszystkie();
+            List<dynamic> allAsortymenty;
+            if (activeOnly == true)
+            {
+                allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.WszystkieDostepne()).ToList();
+            }
+            else
+            {
+                allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+            }
 
             if (!string.IsNullOrEmpty(search))
             {
-                query = query.Where(a =>
-                    a.Symbol.Contains(search) ||
-                    a.Nazwa.Contains(search) ||
-                    (a.EAN != null && a.EAN.Contains(search)));
+                allAsortymenty = allAsortymenty.Where(a =>
+                {
+                    var symbol = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
+                    var nazwa = DynamicPropertyHelper.GetString(a, "Nazwa") ?? "";
+                    var ean = DynamicPropertyHelper.GetString(a, "EAN") ?? "";
+                    return symbol.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                           nazwa.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                           ean.Contains(search, StringComparison.OrdinalIgnoreCase);
+                }).ToList();
             }
 
-            var totalCount = query.Count();
-            var items = query
+            var totalCount = allAsortymenty.Count;
+            var items = allAsortymenty
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -87,10 +96,12 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
-            var asortyment = asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Id == id);
+            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+
             if (asortyment == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with ID {id} not found"));
@@ -113,10 +124,10 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
-            var asortyment = asortymenty.Znajdz(symbol);
+            var asortyment = asortymentyManager.Znajdz(symbol);
             if (asortyment == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with symbol {symbol} not found"));
@@ -139,10 +150,12 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
-            var asortyment = asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.EAN == ean);
+            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetString(a, "EAN") == ean);
+
             if (asortyment == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with EAN {ean} not found"));
@@ -165,79 +178,91 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
             // Check if symbol already exists
-            var existing = asortymenty.Znajdz(request.Symbol);
+            var existing = asortymentyManager.Znajdz(request.Symbol);
             if (existing != null)
             {
                 return BadRequest(ApiResponse<ProductDto>.Error($"Product with symbol {request.Symbol} already exists"));
             }
 
-            using (var nowyAsortyment = asortymenty.Utworz())
+            using (var nowyAsortyment = asortymentyManager.Utworz())
             {
+                dynamic dane = nowyAsortyment.Dane;
+
                 // Apply template if specified
                 if (!string.IsNullOrEmpty(request.TemplateSymbol))
                 {
-                    var szablony = sfera.SzablonyAsortymentu();
-                    var szablon = szablony.Dane.Wszystkie().FirstOrDefault(s => s.Symbol == request.TemplateSymbol);
+                    var szablonyManager = sfera.SzablonyAsortymentu();
+                    var szablony = ((IEnumerable<dynamic>)szablonyManager.Dane.Wszystkie()).ToList();
+                    var szablon = szablony.FirstOrDefault(s =>
+                        DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol);
                     if (szablon != null)
                     {
                         nowyAsortyment.WypelnijNaPodstawieSzablonu(szablon);
                     }
                 }
 
-                nowyAsortyment.Dane.Symbol = request.Symbol;
-                nowyAsortyment.Dane.Nazwa = request.Name;
+                dane.Symbol = request.Symbol;
+                dane.Nazwa = request.Name;
 
                 if (!string.IsNullOrEmpty(request.Description))
                 {
-                    nowyAsortyment.Dane.Opis = request.Description;
+                    dane.Opis = request.Description;
                 }
 
                 if (!string.IsNullOrEmpty(request.EAN))
                 {
-                    nowyAsortyment.Dane.EAN = request.EAN;
+                    dane.EAN = request.EAN;
                 }
 
                 if (!string.IsNullOrEmpty(request.PKWiU))
                 {
-                    nowyAsortyment.Dane.PKWIU = request.PKWiU;
+                    dane.PKWIU = request.PKWiU;
                 }
 
                 // Set unit
-                nowyAsortyment.Dane.JednostkaSprzedazy = GetOrCreateUnit(sfera, request.SaleUnit);
+                var jednostka = GetUnit(sfera, request.SaleUnit);
+                if (jednostka != null)
+                {
+                    dane.JednostkaSprzedazy = jednostka;
+                }
 
                 if (!string.IsNullOrEmpty(request.PurchaseUnit))
                 {
-                    nowyAsortyment.Dane.JednostkaZakupu = GetOrCreateUnit(sfera, request.PurchaseUnit);
+                    var jednostkaZakupu = GetUnit(sfera, request.PurchaseUnit);
+                    if (jednostkaZakupu != null)
+                    {
+                        dane.JednostkaZakupu = jednostkaZakupu;
+                    }
                 }
 
                 // Set price
                 if (request.PriceNet.HasValue)
                 {
-                    nowyAsortyment.Dane.CenaNetto = request.PriceNet.Value;
+                    dane.CenaNetto = request.PriceNet.Value;
                 }
 
                 // Set physical properties
                 if (request.Weight.HasValue)
                 {
-                    nowyAsortyment.Dane.Masa = request.Weight.Value;
+                    dane.Masa = request.Weight.Value;
                 }
 
                 if (request.Volume.HasValue)
                 {
-                    nowyAsortyment.Dane.Objetosc = request.Volume.Value;
+                    dane.Objetosc = request.Volume.Value;
                 }
 
-                if (nowyAsortyment.Zapisz())
+                if ((bool)nowyAsortyment.Zapisz())
                 {
                     _logger.LogInformation("Created product {Symbol}", request.Symbol);
                     return CreatedAtAction(
                         nameof(GetProduct),
-                        new { id = nowyAsortyment.Dane.Id },
-                        ApiResponse<ProductDto>.Ok(MapToDto(nowyAsortyment.Dane), "Product created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<ProductDto>.Ok(MapToDto(dane), "Product created successfully"));
                 }
                 else
                 {
@@ -261,66 +286,70 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
-            var asortyment = asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Id == id);
+            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+
             if (asortyment == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with ID {id} not found"));
             }
 
-            using (var edytowanyAsortyment = asortymenty.Znajdz(asortyment))
+            using (var edytowanyAsortyment = asortymentyManager.Znajdz(asortyment))
             {
                 if (edytowanyAsortyment == null)
                 {
                     return NotFound(ApiResponse<ProductDto>.Error($"Product with ID {id} not found"));
                 }
 
+                dynamic dane = edytowanyAsortyment.Dane;
+
                 if (!string.IsNullOrEmpty(request.Name))
                 {
-                    edytowanyAsortyment.Dane.Nazwa = request.Name;
+                    dane.Nazwa = request.Name;
                 }
 
                 if (!string.IsNullOrEmpty(request.Description))
                 {
-                    edytowanyAsortyment.Dane.Opis = request.Description;
+                    dane.Opis = request.Description;
                 }
 
                 if (!string.IsNullOrEmpty(request.EAN))
                 {
-                    edytowanyAsortyment.Dane.EAN = request.EAN;
+                    dane.EAN = request.EAN;
                 }
 
                 if (!string.IsNullOrEmpty(request.PKWiU))
                 {
-                    edytowanyAsortyment.Dane.PKWIU = request.PKWiU;
+                    dane.PKWIU = request.PKWiU;
                 }
 
                 if (request.PriceNet.HasValue)
                 {
-                    edytowanyAsortyment.Dane.CenaNetto = request.PriceNet.Value;
+                    dane.CenaNetto = request.PriceNet.Value;
                 }
 
                 if (request.Weight.HasValue)
                 {
-                    edytowanyAsortyment.Dane.Masa = request.Weight.Value;
+                    dane.Masa = request.Weight.Value;
                 }
 
                 if (request.Volume.HasValue)
                 {
-                    edytowanyAsortyment.Dane.Objetosc = request.Volume.Value;
+                    dane.Objetosc = request.Volume.Value;
                 }
 
                 if (request.IsActive.HasValue)
                 {
-                    edytowanyAsortyment.Dane.Aktywny = request.IsActive.Value;
+                    dane.Aktywny = request.IsActive.Value;
                 }
 
-                if (edytowanyAsortyment.Zapisz())
+                if ((bool)edytowanyAsortyment.Zapisz())
                 {
                     _logger.LogInformation("Updated product {Id}", id);
-                    return Ok(ApiResponse<ProductDto>.Ok(MapToDto(edytowanyAsortyment.Dane), "Product updated successfully"));
+                    return Ok(ApiResponse<ProductDto>.Ok(MapToDto(dane), "Product updated successfully"));
                 }
                 else
                 {
@@ -344,23 +373,25 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var asortymentyManager = sfera.Asortymenty();
 
-            var asortyment = asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Id == id);
+            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+
             if (asortyment == null)
             {
                 return NotFound(ApiResponse<bool>.Error($"Product with ID {id} not found"));
             }
 
-            using (var usuwanyAsortyment = asortymenty.Znajdz(asortyment))
+            using (var usuwanyAsortyment = asortymentyManager.Znajdz(asortyment))
             {
                 if (usuwanyAsortyment == null)
                 {
                     return NotFound(ApiResponse<bool>.Error($"Product with ID {id} not found"));
                 }
 
-                if (usuwanyAsortyment.Usun())
+                if ((bool)usuwanyAsortyment.Usun())
                 {
                     _logger.LogInformation("Deleted product {Id}", id);
                     return Ok(ApiResponse<bool>.Ok(true, "Product deleted successfully"));
@@ -379,44 +410,74 @@ public class ProductsController : ControllerBase
         }
     }
 
-    private static dynamic? GetOrCreateUnit(dynamic sfera, string symbol)
+    private static dynamic? GetUnit(dynamic sfera, string symbol)
     {
-        var jednostki = sfera.Jednostki();
-        return jednostki.Dane.Wszystkie().FirstOrDefault(j => j.Symbol == symbol);
+        if (string.IsNullOrEmpty(symbol)) return null;
+
+        var jednostkiManager = sfera.Jednostki();
+        var jednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
+        return jednostki.FirstOrDefault(j => DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
     }
 
-    private static ProductDto MapToDto(Asortyment asortyment)
+    private static ProductDto MapToDto(dynamic asortyment)
     {
         return new ProductDto
         {
-            Id = asortyment.Id,
-            Symbol = asortyment.Symbol,
-            Name = asortyment.Nazwa,
-            Description = asortyment.Opis,
-            EAN = asortyment.EAN,
-            PKWiU = asortyment.PKWIU,
-            SaleUnit = asortyment.JednostkaSprzedazy?.Symbol,
-            PurchaseUnit = asortyment.JednostkaZakupu?.Symbol,
-            PriceNet = asortyment.CenaNetto,
-            Weight = asortyment.Masa,
-            Volume = asortyment.Objetosc,
-            IsActive = asortyment.Aktywny
+            Id = DynamicPropertyHelper.GetId(asortyment),
+            Symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol"),
+            Name = DynamicPropertyHelper.GetString(asortyment, "Nazwa"),
+            Description = DynamicPropertyHelper.GetString(asortyment, "Opis"),
+            EAN = DynamicPropertyHelper.GetString(asortyment, "EAN"),
+            PKWiU = DynamicPropertyHelper.GetString(asortyment, "PKWIU"),
+            SaleUnit = DynamicPropertyHelper.GetString(asortyment, "JednostkaSprzedazy", "Symbol"),
+            PurchaseUnit = DynamicPropertyHelper.GetString(asortyment, "JednostkaZakupu", "Symbol"),
+            PriceNet = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaNetto"),
+            Weight = DynamicPropertyHelper.GetNullableDecimal(asortyment, "Masa"),
+            Volume = DynamicPropertyHelper.GetNullableDecimal(asortyment, "Objetosc"),
+            IsActive = DynamicPropertyHelper.GetBool(asortyment, "Aktywny")
         };
     }
 
-    private static List<string> GetBusinessObjectErrors(InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy obiekt)
+    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
-        foreach (var encjaZBledami in obiekt.InvalidData)
+        try
         {
-            foreach (var blad in encjaZBledami.Errors)
+            var invalidData = DynamicPropertyHelper.GetProperty(obiekt, "InvalidData");
+            if (invalidData == null) return errors;
+
+            foreach (var encjaZBledami in invalidData)
             {
-                errors.Add(blad.ToString());
+                var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
+                if (entityErrors != null)
+                {
+                    foreach (var blad in entityErrors)
+                    {
+                        errors.Add(blad?.ToString() ?? "Unknown error");
+                    }
+                }
+
+                var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
+                if (memberErrors != null)
+                {
+                    foreach (var bladNaPolach in memberErrors)
+                    {
+                        try
+                        {
+                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
+                            errors.Add($"{key}: {bladNaPolach}");
+                        }
+                        catch
+                        {
+                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
+                        }
+                    }
+                }
             }
-            foreach (var bladNaPolach in encjaZBledami.MemberErrors)
-            {
-                errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
-            }
+        }
+        catch
+        {
+            errors.Add("Could not retrieve error details");
         }
         return errors;
     }

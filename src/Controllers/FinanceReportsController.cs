@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -37,23 +36,24 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var stanowiska = sfera.StanowiskaKasowe().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var stanowiskaManager = sfera.StanowiskaKasowe();
+            var allStanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                stanowiska = stanowiska.Where(s => s.Aktywne == true);
+                allStanowiska = allStanowiska.Where(s => DynamicPropertyHelper.GetBool(s, "Aktywne")).ToList();
             }
 
-            var dtos = stanowiska.Select(s => new CashRegisterDto
+            var dtos = allStanowiska.Select(s => new CashRegisterDto
             {
-                Id = s.Id,
-                Symbol = s.Symbol,
-                Name = s.Nazwa,
-                CurrencySymbol = s.Waluta?.Symbol,
-                CurrentBalance = s.StanKasy ?? 0,
-                IsActive = s.Aktywne ?? false,
-                IsDefault = s.Domyslne ?? false
+                Id = DynamicPropertyHelper.GetId(s),
+                Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
+                Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
+                CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol"),
+                CurrentBalance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
+                IsActive = DynamicPropertyHelper.GetBool(s, "Aktywne"),
+                IsDefault = DynamicPropertyHelper.GetBool(s, "Domyslne")
             }).OrderBy(c => c.Symbol).ToList();
 
             return Ok(ApiResponse<List<CashRegisterDto>>.Ok(dtos));
@@ -84,32 +84,42 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var raporty = sfera.RaportyKasowe().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var raportyManager = sfera.RaportyKasowe();
+            var allRaporty = ((IEnumerable<dynamic>)raportyManager.Dane.Wszystkie()).ToList();
 
             if (!string.IsNullOrEmpty(cashRegisterSymbol))
             {
-                raporty = raporty.Where(r => r.StanowiskoKasowe?.Symbol == cashRegisterSymbol);
+                allRaporty = allRaporty.Where(r =>
+                    DynamicPropertyHelper.GetString(r, "StanowiskoKasowe", "Symbol") == cashRegisterSymbol).ToList();
             }
 
             if (dateFrom.HasValue)
             {
-                raporty = raporty.Where(r => r.DataOd >= dateFrom.Value);
+                allRaporty = allRaporty.Where(r =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(r, "DataOd");
+                    return data.HasValue && data.Value >= dateFrom.Value;
+                }).ToList();
             }
 
             if (dateTo.HasValue)
             {
-                raporty = raporty.Where(r => r.DataDo <= dateTo.Value);
+                allRaporty = allRaporty.Where(r =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(r, "DataDo");
+                    return data.HasValue && data.Value <= dateTo.Value;
+                }).ToList();
             }
 
             if (closedOnly.HasValue && closedOnly.Value)
             {
-                raporty = raporty.Where(r => r.Zamkniety == true);
+                allRaporty = allRaporty.Where(r => DynamicPropertyHelper.GetBool(r, "Zamkniety")).ToList();
             }
 
-            var totalCount = raporty.Count();
-            var items = raporty
-                .OrderByDescending(r => r.DataOd)
+            var totalCount = allRaporty.Count;
+            var items = allRaporty
+                .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "DataOd") ?? DateTime.MinValue)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList()
@@ -141,9 +151,10 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var raport = sfera.RaportyKasowe().Dane.Wszystkie()
-                .FirstOrDefault(r => r.Id == id);
+            dynamic sfera = _sferaService.GetSfera();
+            var raportyManager = sfera.RaportyKasowe();
+            var allRaporty = ((IEnumerable<dynamic>)raportyManager.Dane.Wszystkie()).ToList();
+            var raport = allRaporty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
             if (raport == null)
             {
@@ -160,38 +171,46 @@ public class FinanceReportsController : ControllerBase
         }
     }
 
-    private CashReportDto MapCashReport(RaportKasowy r, bool includeOperations)
+    private static CashReportDto MapCashReport(dynamic r, bool includeOperations)
     {
         var dto = new CashReportDto
         {
-            Id = r.Id,
-            Number = r.Numer?.PelnaSygnatura,
-            CashRegisterSymbol = r.StanowiskoKasowe?.Symbol,
-            CashRegisterName = r.StanowiskoKasowe?.Nazwa,
-            DateFrom = r.DataOd,
-            DateTo = r.DataDo,
-            OpeningBalance = r.StanPoczatkowy ?? 0,
-            TotalDeposits = r.SumaWplat ?? 0,
-            TotalWithdrawals = r.SumaWyplat ?? 0,
-            ClosingBalance = r.StanKoncowy ?? 0,
-            Status = r.Zamkniety == true ? "Closed" : "Open",
-            IsClosed = r.Zamkniety ?? false,
-            OperationCount = r.OperacjeKasowe?.Count ?? 0
+            Id = DynamicPropertyHelper.GetId(r),
+            Number = DynamicPropertyHelper.GetString(r, "Numer", "PelnaSygnatura"),
+            CashRegisterSymbol = DynamicPropertyHelper.GetString(r, "StanowiskoKasowe", "Symbol"),
+            CashRegisterName = DynamicPropertyHelper.GetString(r, "StanowiskoKasowe", "Nazwa"),
+            DateFrom = DynamicPropertyHelper.GetDateTime(r, "DataOd"),
+            DateTo = DynamicPropertyHelper.GetDateTime(r, "DataDo"),
+            OpeningBalance = DynamicPropertyHelper.GetDecimal(r, "StanPoczatkowy"),
+            TotalDeposits = DynamicPropertyHelper.GetDecimal(r, "SumaWplat"),
+            TotalWithdrawals = DynamicPropertyHelper.GetDecimal(r, "SumaWyplat"),
+            ClosingBalance = DynamicPropertyHelper.GetDecimal(r, "StanKoncowy"),
+            Status = DynamicPropertyHelper.GetBool(r, "Zamkniety") ? "Closed" : "Open",
+            IsClosed = DynamicPropertyHelper.GetBool(r, "Zamkniety"),
+            OperationCount = DynamicPropertyHelper.GetCount(r, "OperacjeKasowe")
         };
 
-        if (includeOperations && r.OperacjeKasowe != null)
+        if (includeOperations)
         {
-            dto.Operations = r.OperacjeKasowe.Select(o => new CashReportOperationDto
+            var operacje = DynamicPropertyHelper.GetProperty(r, "OperacjeKasowe");
+            if (operacje != null)
             {
-                Id = o.Id,
-                DocumentNumber = o.DokumentKasowy?.Numer?.PelnaSygnatura,
-                Date = o.Data,
-                Description = o.Opis,
-                OperationType = o.Typ == 0 ? "Deposit" : "Withdrawal",
-                Amount = o.Kwota ?? 0,
-                ContractorName = o.Podmiot?.NazwaSkrocona,
-                SourceDocumentNumber = o.DokumentZrodlowy?.NumerWewnetrzny?.PelnaSygnatura
-            }).ToList();
+                dto.Operations = new List<CashReportOperationDto>();
+                foreach (dynamic o in operacje)
+                {
+                    dto.Operations.Add(new CashReportOperationDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(o),
+                        DocumentNumber = DynamicPropertyHelper.GetNestedString(o, "DokumentKasowy", "Numer", "PelnaSygnatura"),
+                        Date = DynamicPropertyHelper.GetDateTime(o, "Data"),
+                        Description = DynamicPropertyHelper.GetString(o, "Opis"),
+                        OperationType = DynamicPropertyHelper.GetInt(o, "Typ") == 0 ? "Deposit" : "Withdrawal",
+                        Amount = DynamicPropertyHelper.GetDecimal(o, "Kwota"),
+                        ContractorName = DynamicPropertyHelper.GetString(o, "Podmiot", "NazwaSkrocona"),
+                        SourceDocumentNumber = DynamicPropertyHelper.GetNestedString(o, "DokumentZrodlowy", "NumerWewnetrzny", "PelnaSygnatura")
+                    });
+                }
+            }
         }
 
         return dto;
@@ -210,26 +229,27 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var rachunki = sfera.RachunkiBankowe().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var rachunkiManager = sfera.RachunkiBankowe();
+            var allRachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                rachunki = rachunki.Where(r => r.Aktywny == true);
+                allRachunki = allRachunki.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
             }
 
-            var dtos = rachunki.Select(r => new BankAccountDto
+            var dtos = allRachunki.Select(r => new BankAccountDto
             {
-                Id = r.Id,
-                Symbol = r.Symbol,
-                Name = r.Nazwa,
-                AccountNumber = r.NumerRachunku,
-                BankName = r.NazwaBanku,
-                BankSwift = r.Swift,
-                CurrencySymbol = r.Waluta?.Symbol,
-                CurrentBalance = r.StanRachunku ?? 0,
-                IsActive = r.Aktywny ?? false,
-                IsDefault = r.Domyslny ?? false
+                Id = DynamicPropertyHelper.GetId(r),
+                Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+                Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                AccountNumber = DynamicPropertyHelper.GetString(r, "NumerRachunku"),
+                BankName = DynamicPropertyHelper.GetString(r, "NazwaBanku"),
+                BankSwift = DynamicPropertyHelper.GetString(r, "Swift"),
+                CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol"),
+                CurrentBalance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
+                IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
             }).OrderBy(b => b.Symbol).ToList();
 
             return Ok(ApiResponse<List<BankAccountDto>>.Ok(dtos));
@@ -260,32 +280,42 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var wyciagi = sfera.WyciagiBankowe().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var wyciagiManager = sfera.WyciagiBankowe();
+            var allWyciagi = ((IEnumerable<dynamic>)wyciagiManager.Dane.Wszystkie()).ToList();
 
             if (!string.IsNullOrEmpty(bankAccountSymbol))
             {
-                wyciagi = wyciagi.Where(w => w.RachunekBankowy?.Symbol == bankAccountSymbol);
+                allWyciagi = allWyciagi.Where(w =>
+                    DynamicPropertyHelper.GetString(w, "RachunekBankowy", "Symbol") == bankAccountSymbol).ToList();
             }
 
             if (dateFrom.HasValue)
             {
-                wyciagi = wyciagi.Where(w => w.DataWyciagu >= dateFrom.Value);
+                allWyciagi = allWyciagi.Where(w =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu");
+                    return data.HasValue && data.Value >= dateFrom.Value;
+                }).ToList();
             }
 
             if (dateTo.HasValue)
             {
-                wyciagi = wyciagi.Where(w => w.DataWyciagu <= dateTo.Value);
+                allWyciagi = allWyciagi.Where(w =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu");
+                    return data.HasValue && data.Value <= dateTo.Value;
+                }).ToList();
             }
 
             if (closedOnly.HasValue && closedOnly.Value)
             {
-                wyciagi = wyciagi.Where(w => w.Zamkniety == true);
+                allWyciagi = allWyciagi.Where(w => DynamicPropertyHelper.GetBool(w, "Zamkniety")).ToList();
             }
 
-            var totalCount = wyciagi.Count();
-            var items = wyciagi
-                .OrderByDescending(w => w.DataWyciagu)
+            var totalCount = allWyciagi.Count;
+            var items = allWyciagi
+                .OrderByDescending(w => DynamicPropertyHelper.GetDateTime(w, "DataWyciagu") ?? DateTime.MinValue)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList()
@@ -317,9 +347,10 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var wyciag = sfera.WyciagiBankowe().Dane.Wszystkie()
-                .FirstOrDefault(w => w.Id == id);
+            dynamic sfera = _sferaService.GetSfera();
+            var wyciagiManager = sfera.WyciagiBankowe();
+            var allWyciagi = ((IEnumerable<dynamic>)wyciagiManager.Dane.Wszystkie()).ToList();
+            var wyciag = allWyciagi.FirstOrDefault(w => DynamicPropertyHelper.GetId(w) == id);
 
             if (wyciag == null)
             {
@@ -336,44 +367,52 @@ public class FinanceReportsController : ControllerBase
         }
     }
 
-    private BankStatementDto MapBankStatement(WyciagBankowy w, bool includeOperations)
+    private static BankStatementDto MapBankStatement(dynamic w, bool includeOperations)
     {
         var dto = new BankStatementDto
         {
-            Id = w.Id,
-            Number = w.NumerWyciagu,
-            BankAccountNumber = w.RachunekBankowy?.NumerRachunku,
-            BankAccountName = w.RachunekBankowy?.Nazwa,
-            BankName = w.RachunekBankowy?.NazwaBanku,
-            StatementDate = w.DataWyciagu,
-            DateFrom = w.DataOd,
-            DateTo = w.DataDo,
-            OpeningBalance = w.SaldoPoczatkowe ?? 0,
-            TotalDeposits = w.SumaWplat ?? 0,
-            TotalWithdrawals = w.SumaWyplat ?? 0,
-            ClosingBalance = w.SaldoKoncowe ?? 0,
-            CurrencySymbol = w.RachunekBankowy?.Waluta?.Symbol,
-            Status = w.Zamkniety == true ? "Closed" : "Open",
-            IsClosed = w.Zamkniety ?? false,
-            OperationCount = w.OperacjeBankowe?.Count ?? 0
+            Id = DynamicPropertyHelper.GetId(w),
+            Number = DynamicPropertyHelper.GetString(w, "NumerWyciagu"),
+            BankAccountNumber = DynamicPropertyHelper.GetString(w, "RachunekBankowy", "NumerRachunku"),
+            BankAccountName = DynamicPropertyHelper.GetString(w, "RachunekBankowy", "Nazwa"),
+            BankName = DynamicPropertyHelper.GetString(w, "RachunekBankowy", "NazwaBanku"),
+            StatementDate = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu"),
+            DateFrom = DynamicPropertyHelper.GetDateTime(w, "DataOd"),
+            DateTo = DynamicPropertyHelper.GetDateTime(w, "DataDo"),
+            OpeningBalance = DynamicPropertyHelper.GetDecimal(w, "SaldoPoczatkowe"),
+            TotalDeposits = DynamicPropertyHelper.GetDecimal(w, "SumaWplat"),
+            TotalWithdrawals = DynamicPropertyHelper.GetDecimal(w, "SumaWyplat"),
+            ClosingBalance = DynamicPropertyHelper.GetDecimal(w, "SaldoKoncowe"),
+            CurrencySymbol = DynamicPropertyHelper.GetString(w, "RachunekBankowy", "Waluta", "Symbol"),
+            Status = DynamicPropertyHelper.GetBool(w, "Zamkniety") ? "Closed" : "Open",
+            IsClosed = DynamicPropertyHelper.GetBool(w, "Zamkniety"),
+            OperationCount = DynamicPropertyHelper.GetCount(w, "OperacjeBankowe")
         };
 
-        if (includeOperations && w.OperacjeBankowe != null)
+        if (includeOperations)
         {
-            dto.Operations = w.OperacjeBankowe.Select(o => new BankStatementOperationDto
+            var operacje = DynamicPropertyHelper.GetProperty(w, "OperacjeBankowe");
+            if (operacje != null)
             {
-                Id = o.Id,
-                DocumentNumber = o.DokumentBankowy?.Numer?.PelnaSygnatura,
-                Date = o.DataOperacji,
-                ValueDate = o.DataKsiegowania,
-                Description = o.Opis,
-                OperationType = o.Typ == 0 ? "Deposit" : "Withdrawal",
-                Amount = o.Kwota ?? 0,
-                ContractorName = o.Podmiot?.NazwaSkrocona,
-                ContractorAccountNumber = o.RachunekKontrahenta,
-                SourceDocumentNumber = o.DokumentZrodlowy?.NumerWewnetrzny?.PelnaSygnatura,
-                ReferenceNumber = o.NumerReferencyjny
-            }).ToList();
+                dto.Operations = new List<BankStatementOperationDto>();
+                foreach (dynamic o in operacje)
+                {
+                    dto.Operations.Add(new BankStatementOperationDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(o),
+                        DocumentNumber = DynamicPropertyHelper.GetNestedString(o, "DokumentBankowy", "Numer", "PelnaSygnatura"),
+                        Date = DynamicPropertyHelper.GetDateTime(o, "DataOperacji"),
+                        ValueDate = DynamicPropertyHelper.GetDateTime(o, "DataKsiegowania"),
+                        Description = DynamicPropertyHelper.GetString(o, "Opis"),
+                        OperationType = DynamicPropertyHelper.GetInt(o, "Typ") == 0 ? "Deposit" : "Withdrawal",
+                        Amount = DynamicPropertyHelper.GetDecimal(o, "Kwota"),
+                        ContractorName = DynamicPropertyHelper.GetString(o, "Podmiot", "NazwaSkrocona"),
+                        ContractorAccountNumber = DynamicPropertyHelper.GetString(o, "RachunekKontrahenta"),
+                        SourceDocumentNumber = DynamicPropertyHelper.GetNestedString(o, "DokumentZrodlowy", "NumerWewnetrzny", "PelnaSygnatura"),
+                        ReferenceNumber = DynamicPropertyHelper.GetString(o, "NumerReferencyjny")
+                    });
+                }
+            }
         }
 
         return dto;
@@ -392,21 +431,23 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
 
             // Get cash register balances
-            var stanowiska = sfera.StanowiskaKasowe().Dane.Wszystkie()
-                .Where(s => s.Aktywne == true)
+            var stanowiskaManager = sfera.StanowiskaKasowe();
+            var stanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList()
+                .Where(s => DynamicPropertyHelper.GetBool(s, "Aktywne"))
                 .ToList();
 
-            var cashBalance = stanowiska.Sum(s => s.StanKasy ?? 0);
+            var cashBalance = stanowiska.Sum(s => DynamicPropertyHelper.GetDecimal(s, "StanKasy"));
 
             // Get bank account balances
-            var rachunki = sfera.RachunkiBankowe().Dane.Wszystkie()
-                .Where(r => r.Aktywny == true)
+            var rachunkiManager = sfera.RachunkiBankowe();
+            var rachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList()
+                .Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny"))
                 .ToList();
 
-            var bankBalance = rachunki.Sum(r => r.StanRachunku ?? 0);
+            var bankBalance = rachunki.Sum(r => DynamicPropertyHelper.GetDecimal(r, "StanRachunku"));
 
             var summary = new FinanceSummaryDto
             {
@@ -417,17 +458,17 @@ public class FinanceReportsController : ControllerBase
                 BankAccountCount = rachunki.Count,
                 CashRegisterBalances = stanowiska.Select(s => new BalanceItemDto
                 {
-                    Name = s.Nazwa ?? s.Symbol ?? "Unknown",
-                    Symbol = s.Symbol,
-                    Balance = s.StanKasy ?? 0,
-                    CurrencySymbol = s.Waluta?.Symbol ?? "PLN"
+                    Name = DynamicPropertyHelper.GetString(s, "Nazwa") ?? DynamicPropertyHelper.GetString(s, "Symbol") ?? "Unknown",
+                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
+                    Balance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
+                    CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol") ?? "PLN"
                 }).ToList(),
                 BankAccountBalances = rachunki.Select(r => new BalanceItemDto
                 {
-                    Name = r.Nazwa ?? r.Symbol ?? "Unknown",
-                    Symbol = r.Symbol,
-                    Balance = r.StanRachunku ?? 0,
-                    CurrencySymbol = r.Waluta?.Symbol ?? "PLN"
+                    Name = DynamicPropertyHelper.GetString(r, "Nazwa") ?? DynamicPropertyHelper.GetString(r, "Symbol") ?? "Unknown",
+                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+                    Balance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
+                    CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol") ?? "PLN"
                 }).ToList()
             };
 
