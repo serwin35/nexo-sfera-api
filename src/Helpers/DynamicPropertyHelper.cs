@@ -200,6 +200,45 @@ public static class DynamicPropertyHelper
     }
 
     /// <summary>
+    /// Gets a nullable long property value, optionally navigating through a nested property.
+    /// </summary>
+    public static long? GetNullableLong(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic? val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            if (val == null) return null;
+            return Convert.ToInt64(val);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets a byte property value, optionally navigating through a nested property.
+    /// Returns null if the property is not found or null.
+    /// </summary>
+    public static byte? GetByte(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic? val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            if (val == null) return null;
+            return Convert.ToByte(val);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets an enum value as string, optionally navigating through a nested property.
     /// </summary>
     public static string? GetEnumString(dynamic obj, string prop1, string? prop2 = null)

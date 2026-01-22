@@ -148,6 +148,11 @@ public class AddressDto
     public string? City { get; set; }
     public string? PostalCode { get; set; }
     public string? Country { get; set; }
+
+    // Alternative property names for compatibility
+    public string? Building { get => BuildingNumber; set => BuildingNumber = value; }
+    public string? Apartment { get => ApartmentNumber; set => ApartmentNumber = value; }
+    public string? CountryCode { get; set; }
 }
 
 public enum CustomerType

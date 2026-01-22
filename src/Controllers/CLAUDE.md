@@ -12,4 +12,11 @@
 | #769 | 7:09 PM | 🔄 | DocumentsController Refactored to Use GetManager Instead of GetSfera | ~427 |
 | #741 | 7:01 PM | 🔵 | InsERT Nexo SDK API Surface - Manager Pattern for Entity Access | ~320 |
 | #519 | 10:37 AM | 🟣 | Complete Customers REST API controller implemented with full CRUD operations | ~612 |
+
+### Jan 23, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #1086 | 12:08 AM | 🔴 | Duplicate Variable 'magazyn' Declaration in InventoryController | ~436 |
+| #1079 | 12:07 AM | 🔴 | Compilation Errors Fixed in Phase 1 Controllers and SDK Integration | ~536 |
 </claude-mem-context>

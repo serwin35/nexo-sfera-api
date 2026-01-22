@@ -123,7 +123,8 @@ public class SferaService : ISferaService, IDisposable
                 "CechyAsortymentu" => _sfera.CechyAsortymentu(),
                 // InsERT.Moria.Klienci
                 "Podmioty" => _sfera.Podmioty(),
-                "GrupyKontrahentow" => _sfera.GrupyKontrahentow(),
+                // GrupyKontrahentow does not have an extension method - access via Podmioty or alternative
+                "GrupyKontrahentow" => throw new NotSupportedException("GrupyKontrahentow extension not available. Use Podmioty manager instead."),
                 // InsERT.Moria.Dokumenty
                 "Dokumenty" => _sfera.Dokumenty(),
                 "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
@@ -144,7 +145,8 @@ public class SferaService : ISferaService, IDisposable
                 "StawkiVat" => _sfera.StawkiVat(),
                 "JednostkiMiar" => _sfera.JednostkiMiar(),
                 "Waluty" => _sfera.Waluty(),
-                "KursyWalut" => _sfera.KursyWalut(),
+                // KursyWalut does not have an extension method - access via Waluty.Kursy or alternative
+                "KursyWalut" => throw new NotSupportedException("KursyWalut extension not available. Access exchange rates via Waluty manager."),
                 "FormyPlatnosci" => _sfera.FormyPlatnosci(),
                 // InsERT.Moria.Cenniki
                 "Cenniki" => _sfera.Cenniki(),

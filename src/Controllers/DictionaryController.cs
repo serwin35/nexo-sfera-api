@@ -719,25 +719,25 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var kursyManager = _sferaService.GetManager("KursyWalut");
-            if (kursyManager == null)
+            // Access exchange rates through Waluty manager and then Kursy collection on currency
+            dynamic sfera = _sferaService.GetSfera();
+            var walutyManager = sfera.Waluty();
+            var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
+
+            var waluta = allWaluty.FirstOrDefault(w =>
+                DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
+
+            if (waluta == null)
             {
-                return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Failed to get KursyWalut manager"));
+                return NotFound(ApiResponse<List<ExchangeRateDto>>.Error($"Currency '{symbol}' not found"));
             }
 
-            var allKursy = new List<dynamic>();
-            foreach (var k in kursyManager.Dane.Wszystkie())
-            {
-                var waluta = DynamicPropertyHelper.GetProperty(k, "Waluta");
-                if (waluta != null && DynamicPropertyHelper.GetString(waluta, "Symbol") == symbol)
-                {
-                    allKursy.Add(k);
-                }
-            }
+            // Get exchange rates from the currency's Kursy collection
+            var kursy = DynamicPropertyHelper.GetCollection(waluta, "Kursy");
 
             if (dateFrom.HasValue)
             {
-                allKursy = allKursy.Where(k =>
+                kursy = kursy.Where(k =>
                 {
                     var data = DynamicPropertyHelper.GetDateTime(k, "Data");
                     return data.HasValue && data.Value >= dateFrom.Value;
@@ -746,14 +746,14 @@ public class DictionaryController : ControllerBase
 
             if (dateTo.HasValue)
             {
-                allKursy = allKursy.Where(k =>
+                kursy = kursy.Where(k =>
                 {
                     var data = DynamicPropertyHelper.GetDateTime(k, "Data");
                     return data.HasValue && data.Value <= dateTo.Value;
                 }).ToList();
             }
 
-            var rates = allKursy
+            var rates = kursy
                 .OrderByDescending(k => DynamicPropertyHelper.GetDateTime(k, "Data") ?? DateTime.MinValue)
                 .Take(limit)
                 .Select(k => new ExchangeRateDto
@@ -790,28 +790,35 @@ public class DictionaryController : ControllerBase
         try
         {
             var targetDate = date ?? DateTime.Today;
-            var kursyManager = _sferaService.GetManager("KursyWalut");
-            if (kursyManager == null)
+
+            // Access exchange rates through Waluty manager
+            dynamic sfera = _sferaService.GetSfera();
+            var walutyManager = sfera.Waluty();
+            var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
+
+            var waluta = allWaluty.FirstOrDefault(w =>
+                DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
+
+            if (waluta == null)
             {
-                return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Failed to get KursyWalut manager"));
+                return NotFound(ApiResponse<ExchangeRateDto>.Error($"Currency '{symbol}' not found"));
             }
+
+            // Get exchange rates from the currency's Kursy collection
+            var kursy = DynamicPropertyHelper.GetCollection(waluta, "Kursy");
 
             dynamic? latestKurs = null;
             DateTime? latestDate = null;
 
-            foreach (var k in kursyManager.Dane.Wszystkie())
+            foreach (var k in kursy)
             {
-                var waluta = DynamicPropertyHelper.GetProperty(k, "Waluta");
-                if (waluta != null && DynamicPropertyHelper.GetString(waluta, "Symbol") == symbol)
+                var kursDate = DynamicPropertyHelper.GetDateTime(k, "Data");
+                if (kursDate.HasValue && kursDate.Value <= targetDate)
                 {
-                    var kursDate = DynamicPropertyHelper.GetDateTime(k, "Data");
-                    if (kursDate.HasValue && kursDate.Value <= targetDate)
+                    if (!latestDate.HasValue || kursDate.Value > latestDate.Value)
                     {
-                        if (!latestDate.HasValue || kursDate.Value > latestDate.Value)
-                        {
-                            latestDate = kursDate;
-                            latestKurs = k;
-                        }
+                        latestDate = kursDate;
+                        latestKurs = k;
                     }
                 }
             }

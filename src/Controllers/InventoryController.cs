@@ -1004,7 +1004,7 @@ public class InventoryController : ControllerBase
 
                 var pozycje = DynamicPropertyHelper.GetCollection(doc, "Pozycje");
                 var numerWewnetrzny = DynamicPropertyHelper.GetProperty(doc, "NumerWewnetrzny");
-                var magazyn = DynamicPropertyHelper.GetProperty(doc, "Magazyn");
+                var docMagazyn = DynamicPropertyHelper.GetProperty(doc, "Magazyn");
 
                 foreach (var poz in pozycje)
                 {
@@ -1030,8 +1030,8 @@ public class InventoryController : ControllerBase
                         ProductId = DynamicPropertyHelper.GetId(asortyment),
                         ProductSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol"),
                         ProductName = DynamicPropertyHelper.GetString(asortyment, "Nazwa"),
-                        WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
-                        WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+                        WarehouseSymbol = docMagazyn != null ? DynamicPropertyHelper.GetString(docMagazyn, "Symbol") : null,
+                        WarehouseName = docMagazyn != null ? DynamicPropertyHelper.GetString(docMagazyn, "Nazwa") : null,
                         Quantity = ilosc,
                         Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
                         MovementType = isIncoming ? "In" : "Out",
