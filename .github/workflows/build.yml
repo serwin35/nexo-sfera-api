@@ -1,0 +1,90 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    # Alternative: use self-hosted runner with SDK pre-installed
+    # runs-on: self-hosted
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Download InsERT SDK
+      env:
+        SDK_DOWNLOAD_URL: ${{ secrets.NEXO_SDK_URL }}
+        SDK_DOWNLOAD_TOKEN: ${{ secrets.NEXO_SDK_TOKEN }}
+      run: |
+        # Create SDK directory
+        New-Item -ItemType Directory -Path "src\lib\nexo-sdk" -Force | Out-Null
+
+        # Option 1: Download from private URL (recommended)
+        if ($env:SDK_DOWNLOAD_URL) {
+          Write-Host "Downloading SDK from private URL..."
+          $headers = @{}
+          if ($env:SDK_DOWNLOAD_TOKEN) {
+            $headers["Authorization"] = "Bearer $env:SDK_DOWNLOAD_TOKEN"
+          }
+
+          $zipPath = "nexo-sdk.zip"
+          Invoke-WebRequest -Uri $env:SDK_DOWNLOAD_URL -OutFile $zipPath -Headers $headers
+          Expand-Archive -Path $zipPath -DestinationPath "src\lib\nexo-sdk" -Force
+          Remove-Item $zipPath
+          Write-Host "SDK downloaded and extracted successfully"
+        }
+        # Option 2: Use cached SDK from artifacts
+        elseif (Test-Path "nexoSDK_58.0.2.8985\Bin") {
+          Write-Host "Using local SDK..."
+          .\scripts\setup-sdk.ps1
+        }
+        else {
+          Write-Error "No SDK source available. Please configure NEXO_SDK_URL secret."
+          exit 1
+        }
+      shell: pwsh
+
+    - name: Restore dependencies
+      run: dotnet restore src/NexoSferaApi.csproj
+
+    - name: Build
+      run: dotnet build src/NexoSferaApi.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+
+    - name: Publish
+      run: dotnet publish src/NexoSferaApi.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --output ./publish
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nexo-sfera-api-${{ github.sha }}
+        path: ./publish
+        retention-days: 30
+
+  # Optional: Deploy to staging/production
+  # deploy:
+  #   needs: build
+  #   runs-on: windows-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: Download artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: nexo-sfera-api-${{ github.sha }}
+  #     - name: Deploy to server
+  #       run: |
+  #         # Add deployment steps here
