@@ -1165,17 +1165,23 @@ public class CustomersController : ControllerBase
 
             if (szczegoly != null)
             {
-                // Try to get detailed address from Szczegoly
+                // Get detailed address from Szczegoly (AdresSzczegoly)
+                // Property names: Ulica, NrDomu, NrLokalu, Miejscowosc, KodPocztowy, Poczta
                 dto.Address = new AddressDto
                 {
                     Street = DynamicPropertyHelper.GetString(szczegoly, "Ulica"),
-                    BuildingNumber = DynamicPropertyHelper.GetString(szczegoly, "NumerDomu"),
-                    ApartmentNumber = DynamicPropertyHelper.GetString(szczegoly, "NumerLokalu"),
+                    BuildingNumber = DynamicPropertyHelper.GetString(szczegoly, "NrDomu"),
+                    ApartmentNumber = DynamicPropertyHelper.GetString(szczegoly, "NrLokalu"),
                     City = DynamicPropertyHelper.GetString(szczegoly, "Miejscowosc"),
-                    PostalCode = DynamicPropertyHelper.GetString(szczegoly, "KodPocztowy"),
-                    Country = DynamicPropertyHelper.GetString(szczegoly, "NazwaPanstwa")
-                        ?? DynamicPropertyHelper.GetString(szczegoly, "Kraj")
+                    PostalCode = DynamicPropertyHelper.GetString(szczegoly, "KodPocztowy")
                 };
+
+                // Try to get country from Panstwo relation on AdresPodmiotu
+                var panstwo = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Panstwo");
+                if (panstwo != null)
+                {
+                    dto.Address.Country = DynamicPropertyHelper.GetString(panstwo, "Nazwa");
+                }
             }
 
             // If Szczegoly didn't provide data, use Linia fields
