@@ -293,14 +293,27 @@ public class DictionaryController : ControllerBase
         }
     }
 
-    private List<ProductGroupDto> GetChildGroups(int parentId, List<ProductGroupDto> allGroups)
+    private List<ProductGroupListItemDto>? GetChildGroups(int parentId, List<ProductGroupDto> allGroups)
     {
         var children = allGroups.Where(g => g.ParentId == parentId).ToList();
+        if (!children.Any()) return null;
+
+        var result = new List<ProductGroupListItemDto>();
         foreach (var child in children)
         {
-            child.Children = GetChildGroups(child.Id, allGroups);
+            result.Add(new ProductGroupListItemDto
+            {
+                Id = child.Id,
+                Symbol = child.Symbol,
+                Name = child.Name ?? string.Empty,
+                ParentId = child.ParentId,
+                ParentSymbol = child.ParentSymbol,
+                Level = 0, // Can be calculated if needed
+                ProductCount = child.ProductCount,
+                HasChildren = allGroups.Any(g => g.ParentId == child.Id)
+            });
         }
-        return children.Any() ? children : null!;
+        return result;
     }
 
     /// <summary>
@@ -735,28 +748,23 @@ public class DictionaryController : ControllerBase
             // Get exchange rates from the currency's Kursy collection
             var kursy = DynamicPropertyHelper.GetCollection(waluta, "Kursy");
 
-            if (dateFrom.HasValue)
+            // Filter by date using explicit loops (dynamic types don't work with lambdas)
+            var filteredKursy = new List<dynamic>();
+            foreach (var k in kursy)
             {
-                kursy = kursy.Where(k =>
-                {
-                    var data = DynamicPropertyHelper.GetDateTime(k, "Data");
-                    return data.HasValue && data.Value >= dateFrom.Value;
-                }).ToList();
+                var data = DynamicPropertyHelper.GetDateTime(k, "Data");
+                if (dateFrom.HasValue && (!data.HasValue || data.Value < dateFrom.Value))
+                    continue;
+                if (dateTo.HasValue && (!data.HasValue || data.Value > dateTo.Value))
+                    continue;
+                filteredKursy.Add(k);
             }
 
-            if (dateTo.HasValue)
+            // Map to DTOs first (typed), then sort
+            var rates = new List<ExchangeRateDto>();
+            foreach (var k in filteredKursy)
             {
-                kursy = kursy.Where(k =>
-                {
-                    var data = DynamicPropertyHelper.GetDateTime(k, "Data");
-                    return data.HasValue && data.Value <= dateTo.Value;
-                }).ToList();
-            }
-
-            var rates = kursy
-                .OrderByDescending(k => DynamicPropertyHelper.GetDateTime(k, "Data") ?? DateTime.MinValue)
-                .Take(limit)
-                .Select(k => new ExchangeRateDto
+                rates.Add(new ExchangeRateDto
                 {
                     Id = DynamicPropertyHelper.GetId(k),
                     CurrencySymbol = symbol,
@@ -765,7 +773,13 @@ public class DictionaryController : ControllerBase
                     Multiplier = DynamicPropertyHelper.GetInt(k, "Przelicznik"),
                     Source = DynamicPropertyHelper.GetString(k, "Zrodlo") ?? "NBP",
                     TableNumber = DynamicPropertyHelper.GetString(k, "NumerTabeli")
-                })
+                });
+            }
+
+            // Now sort by date descending (typed list, lambdas work)
+            rates = rates
+                .OrderByDescending(r => r.Date ?? DateTime.MinValue)
+                .Take(limit)
                 .ToList();
 
             return Ok(ApiResponse<List<ExchangeRateDto>>.Ok(rates));
