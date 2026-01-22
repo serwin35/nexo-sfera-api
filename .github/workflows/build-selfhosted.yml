@@ -1,0 +1,87 @@
+name: Build (Self-Hosted)
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: Release
+  # Path to InsERT SDK on the self-hosted runner
+  # Configure this based on your runner's SDK installation location
+  NEXO_SDK_PATH: 'C:\Program Files\InsERT\nexo\SDK'
+
+jobs:
+  build:
+    runs-on: [self-hosted, windows, nexo]
+    # Labels: self-hosted, windows, nexo (create runner with these labels)
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Setup SDK symlink
+      run: |
+        # Create lib directory if not exists
+        $libPath = "src\lib\nexo-sdk"
+        if (-not (Test-Path $libPath)) {
+          New-Item -ItemType Directory -Path $libPath -Force | Out-Null
+        }
+
+        # Copy required DLLs from installed SDK
+        $sdkBinPath = Join-Path $env:NEXO_SDK_PATH "Bin"
+
+        if (-not (Test-Path $sdkBinPath)) {
+          # Try alternative paths
+          $altPaths = @(
+            "C:\InsERT\nexo\SDK\Bin",
+            "D:\InsERT\nexo\SDK\Bin",
+            "$env:PROGRAMFILES\InsERT\nexo SDK\Bin"
+          )
+
+          foreach ($path in $altPaths) {
+            if (Test-Path $path) {
+              $sdkBinPath = $path
+              break
+            }
+          }
+        }
+
+        if (-not (Test-Path $sdkBinPath)) {
+          Write-Error "InsERT SDK not found. Please install SDK on this runner."
+          exit 1
+        }
+
+        Write-Host "Using SDK from: $sdkBinPath"
+
+        # Copy all InsERT DLLs
+        Get-ChildItem -Path $sdkBinPath -Filter "InsERT.*.dll" | ForEach-Object {
+          Copy-Item $_.FullName $libPath -Force
+        }
+
+        Write-Host "SDK DLLs copied successfully"
+      shell: pwsh
+
+    - name: Restore dependencies
+      run: dotnet restore src/NexoSferaApi.csproj
+
+    - name: Build
+      run: dotnet build src/NexoSferaApi.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
+
+    - name: Publish
+      run: dotnet publish src/NexoSferaApi.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --output ./publish
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: nexo-sfera-api-${{ github.sha }}
+        path: ./publish
+        retention-days: 30
