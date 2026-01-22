@@ -111,10 +111,10 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Get all products with optional filtering
+    /// Get all products with optional filtering (lightweight list view)
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<ProductDto>> GetProducts(
+    public ActionResult<PagedResponse<ProductListItemDto>> GetProducts(
         [FromQuery] string? search,
         [FromQuery] ProductType? type,
         [FromQuery] bool? activeOnly,
@@ -155,13 +155,13 @@ public class ProductsController : ControllerBase
                 .Take(pageSize)
                 .ToList();
 
-            var mappedItems = new List<ProductDto>();
+            var mappedItems = new List<ProductListItemDto>();
             foreach (var item in items)
             {
-                mappedItems.Add(MapToDto(item));
+                mappedItems.Add(MapToListItemDto(item));
             }
 
-            var response = new PagedResponse<ProductDto>
+            var response = new PagedResponse<ProductListItemDto>
             {
                 Data = mappedItems,
                 Page = page,
@@ -726,6 +726,31 @@ public class ProductsController : ControllerBase
         if (grupaZamiennikow != null)
         {
             dto.SubstitutesGroup = grupaZamiennikow.ToString();
+        }
+
+        return dto;
+    }
+
+    /// <summary>
+    /// Maps to lightweight DTO for list views (minimal fields for performance)
+    /// </summary>
+    private static ProductListItemDto MapToListItemDto(dynamic asortyment)
+    {
+        var dto = new ProductListItemDto
+        {
+            Id = DynamicPropertyHelper.GetId(asortyment),
+            Symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? "",
+            Name = DynamicPropertyHelper.GetString(asortyment, "Nazwa") ?? "",
+            Price = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaEwidencyjna"),
+            GroupId = DynamicPropertyHelper.GetNullableInt(asortyment, "Grupa_Id"),
+            IsActive = DynamicPropertyHelper.GetBool(asortyment, "Aktywny")
+        };
+
+        // Try to get group name from Grupa navigation property
+        var grupa = DynamicPropertyHelper.GetProperty(asortyment, "Grupa");
+        if (grupa != null)
+        {
+            dto.GroupName = DynamicPropertyHelper.GetString(grupa, "Nazwa");
         }
 
         return dto;
