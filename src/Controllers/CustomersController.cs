@@ -67,6 +67,89 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Test accessing Podmioty (customers) manager
+    /// </summary>
+    [HttpGet("debug/test-podmioty")]
+    public ActionResult<object> TestPodmioty()
+    {
+        try
+        {
+            dynamic sfera = _sferaService.GetSfera();
+
+            // Try different ways to access Podmioty manager
+            var results = new Dictionary<string, object>();
+
+            // Method 1: Try PodajObiektTypu with known interface names
+            var managerTypes = new[] {
+                "InsERT.Moria.Klienci.IPodmioty",
+                "InsERT.Moria.Klienci.IPodmiotyManager",
+                "InsERT.Moria.Klienci.Podmioty",
+                "InsERT.Moria.Klienci.PodmiotyManager"
+            };
+
+            foreach (var typeName in managerTypes)
+            {
+                try
+                {
+                    var managerType = Type.GetType(typeName);
+                    if (managerType != null)
+                    {
+                        var manager = sfera.PodajObiektTypu(managerType);
+                        if (manager != null)
+                        {
+                            Type mgrType = manager.GetType();
+                            var mgrMethods = new List<string>();
+                            foreach (var m in mgrType.GetMethods())
+                            {
+                                if (!mgrMethods.Contains(m.Name))
+                                    mgrMethods.Add(m.Name);
+                            }
+                            mgrMethods.Sort();
+                            results[typeName] = new { Found = true, Type = mgrType.FullName, Methods = mgrMethods };
+                        }
+                    }
+                    else
+                    {
+                        results[typeName] = new { Found = false, Error = "Type not found" };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results[typeName] = new { Found = false, Error = ex.Message };
+                }
+            }
+
+            // Also list all loaded assemblies with InsERT.Moria.Klienci
+            var klienciTypes = new List<string>();
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                try
+                {
+                    if (asm.FullName != null && asm.FullName.Contains("InsERT.Moria.Klienci"))
+                    {
+                        foreach (var t in asm.GetExportedTypes())
+                        {
+                            klienciTypes.Add(t.FullName ?? t.Name);
+                        }
+                    }
+                }
+                catch { }
+            }
+            klienciTypes.Sort();
+
+            return Ok(new
+            {
+                ManagerTests = results,
+                KlienciAssemblyTypes = klienciTypes
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
     /// Get all customers with optional filtering
     /// </summary>
     [HttpGet]
