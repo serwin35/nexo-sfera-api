@@ -244,6 +244,53 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Test GetManager method directly
+    /// </summary>
+    [HttpGet("debug/test-getmanager")]
+    public ActionResult<object> TestGetManager()
+    {
+        try
+        {
+            var results = new Dictionary<string, object>();
+
+            // Test each manager
+            var managersToTest = new[] { "Podmioty", "Asortymenty", "Dokumenty", "Magazyny" };
+
+            foreach (var managerName in managersToTest)
+            {
+                try
+                {
+                    var manager = _sferaService.GetManager(managerName);
+                    if (manager != null)
+                    {
+                        Type mgrType = manager.GetType();
+                        results[managerName] = new
+                        {
+                            Success = true,
+                            Type = mgrType.FullName,
+                            HasDane = mgrType.GetProperty("Dane") != null
+                        };
+                    }
+                    else
+                    {
+                        results[managerName] = new { Success = false, Error = "Returned null" };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    results[managerName] = new { Success = false, Error = ex.Message, ExType = ex.GetType().Name };
+                }
+            }
+
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
     /// Get all customers with optional filtering
     /// </summary>
     [HttpGet]
