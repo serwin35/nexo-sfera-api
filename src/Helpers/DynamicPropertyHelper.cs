@@ -295,7 +295,8 @@ public static class DynamicPropertyHelper
             if (prop2 != null) val = GetProperty(val, prop2);
             if (val == null) return null;
             if (val is Guid guidVal) return guidVal;
-            if (Guid.TryParse(val.ToString(), out var parsedGuid)) return parsedGuid;
+            string? strVal = val.ToString();
+            if (strVal != null && Guid.TryParse(strVal, out Guid parsedGuid)) return parsedGuid;
             return null;
         }
         catch
@@ -317,7 +318,8 @@ public static class DynamicPropertyHelper
             if (val == null) return null;
             if (val is TimeSpan timeVal) return timeVal;
             if (val is DateTime dateTimeVal) return dateTimeVal.TimeOfDay;
-            if (TimeSpan.TryParse(val.ToString(), out var parsedTime)) return parsedTime;
+            string? strVal = val.ToString();
+            if (strVal != null && TimeSpan.TryParse(strVal, out TimeSpan parsedTime)) return parsedTime;
             return null;
         }
         catch
