@@ -4,10 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.Dokumenty.Logistyka;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
-using InsERT.Moria.Asortymenty;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -37,29 +34,44 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var dokumenty = sfera.Dokumenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = sfera.Dokumenty();
 
-            var dataQuery = dokumenty.Dane.Wszystkie();
+            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
 
+            // Apply filters
             if (query.DateFrom.HasValue)
             {
-                dataQuery = dataQuery.Where(d => d.DataWystawienia >= query.DateFrom.Value);
+                allDokumenty = allDokumenty.Where(d =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    return data.HasValue && data.Value >= query.DateFrom.Value;
+                }).ToList();
             }
 
             if (query.DateTo.HasValue)
             {
-                dataQuery = dataQuery.Where(d => d.DataWystawienia <= query.DateTo.Value);
+                allDokumenty = allDokumenty.Where(d =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    return data.HasValue && data.Value <= query.DateTo.Value;
+                }).ToList();
             }
 
             if (query.CustomerId.HasValue)
             {
-                dataQuery = dataQuery.Where(d => d.Podmiot != null && d.Podmiot.Id == query.CustomerId.Value);
+                allDokumenty = allDokumenty.Where(d =>
+                {
+                    var podmiot = DynamicPropertyHelper.GetProperty(d, "Podmiot");
+                    return podmiot != null && DynamicPropertyHelper.GetInt(podmiot, "Id") == query.CustomerId.Value;
+                }).ToList();
             }
 
-            var totalCount = dataQuery.Count();
-            var items = dataQuery
-                .OrderByDescending(d => d.DataWystawienia)
+            var totalCount = allDokumenty.Count;
+
+            // Sort and paginate
+            var items = allDokumenty
+                .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") ?? DateTime.MinValue)
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToList();
@@ -89,10 +101,12 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var dokumenty = sfera.Dokumenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = sfera.Dokumenty();
 
-            var dokument = dokumenty.Dane.Wszystkie().FirstOrDefault(d => d.Id == id);
+            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
+            var dokument = allDokumenty.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
+
             if (dokument == null)
             {
                 return NotFound(ApiResponse<DocumentDto>.Error($"Document with ID {id} not found"));
@@ -115,12 +129,15 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var dokumenty = sfera.Dokumenty();
+            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = sfera.Dokumenty();
 
-            var dokument = dokumenty.Dane.Wszystkie()
-                .FirstOrDefault(d => d.NumerWewnetrzny != null &&
-                    d.NumerWewnetrzny.PelnaSygnatura.Contains(number));
+            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
+            var dokument = allDokumenty.FirstOrDefault(d =>
+            {
+                var fullNum = DynamicPropertyHelper.GetString(d, "NumerWewnetrzny", "PelnaSygnatura");
+                return fullNum != null && fullNum.Contains(number);
+            });
 
             if (dokument == null)
             {
@@ -144,106 +161,57 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var dokumentySprzedazy = sfera.DokumentySprzedazy();
 
             using (var faktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
             {
+                dynamic dane = faktura.Dane;
+
                 // Set customer
-                if (request.CustomerId.HasValue)
-                {
-                    var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                        .FirstOrDefault(p => p.Id == request.CustomerId.Value);
-                    if (podmiot != null)
-                    {
-                        faktura.Dane.Podmiot = podmiot;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.CustomerNIP))
-                {
-                    var podmiot = sfera.Podmioty().Dane
-                        .Pierwszy(p => p.NIP == request.CustomerNIP);
-                    if (podmiot != null)
-                    {
-                        faktura.Dane.Podmiot = podmiot;
-                    }
-                }
+                SetCustomerOnDocument(sfera, dane, request.CustomerId, request.CustomerNIP);
 
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyn = sfera.Magazyny().Dane
-                        .Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                    var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                    var magazyn = magazyny.FirstOrDefault(m =>
+                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                     if (magazyn != null)
                     {
-                        faktura.Dane.Magazyn = magazyn;
+                        dane.Magazyn = magazyn;
                     }
                 }
 
                 // Set dates
                 if (request.IssueDate.HasValue)
                 {
-                    faktura.Dane.DataWystawienia = request.IssueDate.Value;
+                    dane.DataWystawienia = request.IssueDate.Value;
                 }
 
                 if (request.SaleDate.HasValue)
                 {
-                    faktura.Dane.DataSprzedazy = request.SaleDate.Value;
+                    dane.DataSprzedazy = request.SaleDate.Value;
                 }
 
                 // Set notes
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
-                    faktura.Dane.Uwagi = request.Notes;
+                    dane.Uwagi = request.Notes;
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
-                foreach (var item in request.Items)
+                AddItemsToDocument(sfera, faktura, request.Items);
+
+                if ((bool)faktura.Zapisz())
                 {
-                    Asortyment? asortyment = null;
-
-                    if (item.ProductId.HasValue)
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                        if (item.PriceNet.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.CenaNetto = item.PriceNet.Value;
-                        }
-
-                        if (item.DiscountPercent.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
-                        }
-                    }
-                    else if (!string.IsNullOrEmpty(item.Name))
-                    {
-                        // Add as one-time item
-                        _logger.LogWarning("Product not found for item, consider using one-time product: {Name}", item.Name);
-                    }
-                }
-
-                if (faktura.Zapisz())
-                {
-                    _logger.LogInformation("Created sales invoice {Number}",
-                        faktura.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created sales invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
                         nameof(GetDocument),
-                        new { id = faktura.Dane.Id },
-                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(faktura.Dane), "Sales invoice created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "Sales invoice created successfully"));
                 }
                 else
                 {
@@ -267,91 +235,47 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var zamowienia = sfera.ZamowieniaOdKlientow();
+            dynamic sfera = _sferaService.GetSfera();
+            var zamowieniaManager = sfera.ZamowieniaOdKlientow();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.ZamowienieOdKlienta;
 
-            using (var zamowienie = zamowienia.Utworz(konfiguracja))
+            using (var zamowienie = zamowieniaManager.Utworz(konfiguracja))
             {
+                dynamic dane = zamowienie.Dane;
+
                 // Set customer
-                if (request.CustomerId.HasValue)
-                {
-                    var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                        .FirstOrDefault(p => p.Id == request.CustomerId.Value);
-                    if (podmiot != null)
-                    {
-                        zamowienie.Dane.Podmiot = podmiot;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.CustomerNIP))
-                {
-                    var podmiot = sfera.Podmioty().Dane
-                        .Pierwszy(p => p.NIP == request.CustomerNIP);
-                    if (podmiot != null)
-                    {
-                        zamowienie.Dane.Podmiot = podmiot;
-                    }
-                }
+                SetCustomerOnDocument(sfera, dane, request.CustomerId, request.CustomerNIP);
 
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyn = sfera.Magazyny().Dane
-                        .Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                    var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                    var magazyn = magazyny.FirstOrDefault(m =>
+                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                     if (magazyn != null)
                     {
-                        zamowienie.Dane.Magazyn = magazyn;
+                        dane.Magazyn = magazyn;
                     }
                 }
 
                 // Set notes
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
-                    zamowienie.Dane.Uwagi = request.Notes;
+                    dane.Uwagi = request.Notes;
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
-                foreach (var item in request.Items)
+                AddItemsToDocument(sfera, zamowienie, request.Items);
+
+                if ((bool)zamowienie.Zapisz())
                 {
-                    Asortyment? asortyment = null;
-
-                    if (item.ProductId.HasValue)
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var pozycja = zamowienie.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                        if (item.PriceNet.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.CenaNetto = item.PriceNet.Value;
-                        }
-
-                        if (item.DiscountPercent.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
-                        }
-                    }
-                }
-
-                if (zamowienie.Zapisz())
-                {
-                    _logger.LogInformation("Created customer order {Number}",
-                        zamowienie.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created customer order {Number}", fullNumber);
 
                     return CreatedAtAction(
                         nameof(GetDocument),
-                        new { id = zamowienie.Dane.Id },
-                        ApiResponse<DocumentDto>.Ok(MapOrderToDto(zamowienie.Dane), "Customer order created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<DocumentDto>.Ok(MapOrderToDto(dane), "Customer order created successfully"));
                 }
                 else
                 {
@@ -375,91 +299,52 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var dokumentyZakupu = sfera.DokumentyZakupu();
 
             using (var faktura = dokumentyZakupu.UtworzFaktureZakupu())
             {
+                dynamic dane = faktura.Dane;
+
                 // Set supplier
-                if (request.CustomerId.HasValue)
-                {
-                    var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                        .FirstOrDefault(p => p.Id == request.CustomerId.Value);
-                    if (podmiot != null)
-                    {
-                        faktura.Dane.Podmiot = podmiot;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.CustomerNIP))
-                {
-                    var podmiot = sfera.Podmioty().Dane
-                        .Pierwszy(p => p.NIP == request.CustomerNIP);
-                    if (podmiot != null)
-                    {
-                        faktura.Dane.Podmiot = podmiot;
-                    }
-                }
+                SetCustomerOnDocument(sfera, dane, request.CustomerId, request.CustomerNIP);
 
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyn = sfera.Magazyny().Dane
-                        .Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                    var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                    var magazyn = magazyny.FirstOrDefault(m =>
+                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                     if (magazyn != null)
                     {
-                        faktura.Dane.Magazyn = magazyn;
+                        dane.Magazyn = magazyn;
                     }
                 }
 
                 // Set dates
                 if (request.IssueDate.HasValue)
                 {
-                    faktura.Dane.DataWystawienia = request.IssueDate.Value;
+                    dane.DataWystawienia = request.IssueDate.Value;
                 }
 
                 // Set notes
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
-                    faktura.Dane.Uwagi = request.Notes;
+                    dane.Uwagi = request.Notes;
                 }
 
-                // Add items
-                var asortymenty = sfera.Asortymenty();
-                foreach (var item in request.Items)
+                // Add items (use JednostkaZakupu if available)
+                AddItemsToDocument(sfera, faktura, request.Items, usePurchaseUnit: true);
+
+                if ((bool)faktura.Zapisz())
                 {
-                    Asortyment? asortyment = null;
-
-                    if (item.ProductId.HasValue)
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaZakupu ?? asortyment.JednostkaSprzedazy);
-
-                        if (item.PriceNet.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.CenaNetto = item.PriceNet.Value;
-                        }
-                    }
-                }
-
-                if (faktura.Zapisz())
-                {
-                    _logger.LogInformation("Created purchase invoice {Number}",
-                        faktura.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created purchase invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
                         nameof(GetDocument),
-                        new { id = faktura.Dane.Id },
-                        ApiResponse<DocumentDto>.Ok(MapPurchaseDocumentToDto(faktura.Dane), "Purchase invoice created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<DocumentDto>.Ok(MapPurchaseDocumentToDto(dane), "Purchase invoice created successfully"));
                 }
                 else
                 {
@@ -483,109 +368,63 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var korekty = sfera.KorektyDokumentowSprzedazy();
+            dynamic sfera = _sferaService.GetSfera();
+            var korektyManager = sfera.KorektyDokumentowSprzedazy();
 
-            IKorektaDokumentuSprzedazy korekta;
+            dynamic korekta;
 
             // If we have original document, create correction for it
             if (request.OriginalDocumentId.HasValue)
             {
                 var dokumentySprzedazy = sfera.DokumentySprzedazy();
-                var oryginal = dokumentySprzedazy.Dane.Wszystkie()
-                    .FirstOrDefault(d => d.Id == request.OriginalDocumentId.Value);
+                var allDokumenty = ((IEnumerable<dynamic>)dokumentySprzedazy.Dane.Wszystkie()).ToList();
+                var oryginal = allDokumenty.FirstOrDefault(d =>
+                    DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value);
 
                 if (oryginal == null)
                 {
                     return NotFound(ApiResponse<CorrectionDto>.Error($"Original document with ID {request.OriginalDocumentId} not found"));
                 }
 
-                korekta = korekty.UtworzKorekteFakturySprzedazy(oryginal);
+                korekta = korektyManager.UtworzKorekteFakturySprzedazy(oryginal);
             }
             else
             {
                 // Correction without original document
-                korekta = korekty.UtworzKorekteFakturySprzedazy();
-
-                // Set customer
+                korekta = korektyManager.UtworzKorekteFakturySprzedazy();
                 SetCustomerOnDocument(sfera, korekta.Dane, request.CustomerId, request.CustomerNIP);
             }
+
+            dynamic dane = korekta.Dane;
 
             // Set correction reason
             if (!string.IsNullOrEmpty(request.CorrectionReason))
             {
-                korekta.Dane.PrzyczynaKorekty = request.CorrectionReason;
+                dane.PrzyczynaKorekty = request.CorrectionReason;
             }
 
             if (!string.IsNullOrEmpty(request.Notes))
             {
-                korekta.Dane.Uwagi = request.Notes;
+                dane.Uwagi = request.Notes;
             }
 
             if (request.IssueDate.HasValue)
             {
-                korekta.Dane.DataWystawienia = request.IssueDate.Value;
+                dane.DataWystawienia = request.IssueDate.Value;
             }
 
             // Add correction items
-            foreach (var item in request.Items)
+            AddCorrectionItems(sfera, korekta, request.Items);
+
+            if ((bool)korekta.Zapisz())
             {
-                if (item.OriginalPositionId.HasValue)
-                {
-                    // Find and correct existing position
-                    var pozycjaOryginalna = korekta.Dane.PozycjeKorygowane?
-                        .FirstOrDefault(p => p.Id == item.OriginalPositionId.Value);
-
-                    if (pozycjaOryginalna != null)
-                    {
-                        var pozycjaKorekty = korekta.Pozycje.Koryguj(pozycjaOryginalna);
-                        if (pozycjaKorekty != null)
-                        {
-                            pozycjaKorekty.Dane.IloscPoKorekcie = pozycjaOryginalna.Ilosc + item.QuantityCorrection;
-                            if (item.PriceNetCorrection.HasValue)
-                            {
-                                pozycjaKorekty.Dane.CenaNettoPoKorekcie = item.PriceNetCorrection.Value;
-                            }
-                        }
-                    }
-                }
-                else if (item.ProductId.HasValue || !string.IsNullOrEmpty(item.ProductSymbol))
-                {
-                    // Add new correction position
-                    var asortymenty = sfera.Asortymenty();
-                    Asortyment? asortyment = null;
-
-                    if (item.ProductId.HasValue)
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var pozycja = korekta.Pozycje.Dodaj(asortyment, item.QuantityCorrection, asortyment.JednostkaSprzedazy);
-                        if (pozycja != null && item.PriceNetCorrection.HasValue)
-                        {
-                            pozycja.Dane.CenaNetto = item.PriceNetCorrection.Value;
-                        }
-                    }
-                }
-            }
-
-            if (korekta.Zapisz())
-            {
-                _logger.LogInformation("Created sales invoice correction {Number}",
-                    korekta.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                _logger.LogInformation("Created sales invoice correction {Number}", fullNumber);
 
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = korekta.Dane.Id },
-                    ApiResponse<CorrectionDto>.Ok(MapCorrectionToDto(korekta.Dane), "Sales invoice correction created successfully"));
+                    new { id = DynamicPropertyHelper.GetId(dane) },
+                    ApiResponse<CorrectionDto>.Ok(MapCorrectionToDto(dane), "Sales invoice correction created successfully"));
             }
             else
             {
@@ -608,85 +447,60 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var korekty = sfera.KorektyDokumentowZakupu();
+            dynamic sfera = _sferaService.GetSfera();
+            var korektyManager = sfera.KorektyDokumentowZakupu();
 
-            IKorektaDokumentuZakupu korekta;
+            dynamic korekta;
 
             if (request.OriginalDocumentId.HasValue)
             {
                 var dokumentyZakupu = sfera.DokumentyZakupu();
-                var oryginal = dokumentyZakupu.Dane.Wszystkie()
-                    .FirstOrDefault(d => d.Id == request.OriginalDocumentId.Value);
+                var allDokumenty = ((IEnumerable<dynamic>)dokumentyZakupu.Dane.Wszystkie()).ToList();
+                var oryginal = allDokumenty.FirstOrDefault(d =>
+                    DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value);
 
                 if (oryginal == null)
                 {
                     return NotFound(ApiResponse<CorrectionDto>.Error($"Original document with ID {request.OriginalDocumentId} not found"));
                 }
 
-                korekta = korekty.UtworzKorekteFakturyZakupu(oryginal);
+                korekta = korektyManager.UtworzKorekteFakturyZakupu(oryginal);
             }
             else
             {
-                korekta = korekty.UtworzKorekteFakturyZakupu();
+                korekta = korektyManager.UtworzKorekteFakturyZakupu();
                 SetCustomerOnDocument(sfera, korekta.Dane, request.CustomerId, request.CustomerNIP);
             }
 
+            dynamic dane = korekta.Dane;
+
             if (!string.IsNullOrEmpty(request.CorrectionReason))
             {
-                korekta.Dane.PrzyczynaKorekty = request.CorrectionReason;
+                dane.PrzyczynaKorekty = request.CorrectionReason;
             }
 
             if (!string.IsNullOrEmpty(request.Notes))
             {
-                korekta.Dane.Uwagi = request.Notes;
+                dane.Uwagi = request.Notes;
             }
 
             if (request.IssueDate.HasValue)
             {
-                korekta.Dane.DataWystawienia = request.IssueDate.Value;
+                dane.DataWystawienia = request.IssueDate.Value;
             }
 
-            // Add correction items (simplified - similar to sales correction)
-            var asortymenty = sfera.Asortymenty();
-            foreach (var item in request.Items)
+            // Add correction items
+            AddCorrectionItems(sfera, korekta, request.Items, usePurchaseUnit: true);
+
+            if ((bool)korekta.Zapisz())
             {
-                if (item.ProductId.HasValue || !string.IsNullOrEmpty(item.ProductSymbol))
-                {
-                    Asortyment? asortyment = null;
-
-                    if (item.ProductId.HasValue)
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var pozycja = korekta.Pozycje.Dodaj(asortyment, item.QuantityCorrection,
-                            asortyment.JednostkaZakupu ?? asortyment.JednostkaSprzedazy);
-                        if (pozycja != null && item.PriceNetCorrection.HasValue)
-                        {
-                            pozycja.Dane.CenaNetto = item.PriceNetCorrection.Value;
-                        }
-                    }
-                }
-            }
-
-            if (korekta.Zapisz())
-            {
-                _logger.LogInformation("Created purchase invoice correction {Number}",
-                    korekta.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                _logger.LogInformation("Created purchase invoice correction {Number}", fullNumber);
 
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = korekta.Dane.Id },
-                    ApiResponse<CorrectionDto>.Ok(MapPurchaseCorrectionToDto(korekta.Dane), "Purchase invoice correction created successfully"));
+                    new { id = DynamicPropertyHelper.GetId(dane) },
+                    ApiResponse<CorrectionDto>.Ok(MapPurchaseCorrectionToDto(dane), "Purchase invoice correction created successfully"));
             }
             else
             {
@@ -709,87 +523,58 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var dokumentySprzedazy = sfera.DokumentySprzedazy();
 
-            IDokumentSprzedazy paragon = request.Type switch
+            dynamic paragon = request.Type switch
             {
                 ReceiptType.Named => dokumentySprzedazy.UtworzParagonImienny(),
                 ReceiptType.Fiscal => dokumentySprzedazy.UtworzParagonFiskalny(),
                 _ => dokumentySprzedazy.UtworzParagon()
             };
 
+            dynamic dane = paragon.Dane;
+
             // Set customer for named receipts
             if (request.Type == ReceiptType.Named)
             {
-                SetCustomerOnDocument(sfera, paragon.Dane, request.CustomerId, request.CustomerNIP);
+                SetCustomerOnDocument(sfera, dane, request.CustomerId, request.CustomerNIP);
             }
 
             // Set warehouse
             if (!string.IsNullOrEmpty(request.WarehouseSymbol))
             {
-                var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                var magazyn = magazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                 if (magazyn != null)
                 {
-                    paragon.Dane.Magazyn = magazyn;
+                    dane.Magazyn = magazyn;
                 }
             }
 
             if (request.IssueDate.HasValue)
             {
-                paragon.Dane.DataWystawienia = request.IssueDate.Value;
+                dane.DataWystawienia = request.IssueDate.Value;
             }
 
             if (!string.IsNullOrEmpty(request.Notes))
             {
-                paragon.Dane.Uwagi = request.Notes;
+                dane.Uwagi = request.Notes;
             }
 
             // Add items
-            var asortymenty = sfera.Asortymenty();
-            foreach (var item in request.Items)
+            AddReceiptItems(sfera, paragon, request.Items);
+
+            if ((bool)paragon.Zapisz())
             {
-                Asortyment? asortyment = null;
-
-                if (item.ProductId.HasValue)
-                {
-                    asortyment = asortymenty.Dane.Wszystkie()
-                        .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                }
-                else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                {
-                    asortyment = asortymenty.Dane.Wszystkie()
-                        .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                }
-
-                if (asortyment != null)
-                {
-                    var pozycja = paragon.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                    if (item.PriceNet.HasValue && pozycja != null)
-                    {
-                        pozycja.Dane.CenaNetto = item.PriceNet.Value;
-                    }
-                    else if (item.PriceGross.HasValue && pozycja != null)
-                    {
-                        pozycja.Dane.CenaBrutto = item.PriceGross.Value;
-                    }
-
-                    if (item.DiscountPercent.HasValue && pozycja != null)
-                    {
-                        pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
-                    }
-                }
-            }
-
-            if (paragon.Zapisz())
-            {
-                _logger.LogInformation("Created receipt {Number}", paragon.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                _logger.LogInformation("Created receipt {Number}", fullNumber);
 
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = paragon.Dane.Id },
-                    ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(paragon.Dane), "Receipt created successfully"));
+                    new { id = DynamicPropertyHelper.GetId(dane) },
+                    ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "Receipt created successfully"));
             }
             else
             {
@@ -812,72 +597,54 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var korekty = sfera.KorektyDokumentowSprzedazy();
+            dynamic sfera = _sferaService.GetSfera();
+            var korektyManager = sfera.KorektyDokumentowSprzedazy();
 
-            IKorektaDokumentuSprzedazy zwrot;
+            dynamic zwrot;
 
             if (request.OriginalDocumentId.HasValue)
             {
                 var dokumentySprzedazy = sfera.DokumentySprzedazy();
-                var paragon = dokumentySprzedazy.Dane.Wszystkie()
-                    .FirstOrDefault(d => d.Id == request.OriginalDocumentId.Value);
+                var allDokumenty = ((IEnumerable<dynamic>)dokumentySprzedazy.Dane.Wszystkie()).ToList();
+                var paragon = allDokumenty.FirstOrDefault(d =>
+                    DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value);
 
                 if (paragon == null)
                 {
                     return NotFound(ApiResponse<CorrectionDto>.Error($"Original receipt with ID {request.OriginalDocumentId} not found"));
                 }
 
-                zwrot = korekty.UtworzZwrotDoParagonu(paragon);
+                zwrot = korektyManager.UtworzZwrotDoParagonu(paragon);
             }
             else
             {
-                zwrot = korekty.UtworzZwrotDoParagonu();
+                zwrot = korektyManager.UtworzZwrotDoParagonu();
             }
+
+            dynamic dane = zwrot.Dane;
 
             if (!string.IsNullOrEmpty(request.CorrectionReason))
             {
-                zwrot.Dane.PrzyczynaKorekty = request.CorrectionReason;
+                dane.PrzyczynaKorekty = request.CorrectionReason;
             }
 
             if (!string.IsNullOrEmpty(request.Notes))
             {
-                zwrot.Dane.Uwagi = request.Notes;
+                dane.Uwagi = request.Notes;
             }
 
             // Add return items
-            var asortymenty = sfera.Asortymenty();
-            foreach (var item in request.Items)
+            AddReturnItems(sfera, zwrot, request.Items);
+
+            if ((bool)zwrot.Zapisz())
             {
-                Asortyment? asortyment = null;
-
-                if (item.ProductId.HasValue)
-                {
-                    asortyment = asortymenty.Dane.Wszystkie()
-                        .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                }
-                else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                {
-                    asortyment = asortymenty.Dane.Wszystkie()
-                        .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                }
-
-                if (asortyment != null)
-                {
-                    // For returns, quantity should be negative
-                    var qty = item.QuantityCorrection < 0 ? item.QuantityCorrection : -item.QuantityCorrection;
-                    zwrot.Pozycje.Dodaj(asortyment, qty, asortyment.JednostkaSprzedazy);
-                }
-            }
-
-            if (zwrot.Zapisz())
-            {
-                _logger.LogInformation("Created receipt return {Number}", zwrot.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                _logger.LogInformation("Created receipt return {Number}", fullNumber);
 
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = zwrot.Dane.Id },
-                    ApiResponse<CorrectionDto>.Ok(MapCorrectionToDto(zwrot.Dane), "Receipt return created successfully"));
+                    new { id = DynamicPropertyHelper.GetId(dane) },
+                    ApiResponse<CorrectionDto>.Ok(MapCorrectionToDto(dane), "Receipt return created successfully"));
             }
             else
             {
@@ -900,77 +667,56 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var dokumentySprzedazy = sfera.DokumentySprzedazy();
 
             using (var faktura = dokumentySprzedazy.UtworzFaktureZaliczkowa())
             {
-                SetCustomerOnDocument(sfera, faktura.Dane, request.CustomerId, request.CustomerNIP);
+                dynamic dane = faktura.Dane;
+
+                SetCustomerOnDocument(sfera, dane, request.CustomerId, request.CustomerNIP);
 
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                    var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                    var magazyn = magazyny.FirstOrDefault(m =>
+                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                     if (magazyn != null)
                     {
-                        faktura.Dane.Magazyn = magazyn;
+                        dane.Magazyn = magazyn;
                     }
                 }
 
                 if (request.IssueDate.HasValue)
                 {
-                    faktura.Dane.DataWystawienia = request.IssueDate.Value;
+                    dane.DataWystawienia = request.IssueDate.Value;
                 }
 
                 if (request.SaleDate.HasValue)
                 {
-                    faktura.Dane.DataSprzedazy = request.SaleDate.Value;
+                    dane.DataSprzedazy = request.SaleDate.Value;
                 }
 
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
-                    faktura.Dane.Uwagi = request.Notes;
+                    dane.Uwagi = request.Notes;
                 }
 
                 // Add items
                 if (request.Items != null)
                 {
-                    var asortymenty = sfera.Asortymenty();
-                    foreach (var item in request.Items)
-                    {
-                        Asortyment? asortyment = null;
-
-                        if (item.ProductId.HasValue)
-                        {
-                            asortyment = asortymenty.Dane.Wszystkie()
-                                .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                        }
-                        else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                        {
-                            asortyment = asortymenty.Dane.Wszystkie()
-                                .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                        }
-
-                        if (asortyment != null)
-                        {
-                            var pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                            if (item.PriceNet.HasValue && pozycja != null)
-                            {
-                                pozycja.Dane.CenaNetto = item.PriceNet.Value;
-                            }
-                        }
-                    }
+                    AddItemsToDocument(sfera, faktura, request.Items);
                 }
 
-                if (faktura.Zapisz())
+                if ((bool)faktura.Zapisz())
                 {
-                    _logger.LogInformation("Created advance invoice {Number}",
-                        faktura.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created advance invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
                         nameof(GetDocument),
-                        new { id = faktura.Dane.Id },
-                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(faktura.Dane), "Advance invoice created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "Advance invoice created successfully"));
                 }
                 else
                 {
@@ -994,79 +740,53 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var dokumentySprzedazy = sfera.DokumentySprzedazy();
 
             using (var faktura = dokumentySprzedazy.UtworzFaktureVATMarza())
             {
-                SetCustomerOnDocument(sfera, faktura.Dane, request.CustomerId, request.CustomerNIP);
+                dynamic dane = faktura.Dane;
+
+                SetCustomerOnDocument(sfera, dane, request.CustomerId, request.CustomerNIP);
 
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                    var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                    var magazyn = magazyny.FirstOrDefault(m =>
+                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                     if (magazyn != null)
                     {
-                        faktura.Dane.Magazyn = magazyn;
+                        dane.Magazyn = magazyn;
                     }
                 }
 
                 if (request.IssueDate.HasValue)
                 {
-                    faktura.Dane.DataWystawienia = request.IssueDate.Value;
+                    dane.DataWystawienia = request.IssueDate.Value;
                 }
 
                 if (request.SaleDate.HasValue)
                 {
-                    faktura.Dane.DataSprzedazy = request.SaleDate.Value;
+                    dane.DataSprzedazy = request.SaleDate.Value;
                 }
 
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
-                    faktura.Dane.Uwagi = request.Notes;
+                    dane.Uwagi = request.Notes;
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
-                foreach (var item in request.Items)
+                AddItemsToDocument(sfera, faktura, request.Items);
+
+                if ((bool)faktura.Zapisz())
                 {
-                    Asortyment? asortyment = null;
-
-                    if (item.ProductId.HasValue)
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                        if (item.PriceNet.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.CenaNetto = item.PriceNet.Value;
-                        }
-
-                        if (item.DiscountPercent.HasValue && pozycja != null)
-                        {
-                            pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
-                        }
-                    }
-                }
-
-                if (faktura.Zapisz())
-                {
-                    _logger.LogInformation("Created VAT margin invoice {Number}",
-                        faktura.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created VAT margin invoice {Number}", fullNumber);
 
                     return CreatedAtAction(
                         nameof(GetDocument),
-                        new { id = faktura.Dane.Id },
-                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(faktura.Dane), "VAT margin invoice created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "VAT margin invoice created successfully"));
                 }
                 else
                 {
@@ -1082,219 +802,480 @@ public class DocumentsController : ControllerBase
         }
     }
 
-    private void SetCustomerOnDocument(Uchwyt sfera, dynamic dokumentDane, int? customerId, string? customerNIP)
+    #region Helper Methods
+
+    private void SetCustomerOnDocument(dynamic sfera, dynamic dokumentDane, int? customerId, string? customerNIP)
     {
-        if (customerId.HasValue)
+        if (customerId.HasValue || !string.IsNullOrEmpty(customerNIP))
         {
-            var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                .FirstOrDefault(p => p.Id == customerId.Value);
+            var podmiotyManager = sfera.Podmioty();
+            var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
+
+            dynamic? podmiot = null;
+            if (customerId.HasValue)
+            {
+                podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == customerId.Value);
+            }
+            else if (!string.IsNullOrEmpty(customerNIP))
+            {
+                podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == customerNIP);
+            }
+
             if (podmiot != null)
             {
                 dokumentDane.Podmiot = podmiot;
             }
         }
-        else if (!string.IsNullOrEmpty(customerNIP))
+    }
+
+    private void AddItemsToDocument(dynamic sfera, dynamic dokument, List<CreateDocumentItemRequest> items, bool usePurchaseUnit = false)
+    {
+        if (items == null || !items.Any()) return;
+
+        var asortymentyManager = sfera.Asortymenty();
+        var asortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+
+        foreach (var item in items)
         {
-            var podmiot = sfera.Podmioty().Dane.Pierwszy(p => p.NIP == customerNIP);
-            if (podmiot != null)
+            dynamic? asortyment = null;
+
+            if (item.ProductId.HasValue)
             {
-                dokumentDane.Podmiot = podmiot;
+                asortyment = asortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
             }
-        }
-    }
-
-    private static CorrectionDto MapCorrectionToDto(DokumentKDS dokument)
-    {
-        return new CorrectionDto
-        {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            Type = CorrectionType.SalesInvoiceCorrection,
-            IssueDate = dokument.DataWystawienia,
-            OriginalDocumentId = dokument.DokumentKorygowany?.Id,
-            OriginalDocumentNumber = dokument.DokumentKorygowany?.NumerWewnetrzny?.PelnaSygnatura,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            CorrectionNet = dokument.WartoscNetto,
-            CorrectionVat = dokument.WartoscVat,
-            CorrectionGross = dokument.WartoscBrutto,
-            CorrectionReason = dokument.PrzyczynaKorekty,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia
-        };
-    }
-
-    private static CorrectionDto MapPurchaseCorrectionToDto(DokumentKDZ dokument)
-    {
-        return new CorrectionDto
-        {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            Type = CorrectionType.PurchaseInvoiceCorrection,
-            IssueDate = dokument.DataWystawienia,
-            OriginalDocumentId = dokument.DokumentKorygowany?.Id,
-            OriginalDocumentNumber = dokument.DokumentKorygowany?.NumerWewnetrzny?.PelnaSygnatura,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            CorrectionNet = dokument.WartoscNetto,
-            CorrectionVat = dokument.WartoscVat,
-            CorrectionGross = dokument.WartoscBrutto,
-            CorrectionReason = dokument.PrzyczynaKorekty,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia
-        };
-    }
-
-    private static DocumentDto MapDocumentToDto(Dokument dokument)
-    {
-        return new DocumentDto
-        {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            IssueDate = dokument.DataWystawienia,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            TotalNet = dokument.WartoscNetto,
-            TotalVat = dokument.WartoscVat,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia
-        };
-    }
-
-    private static DocumentDto MapSalesDocumentToDto(DokumentDS dokument)
-    {
-        var dto = new DocumentDto
-        {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            Type = DocumentType.SalesInvoice,
-            IssueDate = dokument.DataWystawienia,
-            SaleDate = dokument.DataSprzedazy,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            TotalNet = dokument.WartoscNetto,
-            TotalVat = dokument.WartoscVat,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            Items = new List<DocumentItemDto>()
-        };
-
-        if (dokument.Pozycje != null)
-        {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
+            else if (!string.IsNullOrEmpty(item.ProductSymbol))
             {
-                dto.Items.Add(new DocumentItemDto
+                asortyment = asortymenty.FirstOrDefault(a =>
+                    DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
+            }
+
+            if (asortyment != null)
+            {
+                var jednostka = usePurchaseUnit
+                    ? (DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") ??
+                       DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"))
+                    : DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+
+                var pozycja = dokument.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+
+                if (item.PriceNet.HasValue && pozycja != null)
                 {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt.",
-                    PriceNet = poz.CenaNetto,
-                    PriceGross = poz.CenaBrutto,
-                    ValueNet = poz.WartoscNetto,
-                    ValueVat = poz.WartoscVat,
-                    ValueGross = poz.WartoscBrutto
-                });
-            }
-        }
+                    pozycja.Dane.CenaNetto = item.PriceNet.Value;
+                }
 
-        return dto;
-    }
-
-    private static DocumentDto MapPurchaseDocumentToDto(DokumentDZ dokument)
-    {
-        var dto = new DocumentDto
-        {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            Type = DocumentType.PurchaseInvoice,
-            IssueDate = dokument.DataWystawienia,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            TotalNet = dokument.WartoscNetto,
-            TotalVat = dokument.WartoscVat,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            Items = new List<DocumentItemDto>()
-        };
-
-        return dto;
-    }
-
-    private static DocumentDto MapOrderToDto(DokumentZK dokument)
-    {
-        var dto = new DocumentDto
-        {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            Type = DocumentType.CustomerOrder,
-            IssueDate = dokument.DataWystawienia,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            TotalNet = dokument.WartoscNetto,
-            TotalVat = dokument.WartoscVat,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            Items = new List<DocumentItemDto>()
-        };
-
-        if (dokument.Pozycje != null)
-        {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
-            {
-                dto.Items.Add(new DocumentItemDto
+                if (item.DiscountPercent.HasValue && pozycja != null)
                 {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt.",
-                    PriceNet = poz.CenaNetto,
-                    PriceGross = poz.CenaBrutto,
-                    ValueNet = poz.WartoscNetto,
-                    ValueVat = poz.WartoscVat,
-                    ValueGross = poz.WartoscBrutto
-                });
+                    pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                }
+            }
+            else if (!string.IsNullOrEmpty(item.Name))
+            {
+                _logger.LogWarning("Product not found for item: {Name}", item.Name);
             }
         }
-
-        return dto;
     }
 
-    private static List<string> GetBusinessObjectErrors(InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy obiekt)
+    private void AddReceiptItems(dynamic sfera, dynamic paragon, List<CreateReceiptItemRequest> items)
+    {
+        if (items == null || !items.Any()) return;
+
+        var asortymentyManager = sfera.Asortymenty();
+        var asortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+
+        foreach (var item in items)
+        {
+            dynamic? asortyment = null;
+
+            if (item.ProductId.HasValue)
+            {
+                asortyment = asortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
+            }
+            else if (!string.IsNullOrEmpty(item.ProductSymbol))
+            {
+                asortyment = asortymenty.FirstOrDefault(a =>
+                    DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
+            }
+
+            if (asortyment != null)
+            {
+                var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                var pozycja = paragon.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+
+                if (item.PriceNet.HasValue && pozycja != null)
+                {
+                    pozycja.Dane.CenaNetto = item.PriceNet.Value;
+                }
+                else if (item.PriceGross.HasValue && pozycja != null)
+                {
+                    pozycja.Dane.CenaBrutto = item.PriceGross.Value;
+                }
+
+                if (item.DiscountPercent.HasValue && pozycja != null)
+                {
+                    pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                }
+            }
+        }
+    }
+
+    private void AddCorrectionItems(dynamic sfera, dynamic korekta, List<CreateCorrectionItemRequest> items, bool usePurchaseUnit = false)
+    {
+        if (items == null || !items.Any()) return;
+
+        var asortymentyManager = sfera.Asortymenty();
+        var asortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+
+        foreach (var item in items)
+        {
+            if (item.OriginalPositionId.HasValue)
+            {
+                // Find and correct existing position
+                try
+                {
+                    var pozycjeKorygowane = DynamicPropertyHelper.GetProperty(korekta.Dane, "PozycjeKorygowane");
+                    if (pozycjeKorygowane != null)
+                    {
+                        foreach (dynamic poz in pozycjeKorygowane)
+                        {
+                            if (DynamicPropertyHelper.GetId(poz) == item.OriginalPositionId.Value)
+                            {
+                                var pozycjaKorekty = korekta.Pozycje.Koryguj(poz);
+                                if (pozycjaKorekty != null)
+                                {
+                                    var originalQty = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+                                    pozycjaKorekty.Dane.IloscPoKorekcie = originalQty + item.QuantityCorrection;
+                                    if (item.PriceNetCorrection.HasValue)
+                                    {
+                                        pozycjaKorekty.Dane.CenaNettoPoKorekcie = item.PriceNetCorrection.Value;
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Position correction failed, continue
+                }
+            }
+            else if (item.ProductId.HasValue || !string.IsNullOrEmpty(item.ProductSymbol))
+            {
+                // Add new correction position
+                dynamic? asortyment = null;
+
+                if (item.ProductId.HasValue)
+                {
+                    asortyment = asortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
+                }
+                else if (!string.IsNullOrEmpty(item.ProductSymbol))
+                {
+                    asortyment = asortymenty.FirstOrDefault(a =>
+                        DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
+                }
+
+                if (asortyment != null)
+                {
+                    var jednostka = usePurchaseUnit
+                        ? (DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") ??
+                           DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"))
+                        : DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+
+                    var pozycja = korekta.Pozycje.Dodaj(asortyment, item.QuantityCorrection, jednostka);
+                    if (pozycja != null && item.PriceNetCorrection.HasValue)
+                    {
+                        pozycja.Dane.CenaNetto = item.PriceNetCorrection.Value;
+                    }
+                }
+            }
+        }
+    }
+
+    private void AddReturnItems(dynamic sfera, dynamic zwrot, List<CreateCorrectionItemRequest> items)
+    {
+        if (items == null || !items.Any()) return;
+
+        var asortymentyManager = sfera.Asortymenty();
+        var asortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+
+        foreach (var item in items)
+        {
+            dynamic? asortyment = null;
+
+            if (item.ProductId.HasValue)
+            {
+                asortyment = asortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
+            }
+            else if (!string.IsNullOrEmpty(item.ProductSymbol))
+            {
+                asortyment = asortymenty.FirstOrDefault(a =>
+                    DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
+            }
+
+            if (asortyment != null)
+            {
+                // For returns, quantity should be negative
+                var qty = item.QuantityCorrection < 0 ? item.QuantityCorrection : -item.QuantityCorrection;
+                var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                zwrot.Pozycje.Dodaj(asortyment, qty, jednostka);
+            }
+        }
+    }
+
+    private static CorrectionDto MapCorrectionToDto(dynamic dokument)
+    {
+        try
+        {
+            return new CorrectionDto
+            {
+                Id = DynamicPropertyHelper.GetId(dokument),
+                Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
+                FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+                Type = CorrectionType.SalesInvoiceCorrection,
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                OriginalDocumentId = DynamicPropertyHelper.GetNullableInt(dokument, "DokumentKorygowany", "Id"),
+                OriginalDocumentNumber = DynamicPropertyHelper.GetNestedString(dokument, "DokumentKorygowany", "NumerWewnetrzny", "PelnaSygnatura"),
+                CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+                CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+                WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+                CorrectionNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+                CorrectionVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                CorrectionGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                CorrectionReason = DynamicPropertyHelper.GetString(dokument, "PrzyczynaKorekty"),
+                Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+                CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia")
+            };
+        }
+        catch
+        {
+            return new CorrectionDto { Id = DynamicPropertyHelper.GetId(dokument) };
+        }
+    }
+
+    private static CorrectionDto MapPurchaseCorrectionToDto(dynamic dokument)
+    {
+        try
+        {
+            return new CorrectionDto
+            {
+                Id = DynamicPropertyHelper.GetId(dokument),
+                Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
+                FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+                Type = CorrectionType.PurchaseInvoiceCorrection,
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                OriginalDocumentId = DynamicPropertyHelper.GetNullableInt(dokument, "DokumentKorygowany", "Id"),
+                OriginalDocumentNumber = DynamicPropertyHelper.GetNestedString(dokument, "DokumentKorygowany", "NumerWewnetrzny", "PelnaSygnatura"),
+                CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+                CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+                WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+                CorrectionNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+                CorrectionVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                CorrectionGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                CorrectionReason = DynamicPropertyHelper.GetString(dokument, "PrzyczynaKorekty"),
+                Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+                CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia")
+            };
+        }
+        catch
+        {
+            return new CorrectionDto { Id = DynamicPropertyHelper.GetId(dokument) };
+        }
+    }
+
+    private static DocumentDto MapDocumentToDto(dynamic dokument)
+    {
+        try
+        {
+            return new DocumentDto
+            {
+                Id = DynamicPropertyHelper.GetId(dokument),
+                Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
+                FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+                CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+                WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+                CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia")
+            };
+        }
+        catch
+        {
+            return new DocumentDto { Id = DynamicPropertyHelper.GetId(dokument) };
+        }
+    }
+
+    private static DocumentDto MapSalesDocumentToDto(dynamic dokument)
+    {
+        try
+        {
+            var dto = new DocumentDto
+            {
+                Id = DynamicPropertyHelper.GetId(dokument),
+                Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
+                FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+                Type = DocumentType.SalesInvoice,
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
+                CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+                CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+                WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+                Items = new List<DocumentItemDto>()
+            };
+
+            var pozycje = DynamicPropertyHelper.GetProperty(dokument, "Pozycje");
+            if (pozycje != null)
+            {
+                int lineNum = 1;
+                foreach (dynamic poz in pozycje)
+                {
+                    dto.Items.Add(MapDocumentItemToDto(poz, lineNum++));
+                }
+            }
+
+            return dto;
+        }
+        catch
+        {
+            return new DocumentDto { Id = DynamicPropertyHelper.GetId(dokument) };
+        }
+    }
+
+    private static DocumentDto MapPurchaseDocumentToDto(dynamic dokument)
+    {
+        try
+        {
+            return new DocumentDto
+            {
+                Id = DynamicPropertyHelper.GetId(dokument),
+                Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
+                FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+                Type = DocumentType.PurchaseInvoice,
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+                CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+                WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+                Items = new List<DocumentItemDto>()
+            };
+        }
+        catch
+        {
+            return new DocumentDto { Id = DynamicPropertyHelper.GetId(dokument) };
+        }
+    }
+
+    private static DocumentDto MapOrderToDto(dynamic dokument)
+    {
+        try
+        {
+            var dto = new DocumentDto
+            {
+                Id = DynamicPropertyHelper.GetId(dokument),
+                Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
+                FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+                Type = DocumentType.CustomerOrder,
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+                CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+                WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+                Items = new List<DocumentItemDto>()
+            };
+
+            var pozycje = DynamicPropertyHelper.GetProperty(dokument, "Pozycje");
+            if (pozycje != null)
+            {
+                int lineNum = 1;
+                foreach (dynamic poz in pozycje)
+                {
+                    dto.Items.Add(MapDocumentItemToDto(poz, lineNum++));
+                }
+            }
+
+            return dto;
+        }
+        catch
+        {
+            return new DocumentDto { Id = DynamicPropertyHelper.GetId(dokument) };
+        }
+    }
+
+    private static DocumentItemDto MapDocumentItemToDto(dynamic poz, int lineNum)
+    {
+        return new DocumentItemDto
+        {
+            Id = DynamicPropertyHelper.GetId(poz),
+            LineNumber = lineNum,
+            ProductId = DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id"),
+            ProductSymbol = DynamicPropertyHelper.GetString(poz, "Asortyment", "Symbol"),
+            Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+            Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+            Unit = DynamicPropertyHelper.GetString(poz, "Jednostka", "Symbol") ?? "szt.",
+            PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
+            PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
+            ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
+            ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
+            ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+        };
+    }
+
+    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
-        foreach (var encjaZBledami in obiekt.InvalidData)
+        try
         {
-            foreach (var blad in encjaZBledami.Errors)
+            var invalidData = DynamicPropertyHelper.GetProperty(obiekt, "InvalidData");
+            if (invalidData == null) return errors;
+
+            foreach (var encjaZBledami in invalidData)
             {
-                errors.Add(blad.ToString());
+                var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
+                if (entityErrors != null)
+                {
+                    foreach (var blad in entityErrors)
+                    {
+                        errors.Add(blad?.ToString() ?? "Unknown error");
+                    }
+                }
+
+                var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
+                if (memberErrors != null)
+                {
+                    foreach (var bladNaPolach in memberErrors)
+                    {
+                        try
+                        {
+                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
+                            errors.Add($"{key}: {bladNaPolach}");
+                        }
+                        catch
+                        {
+                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
+                        }
+                    }
+                }
             }
-            foreach (var bladNaPolach in encjaZBledami.MemberErrors)
-            {
-                errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
-            }
+        }
+        catch
+        {
+            errors.Add("Could not retrieve error details");
         }
         return errors;
     }
+
+    #endregion
 }

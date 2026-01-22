@@ -34,8 +34,8 @@ public class DiscountsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<DiscountDto>), StatusCodes.Status200OK)]
     public ActionResult<PagedResponse<DiscountDto>> GetDiscounts(
+        [FromQuery] DateTime? validAt = null,
         [FromQuery] bool? activeOnly = true,
-        [FromQuery] DateTime? validAt,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {

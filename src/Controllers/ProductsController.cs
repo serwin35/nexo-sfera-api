@@ -379,7 +379,7 @@ public class ProductsController : ControllerBase
         }
     }
 
-    private static Jednostka? GetOrCreateUnit(Uchwyt sfera, string symbol)
+    private static dynamic? GetOrCreateUnit(dynamic sfera, string symbol)
     {
         var jednostki = sfera.Jednostki();
         return jednostki.Dane.Wszystkie().FirstOrDefault(j => j.Symbol == symbol);

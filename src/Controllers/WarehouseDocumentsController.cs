@@ -4,7 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.Dokumenty.Logistyka;
+using InsERT.Moria.Logistyka;
 using InsERT.Moria.ModelDanych;
 using InsERT.Moria.Sfera;
 using InsERT.Moria.Asortymenty;
@@ -558,7 +558,7 @@ public class WarehouseDocumentsController : ControllerBase
         return dto;
     }
 
-    private static WarehouseDocumentDto MapMMToDto(DokumentMM dokument)
+    private static WarehouseDocumentDto MapMMToDto(dynamic dokument)
     {
         var dto = new WarehouseDocumentDto
         {

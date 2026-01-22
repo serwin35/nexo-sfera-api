@@ -3,9 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
-using InsERT.Moria.Dokumenty.Logistyka;
 
 namespace NexoSferaApi.Controllers;
 
@@ -35,60 +32,80 @@ public class OffersController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<OfferSummaryDto>), StatusCodes.Status200OK)]
     public ActionResult<PagedResponse<OfferSummaryDto>> GetOffers(
-        [FromQuery] int? customerId,
-        [FromQuery] DateTime? dateFrom,
-        [FromQuery] DateTime? dateTo,
-        [FromQuery] bool? closedOnly,
-        [FromQuery] bool? acceptedOnly,
-        [FromQuery] bool? validOnly,
+        [FromQuery] int? customerId = null,
+        [FromQuery] DateTime? dateFrom = null,
+        [FromQuery] DateTime? dateTo = null,
+        [FromQuery] bool? closedOnly = null,
+        [FromQuery] bool? acceptedOnly = null,
+        [FromQuery] bool? validOnly = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferty = sfera.Oferty().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var ofertyManager = sfera.Oferty();
+            var oferty = ((IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie()).ToList();
 
             if (customerId.HasValue)
             {
-                oferty = oferty.Where(o => o.Dokument != null && o.Dokument.Podmiot != null &&
-                    o.Dokument.Podmiot.Id == customerId.Value);
+                oferty = oferty.Where(o => {
+                    try { return o.Podmiot?.Id == customerId.Value; }
+                    catch { return false; }
+                }).ToList();
             }
 
             if (dateFrom.HasValue)
             {
-                oferty = oferty.Where(o => o.Dokument != null && o.Dokument.DataWystawienia >= dateFrom.Value);
+                oferty = oferty.Where(o => {
+                    try { return (DateTime?)o.DataWystawienia >= dateFrom.Value; }
+                    catch { return false; }
+                }).ToList();
             }
 
             if (dateTo.HasValue)
             {
-                oferty = oferty.Where(o => o.Dokument != null && o.Dokument.DataWystawienia <= dateTo.Value);
+                oferty = oferty.Where(o => {
+                    try { return (DateTime?)o.DataWystawienia <= dateTo.Value; }
+                    catch { return false; }
+                }).ToList();
             }
 
             if (closedOnly.HasValue && closedOnly.Value)
             {
-                oferty = oferty.Where(o => o.Zamkniety == true);
+                oferty = oferty.Where(o => {
+                    try { return (bool?)o.Zamkniety == true; }
+                    catch { return false; }
+                }).ToList();
             }
 
             if (acceptedOnly.HasValue && acceptedOnly.Value)
             {
-                oferty = oferty.Where(o => o.Zaakceptowany == true);
+                oferty = oferty.Where(o => {
+                    try { return (bool?)o.Zaakceptowany == true; }
+                    catch { return false; }
+                }).ToList();
             }
 
             if (validOnly.HasValue && validOnly.Value)
             {
                 var now = DateTime.Now;
-                oferty = oferty.Where(o =>
-                    (!o.ObowiazujeOd.HasValue || o.ObowiazujeOd.Value <= now) &&
-                    (!o.ObowiazujeDo.HasValue || o.ObowiazujeDo.Value >= now));
+                oferty = oferty.Where(o => {
+                    try
+                    {
+                        var od = (DateTime?)o.ObowiazujeOd;
+                        var doo = (DateTime?)o.ObowiazujeDo;
+                        return (!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now);
+                    }
+                    catch { return false; }
+                }).ToList();
             }
 
-            var totalCount = oferty.Count();
+            var totalCount = oferty.Count;
             var items = oferty
-                .OrderByDescending(o => o.Dokument != null ? o.Dokument.DataWystawienia : null)
+                .OrderByDescending(o => { try { return (DateTime?)o.DataWystawienia; } catch { return null; } })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
                 .Select(MapOfferSummary)
                 .ToList();
 
@@ -117,9 +134,10 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferta = sfera.Oferty().Dane.Wszystkie()
-                .FirstOrDefault(o => o.Id == id);
+            dynamic sfera = _sferaService.GetSfera();
+            var ofertyManager = sfera.Oferty();
+            var oferty = (IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie();
+            var oferta = oferty.FirstOrDefault(o => (int)o.Id == id);
 
             if (oferta == null)
             {
@@ -146,11 +164,17 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferta = sfera.Oferty().Dane.Wszystkie()
-                .FirstOrDefault(o => o.Dokument != null &&
-                    o.Dokument.NumerWewnetrzny != null &&
-                    o.Dokument.NumerWewnetrzny.PelnaSygnatura.Contains(number));
+            dynamic sfera = _sferaService.GetSfera();
+            var ofertyManager = sfera.Oferty();
+            var oferty = (IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie();
+            var oferta = oferty.FirstOrDefault(o => {
+                try
+                {
+                    string? sygnatura = o.NumerWewnetrzny?.PelnaSygnatura;
+                    return sygnatura != null && sygnatura.Contains(number);
+                }
+                catch { return false; }
+            });
 
             if (oferta == null)
             {
@@ -178,23 +202,31 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferty = sfera.Oferty().Dane.Wszystkie()
-                .Where(o => o.Dokument != null && o.Dokument.Podmiot != null &&
-                    o.Dokument.Podmiot.Id == customerId);
+            dynamic sfera = _sferaService.GetSfera();
+            var ofertyManager = sfera.Oferty();
+            var oferty = ((IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie())
+                .Where(o => {
+                    try { return o.Podmiot?.Id == customerId; }
+                    catch { return false; }
+                }).ToList();
 
             if (validOnly.HasValue && validOnly.Value)
             {
                 var now = DateTime.Now;
-                oferty = oferty.Where(o =>
-                    (!o.ObowiazujeOd.HasValue || o.ObowiazujeOd.Value <= now) &&
-                    (!o.ObowiazujeDo.HasValue || o.ObowiazujeDo.Value >= now) &&
-                    o.Zamkniety != true);
+                oferty = oferty.Where(o => {
+                    try
+                    {
+                        var od = (DateTime?)o.ObowiazujeOd;
+                        var doo = (DateTime?)o.ObowiazujeDo;
+                        var zamkniety = (bool?)o.Zamkniety;
+                        return (!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now) && zamkniety != true;
+                    }
+                    catch { return false; }
+                }).ToList();
             }
 
             var items = oferty
-                .OrderByDescending(o => o.Dokument.DataWystawienia)
-                .ToList()
+                .OrderByDescending(o => { try { return (DateTime?)o.DataWystawienia; } catch { return null; } })
                 .Select(MapOfferSummary)
                 .ToList();
 
@@ -221,21 +253,21 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferty = sfera.Oferty();
+            dynamic sfera = _sferaService.GetSfera();
+            dynamic oferty = sfera.Oferty();
 
             using (var oferta = oferty.Utwórz())
             {
                 // Set customer
-                var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                    .FirstOrDefault(p => p.Id == request.CustomerId);
+                var podmioty = (IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie();
+                var podmiot = podmioty.FirstOrDefault(p => (int)p.Id == request.CustomerId);
 
                 if (podmiot == null)
                 {
                     return BadRequest(ApiResponse<OfferDto>.Error($"Customer with ID {request.CustomerId} not found"));
                 }
 
-                oferta.Dane.Dokument.Podmiot = podmiot;
+                oferta.Dane.Podmiot = podmiot;
 
                 // Set validity dates
                 if (request.ValidFrom.HasValue)
@@ -261,11 +293,10 @@ public class OffersController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
+                var asortymenty = (IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie();
                 foreach (var item in request.Items)
                 {
-                    var asortyment = asortymenty.Dane.Wszystkie()
-                        .FirstOrDefault(a => a.Id == item.ProductId);
+                    var asortyment = asortymenty.FirstOrDefault(a => (int)a.Id == item.ProductId);
 
                     if (asortyment != null)
                     {
@@ -285,14 +316,15 @@ public class OffersController : ControllerBase
 
                 if (oferta.Zapisz())
                 {
-                    _logger.LogInformation("Created offer {Number}",
-                        oferta.Dane.Dokument?.NumerWewnetrzny?.PelnaSygnatura);
+                    string? numer = null;
+                    try { numer = oferta.Dane.NumerWewnetrzny?.PelnaSygnatura; } catch { }
+                    _logger.LogInformation("Created offer {Number}", numer);
 
                     var dto = MapOffer(oferta.Dane, true);
 
                     return CreatedAtAction(
                         nameof(GetOffer),
-                        new { id = oferta.Dane.Id },
+                        new { id = (int)oferta.Dane.Id },
                         ApiResponse<OfferDto>.Ok(dto, "Offer created successfully"));
                 }
                 else
@@ -323,10 +355,11 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferty = sfera.Oferty();
+            dynamic sfera = _sferaService.GetSfera();
+            dynamic oferty = sfera.Oferty();
 
-            var ofertaDane = oferty.Dane.Wszystkie().FirstOrDefault(o => o.Id == id);
+            var wszystkie = (IEnumerable<dynamic>)oferty.Dane.Wszystkie();
+            var ofertaDane = wszystkie.FirstOrDefault(o => (int)o.Id == id);
             if (ofertaDane == null)
             {
                 return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
@@ -368,10 +401,11 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var oferty = sfera.Oferty();
+            dynamic sfera = _sferaService.GetSfera();
+            dynamic oferty = sfera.Oferty();
 
-            var ofertaDane = oferty.Dane.Wszystkie().FirstOrDefault(o => o.Id == id);
+            var wszystkie = (IEnumerable<dynamic>)oferty.Dane.Wszystkie();
+            var ofertaDane = wszystkie.FirstOrDefault(o => (int)o.Id == id);
             if (ofertaDane == null)
             {
                 return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
@@ -406,129 +440,275 @@ public class OffersController : ControllerBase
 
     #region Mapping
 
-    private static OfferSummaryDto MapOfferSummary(DokumentOE o)
+    private static OfferSummaryDto MapOfferSummary(dynamic o)
     {
-        return new OfferSummaryDto
+        try
         {
-            Id = o.Id,
-            Number = o.Dokument?.NumerWewnetrzny?.PelnaSygnatura,
-            IssueDate = o.Dokument?.DataWystawienia,
-            ValidFrom = o.ObowiazujeOd,
-            ValidTo = o.ObowiazujeDo,
-            CustomerName = o.Dokument?.Podmiot?.NazwaSkrocona,
-            Status = GetOfferStatus(o),
-            IsClosed = o.Zamkniety ?? false,
-            IsAccepted = o.Zaakceptowany ?? false,
-            NetValue = o.Dokument?.WartoscNetto ?? 0,
-            GrossValue = o.Dokument?.WartoscBrutto ?? 0,
-            CurrencySymbol = o.Dokument?.Waluta?.Symbol ?? "PLN",
-            ItemCount = o.Dokument?.Pozycje?.Count ?? 0
-        };
+            return new OfferSummaryDto
+            {
+                Id = (int)o.Id,
+                Number = GetDynamicString(o, "NumerWewnetrzny", "PelnaSygnatura"),
+                IssueDate = GetDynamicDateTime(o, "DataWystawienia"),
+                ValidFrom = GetDynamicDateTime(o, "ObowiazujeOd"),
+                ValidTo = GetDynamicDateTime(o, "ObowiazujeDo"),
+                CustomerName = GetDynamicString(o, "Podmiot", "NazwaSkrocona"),
+                Status = GetOfferStatus(o),
+                IsClosed = GetDynamicBool(o, "Zamkniety"),
+                IsAccepted = GetDynamicBool(o, "Zaakceptowany"),
+                NetValue = GetDynamicDecimal(o, "WartoscNetto"),
+                GrossValue = GetDynamicDecimal(o, "WartoscBrutto"),
+                CurrencySymbol = GetDynamicString(o, "Waluta", "Symbol") ?? "PLN",
+                ItemCount = GetDynamicInt(o, "Pozycje", "Count")
+            };
+        }
+        catch
+        {
+            return new OfferSummaryDto { Id = (int)o.Id };
+        }
     }
 
-    private static OfferDto MapOffer(DokumentOE o, bool includeItems)
+    private static OfferDto MapOffer(dynamic o, bool includeItems)
     {
         var dto = new OfferDto
         {
-            Id = o.Id,
-            Number = o.Dokument?.NumerWewnetrzny?.PelnaSygnatura,
-            IssueDate = o.Dokument?.DataWystawienia,
-            ValidFrom = o.ObowiazujeOd,
-            ValidTo = o.ObowiazujeDo,
-            CustomerId = o.Dokument?.Podmiot?.Id,
-            CustomerSymbol = o.Dokument?.Podmiot?.Symbol,
-            CustomerName = o.Dokument?.Podmiot?.NazwaSkrocona,
-            CustomerTaxId = o.Dokument?.Podmiot?.NIP,
+            Id = (int)o.Id,
+            Number = GetDynamicString(o, "NumerWewnetrzny", "PelnaSygnatura"),
+            IssueDate = GetDynamicDateTime(o, "DataWystawienia"),
+            ValidFrom = GetDynamicDateTime(o, "ObowiazujeOd"),
+            ValidTo = GetDynamicDateTime(o, "ObowiazujeDo"),
+            CustomerId = GetDynamicNullableInt(o, "Podmiot", "Id"),
+            CustomerSymbol = GetDynamicString(o, "Podmiot", "Symbol"),
+            CustomerName = GetDynamicString(o, "Podmiot", "NazwaSkrocona"),
+            CustomerTaxId = GetDynamicString(o, "Podmiot", "NIP"),
             Status = GetOfferStatus(o),
-            IsClosed = o.Zamkniety ?? false,
-            IsAccepted = o.Zaakceptowany ?? false,
-            AcceptedDate = o.DataZaakceptowania,
-            LastStatusChangeDate = o.DataOstatniejZmianyStatusu,
-            SalesRepId = o.PrzedstawicielId,
-            DaysToRealization = o.DniDoRealizacji,
-            ShortDescription = o.OpisKrotki,
-            EndDescription = o.OpisKoncowyKrotki,
-            NetValue = o.Dokument?.WartoscNetto ?? 0,
-            GrossValue = o.Dokument?.WartoscBrutto ?? 0,
-            TaxValue = o.Dokument?.WartoscVat ?? 0,
-            CurrencySymbol = o.Dokument?.Waluta?.Symbol ?? "PLN",
-            ItemCount = o.Dokument?.Pozycje?.Count ?? 0
+            IsClosed = GetDynamicBool(o, "Zamkniety"),
+            IsAccepted = GetDynamicBool(o, "Zaakceptowany"),
+            AcceptedDate = GetDynamicDateTime(o, "DataZaakceptowania"),
+            LastStatusChangeDate = GetDynamicDateTime(o, "DataOstatniejZmianyStatusu"),
+            SalesRepId = GetDynamicNullableInt(o, "PrzedstawicielId"),
+            DaysToRealization = GetDynamicNullableInt(o, "DniDoRealizacji"),
+            ShortDescription = GetDynamicString(o, "OpisKrotki"),
+            EndDescription = GetDynamicString(o, "OpisKoncowyKrotki"),
+            NetValue = GetDynamicDecimal(o, "WartoscNetto"),
+            GrossValue = GetDynamicDecimal(o, "WartoscBrutto"),
+            TaxValue = GetDynamicDecimal(o, "WartoscVat"),
+            CurrencySymbol = GetDynamicString(o, "Waluta", "Symbol") ?? "PLN",
+            ItemCount = GetDynamicInt(o, "Pozycje", "Count")
         };
 
-        if (includeItems && o.Dokument?.Pozycje != null)
+        if (includeItems)
         {
-            dto.Items = new List<OfferItemDto>();
-            int lineNum = 1;
-            foreach (var poz in o.Dokument.Pozycje)
+            try
             {
-                dto.Items.Add(new OfferItemDto
+                var pozycje = o.Pozycje;
+                if (pozycje != null)
                 {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    ProductName = poz.Nazwa,
-                    ProductDescription = poz.Asortyment?.Opis,
-                    Quantity = poz.Ilosc,
-                    UnitSymbol = poz.Jednostka?.Symbol ?? "szt.",
-                    UnitPriceNet = poz.CenaNetto,
-                    UnitPriceGross = poz.CenaBrutto,
-                    DiscountPercent = poz.RabatProcent,
-                    DiscountValue = poz.RabatWartosc ?? 0,
-                    NetValue = poz.WartoscNetto,
-                    GrossValue = poz.WartoscBrutto,
-                    TaxValue = poz.WartoscVat,
-                    VatRateSymbol = poz.StawkaVat?.Symbol,
-                    VatRate = poz.StawkaVat?.Stawka
-                });
+                    dto.Items = new List<OfferItemDto>();
+                    int lineNum = 1;
+                    foreach (var poz in pozycje)
+                    {
+                        dto.Items.Add(new OfferItemDto
+                        {
+                            Id = (int)poz.Id,
+                            LineNumber = lineNum++,
+                            ProductId = GetDynamicNullableInt(poz, "Asortyment", "Id"),
+                            ProductSymbol = GetDynamicString(poz, "Asortyment", "Symbol"),
+                            ProductName = GetDynamicString(poz, "Nazwa"),
+                            ProductDescription = GetDynamicString(poz, "Asortyment", "Opis"),
+                            Quantity = GetDynamicDecimal(poz, "Ilosc"),
+                            UnitSymbol = GetDynamicString(poz, "Jednostka", "Symbol") ?? "szt.",
+                            UnitPriceNet = GetDynamicDecimal(poz, "CenaNetto"),
+                            UnitPriceGross = GetDynamicDecimal(poz, "CenaBrutto"),
+                            DiscountPercent = GetDynamicNullableDecimal(poz, "RabatProcent"),
+                            DiscountValue = GetDynamicDecimal(poz, "RabatWartosc"),
+                            NetValue = GetDynamicDecimal(poz, "WartoscNetto"),
+                            GrossValue = GetDynamicDecimal(poz, "WartoscBrutto"),
+                            TaxValue = GetDynamicDecimal(poz, "WartoscVat"),
+                            VatRateSymbol = GetDynamicString(poz, "StawkaVat", "Symbol"),
+                            VatRate = GetDynamicNullableDecimal(poz, "StawkaVat", "Stawka")
+                        });
+                    }
+                }
             }
+            catch { }
         }
 
         return dto;
     }
 
-    private static string GetOfferStatus(DokumentOE o)
+    private static string GetOfferStatus(dynamic o)
     {
-        if (o.Zamkniety == true)
+        try
         {
-            return o.Zaakceptowany == true ? "Accepted & Closed" : "Rejected";
-        }
+            bool zamkniety = GetDynamicBool(o, "Zamkniety");
+            bool zaakceptowany = GetDynamicBool(o, "Zaakceptowany");
 
-        if (o.Zaakceptowany == true)
+            if (zamkniety)
+            {
+                return zaakceptowany ? "Accepted & Closed" : "Rejected";
+            }
+
+            if (zaakceptowany)
+            {
+                return "Accepted";
+            }
+
+            var now = DateTime.Now;
+            var obowiazujeDo = GetDynamicDateTime(o, "ObowiazujeDo");
+            var obowiazujeOd = GetDynamicDateTime(o, "ObowiazujeOd");
+
+            if (obowiazujeDo.HasValue && obowiazujeDo.Value < now)
+            {
+                return "Expired";
+            }
+
+            if (obowiazujeOd.HasValue && obowiazujeOd.Value > now)
+            {
+                return "Pending";
+            }
+
+            return "Active";
+        }
+        catch
         {
-            return "Accepted";
+            return "Unknown";
         }
-
-        var now = DateTime.Now;
-        if (o.ObowiazujeDo.HasValue && o.ObowiazujeDo.Value < now)
-        {
-            return "Expired";
-        }
-
-        if (o.ObowiazujeOd.HasValue && o.ObowiazujeOd.Value > now)
-        {
-            return "Pending";
-        }
-
-        return "Active";
     }
 
-    private static List<string> GetBusinessObjectErrors(InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy obiekt)
+    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
-        foreach (var encjaZBledami in obiekt.InvalidData)
+        try
         {
-            foreach (var blad in encjaZBledami.Errors)
+            var invalidData = obiekt.InvalidData;
+            if (invalidData != null)
             {
-                errors.Add(blad.ToString());
-            }
-            foreach (var bladNaPolach in encjaZBledami.MemberErrors)
-            {
-                errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
+                foreach (var encjaZBledami in invalidData)
+                {
+                    try
+                    {
+                        foreach (var blad in encjaZBledami.Errors)
+                        {
+                            errors.Add(blad.ToString());
+                        }
+                    }
+                    catch { }
+                    try
+                    {
+                        foreach (var bladNaPolach in encjaZBledami.MemberErrors)
+                        {
+                            errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
+                        }
+                    }
+                    catch { }
+                }
             }
         }
+        catch { }
         return errors;
     }
+
+    #region Dynamic Property Helpers
+
+    private static string? GetDynamicString(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return val?.ToString();
+        }
+        catch { return null; }
+    }
+
+    private static DateTime? GetDynamicDateTime(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return (DateTime?)val;
+        }
+        catch { return null; }
+    }
+
+    private static decimal GetDynamicDecimal(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return 0;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return (decimal)val;
+        }
+        catch { return 0; }
+    }
+
+    private static decimal? GetDynamicNullableDecimal(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return (decimal?)val;
+        }
+        catch { return null; }
+    }
+
+    private static int GetDynamicInt(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return 0;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return (int)val;
+        }
+        catch { return 0; }
+    }
+
+    private static int? GetDynamicNullableInt(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return (int?)val;
+        }
+        catch { return null; }
+    }
+
+    private static bool GetDynamicBool(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return false;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            return (bool)val;
+        }
+        catch { return false; }
+    }
+
+    private static dynamic? GetProperty(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var type = obj.GetType();
+            var prop = type.GetProperty(propertyName);
+            return prop?.GetValue(obj);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    #endregion
 
     #endregion
 }

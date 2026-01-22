@@ -1,0 +1,3015 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>InsERT.Mox.Core</name>
+    </assembly>
+    <members>
+        <member name="T:InsERT.Mox.AppSession.AppSessionState">
+            <summary>
+            Stan obiektu-uchwytu do sesji aplikacyjnej
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.AppSession.AppSessionState.PresumedAlive">
+            <summary>
+            sesja jest aktywa
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.AppSession.AppSessionState.Stopped">
+            <summary>
+            sesja jest nieaktywna, została jawnie zakończona
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.AppSession.AppSessionState.Expired">
+            <summary>
+            sesja jest nieaktywna, wygasła
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.AppSession.AppSessionState.Abandoned">
+            <summary>
+            stan sesji jest nieznany, uchwyt odłączono od sesji
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.AppSession.IAppSessionHandle">
+            <summary>
+            Interfejs obiektu-uchwytu do sesji aplikacyjnej
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.AppSession.IAppSessionHandle.SessionId">
+            <summary>
+            identyfikator sesji
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.AppSession.IAppSessionHandle.State">
+            <summary>
+            stan obiektu
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.AppSession.IAppSessionManager">
+            <summary>
+            Interfejs obiektu zarządzającego sesją aplikacyjną.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.AppSession.IAppSessionManager.ManagedSession">
+            <summary>
+            Uchwyt do zarządzanej sesji.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.AppSession.IAppSessionManager.StartNew">
+            <summary>
+            Rozpoczyna nową sesję, ewentualnie zakańczając aktualnie zarządzaną
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.AppSession.IAppSessionManager.ManageExisting(System.Guid)">
+            <summary>
+            Zaczyna zarządzać istniejącą sesją, ewentualnie zakańczając aktualnie zarządzaną
+            </summary>
+            <param name="sessionId">identyfikator istniejącej, niezarządzanej sesji</param>
+        </member>
+        <member name="M:InsERT.Mox.AppSession.IAppSessionManager.Abandon">
+            <summary>
+            Przestaje zarządzać aktualnie zarządzaną sesją.
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.AppSession.IAppSessionManager.SessionAbandoned">
+            <summary>
+            Zdarzenie wywoływane w metodzie Abandon
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.AppSession.IAppSessionManager.SessionExpired">
+            <summary>
+            Zdarzenie wywoływane, gdy zarządca wykryje, że zarządzana sesja wygasła
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.AppSession.IAppSessionManager.SessionStarted">
+            <summary>
+            Zdarzenie wywoływane, gdy rozpoczynana jest nowa sesja
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.AppSession.IAppSessionManager.SessionStopped">
+            <summary>
+            Zdarzenie wywoływane, gdy zakańczana jest aktualnie zarządzana sesja
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.AppSession.AppSessionEventArgs">
+            <summary>
+            Argumenty zdarzenia dotyczącego sesji aplikacyjnej
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.AppSession.AppSessionEventArgs.Session">
+            <summary>
+            sesja aplikacyjna, której dotyczy zdarzenie
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.AppSession.AppSessionExpiredException">
+            <summary>
+            Wyjątek rzucany, gdy próbuje się wykonać operację na wygasłej sesji aplikacyjnej
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Core.ApplicationEvents.IBusinessObjectEvent">
+            <summary>
+            Event jest wywoływany po zapisaniu obiektu biznesowego w wątku UI.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Core.ApplicationEvents.IBusinessObjectChangesAcceptedEvent`1">
+            <summary>
+            Event jest wywoływany po zapisaniu obiektu biznesowego w wątku, w którym obiekt został zapisany.
+            </summary>
+            <typeparam name="TEntity"></typeparam>
+        </member>
+        <member name="T:InsERT.Mox.Core.ApplicationEvents.IBusinessObjectPartEvent">
+            <summary>
+            Event wykorzystywany do aktualizacji wyszukiwarki po zmianie tylko części obiektu a nie jego całości. 
+            (Np. usunięcia pozycji, gdy w wyszukiwarce są wyświetlane tylko pozycje)
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Core.ApplicationEvents.IEventListener">
+            <summary>
+            Metody obsługujące zdarzenia ogólnoaplikacyjne są odkrywane przez refleksję;
+            powinny mieć atrybut EventListenerAttribute i przyjmować dokładnie 1 parametr takiego typu
+            jak typ zdarzenia, który ma nasłuchiwać
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Core.ApplicationEvents.IExtendedBusinessObjectEvent">
+            <summary>
+            Event jest wywoływany po zapisaniu obiektu biznesowego w wątku UI.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.ApplicationEvents.IExtendedBusinessObjectEvent.Entity">
+            <summary>
+            Główna encja obiektu biznesowego, którego dotyczy zdarzenie.
+            </summary>
+            <remarks>W sferze wartość może być <c>null</c>.</remarks>
+        </member>
+        <member name="T:InsERT.Mox.Core.Properties.Resources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BinaryLengthDataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Zawartość tego pola musi mieścić się w {0} bajtach..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessLogicMetadataStore_NoBOFoundForGivenMainEntityType">
+            <summary>
+              Looks up a localized string similar to Nie znaleziono obiektu biznesowego z podaną encją główną {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessObjectCtor_InvalidRepository">
+            <summary>
+              Looks up a localized string similar to Nieprawidłowe połączenie..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessObjectIsNotInInitializationDeferredState_ExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Jawnie zainicjować obiekt można wyłącznie, gdy jest w stanie opóźnionej inicjalizacji..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessObjectIsNotInNotInitializedStateExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Żądanej operacji można dokonać tylko, gdy obiekt nie jest jeszcze zainicjowany danymi..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessObjectIsNotInReadyState_IsInDoneState_ExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Obiekt zakończył pracę i nie może już wykonać żądanej operacji..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessObjectIsNotInReadyState_IsInInitializationDeferredState_ExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Żądanej operacji można dokonać tylko po zainicjowaniu obiektu biznesowego danymi..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.BusinessObjectIsNotInReadyState_IsInNotInitializedState_ExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Żądanej operacji można dokonać tylko po zainicjowaniu obiektu biznesowego danymi..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.CancelInvalidOperationExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Wywołanie metody .Cancel obiektu biznesowego jest legalne tylko dla obiektów skonfigurowanych ze współdzielonym Unit of Work..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.CannotSaveBusinessObjectThatDoesNotOwnUnitOfWorkExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można pojedynczo zapisać obiektu utworzonego w ramach większej operacji biznesowej..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.CheckpoinExceptionAccessDeniedMessage">
+            <summary>
+              Looks up a localized string similar to Brak uprawnień.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.CheckpoinExceptionVerificationErrorMessage">
+            <summary>
+              Looks up a localized string similar to Błąd weryfikacji uprawnień.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataAccessExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Wystąpił błąd dostępu do danych..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainCannotAddBaseTypeExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można dodać do dziedziny typu {0}, ponieważ zawiera ona już jego pochodny typ {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainCannotAddDerivedTypeExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można dodać do dziedziny typu {0}, ponieważ zawiera ona już jego bazowy typ {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainCannotCombineDomainsExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można połączyć dziedzin. {0}.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainEntityTypeNotInDomainExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Podanego typu {0} nie ma w dziedzinie i dlatego nie można przeprowadzić na niej żądanej operacji z tym typem..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainInvalidInternalRelationshipSpecifiersExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Podane typy encji i nazwy własności nawigacyjnych nie wskazują na przeciwległe końce związku..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainNavigationPropertyDoesNotLeadToOtherEntityExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Własność {0} typu {1} nie prowadzi do encji typu {2}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainNavigationPropertyNotDefinedInGivenEntityExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Własność {0} należy do, ale nie jest zdefiniowana w typie {1}. Dodając związek do dziedziny należy podać bazowy typ {2}, w którym ta własność jest zdefiniowana..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainNavigationPropertyNotFoundExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Typ {0} nie ma własności {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainRelationshipAlreadyAddedAsInternal">
+            <summary>
+              Looks up a localized string similar to Nie można dodać do dziedziny strony związku reprezentowanej przez własność nawigacyjną {0} encji typu {1} jako wychodzącej, ponieważ związek ten już dodany do dziedziny jako wewnętrzny..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataDomainRelationshipAlreadyAddedAsOutgoing">
+            <summary>
+              Looks up a localized string similar to Nie można dodać do dziedziny związku reprezentowanego przez typy i własności nawigacyjne {0}-{1}-&gt;&lt;-{2}-{3}, ponieważ przynajmniej jedna z jego stron została już dodana do dziedzny jako wychodząca..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataErrorsPresentExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można zapisać obiektu, ponieważ jego dane zawierają błędy..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataMergeExceptionMessage">
+            <summary>
+              Looks up a localized string similar to W zagnieżdżonej operacji dokonano zmian, których nie można przenieść do operacji pierwotnej, ponieważ w operacji pierwotnej zmieniono te same dane..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DataStateAlreadySetExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Jeden z obiektów uczestniczących w operacji nieprawidłowo implementuje kontrakt zdarzenia IUnitOfWorkEvents.GetDataStateQuery.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DeleteInvalidOperationExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Kasować można jedynie istniejące, nieskasowane, nieedytowane obiekty..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DeleteNotAllowed">
+            <summary>
+              Looks up a localized string similar to Wystąpił błąd podczas usuwania obiektu. {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DirectDeleteInvalidOperationExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Obiekt nie może sam fizycznie skasować identyfikujących go danych..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.DirectDeleteNotSupportedExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można skasować obiektu, ponieważ nie skonfigurowano kosza dla obiektów typu {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyIsNull_Name_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu &apos;{0}&apos; nie może być pusta..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyIsNull_NoName_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu nie może być pusta..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_MaxLength_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć co najwyżej znaków: {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_MinLength_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć co najmniej znaków: {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_Range_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć znaków: od {1} do {2}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_Specific_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć znaków: dokładnie {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_MaxLength_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć co najwyżej znaków: {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_MinLength_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć co najmniej znaków: {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_Range_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć znaków: od {0} do {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_Specific_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć znaków: dokładnie {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.GetOriginalValueQueryFailedExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie udało się pobranie pierwotnej wartości pola {0} obiektu {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.InvalidBusinessObjectTypeNameExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Typ obiektu biznesowego {0} jest nieznany..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.LockNotAcquiredExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można zablokować podanego zasobu..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.LockNotHeldExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Podany zasób nie jest zablokowany..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.LowerBoundIsEqualToUpperBoundExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Wartość {0} podana jako początek przedziału nie może być również podana jako jego koniec, gdy przedział nie ma być obustronnie domknięty..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.LowerBoundIsGreaterThanUpperBoundExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Wartość {0} podana jako początek przedziału nie może być większa od wartości {1} podanej jako jego koniec..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.MemberIsNullDataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu nie może być pusta..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ModifyInDeletingOperatingModeExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można modyfikować danych obiektu kasowanego..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ModifyInShowingDeletedOperatingModeExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można modyfikować danych obiektu skasowanego - należy go najpierw przywrócić..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.NonUniqueErrorMessage">
+            <summary>
+              Looks up a localized string similar to Obiekt z podaną w polu wartością już istnieje..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ObjectAlreadySponsoredExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Przyłączenie encji do obiektu kontrolującego modyfikację danych nie powiodło się, ponieważ encja jest już przyłączona do innego takiego obiektu..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ObjectNotFoundExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie znaleziono obiektu {0} o identyfikatorze {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.OptimisticConcurrencyExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Dane zostały zmienione w tle..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.RecyclingNotSupported">
+            <summary>
+              Looks up a localized string similar to Obiekt nie obsługuje operacji dezaktywacji..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.RelatedObjectNotSetErrorMessage">
+            <summary>
+              Looks up a localized string similar to Nie ustawiono powiązanego obiektu..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.RelationshipWithDeletedEntityErrorMessage">
+            <summary>
+              Looks up a localized string similar to Nie można powiązać obiektu z obiektami dezaktywowanymi..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.RestoreInvalidOperationExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można przywrócić nieskasowanego obiektu..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.RestoreNotSupportedExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Nie można przywrócić obiektu, ponieważ nie skonfigurowano kosza dla obiektów typu {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.SessionExpiredExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Sesja aplikacji wygasła..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.StringLength_MaxLength_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć co najwyżej znaków: {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.StringLength_MinLength_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć co najmniej znaków: {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.StringLength_Range_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć znaków: od {0} do {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.StringLength_Specific_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Tekst w polu musi mieć znaków: dokładnie {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.UnitOfWorkAfterChangesAcceptedExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Po zaakceptowaniu zmian wystąpiły błędy..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.UnitOfWorkAlreadyOwnedDefaultExceptionMessage">
+            <summary>
+              Looks up a localized string similar to W ramach operacji biznesowej (UoW) uczestniczy już obiekt biznesowy typu skonfigurowany jako jej właściciel (wziął się z 3rd party API - &quot;managera&quot;/albo z nazwanej konfiguracji DI &quot;Standalone&quot;), nie można zatem skonfigurować innego obiektu biznesowego jako właściciela tej operacji..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.UnitOfWorkAlreadyOwnedDetailedExceptionMessage">
+            <summary>
+              Looks up a localized string similar to W ramach operacji biznesowej (UoW) uczestniczy już obiekt biznesowy typu {0} skonfigurowany jako jej właściciel (wziął się z 3rd party API - &quot;managera&quot;/albo z nazwanej konfiguracji DI &quot;Standalone&quot;), nie można zatem skonfigurować innego obiektu biznesowego jako właściciela tej operacji (próbowano to zrobić dla obiektu typu {1})..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.UnitOfWorkChangesAcceptedExceptionMessage">
+            <summary>
+              Looks up a localized string similar to W trakcie akceptowania zmian wystąpiły błędy..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.UnsponsoredModificationExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Modyfikacja pola {1} encji {0} nie powiodła się, ponieważ albo encja nie została przyłączona do obiektu kontrolującego modyfikację danych (biznesowego), albo ten, do którego jest przyłączona nie pozwala na zmianę tego konkretnego pola..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValidationMetadataStoreTypeDoesNotImplemenentIDataErrorExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Typ błędu w danych musi implementować interfejs IDataError..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_LowerBoundExclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być większa od {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_LowerBoundExclusive_UpperBoundExclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być większa od {0} i mniejsza od {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_LowerBoundExclusive_UpperBoundInclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być większa od {0} i mniejsza od {1}, włącznie..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_LowerBoundInclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być większa od lub równa {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_LowerBoundInclusive_UpperBoundExclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być większa od {0}, włącznie i mniejsza od {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_LowerBoundInclusive_UpperBoundInclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość musi być z przedziału od {0} do {1}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_SpecificValue_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być równa {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_UpperBoundExclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być mniejsza od {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.ValueOutOfRange_UpperBoundInclusive_DataErrorMessage">
+            <summary>
+              Looks up a localized string similar to Wartość w polu musi być mniejsza od lub równa {0}..
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Core.Properties.Resources.WycofajZmianyInvalidOperationExceptionMessage">
+            <summary>
+              Looks up a localized string similar to Zmiany można wycofywać tylko w obiektach skonfigurowanych z własnym Unit of Work..
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.BusinessObject`3">
+            <summary>
+            Podstawowa implementacja obiektu operującego na trwałych danych, umożliwiająca ich zapis, odczyt, modyfikację i usunięcie.
+            </summary>
+            <typeparam name="TData">typ danych, na których operuje obiekt</typeparam>
+            <typeparam name="TId">typ identyfikatora danych, na których operuje obiekt</typeparam>
+            <typeparam name="TRepository">typ obiektu udostępniającego dane</typeparam>
+        </member>
+        <member name="M:InsERT.Mox.BusinessObjects.BusinessObject`3.Checkpoint(System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanych identyfikatorów checkpointów.
+            W razie niepowodzenia rzuca wyjątek <see cref="T:InsERT.Mox.Security.CheckpointException"/>.
+            </summary>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+        </member>
+        <member name="M:InsERT.Mox.BusinessObjects.BusinessObject`3.Checkpoint(InsERT.Mox.Security.RightsCheckScope,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanych identyfikatorów checkpointów.
+            W razie niepowodzenia rzuca wyjątek <see cref="T:InsERT.Mox.Security.CheckpointException"/>.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+        </member>
+        <member name="M:InsERT.Mox.BusinessObjects.BusinessObject`3.CheckpointSucceeded(System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanych identyfikatorów checkpointów.
+            </summary>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>false</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.BusinessObjects.BusinessObject`3.CheckpointSucceeded(InsERT.Mox.Security.RightsCheckScope,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanych identyfikatorów checkpointów.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>false</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.BusinessObjects.BusinessObject`3.CheckpointFailed(System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanych identyfikatorów checkpointów.
+            </summary>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>true</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.BusinessObjects.BusinessObject`3.CheckpointFailed(InsERT.Mox.Security.RightsCheckScope,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanych identyfikatorów checkpointów.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>true</code>.</returns>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.CannotDeleteEntityException">
+            <summary>
+            Wyjątek rzucany przez obiekt biznesowy, gdy wykryje on, że przyłączone do niego 
+            dane zostały przeznaczone do usunięcia.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.BusinessObjectState">
+            <summary>
+            Stan obiektu biznesowego.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.BusinessObjectState.NotInitialized">
+            <summary>
+            Obiekt jest nieprzygotowany do pracy. Należy go skonfigurować i zainicjować danymi.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.BusinessObjectState.InitializationDeferred">
+            <summary>
+            Obiekt został skonfigurowany i zasilony danymi, ale inicjalizacja została opóźniona.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.BusinessObjectState.Ready">
+            <summary>
+            Obiekt został skonfigurowany, zainicjowany danymi i jest gotowy do pracy.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.BusinessObjectState.Done">
+            <summary>
+            Obiekt zakończył pracę.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.IRuntimeStorage">
+            <summary>
+            Interfejs do składowania nazwanych obiektów w czymś. (ten na potrzeby <see cref="T:InsERT.Mox.BusinessObjects.IBusinessObject"/>).
+            Można to dopracować, dodając pomocnicze elementy np:
+            - iterator po zdefiniowanych kluczach
+            - info o typie dla wskazanego klucza
+            na razie jest to "prawie" minimalistyczne
+            </summary>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:InsERT.Mox.BusinessObjects.IRuntimeStorageSupport" -->
+        <member name="T:InsERT.Mox.BusinessObjects.RuntimeStorage">
+            <summary>
+            Implementacja <see cref="T:InsERT.Mox.BusinessObjects.IRuntimeStorage"/>.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.OperatingMode">
+            <summary>
+            Co robi obiekt biznesowy.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.OperatingMode.Adding">
+            <summary>
+            Obiekt jest dodawany.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.OperatingMode.Showing">
+            <summary>
+            Obiekt jest załadowany istniejącymi danymi, w których jeszcze nic nie zmieniono.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.OperatingMode.Editing">
+            <summary>
+            Obiekt jest edytowany.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.OperatingMode.Deleting">
+            <summary>
+            Obiekt jest kasowany.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.OperatingMode.ShowingDeleted">
+            <summary>
+            Obiekt jest załadowany skasowanymi danymi.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.BusinessObjects.OperatingMode.Restoring">
+            <summary>
+            Obiekt jest przywracany ze skasowanych danych.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.IBusinessObject`2">
+            <summary>
+            Interfejs obiektu operującego na trwałych danych, umożliwiający ich zapis, odczyt, modyfikację i usunięcie.
+            </summary>
+            <typeparam name="TData">typ danych, na których operuje obiekt</typeparam>
+            <typeparam name="TId">typ identyfikatora danych, na których operuje obiekt</typeparam>
+        </member>
+        <member name="T:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy">
+            <summary>
+            Umożliwia dostęp do danych i operacji na nich, które razem modelują określony wycinek rzeczywistości.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.MoznaZapisac">
+            <summary>
+            Odpowiedź, czy można zapisać dokonanych w obiekcie zmian. Jeżeli nie, należy sprawdzić kolekcję <see cref="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Bledy" />, aby dowiedzieć się dlaczego.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zmodyfikowany">
+            <summary>
+            Informacja, czy w obiekcie zmieniono dane od momentu jego wczytania, bądź ostatniego udanego zapisu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Bledy">
+            <summary>
+            Błędy w danych obiektu.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zapisz">
+            <summary>
+            Zapisuje zmiany dokonane w danych obiektu od momentu jego wczytania bądź utworzenia.
+            </summary>
+            <returns>True, jeżeli zapis się powiódł, False w przeciwnym wypadku - należy sprawdzić wtedy kolekcję <see cref="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Bledy"/>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zablokuj">
+            <summary>
+            Zakłada blokadę na obiekt. Blokadę można założyć najwyżej z jednej sesji jednocześnie.
+            </summary>
+            <returns>True, jeżeli udało się założyć blokadę, bądź była już założona, False w przeciwnym wypadku.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Odblokuj">
+            <summary>
+            Zdejmuje blokadę z obiektu, jeżeli założona była przez metodę <see cref="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zablokuj" />.
+            </summary>
+            <returns>True, jeżeli zdjęto blokadę, false w przeciwnym wypadku - blokada nie była założona albo nie była założona przez metodę <see cref="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zablokuj"/>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.WycofajZmiany">
+            <summary>
+            Wycofuje dokonane od momentu wczytania, bądź ostatniego udanego zapisu, zmiany w danych obiektu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Nieaktywny">
+            <summary>
+            Czy obiekt jest nieaktywny.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.MoznaUsunac">
+            <summary>
+            Czy obiekt można usunąć.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Deaktywuj">
+            <summary>
+            Deaktywuje aktywny obiekt.
+            </summary>
+            <returns>Czy obiekt faktycznie został zdeaktywowany.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Aktywuj">
+            <summary>
+            Aktywuje nieaktywny obiekt.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Usun">
+            <summary>
+            Usuwa obiekt.
+            </summary>
+            <returns>Czy obiekt udało się usunąć.</returns>
+        </member>
+        <member name="T:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy`1">
+            <summary>
+            Umożliwia dostęp do danych określonego typu i operacji na nich, które razem modelują określony wycinek rzeczywistości.
+            </summary>
+            <typeparam name="TEncja">Typ głównej encji obiektu.</typeparam>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy`1.Dane">
+            <summary>
+            Dane obiektu.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.ObiektyBiznesowe.IDane`1">
+            <summary>
+            Umożliwia dostęp do danych określonego typu.
+            </summary>
+            <typeparam name="TEncja">Typ udostępnionych danych.</typeparam>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IDane`1.Wszystkie(System.String[])">
+            <summary>
+            Tworzy zapytanie o wszystkie dane określonego typu.
+            </summary>
+            <param name="razemZ">Nazwy pól z danymi powiązanymi, które zapytanie ma ładować razem z danymi właściwymi.</param>
+            <returns>Zapytanie o wszystkie dane określonego typu.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IDane`1.Nieaktywne(System.String[])">
+            <summary>
+            Tworzy zapytanie o dane nieaktywnych obiektów określonego typu.
+            </summary>
+            <param name="razemZ">Nazwy pól z danymi powiązanymi, które zapytanie ma ładować razem z danymi właściwymi.</param>
+            <returns>Zapytanie o dane skasowanych obiektów określonego typu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.ObiektyBiznesowe.IObiektyBiznesowe`2">
+            <summary>
+            Zarządza obiektami, które operują na danych określonego typu.
+            </summary>
+            <typeparam name="TEncja">Typ danych obiektu biznesowego.</typeparam>
+            <typeparam name="TDane">Typ obiektu udostępniającego dane typu takiego, jak dane obiektu biznesowego.</typeparam>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektyBiznesowe`2.Dane">
+            <summary>
+            Obiekt udostępniający dane takiego typu, na jakim operują zarządzane obiekty biznesowe.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.ObiektyBiznesowe.IObiektyBiznesowe`3">
+            <summary>
+            Zarządza obiektami określonego, jednego typu - pozwala na ich tworzenie i dostęp do ich danych.
+            </summary>
+            <typeparam name="TObiektBiznesowy">Typ obiektu biznesowego.</typeparam>
+            <typeparam name="TEncja">Typ danych obiektu biznesowego.</typeparam>
+            <typeparam name="TDane">Typ obiektu udostępniającego dane typu takiego, jak dane obiektu biznesowego.</typeparam>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektyBiznesowe`3.Utworz">
+            <summary>
+            Zwraca obiekt biznesowy dodający nowe dane.
+            Dane obiektu należy uzupełnić, po czym wywołać metodę <see cref="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zapisz"/>.
+            </summary>
+            <returns>Obiekt biznesowy dodający nowe dane.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektyBiznesowe`3.Znajdz(`1)">
+            <summary>
+            Zwraca obiekt biznesowy dla podanych danych. 
+            Zwrócony obiekt będzie te dane dodawał, jeżeli podane dane nie pochodzą z bazy danych, bądź edytował na własnej kopii, jeżeli pochodzą. 
+            Dane obiektu należy uzupełnić, po czym wywołać metodę <see cref="M:InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy.Zapisz"/>.
+            </summary>
+            <param name="encja">Dane obiektu do edycji (główna encja obiektu).</param>
+            <returns>Obiekt biznesowy z podanymi danymi.</returns>
+        </member>
+        <member name="M:InsERT.Mox.ObiektyBiznesowe.IObiektyBiznesowe`3.Znajdz(System.Linq.Expressions.Expression{System.Func{`1,System.Boolean}})">
+            <summary>
+            Zwraca obiekt biznesowy pasujący do podanego predykatu. Jeżeli nie znajdzie żadnego pasującego elementu, zwraca null. Jeżeli znajdzie wiele pasujących elementów, rzuca wyjątkiem InvalidOperationException.
+            </summary>
+            <param name="predykat">Warunek, który musi być spełniony.</param>
+            <returns>Obiekt biznesowy pasujący do podanego predykatu.</returns>
+            <exception cref="T:System.ArgumentNullException">Gdy nie podano predykatu.</exception>
+            <exception cref="T:System.InvalidOperationException">Gdy do predykatu pasuje więcej niż jeden element.</exception>
+        </member>
+        <member name="T:InsERT.Mox.ObiektyBiznesowe.IObiektUsuwany">
+            <summary>
+            Publiczny interfejs obiektów biznesowych, dostarczający informację o blokadach przy usuwaniu obiektów.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektUsuwany.MoznaUsunacInfo">
+            <summary>
+            Metoda sprawdzająca czy dany obiekt można usunąć.
+            </summary>
+            <returns>
+            Jeśli obiekt można usunąć, zwracana jest prawda.
+            Jeśli obiektu nie można usunąć funkcja zwraca false
+            wraz z co najmniej jednym powodem, dla którego nie można usunąć.
+            </returns>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektUsuwany.ObiektyPrzezKtoreZablokowaneUsuwanie">
+            <summary>
+            Metoda zwracająca obiety, które blokują możliwość usunięcia danego obiektu.
+            Wraz z każdym obiektem zwracany jest opis z dokładnym opisem blokady.
+            </summary>
+            <returns>Lista par - obiekt, przez który zablokowany i opis.</returns>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektUsuwany.DodatkoweBlokadyUsuwania">
+            <summary>
+            Metoda zwracająca kolekcje dodatkowych powodów, 
+            dla których nie można usunąć danego obiektu.
+            </summary>
+            <returns>Kolekcja dodatkowych blokad.</returns>
+        </member>
+        <member name="P:InsERT.Mox.ObiektyBiznesowe.IObiektUsuwany.PowiazaneObiektyUsuwane">
+            <summary>
+            Metoda zwracająca kolekcje powiązanych obiektów, 
+            należy usunąć.
+            </summary>
+            <returns>Kolekcja dodatkowych blokad.</returns>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.EntityReferenceExplicitlyChangedEventArgs">
+            <summary>
+            Entity reference explicitly changed event arguments
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.EntityReferenceExplicitlyChangedEventArgs.#ctor(System.String,InsERT.Mox.DataAccess.RelationshipChangeKind,System.Object,System.Object,System.Object)">
+            <summary>
+            Initializes a new instance of the RelationshipChangedEventArgs class using change properties.
+            </summary>
+            <param name="navigationPropertyName">Property name.</param>
+            <param name="kind">Kind of change.</param>
+            <param name="relatedEntity">Related object (entity).</param>
+            <param name="referencedObjectAfterChange">Referenced object before change.</param>
+            <param name="referencedObjectBeforeChange">Referenced object after change.</param>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.EntityReferenceExplicitlyChangedEventArgs.IsTemporaryUnset">
+            <summary>
+            Is reference temporarily unset before changing to new object.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.EntityReferenceExplicitlyChangedEventArgs.ReferencedObjectBeforeChange">
+            <summary>
+            Referenced object before change
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.EntityReferenceExplicitlyChangedEventArgs.ReferencedObjectAfterChange">
+            <summary>
+            Referenced object after change
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IProfilingSupport">
+            <summary>
+            Encje, które wspierają profilowanie danych przy pomocy rozszerzeń typu IWarunekFiltrujacyDane implementują ten interfejs.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IEntityConnectionTransactionScope.EntityConnection">
+            <summary>
+            Połączenie EntityConnection obsługujące bieżący zakres transakcji
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IEntityConnectionTransactionScope.StoreConnection">
+            <summary>
+            Połączenie do bazy danych obsługujące bieżący zakres transakcji
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IEntityConnectionTransactionScope.Complete">
+            <summary>
+            Zatwierdza zmiany wprowadzone w bieżącym zakresie transakcji
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IGallerySupport">
+            <summary>
+            Ujednolica dostęp do galerii zdjęć z poziomu encji w modelu danych.
+            Encje, które wspierają galerię, implementują ten interfejs
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IGallerySupport.GetGallery">
+            <summary>
+            Kolekcja z powiązanymi zdjęciami
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.RelationshipChangeKind">
+            <summary>
+            Relationship change kind
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.DataAccess.RelationshipChangeKind.RelatedObjectSet">
+            <summary>
+            Related object reference set
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.DataAccess.RelationshipChangeKind.RelatedObjectUnset">
+            <summary>
+            Related object reference cleared
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.DataAccess.RelationshipChangeKind.RelatedObjectRefreshed">
+            <summary>
+            Related object reference changed
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.DataAccess.RelationshipChangeKind.RelatedCollectionAddedTo">
+            <summary>
+            Related object reference added to collection
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.DataAccess.RelationshipChangeKind.RelatedCollectionRemovedFrom">
+            <summary>
+            Related object reference removed from collection
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.DataAccess.RelationshipChangeKind.RelatedCollectionRefreshed">
+            <summary>
+            Related object reference changed
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.RelationshipChangedEventArgs">
+            <summary>
+            Relationship changed event arguments
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipChangedEventArgs.NavigationPropertyName">
+            <summary>
+            Changed property name.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipChangedEventArgs.Kind">
+            <summary>
+            Kind of change.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipChangedEventArgs.RelatedObject">
+            <summary>
+            Change-related object
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipChangedEventArgs.RelatedCollection">
+            <summary>
+            Change-related collection
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipChangedEventArgs.IsExplicit">
+            <summary>
+            Denotes explicit change of property value.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.RelationshipChangedEventArgs.#ctor(System.String,InsERT.Mox.DataAccess.RelationshipChangeKind,System.Object,System.Collections.IEnumerable,System.Boolean)">
+            <summary>
+            Initializes a new instance of the RelationshipChangedEventArgs class using change properties.
+            </summary>
+            <param name="navigationPropertyName">Property name.</param>
+            <param name="kind">Kind of change.</param>
+            <param name="relatedEntity">Related object (entity).</param>
+            <param name="relatedCollection">Related collction.</param>
+            <param name="isExplicit"><c>true</c> means explicit change.</param>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.DataAccessException">
+            <summary>
+            Bazowa klasa dla wyjątków dostępu do danych.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.DataAccessException.#ctor(System.String)">
+            <param name="message">Treść komunikatu.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.DataAccessException.#ctor(System.String,System.Exception)">
+            <param name="message">Treść komunikatu.</param>
+            <param name="inner">Wyjątek wewnętrzny.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.DataAccessException.#ctor(System.Exception)">
+            <param name="inner">Wyjątek wewnętrzny.</param>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IGetRelationshipTraversalInfo">
+            <summary>
+            Interfejs obiektu z danymi umożliwiający uzyskanie informacji o przejściach do innych obiektów 
+            z danymi przez zamodelowane związki.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IGetRelationshipTraversalInfo.RelationshipTraversalInfo">
+            <summary>
+            Sekwencja obiektów z informacjami o przejściach między obiektami z danymi 
+            z SourceType takim, jak obiekt implementujący ten interfejs.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.ISponsoredObject">
+            <summary>
+            Interfejs obiektu zawierającego trwałe dane, zmiany na których przechwytywane są przez inny obiekt.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.ISponsoredObject.SetModificationSponsor(System.Object)">
+            <summary>
+            Własność umożliwiająca powiązanie obiektu z danymi z obiektem operującym na danych.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.ObjectAlreadySponsoredException">
+            <summary>
+            Wyjątek rzucany przy próbie przyłączanie obiektu z danymi do obiektu operującego na danych w przypadku,
+            gdy obiekt z danymi jest już przyłączony do innego obiektu kontrolującego modyfikację danych.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.ObjectAlreadySponsoredException.DataObject">
+            <summary>
+            Obiekt z danymi.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.ObjectAlreadySponsoredException.Sponsor">
+            <summary>
+            Obiekt operujący na danych już przyłączony do obiektu z danymi.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.ObjectAlreadySponsoredException.#ctor(System.Object,System.Object)">
+            <param name="sponsoredEntity">Sponsorowana encja.</param>
+            <param name="sponsor">Obiekt biznesowy sponsorujący encję.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.ObjectAlreadySponsoredException.#ctor(System.String)">
+            <param name="message">Treść komunikatu.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.ObjectAlreadySponsoredException.#ctor(System.String,System.Exception)">
+            <param name="message">Treść komunikatu.</param>
+            <param name="inner">Wewnętrzny wyjątek.</param>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.RelationshipTraversalInfo">
+            <summary>
+            Obiekt zawierający informacje pozwalające na szybkie "przechodzenie" przez związki między encjami reprezentowanymi
+            przez obiekty zawierające dane. Pojedynczy obiekt zawiera informacje o przejściu przez jeden związek z jednej strony na drugą.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.SourceType">
+            <summary>
+            Typ obiektu z danymi z instancji którego następuje przejście.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.TargetType">
+            <summary>
+            Typ obiektu z danymi do instancji którego następuje przejście.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.NavigationPropertyName">
+            <summary>
+            Nazwa własności obiektu typu SourceType, przez którą następuje przejście.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.Navigate">
+            <summary>
+            Funkcja, która "przechodzi" przez związek od instancji obiektu SourceType do instancji bądź kolekcji 
+            obiektów typu TargetType; inaczej: dla instancji obiektu typu SourceType zwraca instancję bądź kolekcję
+            obiektów typu TargetType uzyskaną poprzez odczyt własności NavigationPropertyName.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.TargetIsCollection">
+            <summary>
+            Czy NavigationPropertyName w SourceType prowadzi do kolekcji obiektów typu TargetType, jeżeli nie - prowadzi do instancji.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.IsDeletedTargetAllowed">
+            <summary>
+            Czy instancja, do której nastepuje przejście może być w koszu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.RelationshipTraversalInfo.ReverseInfo">
+            <summary>
+            Obiekt reprezentujący przejście odwrotne (z TargetType do SourceType).
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.RelationshipTraversalInfo.CreatePair(System.Type,System.String,System.Boolean,System.Func{System.Object,System.Object},System.Boolean,System.Type,System.String,System.Boolean,System.Func{System.Object,System.Object},System.Boolean,InsERT.Mox.DataAccess.RelationshipTraversalInfo@,InsERT.Mox.DataAccess.RelationshipTraversalInfo@)">
+            <summary>
+            Dla jednego związku tworzy 1-2 obiekty RelationshipTraversalInfo. Przynajmniej jeden typ reprezentujący encje
+            uczestniczące w związku musi mieć własność nawigacyjną - czyli przynajmniej jedna z par parametrów 
+            (propFrom0To1, navFrom0To1), (propFrom1To0, navFrom1To0) musi być podana.
+            </summary>
+            <param name="type0">typ pierwszego z obiektów reprezentujących encje uczestniczące w związku; wymagany</param>
+            <param name="propFrom0To1">własność typu type0 prowadząca do typu type1; null jeżeli type0 nie ma takiej własności</param>
+            <param name="is1Collection">czy propFrom0To1 jest kolekcją</param>
+            <param name="navigateFrom0To1">funkcja nawigująca z type0 do type1 przez propFrom0To1; null, jeżeli nie jest to możliwe</param>
+            <param name="type1">typ drugiego z obiektów reprezentujących encje uczestniczące w związku; wymagany</param>
+            <param name="propFrom1To0">własność typu type1 prowadząca do typu type0; null jeżeli type1 nie ma takiej własności</param>
+            <param name="is0Collection">czy propFrom1To0 jest kolekcją</param>
+            <param name="navigateFrom1To0">funkcja nawigująca z type1 do type0 przez propFrom1To0; null, jeżeli nie jest to możliwe</param>
+            <param name="from0To1">gotowy obiekt opisujący przejście z type0 do type1; null, jeżeli nie ma takiego przejścia</param>
+            <param name="from1To0">gotowy obiekt opisujący przejście z type1 do type0; null, jeżeli nie ma takiego przejścia</param>
+            <param name="is0DeletedAllowed">czy pierwszy obiekt może znajdować się w koszu.</param>
+            <param name="is1DeletedAllowed">czy drugi obiekt może znajdować się w koszu.</param>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.UnsponsoredModificationException">
+            <summary>
+            Wyjątek rzucany, gdy wykryta zostanie modyfikacja obiektu z danymi, a wymagane jest
+            powiązanie obiektu z danymi z obiektem operującym na danych.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.UnsponsoredModificationException.Entity">
+            <summary>
+            Obiekt z danymi.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.UnsponsoredModificationException.PropertyName">
+            <summary>
+            Nazwa modyfikowanej własności obiektu z danymi.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.UnsponsoredModificationException.#ctor(System.Object,System.String)">
+            <summary>
+            Tworzy nową instancję wyjątku rzucanego, gdy wykryta zostanie modyfikacja obiektu z danymi, a wymagane jest
+            powiązanie obiektu z danymi z obiektem operującym na danych.
+            </summary>
+            <param name="entity">Obiekt z danymi.</param>
+            <param name="propertyName">Nazwa modyfikowanej własności obiektu z danymi.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.UnsponsoredModificationException.#ctor(System.String)">
+            <param name="message">Treść komunikatu.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.UnsponsoredModificationException.#ctor(System.String,System.Exception)">
+            <param name="message">Treść komunikatu.</param>
+            <param name="inner">Wewnętrzny wyjątek.</param>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.OptimisticConcurrencyException">
+            <summary>
+            Wyjątek rzucany, gdy wykryte zostanie, że zapisywane dane zostały zmienione "w tle".
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.OptimisticConcurrencyException.#ctor(System.Exception)">
+            <param name="inner">Wewnętrzny wyjątek.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.OptimisticConcurrencyException.#ctor(System.String)">
+            <param name="message">Treść komunikatu.</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.OptimisticConcurrencyException.#ctor(System.String,System.Exception)">
+            <param name="message">Treść komunikatu.</param>
+            <param name="inner">Wewnętrzny wyjątek.</param>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IDataEventsSink">
+            <summary>
+            Interfejs obiektu notyfikowanego o zmianach w trwałych danych.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IIdentifiable">
+            <summary>
+            Interfejs obiektu posiadającego identyfikator.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IIdentifiable.Id">
+            <summary>
+            Identyfikator obiektu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IIdentifiable.IdType">
+            <summary>
+            Typ identyfikatora obiektu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IIdentifiable.HasPersistentId">
+            <summary>
+            Czy identyfikator obiektu jest zapisywany.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IIdentifiable`1">
+            <summary>
+            Interfejs obiektu posiadającego identyfikator.
+            </summary>
+            <typeparam name="TId">typ identyfikatora</typeparam>
+        </member>
+        <member name="P:InsERT.Mox.DataAccess.IIdentifiable`1.Id">
+            <summary>
+            Identyfikator obiektu.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.DataAccess.IRepository`1">
+            <summary>
+            Interfejs obiektu udostępniającego dane określonego typu.
+            </summary>
+            <typeparam name="TData">typ udostępnianych danych</typeparam>
+            <typeparam name="TId">typ identyfikatora udostępnianych danych</typeparam>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.Insert(`0)">
+            <summary>
+            Oznacza podany obiekt z danymi do dodania.
+            </summary>
+            <param name="entity">obiekt z danymi</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.Delete(`0)">
+            <summary>
+            Oznacza podany obiekt z danymi do usunięcia.
+            </summary>
+            <param name="entity">obiekt z danymi</param>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.UpdateWith(`0)">
+            <summary>
+            Aktualizuje dane zarządzanego obiektu z danymi o identyfikatorze takim samym, jak podany obiekt z danymi danymi podanego obiektu
+            </summary>
+            <param name="modified">obiekt ze zmienionymi danymi</param>
+            <returns>zarządzany obiekt ze zmienionymi danymi</returns>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.StoreQueryRaw(System.String[])">
+            <summary>
+            Zwraca wykonywane w źródle danych zapytanie zwracające wszystkie zarządzane obiekty z danymi.
+            </summary>
+            <param name="eagerLoadPaths">ścieżki własności nawigacyjnych do obiektów powiązanych, które mają być załadowane razem z obiektem z danymi</param>
+            <returns>wykonywane w źródle danych zapytanie zwracające wszystkie zarządzane obiekty z danymi</returns>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.StoreQuery(System.String[])">
+            <summary>
+            Zwraca wykonywane w źródle danych zapytanie zwracające obiekty z danymi bez skasowanych.
+            </summary>
+            <param name="eagerLoadPaths">ścieżki własności nawigacyjnych do obiektów powiązanych, które mają być załadowane razem z obiektem z danymi</param>
+            <returns>wykonywane w źródle danych zapytanie zwracające obiekty z danymi bez skasowanych</returns>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.StoreQueryRecycleBin(System.String[])">
+            <summary>
+            Zwraca wykonywane w źródle danych zapytanie zwracające skasowane obiekty z danymi.
+            </summary>
+            <param name="eagerLoadPaths">ścieżki własności nawigacyjnych do obiektów powiązanych, które mają być załadowane razem z obiektem z danymi</param>
+            <returns>wykonywane w źródle danych zapytanie zwracające skasowane obiekty z danymi</returns>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`1.Loaded(InsERT.Mox.Work.DataStates)">
+            <summary>
+            Zwraca sekwencję wszystkich zarządzanych obiektów z danymi, które zostały załadowane w ramach operacji biznesowej, w której uczestniczy repozytorium.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.DataAccess.IRepository`2.FindById(`1)">
+            <summary>
+            Zwraca obiekt z danymi o podanym identyfikatorze.
+            </summary>
+            <param name="id">identyfikator</param>
+            <returns>obiekt z danymi</returns>
+        </member>
+        <member name="M:InsERT.Mox.Exceptions.ExceptionExtensions.PreserveStackTrace(System.Exception)">
+            <summary>
+            Umożliwia ponowne rzucenie podanego wyjątku z oryginalnym StackTrace
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Exceptions.ExceptionExtensions.ThrowWithStackTrace(System.Exception)">
+            <summary>
+            Rzuca podany wyjątek, zachowując oryginalny StackTrace
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Exceptions.ExceptionExtensions.ThrowInnerExceptionWithStackTrace(System.Exception)">
+            <summary>
+            Rzuca InnerException podanego wyjątku (lub dany wyjątek, gdy InnerException == null), zachowując oryginalny StackTrace
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Formatting.DescriptiveBoolean">
+            <summary>
+            Struktura do przechowywania wartości typu boolowskiego wraz z opisem.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Formatting.DescriptiveBoolean.True">
+            <summary>
+            Reprezentuje wartość PRAWDA. Tylko do odczytu.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Formatting.DescriptiveBoolean.False">
+            <summary>
+            Reprezentuje wartość FAŁSZ. Tylko do odczytu.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Formatting.DescriptiveBoolean.Value">
+            <summary>
+            Przechowywana wartość boolowska.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Formatting.DescriptiveBoolean.Description">
+            <summary>
+            Opis przechowywanej wartości.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.#ctor(System.Boolean,System.String)">
+            <summary>
+            Konstruktor pozwalający na nadanie wartości i opisu.
+            </summary>
+            <param name="value">Wartość, którą ma zostać zainicjowany.</param>
+            <param name="description">Opis wartości.</param>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_Implicit(System.Boolean)~InsERT.Mox.Formatting.DescriptiveBoolean">
+            <summary>
+            Konwertuje <c>bool</c> na <c>DescriptiveBoolean</c>.
+            </summary>
+            <param name="x">Wartość boolowska.</param>
+            <returns><c>DescriptiveBoolean.True</c> lub <c>DescriptiveBoolean.False</c> w zależności od parametru wejściowego.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_Implicit(InsERT.Mox.Formatting.DescriptiveBoolean)~System.Boolean">
+            <summary>
+            Konwertuje <c>DescriptiveBoolean</c> na <c>bool</c>. Wydobywa przechowywaną wartość boolowską.
+            </summary>
+            <param name="x"><c>DescriptiveBoolean</c>, którego wartość boolowska ma zostać wydobyta.</param>
+            <returns>Przechowywana wartość boolowska z <c>DescriptiveBoolean.Value</c>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_Equality(InsERT.Mox.Formatting.DescriptiveBoolean,InsERT.Mox.Formatting.DescriptiveBoolean)">
+            <summary>
+            Porównuje dwie wartości typu <c>DescriptiveBoolean</c> i określa, czy są równe, na podstawie przechowywanej wartości boolowskiej.
+            </summary>
+            <param name="x">Pierwszy parametr porównania.</param>
+            <param name="y">Drugi parametr porównania.</param>
+            <returns><c>True</c>, jeśli x ma taką samą wartość boolowską jak y, w przeciwnym przypadku <c>false</c>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_Inequality(InsERT.Mox.Formatting.DescriptiveBoolean,InsERT.Mox.Formatting.DescriptiveBoolean)">
+            <summary>
+            Porównuje dwie wartości typu <c>DescriptiveBoolean</c> i określa, czy są różne, na podstawie przechowywanej wartości boolowskiej.
+            </summary>
+            <param name="x">Pierwszy parametr porównania.</param>
+            <param name="y">Drugi parametr porównania.</param>
+            <returns><c>True</c>, jeśli x ma inną wartość boolowską niż y, w przeciwnym przypadku <c>false</c>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_LogicalNot(InsERT.Mox.Formatting.DescriptiveBoolean)">
+            <summary>
+            Zwraca zanegowaną wartość z tym samym opisem.
+            </summary>
+            <param name="x">Wartość do zanegowania.</param>
+            <returns>Nowy obiekt o przeciwnej wartości boolowskiej, lecz o tym samym opisie.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_True(InsERT.Mox.Formatting.DescriptiveBoolean)">
+            <summary>
+            Określa, czy przechowywana wartość to logiczna PRAWDA.
+            </summary>
+            <param name="x">Wartość do sprawdzenia.</param>
+            <returns><c>True</c> jeśli przechowywana wartość to logiczna PRAWDA, w przeciwnym przypadku <c>false</c>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.op_False(InsERT.Mox.Formatting.DescriptiveBoolean)">
+            <summary>
+            Określa, czy przechowywana wartość to logiczny FAŁSZ.
+            </summary>
+            <param name="x">Wartość do sprawdzenia.</param>
+            <returns><c>True</c> jeśli przechowywana wartość to logiczny FAŁSZ, w przeciwnym przypadku <c>false</c>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.Equals(System.Object)">
+            <summary>
+            Określa, czy ten obiekt i podany, który też musi być typu <c>DescriptiveBoolean</c> mają tą samą wartość logiczną.
+            </summary>
+            <param name="o">Obiekt do porównania.</param>
+            <returns><c>True</c>, jeśli oba obiekty przechowują taką samą wartość boolowską, w przeciwnym przypadku <c>false</c>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.GetHashCode">
+            <summary>
+            Zwraca hash code dla tego obiektu.
+            </summary>
+            <returns>Wartość typu <c>Int32</c>, która jest hash codem tego obiektu.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.Error(System.String)">
+            <summary>
+            Zwraca nowy obiekt oznaczający porażkę (FAŁSZ), z zadanym opisem.
+            </summary>
+            <param name="description">Opis.</param>
+            <returns>Nowy obiekt typu <c>DescriptiveBoolean</c> przechowujący wartość FAŁSZ z podanym opisem.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.DescriptiveBoolean.Success(System.String)">
+            <summary>
+            Zwraca nowy obiekt oznaczający sukces (PRAWDA), z zadanym opisem.
+            </summary>
+            <param name="description">Opis.</param>
+            <returns>Nowy obiekt typu <c>DescriptiveBoolean</c> przechowujący wartość PRAWDA z podanym opisem.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Formatting.EnumDescriptionAttribute">
+            <summary>
+            Typ umożliwiający opisywanie wartości w typach wyliczeniowych atrybutami o różnych wartościach.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Formatting.EnumDescriptionAttribute.#ctor(System.String,System.String)">
+            <summary>
+            Konstruktor ustawiający nazwę atrybutu i jego wartość.
+            </summary>
+            <param name="property"></param>
+            <param name="value"></param>
+        </member>
+        <member name="P:InsERT.Mox.Formatting.EnumDescriptionAttribute.Property">
+            <summary>
+            Nazwa atrybutu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Formatting.EnumDescriptionAttribute.Value">
+            <summary>
+            Wartość atrybutu.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Parameters.IParameterChangeNotificationConfiguration">
+            <summary>
+            Konfiguracja zachowania po otrzymaniu powiadomienia push o zmianie wartości parametru.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Parameters.IParameterChangeNotificationConfiguration.ParameterChangedEvent">
+            <summary>
+            Typ zdarzenia aplikacyjnego, jakie zostanie rozesłane po odebraniu powiadomienia push o zmianie. Jeśli jest nullem, to zdarzenie nie zostanie wysłane.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Parameters.IParameterChangeNotificationConfiguration.ParameterName">
+            <summary>
+            Nazwa parametru (powinna być taka sama jak w definicji parametru).
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Parameters.IParameterChangeNotificationConfigurations">
+            <summary>
+            Zbiór konfiguracji powiadomień dla parametrów online.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParameterChangeNotificationConfigurations.GetConfiguration(System.String)">
+            <summary>
+            Podaje konfigurację dla parametru po podanej nazwie.
+            </summary>
+            <param name="parameterName">Nazwa parametru</param>
+            <returns>Konfiguracja dla pojedynczego parametru</returns>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParameterChangeNotificationConfigurations.Register(InsERT.Mox.Parameters.IParameterChangeNotificationConfiguration)">
+            <summary>
+            Rejestruje podaną konfigurację.
+            </summary>
+            <param name="parameterConfiguration">Konfiguracja dla pojedynczego parametru</param>
+        </member>
+        <member name="T:InsERT.Mox.Parameters.IParameterDefinition`1">
+            <summary>
+            Definicja parametru online.
+            </summary>
+            <typeparam name="T">Typ parametru online.</typeparam>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParameterDefinition`1.ProvideDefaultValue">
+            <summary>
+            Zwraca domyślną wartość parametru.
+            </summary>
+            <returns>Domyślna wartość parametru.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParameterDefinition`1.ConvertValue(System.String)">
+            <summary>
+            Konwertuje pobraną wartość na spodziewany typ parametru.
+            </summary>
+            <param name="value">Wartość parametru w formie napisu.</param>
+            <returns>Wartość parametru.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Parameters.IParameterDefinition">
+            <summary>
+            Definicja parametru online.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Parameters.IParameterDefinition.Scope">
+            <summary>
+            Nazwa grupy parametrów.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Parameters.IParameterDefinition.Name">
+            <summary>
+            Nazwa parametru.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Parameters.IParametersClient">
+            <summary>
+            Klient służący do pobierania aktualnych wartości parametrów online.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParametersClient.GetParameterValue``1(InsERT.Mox.Parameters.IParameterDefinition{``0},InsERT.WebServices.Client.Parameters.RetrievePriority,System.Boolean)">
+            <summary>
+            Zwraca aktualną wartość parametru wg podanej definicji.
+            W pierwszej kolejności sprawdza, czy aktualna wartość znajduje się w bazie danych.
+            Jeśli jest nieaktualna, to pobierana jest wartość z serwisu parametrów online.
+            Jeśli oba te źródła zawiodą zwracana jest wartość domyślna.
+            </summary>
+            <typeparam name="T">Typ pobieranego parametru.</typeparam>
+            <param name="parameterDefinition">Definicja pobieranego parametru.</param>
+            <param name="priority">Priorytet pobrania parametru</param>
+            <param name="forceUpdate">Czy wymusić pobranie aktualnej wersji z serwisu parametrów online mimo aktualnej wartości w bazie.</param>
+            <returns></returns>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParametersClient.ReadLocalParameterValue``1(InsERT.Mox.Parameters.IParameterDefinition{``0})">
+            <summary>
+            Zwraca aktualnie zcache'owaną wartość parametru w bazie danych lub wartość domyślną, jeśli nie ma takiej wartości.
+            </summary>
+            <typeparam name="T">Typ pobieranego parametru.</typeparam>
+            <param name="parameterDefinition">Definicja pobieranego parametru.</param>
+            <returns>Wartość parametru.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Parameters.IParametersClient.TryDownloadValue``1(InsERT.Mox.Parameters.IParameterDefinition{``0},``0@,InsERT.WebServices.Client.Parameters.RetrievePriority)">
+            <summary>
+            Próbuje pobrać aktualną wartość parametru z serwisu parametrów online.
+            </summary>
+            <typeparam name="T">Typ pobieranego parametru.</typeparam>
+            <param name="parameterDefinition">Definicja pobieranego parametru.</param>
+            <param name="downloadedValue">Wartość pobranego parametru.</param>
+            <param name="priority">Priorytet pobrania parametru</param>
+            <returns>True, jeśli udało się pobrać parametr, Komunikat błędu w przeciwnym wypadku.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Product.IProductContext">
+            <summary>
+            Kontekst aktywnego produktu moriowego
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Product.IProductContext.ProductId">
+            <summary>
+            Identyfikator uruchomionego produktu
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Product.IProductContext.AdditionalProductIds">
+            <summary>
+            Identyfikatory dodatkowych produktów
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Product.ProductContextExtensions">
+            <summary>
+            Metody rozszerzające <see cref="T:InsERT.Mox.Product.IProductContext"/>
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductContextExtensions.GetAllProductIds(InsERT.Mox.Product.IProductContext)">
+            <summary>
+            Tworzy kolekcję zawierającą identyfikator uruchomionego produktu oraz dodatkowych produktów.
+            </summary>
+            <param name="productContext">Kontekst aktywnego produktu moriowego</param>
+            <returns>Kolekcja zawierająca identyfikator uruchomionego produktu oraz dodatkowych produktów.</returns>
+            <exception cref="T:System.ArgumentNullException">Wyrzucany, gdy <paramref name="productContext"/> jest <c>null</c>.</exception>
+        </member>
+        <member name="P:InsERT.Mox.Product.ProductHelpers.MainProducts">
+            <summary>
+            Główne produkty (ich skróty pojawiają się na pulpicie Windows po zainstalowaniu nexo).
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Product.ProductHelpers.KsefProducts">
+            <summary>
+            Produkty, w których obsługiwany jest KSeF.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Product.ProductHelpers.KsefWysylkaProducts">
+            <summary>
+            Produkty, w których obsługiwana jest wysyłka do KSeF (KSeF OUT).
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Product.ProductHelpers.KsefOdbiorProducts">
+            <summary>
+            Produkty, w których obsługiwany jest odbiór z KSeF (KSeF IN).
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.HasModules(InsERT.Mox.Product.ProductId)">
+            <summary>
+            Sprawdza czy dany produkt posiada moduły.
+            </summary>
+            <param name="productId">Produkt</param>
+            <returns><c>true</c> jeśli produkt posiada moduły; <c>false</c> w przeciwnym wypadku.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.GetModules(InsERT.Mox.Product.ProductId)">
+            <summary>
+            Zwraca moduły dostępne w ramach danego produktu.
+            </summary>
+            <param name="productId">Produkt</param>
+            <returns>Słownik modułów, gdzie klucz to identyfikator modułu, a wartość to nazwa modułu. Zwraca pusty słownik, gdy produkt nie posiada modułów.</returns>
+        </member>
+        <member name="P:InsERT.Mox.Product.ProductHelpers.ProPlusModules">
+            <summary>
+            Zwraca moduły dostępne w ramach Pakietu PRO+. Kluczem jest identyfikator modułu, a wartością opis modułu w mianowniku.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductHelpers.OpisProPlusWMianowniku">
+            <summary>
+            Zwraca opis Pakietu PRO+ w mianowniku.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductHelpers.OpisProPlusWDopelniaczu">
+            <summary>
+            Zwraca opis Pakietu PRO+ w dopełniaczu.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductHelpers.OpisProPlusWNarzedniku">
+            <summary>
+            Zwraca opis Pakietu PRO+ w narzędniku.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductHelpers.OpisProPlusWMiejscowniku">
+            <summary>
+            Zwraca opis Pakietu PRO+ w miejscowniku.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductHelpers.RegulaminLinkProPlus">
+            <summary>
+            Zwraca link przekierowujący do regulaminu Pakietu PRO+.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.OpisModuluProPlusWMianowniku(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca opis modułu PRO+ w mianowniku.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Opis modułu.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.OpisModuluProPlusWDopelniaczu(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca opis modułu PRO+ w dopełniaczu.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Opis modułu.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.OpisModuluProPlusWBierniku(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca opis modułu PRO+ w bierniku.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Opis modułu.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.OpisModuluProPlusWNarzedniku(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca opis modułu PRO+ w narzędniku.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Opis modułu.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.OpisModuluProPlusWMiejscowniku(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca opis modułu PRO+ w miejscowniku.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Opis modułu.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.EPomocLinkModuluProPlus(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca link przekierowujący do ePomocy modułu PRO+.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Link przekierowujący</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="M:InsERT.Mox.Product.ProductHelpers.YouTubeLinkModuluProPlus(InsERT.Mox.Product.ProPlusModuleId)">
+            <summary>
+            Zwraca link przekierowujący do filmiku instruktażowego modułu PRO+.
+            </summary>
+            <param name="moduleId">Moduł</param>
+            <returns>Link przekierowujący</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">Wywoływany, gdy <paramref name="moduleId"/> jest spoza zakresu.</exception>
+        </member>
+        <member name="T:InsERT.Mox.Product.ProductId">
+            <summary>
+            Identyfikatory produktów 
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Product.ObsoleteProductId">
+            <summary>
+            Identyfikatory produktów wycofanych
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Product.ProductLevelId">
+            <summary>
+            Identyfikator poziomu produktu (dopuszczalny zakres wartości: 0..15)
+            </summary>
+            <remarks>
+            Dodanie nowych poziomów może wymagać aktualizacji metody ProductLevelIdExtensions.Compare
+            </remarks>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductLevelId.Standard">
+            <summary>
+            Linia standard
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductLevelId.Premium">
+            <summary>
+            Linia PRO
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Product.ProductLevelId.ERP">
+            <summary>
+            Linia ERP
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Runtime.IInjectionScope">
+            <summary>
+            Interfejs obiektu, który służy za zakres dla tworzenia obiektów przez IInjectionContainer
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Runtime.IInjectionScope.ScopedContainer">
+            <summary>
+            Miejsce dla potomnego obiektu typu <see cref="T:InsERT.Mox.Runtime.IInjectionContainer"/>
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Runtime.IInjectionContainer">
+            <summary>
+            Interfejs obiektu, który potrafi tworzyć i konfigurować instancje dowolnych innych obiektów według skonfigurowanych planów.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Runtime.IInjectionContainer.CreateChildContainer(InsERT.Mox.Runtime.IInjectionScope)">
+            <summary>
+            Tworzy kontener potomny - może to służyć do tworzenia obiektów w określonych zakresach.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:InsERT.Mox.Runtime.InjectionContainerExtensions.ForScope(InsERT.Mox.Runtime.IInjectionContainer,InsERT.Mox.Runtime.IInjectionScope)">
+            <summary>
+            Dla danego obiektu reprezentującego zakres, tworzy nowy potomny <see cref="T:InsERT.Mox.Runtime.IInjectionContainer"/> i ustawia go w zakresie, 
+            bądź zwraca już ustawiony.
+            </summary>
+            <param name="injectionContainer">kontener bazowy</param>
+            <param name="scope">zakres</param>
+            <returns>kontener potomny dla podanego zakresu</returns>
+        </member>
+        <member name="F:InsERT.Mox.Security.OgolneCheckpoints.KonfiguracjaSystemu">
+            <summary>Checkpoint sprawdzany przy wywoływaniu konfiguracji systemu.</summary>
+        </member>
+        <member name="F:InsERT.Mox.Security.OgolneCheckpoints.UstawianieWidocznosciPol">
+            <summary>
+            Checkpoint sprawdzany przy ustawianiu widoczności pól na formatkach.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Security.RightsCheckScope">
+            <summary>
+            Flagi zakresu kontroli uprawnień
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Security.CheckpointException">
+            <summary>
+            Wyjątek checkpointa rzucany w wypadku błędnej lub negatywnej weryfikacji uprawnień.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Security.CheckpointException.ContextObject">
+            <summary>
+            Obiekt, w kontekście którego były sprawdzane uprawnienia.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Security.CheckpointException.CheckpointId">
+            <summary>
+            Identyfikator checkpointa, w którym były sprawdzane uprawnienia.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Security.ICheckpointController">
+            <summary>
+            Interfejs kontrolera checkpointów (uprawnień)
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Check(System.Object,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            W razie niepowodzenia rzuca wyjątek <see cref="T:InsERT.Mox.Security.CheckpointException"/>.
+            </summary>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Check(InsERT.Mox.Security.RightsCheckScope,System.Object,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            W razie niepowodzenia rzuca wyjątek <see cref="T:InsERT.Mox.Security.CheckpointException"/>.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Succeeded(System.Object,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>false</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Succeeded(InsERT.Mox.Security.RightsCheckScope,System.Object,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>false</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Succeeded(System.Object,System.Boolean,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="withNoRightsPrefix">znacznik określa, czy do opisu ma zostać dodany prefiks "Brak uprawnień:"</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>false</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Succeeded(InsERT.Mox.Security.RightsCheckScope,System.Object,System.Boolean,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="withNoRightsPrefix">znacznik określa, czy do opisu ma zostać dodany prefiks "Brak uprawnień:"</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>false</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Failed(System.Object,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>true</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Failed(InsERT.Mox.Security.RightsCheckScope,System.Object,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param> 
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>true</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Failed(System.Object,System.Boolean,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="withNoRightsPrefix">znacznik określa, czy do opisu ma zostać dodany prefiks "Brak uprawnień:"</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>true</code>.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Security.ICheckpointController.Failed(InsERT.Mox.Security.RightsCheckScope,System.Object,System.Boolean,System.Enum[])">
+            <summary>
+            Sprawdza uprawnienia zalogowanych użytkowników dla podanego obiektu w określonych checkpointach.
+            </summary>
+            <param name="rightsCheckScope">Zakres kontroli uprawnień</param> 
+            <param name="contextObject">Obiekt, w kontekście którego kontrolowane są uprawnienia</param>
+            <param name="withNoRightsPrefix">znacznik określa, czy do opisu ma zostać dodany prefiks "Brak uprawnień:"</param>
+            <param name="checkpointIds">Lista identyfikatorów checkpointów</param>
+            <returns>W razie niepowodzenia zwraca wartość <code>true</code>.</returns>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.KsiegowoscWspolne.VZ">
+            <summary>
+            Dokument zbiorczy sprzedaży VAT
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.KL">
+            <summary>
+            Klienci
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.ZW">
+            <summary>
+            Zestawy klientów
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.DI">
+            <summary>
+            Działania
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.CL">
+            <summary>
+            Kalendarz
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.RJ">
+            <summary>
+            Rezerwacje zasobów
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.GY">
+            <summary>
+            Zasoby
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.CO">
+            <summary>
+            Procesy ofertowe
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.OY">
+            <summary>
+            Oferty
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.EM">
+            <summary>
+            Klient poczty
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.CN">
+            <summary>
+            Cenniki
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.MY">
+            <summary>
+            SMS
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.PD">
+            <summary>
+            Pobieranie danych klienta
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.IP">
+            <summary>
+            Portale i aplikacje
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.ZX">
+            <summary>
+            Zlecenia serwisowe
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.CE">
+            <summary>
+            Cele przetwarzania
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.CZ">
+            <summary>
+            Rejestr czynności przetwarzania
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.UX">
+            <summary>
+            Umowy klienckie
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.AI">
+            <summary>
+            Automatyzacja
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Telemetry.Nexo.CRM.Komentarze">
+            <summary>
+            Komentarze
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetProperty(System.String,System.Int32)">
+            <summary>
+            Dodaje lub aktualizuje istniejącą właściwość.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetProperty(System.String,System.Int64)">
+            <summary>
+            Dodaje lub aktualizuje istniejącą właściwość.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetProperty(System.String,System.Double)">
+            <summary>
+            Dodaje lub aktualizuje istniejącą właściwość.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetProperty(System.String,System.Boolean)">
+            <summary>
+            Dodaje lub aktualizuje istniejącą właściwość.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetProperty(System.String,System.DateTime)">
+            <summary>
+            Dodaje lub aktualizuje istniejącą właściwość.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetProperty(System.String,System.String)">
+            <summary>
+            Dodaje lub aktualizuje istniejącą właściwość.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="M:InsERT.Mox.Telemetry.TelemetryRecord.SetAndConvertProperty(System.String,System.Object)">
+            <summary>
+            Konwertuje warość na jeden z obsługiwanych typów i dodaje lub aktualizuje istniejącą właściwość. 
+            UWAGA: Jeśli typ wartości nie należy do grupy obsługiwanych typów, to podana wartość zostanie wysłana jako string.
+            </summary>
+            <param name="propertyName">Nazwa.</param>
+            <param name="value">Wartość.</param>
+        </member>
+        <member name="T:InsERT.Mox.Desciptions.IDescriptions">
+            <summary>
+            Interfejs opisujący coś, np. konfigurację grida
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Desciptions.IDescriptions.HasDescriptions">
+            <summary>
+            Czy element ma opis
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Desciptions.IDescriptions.GetDescriptions">
+            <summary>
+            Szczegóły opisu
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="T:InsERT.Mox.Desciptions.IDescription">
+            <summary>
+            Element opisu obiektu
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Desciptions.IDescription.Key">
+            <summary>
+            Klucz
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Desciptions.IDescription.StringValue">
+            <summary>
+            Wartość (opis tekstowy)
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.BooleanQueryEventArgs">
+            <summary>
+            Argument operacji, której wynikiem jest pojedyncza flaga.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.DataStateEventArgs">
+            <summary>
+            Argument operacji zwracającej stan obiektu z danymi w ramach pojedynczego Unit of Work.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.DataStates">
+            <summary>
+            Stan obiektu z danymi w ramach Unit of Work.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Work.DataStates.Clean">
+            <summary>
+            Dane załadowanego, istniejącego obiektu nie zmieniły się od momentu załadowania.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Work.DataStates.Dirty">
+            <summary>
+            Dane załadowanego, istniejącego obiektu zmieniły się od momentu załadowania.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Work.DataStates.New">
+            <summary>
+            Obiekt został oznaczony jako nowy - do zapisania.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Work.DataStates.Deleted">
+            <summary>
+            Istniejący, załadowany obiekt oznaczony został do usunięcia.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.GetAllDataEventArgs">
+            <summary>
+            Argument operacji zwracającej wszystkie obiekty z danymi kontrolowanymi przez pojedynczy Unit of Work.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.IDataMergeResult">
+            <summary>
+            Interfejs wyniku operacji merge'owania danych pomiędzy UnitOfWorkami.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.IDataMergeResult.CanStealDataFromSource">
+            <summary>
+            Czy możliwa jest operacja StealDataFromSource.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.IDataMergeResult.Source">
+            <summary>
+            Źródłowy UnitOfWork.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.IDataMergeResult.Target">
+            <summary>
+            Docelowy UnitOfWork.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.IDataMergeResult.PreviousResult">
+            <summary>
+            Wynik poprzedniego merge'owania przy merge'owaniu łańcuchowym.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.IDataMergeResult.StoleDataFromSource">
+            <summary>
+            Czy dokonano operacji StealDataFromSource.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.IDataMerger">
+            <summary>
+            Interfejs komponentu do merge'owania danych pomiędzy UnitOfWorkami.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Work.IDataMerger.MergeData(InsERT.Mox.Work.UnitOfWork,InsERT.Mox.Work.UnitOfWork,InsERT.Mox.Work.IDataMergeResult)">
+            <summary>
+            Aplikuje zmiany z jednego UnitOfWork do drugiego. Najlepiej wywoływać w IUnitOfWorkEvents.ChangesAcceptedNotification
+            UnitOfWorka źródłowego - tam są już wszystkie zmiany z danego UnitOfWork.
+            </summary>
+            <param name="source">źródłowy UnitOfWork</param>
+            <param name="target">docelowy UnitOfWork</param>
+            <param name="previousResult">wynik poprzedniego merge'owania przy merge'owaniu łańcuchowym</param>
+            <returns>wynik merge'owania</returns>
+        </member>
+        <member name="M:InsERT.Mox.Work.IDataMerger.StealDataFromSource(InsERT.Mox.Work.IDataMergeResult)">
+            <summary>
+            Uzupełnia merge'a poprzez podebranie danych ze źródłowego UnitOfWork i dołączenie ich do docelowego tak,
+            aby w docelowym nie trzeba było ich wczytywać z bazy danych. Po tej operacji uczestnicy źródłowego UnitOfWork
+            potencjalnie będą w błędnym stanie, ponieważ ich dane będą odłączone od ich UnitOfWorka. Należy wywoływać po
+            UnitOfWork.SaveChanges.
+            </summary>
+            <param name="mergeResult">wynik merge'owania</param>
+        </member>
+        <member name="T:InsERT.Mox.Work.IUnitOfWorkEvents">
+            <summary>
+            Zdarzenia, za pomocą których zaimplementowany jest Unit of Work. Logicznie pogrupowane są na:
+            - żądania - podnoszone z metod UnitOfWork, obsługiwane przez uczestników, zmieniające stan,
+            - zapytania - podnoszone z metod UnitOfWork, obsługiwane przez uczestników, niezmieniające stanu,
+            - notyfikacje - podnoszone z metod UnitOfWork bądź przez uczestników, obsługiwane przez uczestników, mogące zmieniać stan.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.IUnitOfWorkEvents.SphereEventsDisabled">
+            <summary>
+            Pozwala na wyłączenie propagowania zdarzeń do sfery zdarzeniowej dla wszystkich obiektów z Unit of Work.
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.ChangesSavingNotification">
+            <summary>
+            Zdarzenie-notyfikacja publikowana w metodzie SaveChanges().
+            Pojedynczy handler może przerwać wykonywanie zapisu - patrz test UnitOfWorkTests.TestSaveChangesSimple.
+            Handlery przypisane do tego zdarzenia mogą dodawać 
+            nowe handlery - zostaną one wywołane po wywołaniu wszystkich handlerów z aktualnej "serii". Patrz test
+            UnitOfWorkTests.TestSaveChangesCascaded w projekcie Core.Test
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.GetDataStateQuery">
+            <summary>
+            Zdarzenie-zapytanie publikowane w metodzie GetDataState.
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.IsRegisteredQuery">
+            <summary>
+            Zdarzenie-zapytanie publikowane w metodzie IsRegistered.
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.RegisterDataRequest">
+            <summary>
+            Zdarzenie-żądanie publikowane w metodzie RegisterData
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.ChangesSaveRequest">
+            <summary>
+            Zdarzenie-żądanie publikowane w metodzie SaveChanges po opublikowaniu BeforeSavingChangesNotification.
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.ChangesPreSaveRequestNotification">
+            <summary>
+            Zdarzenie publikowane po ChangesSavingNotification a przed ChangesSaveRequest
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.ChangesAcceptedNotification">
+            <summary>
+            Zdarzenie-notyfikacja publikowana w metodzie SaveChanges po opublikowaniu SavingChangesRequest
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.UnregisterDataRequest">
+            <summary>
+            Zdarzenie-żądanie publikowane w metodzie UnregisterData
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.OriginalValueQuery">
+            <summary>
+            Zdarzenie-zapytanie publikowane w metodzie GetOriginalValue
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.GetAllDataQuery">
+            <summary>
+            Zdarzenie-zapytanie publikowane w akcesorze własności Data
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.GetDirtyDataMembersQuery">
+            <summary>
+            Zdarzenie-zapytanie publikowane w metodzie GetDirtyDataMembers
+            </summary>
+        </member>
+        <member name="E:InsERT.Mox.Work.IUnitOfWorkEvents.AfterChangesAcceptedNotification">
+            <summary>
+            Zdarzenie-notyfikacja publikowana w metodzie SaveChanges po opublikowaniu ChangesAcceptedNotification.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.OriginalValueQueryEventArgs">
+            <summary>
+            Argument operacji zwracającej oryginalną wartość składnika obiektu z danymi.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.UnitOfWorkEventArgs">
+            <summary>
+            Argument operacji na pojedynczym obiekcie z danymi w ramach pojedynczgo Unit of Work.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.UnitOfWorkEventArgs.Data">
+            <summary>
+            Obiekt  z danymi
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Work.UnitOfWork">
+            <summary>
+            Obiekt reprezentujący pojedynczą operację biznesową na trwałych danych.
+            Koordynujący działania innych obiektów w celu jej wykonania.
+            W ramach pojedynczego UoW rozróżniane są:
+            - obiekty z danymi (np. reprezentujące encje z modelu encji-związków),
+            - obiekty operujące na danych (obiekty i aspekty biznesowe, warstwa dostępu do danych itd.).
+            Implementacja wykorzystuje zdarzenia zdefiniowane w interfejsie IUnitOfWorkEvents.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.UnitOfWork.Participants">
+            <summary>
+            Uczestnicy operacji, wyznaczani poprzez wyliczenie wszystkich obiektów, które zasubskrybowały się do
+            zdarzeń z interfejsu IUnitOfWorkEvents.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Work.UnitOfWork.Data">
+            <summary>
+            Dane załadowane w ramach operacji.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Work.UnitOfWork.Register(System.Object)">
+            <summary>
+            Rejestruje istniejący obiekt z danymi w operacji.
+            </summary>
+            <param name="entity">obiekt z danymi</param>
+        </member>
+        <member name="M:InsERT.Mox.Work.UnitOfWork.Unregister(System.Object)">
+            <summary>
+            Wyrejestrowuje istniejący obiekt z danymi z operacji.
+            </summary>
+            <param name="entity"></param>
+        </member>
+        <member name="M:InsERT.Mox.Work.UnitOfWork.SaveChanges">
+             <summary>
+             Zapisuje zmiany w obiektach z danymi w trwałym źródle danych.
+             </summary>
+             <returns>true, jeżeli wszyscy uczestnicy zgodzili się na zapis, a sam zapis się udał; false w przeciwnym wypadku</returns>
+            
+        </member>
+        <member name="M:InsERT.Mox.Work.UnitOfWork.IsRegistered(System.Object)">
+            <summary>
+            Sprawdza, czy dany obiekt z danymi jest zarejestrowany w operacji.
+            </summary>
+            <param name="entity">obiekt z danymi</param>
+            <returns>true, jeżeli obiekt jest zarejestrowany; false w przeciwnym przypadku</returns>
+        </member>
+        <member name="M:InsERT.Mox.Work.UnitOfWork.GetDataState(System.Object)">
+            <summary>
+            Zwraca stan obiektu z danymi w ramach operacji.
+            </summary>
+            <param name="entity">obiekt z danymi</param>
+            <returns>stan obiektu z danymi, jeżeli obiekt jest zarejestrowany; null w przeciwnym przypadku</returns>
+        </member>
+        <member name="M:InsERT.Mox.Work.UnitOfWork.GetOriginalValue(System.Object,System.String)">
+            <summary>
+            Zwraca poprzednią wartość składnika obiektu z danymi, które zostały zmienione w ramach operacji.
+            </summary>
+            <param name="entity">obiekt z danymi</param>
+            <param name="dataMember">nazwa składnika obiektu z danymi</param>
+            <returns>wartość składnika obiektu z danymi przed zmianą</returns>
+            <exception cref="T:System.InvalidOperationException">
+            W operacji nie uczestniczy ani jeden uczestnik obsługujący to zapytanie.
+            </exception>
+            <exception cref="T:System.ArgumentException">
+            Żaden z uczestników nie odpowiedział na zapytanie.
+            </exception>
+        </member>
+        <member name="T:InsERT.Mox.Validation.CanNotDeleteEntityEntityError">
+            <summary>
+            Błąd do obsługi sytuacji, gdy nie można usunąć encji
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.CanNotDeleteEntityEntityError.#ctor(System.String)">
+            <summary>
+            Konstruktor
+            </summary>
+            <param name="message">Komunikat błędu z przyczyną blokady usunięcia encji</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.CanNotDeleteEntityEntityError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ExtensionPropertyIsNullError">
+            <summary>
+            Błąd ustawiany na wymaganych zaawansowanych polach własnych v2, gdy nie mają ustawionej wartości.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ExtensionPropertyIsNullError.PropertyName">
+            <summary>
+            Nazwa pola.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ExtensionPropertyIsNullError.#ctor(System.String)">
+            <summary>
+            Konstruktor
+            </summary>
+            <param name="propertyName">Opcjonalna nazwa pola.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ExtensionPropertyIsNullError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.RelationshipWithDeletedEntityError">
+            <summary>
+            Błąd ustawiany na polach prowadzących do innych powiązanych encji, gdy ustawiono powiązaną encję, która jest nieaktywna.
+            Aby powiązać encję z encją nieaktywną, należy najpierw aktywować zdeaktywowany obiekt biznesowy działąjący na niektywnej
+            encji.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.RelationshipWithDeletedEntityError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ExtensionPropertyStringLengthError">
+            <summary>
+            Błąd ustawiany na tekstowych zaawansowanych polach własnych v2, gdy wprowadzona wartość jest za długa, bądź za krótka.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ExtensionPropertyStringLengthError.MinLength">
+            <summary>
+            Minimalna długość tekstu w polu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ExtensionPropertyStringLengthError.MaxLength">
+            <summary>
+            Maksymalna długość tekstu w polu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ExtensionPropertyStringLengthError.PropertyName">
+            <summary>
+            Nazwa pola.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ExtensionPropertyStringLengthError.#ctor(System.Int32,System.Int32,System.String)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="minLength">Minimalna długość tekstu w polu.</param>
+            <param name="maxLength">Maksymalna długość tekstu w polu.</param>
+            <param name="propertyName">Opcjonalna nazwa pola.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ExtensionPropertyStringLengthError.#ctor(System.Int32,System.Boolean,System.String)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="length">Graniczna długość.</param>
+            <param name="isMin">Określa, czy podana jest długość minimalna (<c>true</c>), czy maksymalna (<c>false</c>).</param>
+            <param name="propertyName">Opcjonalna nazwa pola.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ExtensionPropertyStringLengthError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.IValidationMetadataStore">
+            <summary>
+            Słownik typów błędów w danych.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.IValidationMetadataStore.GetEntryForClrType(System.Type)">
+            <summary>
+            Zwraca metadane typu błędu w danych.
+            </summary>
+            <param name="dataErrorClrType">typ CLR-owy błędu w danych</param>
+            <returns>metadane typu błędu w danych</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ValidationExtensions">
+            <summary>
+            Metody pomocnicze do pracy ze słownikiem typów błędów w danych.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValidationExtensions.GetEntryForClrType``1(InsERT.Mox.Validation.IValidationMetadataStore)">
+            <summary>
+            Zwraca metadane typu błędu w danych.
+            </summary>
+            <typeparam name="T">typ CLR-owy błędu w danych</typeparam>
+            <param name="validationMetadataStore">słownik typów błędów w danych</param>
+            <returns>metadane typu błędu w danych</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.IDataErrorSeverityOverrideProvider">
+            <summary>
+            Źródło danych o ustawieniach użytkownika dla ważności typów błędów w danych.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.IDataErrorSeverityOverrideProvider.GetOverriddenSeverityForClrType(System.Type)">
+            <summary>
+            Zwraca ważność błędu w danych ustawioną przez użytkownika, lub <code>null</code>, jeżel użytkownik nie ustawił
+            ważności dla tego błędu.
+            </summary>
+            <param name="dataErrorClrType">typ CLR-owy błędu w danych</param>
+            <returns>ważnośc typu błędu w danych ustawiona przez użytkownika</returns>
+        </member>
+        <member name="E:InsERT.Mox.Validation.IDataErrorSeverityOverrideProvider.SeveritiesChanged">
+            <summary>
+            Zdarzenie wywoływane, gdy użytkownik zmienił ustawienia ważności typów błędów w danych.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Validation.DataErrorSeverity">
+            <summary>
+            Ważność błędu w danych.
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Validation.DataErrorSeverity.Trace">
+            <summary>
+            ważność mała
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Validation.DataErrorSeverity.Info">
+            <summary>
+            ważność średnia
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Validation.DataErrorSeverity.Warning">
+            <summary>
+            ważność wysoka
+            </summary>
+        </member>
+        <member name="F:InsERT.Mox.Validation.DataErrorSeverity.Error">
+            <summary>
+            błąd: ważność bardzo wysoka, zapis jest blokowany
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Validation.DataErrorType">
+            <summary>
+            Typ błędu w danych.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.DataErrorType.ClrType">
+            <summary>
+            Typ CLR-owy identyfikujący błąd w danych.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.DataErrorType.DefaultSeverity">
+            <summary>
+            Domyślna ważność typu błędu w danych.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.DataErrorType.IsDefaultSeverityOverridable">
+            <summary>
+            Czy ważność błędu inną niż domyślna może ustawić użytkownik.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.DataErrorType.Severity">
+            <summary>
+            Faktyczna ważność typu błędu w danych.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Validation.BinaryLengthError">
+            <summary>
+            Błąd dodawany na polach binarnych, gdy wielkość danych przekracza maksymalny rozmiar pola.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.BinaryLengthError.MaxLength">
+            <summary>
+            Przekroczona maksymalna długość pola binarnego.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.BinaryLengthError.#ctor(System.Int32)">
+            <param name="maxLength">Przekroczona maksymalna długość pola binarnego.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.BinaryLengthError.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Metoda łącząca z innym błędem typu <c>BinaryLengthError</c>.
+            </summary>
+            <param name="other">Błąd do połączenia.</param>
+            <returns>Zwraca nowy błąd typu <c>BinaryLengthError</c> o właściwości MaxError o wartości mniejszej z dwóch łączonych błędów.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.BinaryLengthError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.DataErrorBase">
+            <summary>
+            Bazowa klasa dla wbudowanych typów błędów.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.DataErrorBase.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Implementacja łączenia błędów zwracająca jedną z instancji.
+            </summary>
+            <param name="other">Instancja błędu, która będzie zwrócona.</param>
+            <returns>Podana instancja błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.IDataError">
+            <summary>
+            Interfejs udostępniany przez wszystkie typy błędów.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.IDataError.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Łączy informacje niesione przez błąd z informacjami niesionymi przez inną instancję błędu tego samego typu.
+            Metoda wywoływana jest przez infrastrukturę.
+            </summary>
+            <param name="other">Instancja drugiego błędu.</param>
+            <returns>Instancja błędu niosąca informacje złączone z dwóch istniejących instancji.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.TypedDataErrorInfoChangedEventArgs">
+            <summary>
+            Argumenty zdarzenia występującego, gdy następuje zmiana w błędach encji.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.TypedDataErrorInfoChangedEventArgs.#ctor(System.String,InsERT.Mox.Validation.IDataError,System.ComponentModel.CollectionChangeAction)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="memberName">Nazwa właściwości, dla której nastąpiła zmiana w błędach.</param>
+            <param name="dataError">Zmieniony błąd.</param>
+            <param name="action">Rodzaj zaistniałej zmiany.</param>
+        </member>
+        <member name="P:InsERT.Mox.Validation.TypedDataErrorInfoChangedEventArgs.MemberName">
+            <summary>
+            Nazwa pola, którego dotyczy zdarzenie; null, jeżeli zdarzenie dotyczy błędów na całym obiekcie
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.TypedDataErrorInfoChangedEventArgs.DataError">
+            <summary>
+            Błąd, którego dotyczy zdarzenie; null, jeżeli zdarzenie dotyczy wszystkich błędów na danym polu, bądź całym obiekcie.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.TypedDataErrorInfoChangedEventArgs.Action">
+            <summary>
+            Rodzaj zdarzenia; Add - dodano błąd/błędy, Remove - usunięto błąd/błędy, Refresh - ustawiono błąd tego samego typu jeszcze raz i został on złączony z istniejącym.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ITypedDataErrorInfo">
+            <summary>
+            Interfejs, przez które obiekty z danymi (encje) udostępniają informacje o błędach.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ITypedDataErrorInfo.HasErrors">
+            <summary>
+            Czy encja ma błędy.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ITypedDataErrorInfo.Errors">
+            <summary>
+            Błędy dotyczące całej encji.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ITypedDataErrorInfo.MemberErrors">
+            <summary>
+            Błędy dotyczące pól encji.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ITypedDataErrorInfo.Item(System.String)">
+            <summary>
+            Zwraca błędy na konkretnym polu encji.
+            </summary>
+            <param name="memberName">Nazwa pola encji.</param>
+            <returns>Błędy na podanym polu encji.</returns>
+        </member>
+        <member name="E:InsERT.Mox.Validation.ITypedDataErrorInfo.Changed">
+            <summary>
+            Zdarzenie występujące, gdy następuje zmiana w błędach encji.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ISetTypedDataErrorInfo">
+            <summary>
+            Intefejs do zarządzania błędami obiektu.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.AddError(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Dodaje błąd do obiektu.
+            </summary>
+            <param name="dataError">Dodawany błąd.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.RemoveError(System.Type)">
+            <summary>
+            Usuwa z obiektu błąd określonego typu.
+            </summary>
+            <param name="dataErrorType">Typ błędu do usunięcia.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.RemoveAllErrors">
+            <summary>
+            Usuwa wszystkie błędy z obiektu.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.AddError(InsERT.Mox.Validation.IDataError,System.String[])">
+            <summary>
+            Dodaje błąd do właściwości obiektu.
+            </summary>
+            <param name="dataError">Dodawany błąd.</param>
+            <param name="memberNames">Nazwy właściwości, do których ma zostać przypisany błąd.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.RemoveError(System.Type,System.String[])">
+            <summary>
+            Usuwa z błąd określonego typu z właściwości obiektu.
+            </summary>
+            <param name="dataErrorType">Typ błędu do usunięcia.</param>
+            <param name="memberNames">Nazwy właściwości, z których ma zostać usunięty błąd.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.RemoveAllDerivedErrors(System.Type,System.String[])">
+            <summary>
+            Z właściwości obiektu usuwa błąd określonego typu oraz błędy wszystkich typów dziedziczących po nim (również pośrednio).
+            </summary>
+            <param name="dataErrorType">Typ błędu.</param>
+            <param name="memberNames">Nazwy właściwości, z których mają zostać usunięte błędy.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ISetTypedDataErrorInfo.RemoveAllErrors(System.String[])">
+            <summary>
+            Usuwa wszystkie błędy ze wskazanych właściwości.
+            </summary>
+            <param name="memberNames">Nazwy właściwości, z których mają zostać usunięte błędy.</param>
+        </member>
+        <member name="T:InsERT.Mox.Validation.MemberIsNullError">
+            <summary>
+            Błąd ustawiany na polach wymaganych, gdy nie mają ustawionej wartości.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.MemberIsNullError.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Metoda łącząca z innym błędem typu <c>MemberIsNullError</c>.
+            </summary>
+            <param name="other">Błąd do połączenia.</param>
+            <returns>Jeśli przekazanych parametr jest poprawny (tego samego typu), zwraca ten sam błąd, na rzecz którego została wywołana metoda.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.MemberIsNullError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.NonUniqueError">
+            <summary>
+            Błąd ustawiany na polach, które muszą mieć unikatową wartość w obrębie typu danych, gdy wartość nie jest unikatowa.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.NonUniqueError.ConstraintName">
+            <summary>
+            Nazwa naruszonego ograniczenia wymagającego unikalności.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.NonUniqueError.#ctor(System.String)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="constraintName">Nazwa naruszonego ograniczenia wymagającego unikalności.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.NonUniqueError.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Metoda łącząca z innym błędem tego samego typu.
+            </summary>
+            <param name="other">Błąd do połączenia.</param>
+            <returns>Jeśli przekazanych parametr jest poprawny (tego samego typu), zwraca ten sam błąd, na rzecz którego została wywołana metoda.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.NonUniqueError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.RelatedObjectNotSetError">
+            <summary>
+            Błąd ustawiany na polach prowadzących do innych powiązanych encji, gdy nie ustawiono powiązanej encji,
+            a powiązanie jest wymagane.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.RelatedObjectNotSetError.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Metoda łącząca z innym błędem typu <c>RelatedObjectNotSetError</c>.
+            </summary>
+            <param name="other">Błąd do połączenia.</param>
+            <returns>Jeśli przekazanych parametr jest poprawny (tego samego typu), zwraca ten sam błąd, na rzecz którego została wywołana metoda.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.RelatedObjectNotSetError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.StringLengthError">
+            <summary>
+            Błąd ustawiany na polach tekstowych, gdy wprowadzona wartość jest za długa, bądź za krótka.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.StringLengthError.MinLength">
+            <summary>
+            Minimalna długość tekstu w polu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.StringLengthError.MaxLength">
+            <summary>
+            Maksymalna długość tekstu w polu.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.StringLengthError.FieldName">
+            <summary>
+            Nazwa pola, na którym wystąpił błąd.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.StringLengthError.#ctor(System.Int32,System.Int32)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="minLength">Minimalna długość tekstu w polu.</param>
+            <param name="maxLength">Maksymalna długość tekstu w polu.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.StringLengthError.#ctor(System.Int32,System.Boolean)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="length">Graniczna długość.</param>
+            <param name="isMin">Określa, czy podana jest długość minimalna (<c>true</c>), czy maksymalna (<c>false</c>).</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.StringLengthError.#ctor(System.String,System.Int32,System.Int32)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="fieldName">Nazwa pola.</param>
+            <param name="minLength">Minimalna długość tekstu w polu.</param>
+            <param name="maxLength">Maksymalna długość tekstu w polu.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.StringLengthError.#ctor(System.String,System.Int32,System.Boolean)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="fieldName">Nazwa pola.</param>
+            <param name="length">Graniczna długość.</param>
+            <param name="isMin">Określa, czy podana jest długość minimalna (<c>true</c>), czy maksymalna (<c>false</c>).</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.StringLengthError.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ValueOutOfRangeError">
+            <summary>
+            Błąd ustawiany na polu, gdy podano w nim wartość spoza prawidłowego zakresu.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError.CreateWithLowerBound``1(``0)">
+            <summary>
+            Tworzy błąd oznaczający, że wartość pola jest mniejsza od minimalnej dopuszczalnej wartości.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+            <param name="lowerBound">Minimalna wartość.</param>
+            <returns>Zwraca utworzony błąd.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError.CreateWithExclusiveLowerBound``1(``0)">
+            <summary>
+            Tworzy błąd oznaczający, że wartość pola nie jest większa od zadanej wartości.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+            <param name="lowerBound">Wartość graniczna, od której wartość pola powinna być większa.</param>
+            <returns>Zwraca utworzony błąd.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError.CreateWithUpperBound``1(``0)">
+            <summary>
+            Tworzy błąd oznaczający, że wartość jest większa od maksymalnej dopuszczalnej wartości.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+            <param name="upperBound">Maksymalna wartość.</param>
+            <returns>Zwraca utworzony błąd.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError.CreateWithExclusiveUpperBound``1(``0)">
+            <summary>
+            Tworzy błąd oznaczający, że wartość pola nie jest mniejsza od zadanej wartości.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+            <param name="upperBound">Wartość graniczna, od której wartość pola powinna być mniejsza.</param>
+            <returns>Zwraca utworzony błąd.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError.Create``1(``0,``0)">
+            <summary>
+            Tworzy błąd oznaczający, że wartość pola wykracza poza wyznaczony zakres.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+            <param name="lowerBound">Minimalna wartość.</param>
+            <param name="upperBound">Maksymalna wartość.</param>
+            <returns>Zwraca nowy błąd.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError.Create``1(``0,System.Boolean,``0,System.Boolean)">
+            <summary>
+            Tworzy błąd oznaczający, że wartość pola wykracza poza wyznaczony zakres.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+            <param name="lowerBound">Dolna wartość graniczna.</param>
+            <param name="isLowerBoundInclusive">Określa, czy dolna granica należy do dopuszczalnego zakresu wartości.</param>
+            <param name="upperBound">Górna wartość graniczna.</param>
+            <param name="isUpperBoundInclusive">Określa, czy górna granica należy do dopuszczalnego zakresu wartości.</param>
+            <returns>Zwraca nowy błąd.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Validation.ValueOutOfRangeError`1">
+            <summary>
+            Błąd ustawiany na polu, gdy podano w nim wartość spoza prawidłowego zakresu.
+            </summary>
+            <typeparam name="T">Typ pola z błędną wartością.</typeparam>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.LowerBound">
+            <summary>
+            Początek przedziału prawidłowych wartości.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.HasLowerBound">
+            <summary>
+            Czy początkiem przedziału prawidłowych wartości nie jest nieskończoność.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.IsLowerBoundInclusive">
+            <summary>
+            Czy przedział prawidłowych wartości jest lewostronnie domknięty.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.UpperBound">
+            <summary>
+            Koniec przedziału prawidłowych wartości.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.HasUpperBound">
+            <summary>
+            Czy końcem przedziału prawidłowych wartości nie jest nieskończoność.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.IsUpperBoundInclusive">
+            <summary>
+            Czy przedział prawidłowych wartości jest prawostronnie domknięty.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Validation.ValueOutOfRangeError`1.AreBoundsEqual">
+            <summary>
+            Czy przedział prawidłowych wartości zawiera dokładnie jedną wartość.
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError`1.#ctor(System.Collections.Generic.IComparer{`0},`0,System.Boolean,System.Boolean)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="comparer">Definicja porównywania dwóch obiektów.</param>
+            <param name="bound">Wartość graniczna.</param>
+            <param name="isLower">Określa, czy wartość graniczna jest granicą dolną (<c>true</c>), czy górną (<c>false</c>).</param>
+            <param name="isInclusive">Określa, czy wartość graniczna jest poprawną wartością pola.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError`1.#ctor(System.Collections.Generic.IComparer{`0},`0,System.Boolean,`0,System.Boolean)">
+            <summary>
+            Konstruktor.
+            </summary>
+            <param name="comparer">Definicja porównywania dwóch obiektów.</param>
+            <param name="lowerBound">Dolna wartość graniczna.</param>
+            <param name="isLowerBoundInclusive">Określa, czy dolna granica należy do dopuszczalnego zakresu wartości.</param>
+            <param name="upperBound">Górna wartość graniczna.</param>
+            <param name="isUpperBoundInclusive">Określa, czy górna granica należy do dopuszczalnego zakresu wartości.</param>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError`1.Merge(InsERT.Mox.Validation.IDataError)">
+            <summary>
+            Metoda łącząca z innym błędem typu <c>ValueOutOfRangeError</c>.
+            </summary>
+            <param name="other">Błąd do połączenia.</param>
+            <returns>Zwraca błąd opisujący dopuszczalny zakres wartości wynikający z łączonych błędów.</returns>
+        </member>
+        <member name="M:InsERT.Mox.Validation.ValueOutOfRangeError`1.ToString">
+            <summary>
+            Metoda formatująca komunikat błędu.
+            </summary>
+            <returns>Zwraca komunikat błędu.</returns>
+        </member>
+        <member name="T:InsERT.Mox.Locking.IAppLockManager">
+            <summary>
+            Interfejs obiektu zarządzającego blokadami aplikacyjnymi
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Locking.IAppLockHandle">
+            <summary>
+            Interfejs obiektu-uchwytu do blokady aplikacyjnej.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Locking.IAppLockHandle.SessionId">
+            <summary>
+            identyfikator sesji, która zablokowała
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Locking.IAppLockHandle.ResourceId">
+            <summary>
+            identyfikator zablokowanego zasobu
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Locking.IAppLockHandle.IsReleased">
+            <summary>
+            flaga określające czy zdjęto blokadę przez ten uchwyt
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Locking.IAppLockHandle.Release">
+            <summary>
+            zdejmuje blokadę
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Locking.IAppLockHandle.IsFinallyReleased">
+            <summary>
+            flaga określająca, czy zdjęcie blokady przez Release() na tym uchwycie faktycznie zdjęło blokadę
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Locking.IAppLockHandle.IsReentered">
+            <summary>
+            flaga określająca, czy blokadę utworzono razem z uchwytem (false), czy też uchwyt przyłączono do istniejącej blokady
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Locking.IResourceIdFormatter`1">
+            <summary>
+            Interfejs obiektu konwertującego identyfikator określonego typu na identyfikator zasobu do użytku przez mechanizm blokad aplikacyjnych.
+            </summary>
+            <typeparam name="TId"></typeparam>
+        </member>
+        <member name="T:InsERT.Mox.Locking.AppLockNotAcquiredException">
+            <summary>
+            Wyjątek rzucany, gdy podany zasób jest już zablokowany przez inną sesję aplikacyjną
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Locking.AppLockNotHeldException">
+            <summary>
+            Wyjątek rzucany przy próbie przyłączanie uchwytu do blokady aplikacyjnej do blokady niestniejącej bądź założonej przez inną sesję aplikacyjną
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Locking.NamespaceResourceIdFormatter`1">
+            <summary>
+            Obiekt formatujący identyfikatory zasobów poprzez dodawanie przed skonwertowanymi do tekstu identyfikatorami obiektów ustalonego prefiksu.
+            </summary>
+            <typeparam name="TId"></typeparam>
+        </member>
+        <member name="M:InsERT.Mox.Locking.NamespaceResourceIdFormatter`1.#ctor(System.String)">
+            <summary>
+            Tworzy nowy obiekt dodający podany prefiks.
+            </summary>
+            <param name="ns">prefiks do dodawania</param>
+        </member>
+        <member name="T:InsERT.Mox.Locking.AppLockEventArgs">
+            <summary>
+            Argumenty zdarzenia dotyczącego blokady aplikacyjnej.
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Locking.AppLockEventArgs.Lock">
+            <summary>
+            blokada aplikacyjna, której dotyczy zdarzenie
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.Time.ISynchronousTimer">
+            <summary>
+            Interfejs timera synchronicznego, działającego w tym samym wątku, co warstwa UI/prezentacji.
+            </summary>
+            <remarks>
+            Nie gwarantuje precyzyjnego odmierzania czasu, tak jak timer asynchroniczny działający
+            w oddzielnym wątku, ale za to nie wymaga synchronizacji wątków.
+            </remarks>
+        </member>
+        <member name="E:InsERT.Mox.Time.ISynchronousTimer.Tick">
+            <summary>
+            Zdarzenie wywoływane po upływie zadanego czasu
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Time.ISynchronousTimer.Tag">
+            <summary>
+            Obiekt, który będzie przekazywany do handlera obsługi zdarzeń
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Time.ISynchronousTimer.IsEnabled">
+            <summary>
+            Informuje czy timer działa
+            </summary>
+        </member>
+        <member name="P:InsERT.Mox.Time.ISynchronousTimer.Interval">
+            <summary>
+            Okres pracy timera (określa jak często będzie wywoływane zdarzenie Tick)
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Time.ISynchronousTimer.Start">
+            <summary>
+            Uruchamia timer
+            </summary>
+        </member>
+        <member name="M:InsERT.Mox.Time.ISynchronousTimer.Stop">
+            <summary>
+            Zatrzymuje timer
+            </summary>
+        </member>
+    </members>
+</doc>

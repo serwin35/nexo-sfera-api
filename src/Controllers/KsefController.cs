@@ -5,7 +5,7 @@ using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 using InsERT.Moria.ModelDanych;
 using InsERT.Moria.Sfera;
-using InsERT.Moria.Dokumenty.Logistyka;
+using InsERT.Moria.Logistyka;
 
 namespace NexoSferaApi.Controllers;
 
@@ -535,17 +535,18 @@ public class KsefController : ControllerBase
         };
     }
 
-    private static string? GetStatusDescription(StatusWysylkiElektronicznejEFaktur? status)
+    private static string? GetStatusDescription(dynamic? status)
     {
-        if (!status.HasValue) return null;
-        return status.Value switch
+        if (status == null) return null;
+        var statusValue = (int)status;
+        return statusValue switch
         {
-            StatusWysylkiElektronicznejEFaktur.DoWyslania => "PendingSend",
-            StatusWysylkiElektronicznejEFaktur.Wyslana => "Sent",
-            StatusWysylkiElektronicznejEFaktur.PobranyNumerKsef => "KsefNumberReceived",
-            StatusWysylkiElektronicznejEFaktur.PobraneUpo => "UpoReceived",
-            StatusWysylkiElektronicznejEFaktur.Blad => "Error",
-            _ => status.Value.ToString()
+            0 => "PendingSend",      // DoWyslania
+            1 => "Sent",             // Wyslana
+            2 => "KsefNumberReceived", // PobranyNumerKsef
+            3 => "UpoReceived",      // PobraneUpo
+            4 => "Error",            // Blad
+            _ => status.ToString()
         };
     }
 

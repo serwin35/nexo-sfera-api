@@ -33,8 +33,8 @@ public class EmployeesController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<EmployeeSummaryDto>), StatusCodes.Status200OK)]
     public ActionResult<PagedResponse<EmployeeSummaryDto>> GetEmployees(
+        [FromQuery] string? search = null,
         [FromQuery] bool? activeOnly = true,
-        [FromQuery] string? search,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
@@ -248,7 +248,7 @@ public class EmployeesController : ControllerBase
         return dto;
     }
 
-    private static EmployeeAddressDto? MapAddress(IAdres adres)
+    private static EmployeeAddressDto? MapAddress(dynamic? adres)
     {
         if (adres == null) return null;
 

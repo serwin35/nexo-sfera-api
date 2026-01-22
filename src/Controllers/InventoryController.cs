@@ -433,8 +433,8 @@ public class InventoryController : ControllerBase
     /// </summary>
     [HttpGet("batches/expiring")]
     public ActionResult<PagedResponse<BatchDto>> GetExpiringBatches(
+        [FromQuery] string? warehouseSymbol = null,
         [FromQuery] int days = 30,
-        [FromQuery] string? warehouseSymbol,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
