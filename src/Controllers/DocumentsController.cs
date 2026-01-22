@@ -130,12 +130,47 @@ public class DocumentsController : ControllerBase
             }
 
             // Apply filters
+            if (!string.IsNullOrEmpty(query.Symbol))
+            {
+                var filtered = new List<dynamic>();
+                foreach (var d in allDokumenty)
+                {
+                    var symbol = DynamicPropertyHelper.GetString(d, "Symbol");
+                    if (symbol != null && symbol.Equals(query.Symbol, StringComparison.OrdinalIgnoreCase))
+                    {
+                        filtered.Add(d);
+                    }
+                }
+                allDokumenty = filtered;
+            }
+
+            if (!string.IsNullOrEmpty(query.Search))
+            {
+                var search = query.Search.ToLower();
+                var filtered = new List<dynamic>();
+                foreach (var d in allDokumenty)
+                {
+                    var symbol = DynamicPropertyHelper.GetString(d, "Symbol")?.ToLower() ?? "";
+                    var numer = DynamicPropertyHelper.GetString(d, "NumerWewnetrzny", "PelnaSygnatura")?.ToLower() ?? "";
+                    var numerZew = DynamicPropertyHelper.GetString(d, "NumerZewnetrzny")?.ToLower() ?? "";
+                    var klient = DynamicPropertyHelper.GetString(d, "Podmiot", "NazwaSkrocona")?.ToLower() ?? "";
+
+                    if (symbol.Contains(search) || numer.Contains(search) ||
+                        numerZew.Contains(search) || klient.Contains(search))
+                    {
+                        filtered.Add(d);
+                    }
+                }
+                allDokumenty = filtered;
+            }
+
             if (query.DateFrom.HasValue)
             {
                 var filtered = new List<dynamic>();
                 foreach (var d in allDokumenty)
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    var data = DynamicPropertyHelper.GetDateTime(d, "DataWydaniaWystawienia") ??
+                               DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
                     if (data.HasValue && data.Value >= query.DateFrom.Value)
                     {
                         filtered.Add(d);
@@ -149,7 +184,8 @@ public class DocumentsController : ControllerBase
                 var filtered = new List<dynamic>();
                 foreach (var d in allDokumenty)
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    var data = DynamicPropertyHelper.GetDateTime(d, "DataWydaniaWystawienia") ??
+                               DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
                     if (data.HasValue && data.Value <= query.DateTo.Value)
                     {
                         filtered.Add(d);
@@ -163,8 +199,24 @@ public class DocumentsController : ControllerBase
                 var filtered = new List<dynamic>();
                 foreach (var d in allDokumenty)
                 {
-                    var podmiot = DynamicPropertyHelper.GetProperty(d, "Podmiot");
-                    if (podmiot != null && DynamicPropertyHelper.GetInt(podmiot, "Id") == query.CustomerId.Value)
+                    var podmiotId = DynamicPropertyHelper.GetNullableInt(d, "PodmiotId") ??
+                                    DynamicPropertyHelper.GetNullableInt(d, "Podmiot", "Id");
+                    if (podmiotId == query.CustomerId.Value)
+                    {
+                        filtered.Add(d);
+                    }
+                }
+                allDokumenty = filtered;
+            }
+
+            if (query.StatusId.HasValue)
+            {
+                var filtered = new List<dynamic>();
+                foreach (var d in allDokumenty)
+                {
+                    var statusId = DynamicPropertyHelper.GetNullableInt(d, "StatusDokumentuId") ??
+                                   DynamicPropertyHelper.GetNullableInt(d, "Status", "Id");
+                    if (statusId == query.StatusId.Value)
                     {
                         filtered.Add(d);
                     }
@@ -176,7 +228,8 @@ public class DocumentsController : ControllerBase
 
             // Sort and paginate
             var items = allDokumenty
-                .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") ?? DateTime.MinValue)
+                .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWydaniaWystawienia") ??
+                                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") ?? DateTime.MinValue)
                 .Skip((query.Page - 1) * query.PageSize)
                 .Take(query.PageSize)
                 .ToList();
@@ -1424,21 +1477,89 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            return new DocumentDto
+            var dto = new DocumentDto
             {
+                // Identity
                 Id = DynamicPropertyHelper.GetId(dokument),
+                Symbol = DynamicPropertyHelper.GetString(dokument, "Symbol") ?? "",
                 Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
                 FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                ExternalNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny"),
+                ReferenceNumber = DynamicPropertyHelper.GetString(dokument, "NumerReferencyjny"),
+
+                // Status
+                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                           DynamicPropertyHelper.GetNullableInt(dokument, "Status", "Id"),
+                ConfigurationId = DynamicPropertyHelper.GetString(dokument, "KonfiguracjaId"),
+
+                // Dates
+                EntryDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWprowadzenia"),
+                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia") ??
+                            DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
+                Deadline = DynamicPropertyHelper.GetDateTime(dokument, "TerminRealizacji"),
+
+                // Customer
+                CustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "PodmiotId") ??
+                             DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id"),
+                SelectedCustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "PodmiotWybranyId"),
                 CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
                 CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
+
+                // Warehouse
+                WarehouseId = DynamicPropertyHelper.GetNullableInt(dokument, "MagazynId") ??
+                              DynamicPropertyHelper.GetNullableInt(dokument, "Magazyn", "Id"),
                 WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
+
+                // Amounts - Goods
+                GoodsAmountNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscTowarowNetto"),
+                GoodsAmountGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscTowarowBrutto"),
+
+                // Amounts - Services
+                ServicesAmountNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscUslugNetto"),
+                ServicesAmountGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscUslugBrutto"),
+
+                // Amounts - Total
                 TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
                 TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
                 TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                AmountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty"),
+
+                // Costs
+                GoodsCostBook = DynamicPropertyHelper.GetDecimal(dokument, "KosztEwidencyjnyTowarow"),
+                GoodsCostWarehouse = DynamicPropertyHelper.GetDecimal(dokument, "KosztMagazynowyTowarowWydanych") +
+                                     DynamicPropertyHelper.GetDecimal(dokument, "KorektaKosztuMagazynowegoTowarowWydanych"),
+                ServicesCost = DynamicPropertyHelper.GetDecimal(dokument, "KosztEwidencyjnyUslug"),
+                AdditionalCost = DynamicPropertyHelper.GetDecimal(dokument, "KosztDodatkowy") +
+                                 DynamicPropertyHelper.GetDecimal(dokument, "KorektaKosztuDodatkowego"),
+
+                // Personnel
+                IssuedBy = DynamicPropertyHelper.GetString(dokument, "Wystawil"),
+                ReceivedBy = DynamicPropertyHelper.GetString(dokument, "Odebral"),
+
+                // Notes
                 Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
-                CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia")
+
+                // Timestamps
+                CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia"),
+                Items = new List<DocumentItemDto>()
             };
+
+            // Calculate total costs
+            dto.GoodsCost = dto.GoodsCostBook + dto.GoodsCostWarehouse;
+
+            // Map items if available
+            var pozycje = DynamicPropertyHelper.GetProperty(dokument, "Pozycje");
+            if (pozycje != null)
+            {
+                int lineNum = 1;
+                foreach (dynamic poz in pozycje)
+                {
+                    dto.Items.Add(MapDocumentItemToDto(poz, lineNum++));
+                }
+            }
+
+            return dto;
         }
         catch
         {
@@ -1554,21 +1675,65 @@ public class DocumentsController : ControllerBase
 
     private static DocumentItemDto MapDocumentItemToDto(dynamic poz, int lineNum)
     {
-        return new DocumentItemDto
+        var dto = new DocumentItemDto
         {
             Id = DynamicPropertyHelper.GetId(poz),
             LineNumber = lineNum,
-            ProductId = DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id"),
+
+            // Product reference
+            ProductId = DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(poz, "AsortymentWybranyId"),
             ProductSymbol = DynamicPropertyHelper.GetString(poz, "Asortyment", "Symbol"),
-            Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+            ProductName = DynamicPropertyHelper.GetString(poz, "Asortyment", "Nazwa"),
+
+            // Item details
+            Name = DynamicPropertyHelper.GetString(poz, "Nazwa") ?? "",
+            Description = DynamicPropertyHelper.GetString(poz, "Opis"),
+
+            // Quantity and unit
             Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
             Unit = DynamicPropertyHelper.GetString(poz, "Jednostka", "Symbol") ?? "szt.",
+            UnitSymbol = DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Symbol"),
+            UnitName = DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Nazwa"),
+            UnitId = DynamicPropertyHelper.GetNullableInt(poz, "JednostkaMiaryAsId"),
+
+            // Prices
             PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
             PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
+            OriginalPriceNet = DynamicPropertyHelper.GetNullableDecimal(poz, "CenaNettoOryginalna"),
+
+            // Discount
+            DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(poz, "RabatProcent"),
+            DiscountValue = DynamicPropertyHelper.GetNullableDecimal(poz, "RabatKwota"),
+
+            // VAT
+            VatRate = DynamicPropertyHelper.GetString(poz, "StawkaVat", "Symbol") ?? "23%",
+            VatRateId = DynamicPropertyHelper.GetNullableInt(poz, "StawkaVat", "Id"),
+            VatPercent = DynamicPropertyHelper.GetNullableDecimal(poz, "StawkaVat", "Wartosc"),
+
+            // Values
             ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
             ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
-            ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+            ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto"),
+
+            // Cost and margin
+            Cost = DynamicPropertyHelper.GetNullableDecimal(poz, "KosztEwidencyjny"),
+            CostValue = DynamicPropertyHelper.GetNullableDecimal(poz, "KosztMagazynowy"),
+            Margin = DynamicPropertyHelper.GetNullableDecimal(poz, "Marza"),
+            MarginPercent = DynamicPropertyHelper.GetNullableDecimal(poz, "MarzaProcent")
         };
+
+        // Calculate discount if not available
+        if (dto.DiscountPercent == null && dto.DiscountValue == null && dto.OriginalPriceNet.HasValue)
+        {
+            dto.DiscountValue = dto.OriginalPriceNet.Value - dto.PriceNet;
+            if (dto.OriginalPriceNet.Value != 0)
+            {
+                dto.DiscountPercent = (dto.DiscountValue / dto.OriginalPriceNet.Value) * 100;
+            }
+        }
+
+        return dto;
     }
 
     private static List<string> GetBusinessObjectErrors(dynamic obiekt)
