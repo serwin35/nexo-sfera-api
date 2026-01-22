@@ -244,6 +244,111 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Explore AdresPodstawowy properties for a customer
+    /// </summary>
+    [HttpGet("debug/address/{id}")]
+    public ActionResult<object> GetAddressDetails(int id)
+    {
+        try
+        {
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
+            }
+
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
+
+            if (podmiot == null)
+            {
+                return NotFound(new { Error = $"Customer {id} not found" });
+            }
+
+            var result = new Dictionary<string, object>();
+            result["CustomerId"] = id;
+            result["CustomerName"] = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "";
+
+            // Check AdresPodstawowy
+            var adresPodstawowy = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
+            if (adresPodstawowy != null)
+            {
+                Type adresType = adresPodstawowy.GetType();
+                var adresProps = new Dictionary<string, string>();
+                foreach (var prop in adresType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(adresPodstawowy);
+                        adresProps[prop.Name] = value?.ToString() ?? "null";
+                    }
+                    catch (Exception ex)
+                    {
+                        adresProps[prop.Name] = $"Error: {ex.Message}";
+                    }
+                }
+                result["AdresPodstawowy"] = new
+                {
+                    Type = adresType.FullName,
+                    Properties = adresProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                };
+            }
+            else
+            {
+                result["AdresPodstawowy"] = "null";
+            }
+
+            // Check Adresy collection
+            var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
+            var adresyList = new List<object>();
+            foreach (var adr in adresy)
+            {
+                Type adrType = adr.GetType();
+                var adrProps = new Dictionary<string, string>();
+                foreach (var prop in adrType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(adr);
+                        if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string))
+                        {
+                            adrProps[prop.Name] = $"[{value.GetType().Name}]";
+                        }
+                        else
+                        {
+                            adrProps[prop.Name] = value?.ToString() ?? "null";
+                        }
+                    }
+                    catch
+                    {
+                        adrProps[prop.Name] = "Error reading";
+                    }
+                }
+                adresyList.Add(new
+                {
+                    Type = adrType.FullName,
+                    Properties = adrProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                });
+            }
+            result["Adresy"] = adresyList;
+            result["AdresyCount"] = adresyList.Count;
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
     /// Test loading customer with Znajdz (gets full entity with relations)
     /// </summary>
     [HttpGet("debug/znajdz/{id}")]
@@ -957,48 +1062,24 @@ public class CustomersController : ControllerBase
             NIP = DynamicPropertyHelper.GetString(podmiot, "NIP"),
             REGON = DynamicPropertyHelper.GetString(podmiot, "REGON"),
             Type = DynamicPropertyHelper.GetNullableInt(podmiot, "Typ") == 0 ? CustomerType.Company : CustomerType.Person,
-            IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true
+            IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true,
+            // Phone is directly on Podmiot entity
+            Phone = DynamicPropertyHelper.GetString(podmiot, "Telefon"),
+            Website = DynamicPropertyHelper.GetString(podmiot, "Domena")
         };
 
-        // Map address - SDK requires explicit loading via LoadAdresPodstawowy() or LoadAdresy()
-        // Try AdresPodstawowy first (primary address)
-        dynamic? adresGlowny = null;
-        try
-        {
-            // Check if we need to load the address first
-            var isLoaded = DynamicPropertyHelper.GetProperty(podmiot, "IsAdresPodstawowyLoaded");
-            if (isLoaded != null && !(bool)isLoaded)
-            {
-                // Try to load it
-                var loadMethod = podmiot.GetType().GetMethod("LoadAdresPodstawowy");
-                loadMethod?.Invoke(podmiot, null);
-            }
-            adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
-        }
-        catch { /* Ignore loading errors */ }
+        // Map address - AdresPodstawowy is directly available on entity
+        dynamic? adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
 
-        // Fallback: try Adresy collection
+        // Fallback: try first from Adresy collection
         if (adresGlowny == null)
         {
-            try
+            var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
+            foreach (var adr in adresy)
             {
-                var areLoaded = DynamicPropertyHelper.GetProperty(podmiot, "AreAdresyLoaded");
-                if (areLoaded != null && !(bool)areLoaded)
-                {
-                    var loadMethod = podmiot.GetType().GetMethod("LoadAdresy");
-                    loadMethod?.Invoke(podmiot, null);
-                }
-                var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
-                foreach (var adr in adresy)
-                {
-                    if (adresGlowny == null || DynamicPropertyHelper.GetBool(adr, "Glowny"))
-                    {
-                        adresGlowny = adr;
-                        if (DynamicPropertyHelper.GetBool(adr, "Glowny")) break;
-                    }
-                }
+                adresGlowny = adr;
+                break; // Take first address
             }
-            catch { /* Ignore loading errors */ }
         }
 
         if (adresGlowny != null)
@@ -1014,63 +1095,43 @@ public class CustomersController : ControllerBase
             };
         }
 
-        // Map contacts - SDK requires explicit loading
-        try
+        // Map contacts from Kontakty collection
+        var kontakty = DynamicPropertyHelper.GetCollection(podmiot, "Kontakty");
+        foreach (var kontakt in kontakty)
         {
-            var areLoaded = DynamicPropertyHelper.GetProperty(podmiot, "AreKontaktyLoaded");
-            if (areLoaded != null && !(bool)areLoaded)
+            var typ = DynamicPropertyHelper.GetNullableInt(kontakt, "Typ");
+            var wartosc = DynamicPropertyHelper.GetString(kontakt, "Wartosc");
+            if (!string.IsNullOrEmpty(wartosc))
             {
-                var loadMethod = podmiot.GetType().GetMethod("LoadKontakty");
-                loadMethod?.Invoke(podmiot, null);
-            }
-            var kontakty = DynamicPropertyHelper.GetCollection(podmiot, "Kontakty");
-            foreach (var kontakt in kontakty)
-            {
-                var typ = DynamicPropertyHelper.GetNullableInt(kontakt, "Typ");
-                var wartosc = DynamicPropertyHelper.GetString(kontakt, "Wartosc");
-                if (!string.IsNullOrEmpty(wartosc))
-                {
-                    if (typ == 1) // Email
-                        dto.Email ??= wartosc;
-                    else if (typ == 2) // Telefon
-                        dto.Phone ??= wartosc;
-                    else if (typ == 3) // WWW
-                        dto.Website ??= wartosc;
-                }
+                if (typ == 1) // Email
+                    dto.Email ??= wartosc;
+                else if (typ == 2) // Telefon - override direct Telefon if exists in Kontakty
+                    dto.Phone ??= wartosc;
+                else if (typ == 3) // WWW
+                    dto.Website ??= wartosc;
             }
         }
-        catch { /* Ignore loading errors */ }
 
-        // Map bank account - SDK requires explicit loading
-        try
+        // Map bank account from Rachunki collection
+        var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "Rachunki");
+        dynamic? glownyRachunek = null;
+        foreach (var r in rachunki)
         {
-            var areLoaded = DynamicPropertyHelper.GetProperty(podmiot, "AreRachunkiLoaded");
-            if (areLoaded != null && !(bool)areLoaded)
+            if (glownyRachunek == null)
             {
-                var loadMethod = podmiot.GetType().GetMethod("LoadRachunki");
-                loadMethod?.Invoke(podmiot, null);
+                glownyRachunek = r;
             }
-            var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "Rachunki");
-            dynamic? glownyRachunek = null;
-            foreach (var r in rachunki)
+            if (DynamicPropertyHelper.GetBool(r, "Glowny"))
             {
-                if (glownyRachunek == null)
-                {
-                    glownyRachunek = r;
-                }
-                if (DynamicPropertyHelper.GetBool(r, "Glowny"))
-                {
-                    glownyRachunek = r;
-                    break;
-                }
-            }
-            if (glownyRachunek != null)
-            {
-                dto.BankAccount = DynamicPropertyHelper.GetString(glownyRachunek, "NumerRachunku");
-                dto.BankName = DynamicPropertyHelper.GetString(glownyRachunek, "NazwaBanku");
+                glownyRachunek = r;
+                break;
             }
         }
-        catch { /* Ignore loading errors */ }
+        if (glownyRachunek != null)
+        {
+            dto.BankAccount = DynamicPropertyHelper.GetString(glownyRachunek, "NumerRachunku");
+            dto.BankName = DynamicPropertyHelper.GetString(glownyRachunek, "NazwaBanku");
+        }
 
         return dto;
     }
