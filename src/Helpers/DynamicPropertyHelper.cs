@@ -284,6 +284,49 @@ public static class DynamicPropertyHelper
     }
 
     /// <summary>
+    /// Gets a Guid property value, optionally navigating through a nested property.
+    /// </summary>
+    public static Guid? GetGuid(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic? val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            if (val == null) return null;
+            if (val is Guid guidVal) return guidVal;
+            if (Guid.TryParse(val.ToString(), out var parsedGuid)) return parsedGuid;
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets a TimeSpan property value (for Time fields), optionally navigating through a nested property.
+    /// </summary>
+    public static TimeSpan? GetTime(dynamic obj, string prop1, string? prop2 = null)
+    {
+        try
+        {
+            dynamic? val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            if (prop2 != null) val = GetProperty(val, prop2);
+            if (val == null) return null;
+            if (val is TimeSpan timeVal) return timeVal;
+            if (val is DateTime dateTimeVal) return dateTimeVal.TimeOfDay;
+            if (TimeSpan.TryParse(val.ToString(), out var parsedTime)) return parsedTime;
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Safely navigates through multiple levels of nested properties.
     /// </summary>
     public static dynamic? Navigate(dynamic obj, params string[] properties)
