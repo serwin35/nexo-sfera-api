@@ -80,6 +80,60 @@ public class SferaService : ISferaService, IDisposable
         return _sfera;
     }
 
+    /// <summary>
+    /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call
+    /// </summary>
+    public dynamic? GetManager(string assemblyName, string typeName)
+    {
+        if (_sfera == null)
+        {
+            throw new InvalidOperationException("Sfera is not initialized. Call InitializeAsync first.");
+        }
+
+        // Find the type from loaded assemblies
+        Type? managerType = null;
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                if (asm.FullName != null && asm.FullName.Contains(assemblyName))
+                {
+                    managerType = asm.GetType(typeName);
+                    if (managerType != null) break;
+                }
+            }
+            catch { }
+        }
+
+        if (managerType == null)
+        {
+            _logger.LogWarning("Manager type {TypeName} not found in assembly {AssemblyName}", typeName, assemblyName);
+            return null;
+        }
+
+        // Find the generic PodajObiektTypu method
+        Type sferaType = _sfera.GetType();
+        System.Reflection.MethodInfo? genericMethod = null;
+        foreach (var m in sferaType.GetMethods())
+        {
+            if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
+            {
+                genericMethod = m;
+                break;
+            }
+        }
+
+        if (genericMethod == null)
+        {
+            _logger.LogWarning("PodajObiektTypu generic method not found on Sfera");
+            return null;
+        }
+
+        // Create concrete method and invoke
+        var concreteMethod = genericMethod.MakeGenericMethod(managerType);
+        return concreteMethod.Invoke(_sfera, null);
+    }
+
     private static ProductId GetProductId(string product)
     {
         return product.ToLower() switch

@@ -255,8 +255,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
+            }
             var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             if (!string.IsNullOrEmpty(search))
@@ -316,8 +319,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
+            }
             var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
             var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
@@ -343,8 +349,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
+            }
             var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             var cleanNip = nip.Replace("-", "").Replace(" ", "");
@@ -376,8 +385,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
+            }
             var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             // Check if symbol already exists
@@ -505,8 +517,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
+            }
             var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
             var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
@@ -571,8 +586,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
+            }
             var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
             var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
