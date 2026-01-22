@@ -124,7 +124,7 @@ public class CustomersController : ControllerBase
             results["PodajObiektTypuSignatures"] = podajMethods;
 
             // Try to get Podmioty manager using generic method
-            object? podmioty = null;
+            dynamic? podmioty = null;
             try
             {
                 // First try: find generic method with 0 parameters
