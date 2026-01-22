@@ -1,5 +1,14 @@
 using InsERT.Moria.Sfera;
 using InsERT.Mox.Product;
+// Extension methods for Sfera managers
+using InsERT.Moria.Asortymenty;
+using InsERT.Moria.Klienci;
+using InsERT.Moria.Dokumenty;
+using InsERT.Moria.Logistyka;
+using InsERT.Moria.Oferty;
+using InsERT.Moria.Slowniki;
+using InsERT.Moria.Rabaty;
+using InsERT.Moria.Pracownicy;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 
@@ -81,7 +90,8 @@ public class SferaService : ISferaService, IDisposable
     }
 
     /// <summary>
-    /// Gets a manager by calling the corresponding method on Sfera (e.g., "Asortymenty" calls sfera.Asortymenty())
+    /// Gets a manager by calling the corresponding extension method on Sfera
+    /// Extension methods require static type resolution, cannot use dynamic
     /// </summary>
     public dynamic? GetManager(string managerMethodName)
     {
@@ -92,33 +102,33 @@ public class SferaService : ISferaService, IDisposable
 
         try
         {
-            // Use dynamic invocation - this handles extension methods and optional parameters
-            dynamic sfera = _sfera;
+            // Call extension methods on static Uchwyt type (not dynamic!)
+            // Extension methods are resolved at compile time
             return managerMethodName switch
             {
-                "Asortymenty" => sfera.Asortymenty(),
-                "SzablonyAsortymentu" => sfera.SzablonyAsortymentu(),
-                "Podmioty" => sfera.Podmioty(),
-                "Dokumenty" => sfera.Dokumenty(),
-                "DokumentySprzedazy" => sfera.DokumentySprzedazy(),
-                "DokumentyZakupu" => sfera.DokumentyZakupu(),
-                "DokumentyHandlowe" => sfera.DokumentyHandlowe(),
-                "DokumentyElektroniczne" => sfera.DokumentyElektroniczne(),
-                "KorektyDokumentowSprzedazy" => sfera.KorektyDokumentowSprzedazy(),
-                "KorektyDokumentowZakupu" => sfera.KorektyDokumentowZakupu(),
-                "Magazyny" => sfera.Magazyny(),
-                "WydaniaZewnetrzne" => sfera.WydaniaZewnetrzne(),
-                "PrzyjeciaZewnetrzne" => sfera.PrzyjeciaZewnetrzne(),
-                "WydaniaMiedzymagazynowe" => sfera.WydaniaMiedzymagazynowe(),
-                "RozchodyWewnetrzne" => sfera.RozchodyWewnetrzne(),
-                "PrzychodWewnetrzny" => sfera.PrzychodWewnetrzny(),
-                "ZamowieniaOdKlientow" => sfera.ZamowieniaOdKlientow(),
-                "ZamowieniaDoDostawcow" => sfera.ZamowieniaDoDostawcow(),
-                "Oferty" => sfera.Oferty(),
-                "OfertyDlaKlientow" => sfera.OfertyDlaKlientow(),
-                "Pracownicy" => sfera.Pracownicy(),
-                "Slowniki" => sfera.Slowniki(),
-                "Rabaty" => sfera.Rabaty(),
+                "Asortymenty" => _sfera.Asortymenty(),
+                "SzablonyAsortymentu" => _sfera.SzablonyAsortymentu(),
+                "Podmioty" => _sfera.Podmioty(),
+                "Dokumenty" => _sfera.Dokumenty(),
+                "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
+                "DokumentyZakupu" => _sfera.DokumentyZakupu(),
+                "DokumentyHandlowe" => _sfera.DokumentyHandlowe(),
+                "DokumentyElektroniczne" => _sfera.DokumentyElektroniczne(),
+                "KorektyDokumentowSprzedazy" => _sfera.KorektyDokumentowSprzedazy(),
+                "KorektyDokumentowZakupu" => _sfera.KorektyDokumentowZakupu(),
+                "Magazyny" => _sfera.Magazyny(),
+                "WydaniaZewnetrzne" => _sfera.WydaniaZewnetrzne(),
+                "PrzyjeciaZewnetrzne" => _sfera.PrzyjeciaZewnetrzne(),
+                "WydaniaMiedzymagazynowe" => _sfera.WydaniaMiedzymagazynowe(),
+                "RozchodyWewnetrzne" => _sfera.RozchodyWewnetrzne(),
+                "PrzychodWewnetrzny" => _sfera.PrzychodWewnetrzny(),
+                "ZamowieniaOdKlientow" => _sfera.ZamowieniaOdKlientow(),
+                "ZamowieniaDoDostawcow" => _sfera.ZamowieniaDoDostawcow(),
+                "Oferty" => _sfera.Oferty(),
+                "OfertyDlaKlientow" => _sfera.OfertyDlaKlientow(),
+                "Pracownicy" => _sfera.Pracownicy(),
+                "Slowniki" => _sfera.Slowniki(),
+                "Rabaty" => _sfera.Rabaty(),
                 _ => throw new ArgumentException($"Unknown manager: {managerMethodName}")
             };
         }
