@@ -260,7 +260,12 @@ public class CustomersController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
             }
-            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
+
+            var allPodmioty = new List<dynamic>();
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                allPodmioty.Add(p);
+            }
 
             if (!string.IsNullOrEmpty(search))
             {
@@ -324,8 +329,16 @@ public class CustomersController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
             }
-            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
-            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
+
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
 
             if (podmiot == null)
             {
@@ -354,14 +367,18 @@ public class CustomersController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
             }
-            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             var cleanNip = nip.Replace("-", "").Replace(" ", "");
-            var podmiot = allPodmioty.FirstOrDefault(p =>
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
             {
                 var podmiotNip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
-                return podmiotNip == cleanNip || podmiotNip == nip;
-            });
+                if (podmiotNip == cleanNip || podmiotNip == nip)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
 
             if (podmiot == null)
             {
@@ -390,11 +407,17 @@ public class CustomersController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
             }
-            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             // Check if symbol already exists
-            var existing = allPodmioty.FirstOrDefault(p =>
-                DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol);
+            dynamic? existing = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol)
+                {
+                    existing = p;
+                    break;
+                }
+            }
             if (existing != null)
             {
                 return BadRequest(ApiResponse<CustomerDto>.Error($"Customer with symbol {request.Symbol} already exists"));
@@ -522,8 +545,16 @@ public class CustomersController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
             }
-            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
-            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
+
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
 
             if (podmiot == null)
             {
@@ -591,8 +622,16 @@ public class CustomersController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
             }
-            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
-            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
+
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
 
             if (podmiot == null)
             {
