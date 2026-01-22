@@ -43,32 +43,30 @@ public class WarehouseDocumentsController : ControllerBase
             {
                 var wz = sfera.WydaniaZewnetrzne();
                 var allWz = ((IEnumerable<dynamic>)wz.Dane.Wszystkie()).ToList();
-                var wzQuery = allWz.AsQueryable();
 
                 if (!string.IsNullOrEmpty(query.WarehouseSymbol))
                 {
-                    wzQuery = wzQuery.Where(d =>
+                    allWz = allWz.Where(d =>
                     {
                         var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
                         return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == query.WarehouseSymbol;
-                    }).AsQueryable();
+                    }).ToList();
                 }
 
                 if (query.DateFrom.HasValue)
                 {
-                    wzQuery = wzQuery.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).AsQueryable();
+                    allWz = allWz.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).ToList();
                 }
 
                 if (query.DateTo.HasValue)
                 {
-                    wzQuery = wzQuery.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).AsQueryable();
+                    allWz = allWz.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).ToList();
                 }
 
-                var wzList = wzQuery.ToList();
-                totalCount += wzList.Count;
-                var wzDocs = wzList
+                totalCount += allWz.Count;
+                var wzDocs = allWz
                     .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
                     .Take(query.PageSize)
                     .ToList();
@@ -80,32 +78,30 @@ public class WarehouseDocumentsController : ControllerBase
             {
                 var pz = sfera.PrzyjeciaZewnetrzne();
                 var allPz = ((IEnumerable<dynamic>)pz.Dane.Wszystkie()).ToList();
-                var pzQuery = allPz.AsQueryable();
 
                 if (!string.IsNullOrEmpty(query.WarehouseSymbol))
                 {
-                    pzQuery = pzQuery.Where(d =>
+                    allPz = allPz.Where(d =>
                     {
                         var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
                         return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == query.WarehouseSymbol;
-                    }).AsQueryable();
+                    }).ToList();
                 }
 
                 if (query.DateFrom.HasValue)
                 {
-                    pzQuery = pzQuery.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).AsQueryable();
+                    allPz = allPz.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).ToList();
                 }
 
                 if (query.DateTo.HasValue)
                 {
-                    pzQuery = pzQuery.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).AsQueryable();
+                    allPz = allPz.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).ToList();
                 }
 
-                var pzList = pzQuery.ToList();
-                totalCount += pzList.Count;
-                var pzDocs = pzList
+                totalCount += allPz.Count;
+                var pzDocs = allPz
                     .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
                     .Take(query.PageSize)
                     .ToList();
@@ -171,8 +167,8 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)wz.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(wz.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created WZ {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created WZ {Number}", docNumber);
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -239,8 +235,8 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)pz.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pz.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created PZ {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created PZ {Number}", docNumber);
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -299,8 +295,8 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)rw.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(rw.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created RW {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created RW {Number}", docNumber);
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -359,8 +355,8 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)pw.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pw.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created PW {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created PW {Number}", docNumber);
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -443,8 +439,8 @@ public class WarehouseDocumentsController : ControllerBase
                 if ((bool)mm.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(mm.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created MM {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created MM {Number}", docNumber);
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),

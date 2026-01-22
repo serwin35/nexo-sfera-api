@@ -210,8 +210,8 @@ public class OrdersController : ControllerBase
                 if ((bool)zamowienie.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created supplier order {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var orderNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created supplier order {Number}", orderNumber);
 
                     return CreatedAtAction(
                         nameof(GetSupplierOrder),
@@ -385,8 +385,8 @@ public class OrdersController : ControllerBase
                 if ((bool)oferta.Zapisz())
                 {
                     var numerWewnetrzny = DynamicPropertyHelper.GetProperty(oferta.Dane, "NumerWewnetrzny");
-                    _logger.LogInformation("Created commercial offer {Number}",
-                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
+                    var offerNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                    _logger.LogInformation("Created commercial offer {Number}", offerNumber);
 
                     return CreatedAtAction(
                         nameof(GetCommercialOffers),

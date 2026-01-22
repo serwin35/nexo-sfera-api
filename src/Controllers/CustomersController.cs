@@ -4,9 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.Klienci;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -40,34 +38,40 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var podmioty = sfera.Podmioty();
-
-            var query = podmioty.Dane.Wszystkie();
+            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             if (!string.IsNullOrEmpty(search))
             {
-                query = query.Where(p =>
-                    p.NazwaSkrocona.Contains(search) ||
-                    (p.NIP != null && p.NIP.Contains(search)) ||
-                    p.Symbol.Contains(search));
+                allPodmioty = allPodmioty.Where(p =>
+                {
+                    var nazwaSkrocona = DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "";
+                    var nip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
+                    var symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? "";
+                    return nazwaSkrocona.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                           nip.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                           symbol.Contains(search, StringComparison.OrdinalIgnoreCase);
+                }).ToList();
             }
 
             if (type.HasValue)
             {
-                var podType = type.Value == CustomerType.Company ? (short)TypPodmiotu.Firmy : (short)TypPodmiotu.Osoby;
-                query = query.Where(p => p.Typ == podType);
+                short podType = type.Value == CustomerType.Company ? (short)0 : (short)1; // 0=Firmy, 1=Osoby
+                allPodmioty = allPodmioty.Where(p =>
+                    DynamicPropertyHelper.GetNullableInt(p, "Typ") == podType).ToList();
             }
 
-            var totalCount = query.Count();
-            var items = query
+            var totalCount = allPodmioty.Count;
+            var items = allPodmioty
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(p => MapToDto(p))
                 .ToList();
 
             var response = new PagedResponse<CustomerDto>
             {
-                Data = items.Select(MapToDto).ToList(),
+                Data = items,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -90,10 +94,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var podmioty = sfera.Podmioty();
+            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
+            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
-            var podmiot = podmioty.Dane.Wszystkie().FirstOrDefault(p => p.Id == id);
             if (podmiot == null)
             {
                 return NotFound(ApiResponse<CustomerDto>.Error($"Customer with ID {id} not found"));
@@ -116,11 +121,16 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var podmioty = sfera.Podmioty();
+            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             var cleanNip = nip.Replace("-", "").Replace(" ", "");
-            var podmiot = podmioty.Dane.Pierwszy(p => p.NIP == cleanNip || p.NIP == nip);
+            var podmiot = allPodmioty.FirstOrDefault(p =>
+            {
+                var podmiotNip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
+                return podmiotNip == cleanNip || podmiotNip == nip;
+            });
 
             if (podmiot == null)
             {
@@ -144,11 +154,13 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var podmioty = sfera.Podmioty();
+            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
 
             // Check if symbol already exists
-            var existing = podmioty.Dane.Pierwszy(p => p.Symbol == request.Symbol);
+            var existing = allPodmioty.FirstOrDefault(p =>
+                DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol);
             if (existing != null)
             {
                 return BadRequest(ApiResponse<CustomerDto>.Error($"Customer with symbol {request.Symbol} already exists"));
@@ -156,29 +168,28 @@ public class CustomersController : ControllerBase
 
             using (var nowyPodmiot = podmioty.Utworz())
             {
-                nowyPodmiot.Dane.Symbol = request.Symbol;
-                nowyPodmiot.Dane.NazwaSkrocona = request.ShortName;
-                nowyPodmiot.Dane.NazwaPelna = request.FullName ?? request.ShortName;
+                dynamic dane = nowyPodmiot.Dane;
+                dane.Symbol = request.Symbol;
+                dane.NazwaSkrocona = request.ShortName;
+                dane.NazwaPelna = request.FullName ?? request.ShortName;
 
                 if (!string.IsNullOrEmpty(request.NIP))
                 {
-                    nowyPodmiot.Dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
+                    dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
                 }
 
                 if (!string.IsNullOrEmpty(request.REGON))
                 {
-                    nowyPodmiot.Dane.REGON = request.REGON;
+                    dane.REGON = request.REGON;
                 }
 
-                // Set customer type
-                nowyPodmiot.Dane.Typ = request.Type == CustomerType.Company
-                    ? (short)TypPodmiotu.Firmy
-                    : (short)TypPodmiotu.Osoby;
+                // Set customer type (0=Firmy, 1=Osoby)
+                dane.Typ = request.Type == CustomerType.Company ? (short)0 : (short)1;
 
                 // Set address
                 if (request.Address != null)
                 {
-                    var adres = nowyPodmiot.Dane.AdresGlowny;
+                    var adres = DynamicPropertyHelper.GetProperty(dane, "AdresGlowny");
                     if (adres != null)
                     {
                         adres.Ulica = request.Address.Street;
@@ -192,46 +203,63 @@ public class CustomersController : ControllerBase
                 // Set contacts
                 if (!string.IsNullOrEmpty(request.Email))
                 {
-                    var kontakt = nowyPodmiot.Kontakty.DodajEmail(request.Email);
-                    if (kontakt != null)
+                    try
                     {
-                        kontakt.Dane.Glowny = true;
+                        var kontakt = nowyPodmiot.Kontakty.DodajEmail(request.Email);
+                        if (kontakt != null)
+                        {
+                            kontakt.Dane.Glowny = true;
+                        }
                     }
+                    catch { /* Ignore contact errors */ }
                 }
 
                 if (!string.IsNullOrEmpty(request.Phone))
                 {
-                    var kontakt = nowyPodmiot.Kontakty.DodajTelefon(request.Phone);
-                    if (kontakt != null)
+                    try
                     {
-                        kontakt.Dane.Glowny = true;
+                        var kontakt = nowyPodmiot.Kontakty.DodajTelefon(request.Phone);
+                        if (kontakt != null)
+                        {
+                            kontakt.Dane.Glowny = true;
+                        }
                     }
+                    catch { /* Ignore contact errors */ }
                 }
 
                 if (!string.IsNullOrEmpty(request.Website))
                 {
-                    nowyPodmiot.Kontakty.DodajWww(request.Website);
+                    try
+                    {
+                        nowyPodmiot.Kontakty.DodajWww(request.Website);
+                    }
+                    catch { /* Ignore contact errors */ }
                 }
 
                 // Set bank account
                 if (!string.IsNullOrEmpty(request.BankAccount))
                 {
-                    var rachunek = nowyPodmiot.RachunkiBankowe.Dodaj();
-                    if (rachunek != null)
+                    try
                     {
-                        rachunek.Dane.NumerRachunku = request.BankAccount;
-                        rachunek.Dane.NazwaBanku = request.BankName;
-                        rachunek.Dane.Glowny = true;
+                        var rachunek = nowyPodmiot.RachunkiBankowe.Dodaj();
+                        if (rachunek != null)
+                        {
+                            rachunek.Dane.NumerRachunku = request.BankAccount;
+                            rachunek.Dane.NazwaBanku = request.BankName;
+                            rachunek.Dane.Glowny = true;
+                        }
                     }
+                    catch { /* Ignore bank account errors */ }
                 }
 
-                if (nowyPodmiot.Zapisz())
+                if ((bool)nowyPodmiot.Zapisz())
                 {
-                    _logger.LogInformation("Created customer {Symbol}", request.Symbol);
+                    var symbolLog = request.Symbol;
+                    _logger.LogInformation("Created customer {Symbol}", symbolLog);
                     return CreatedAtAction(
                         nameof(GetCustomer),
-                        new { id = nowyPodmiot.Dane.Id },
-                        ApiResponse<CustomerDto>.Ok(MapToDto(nowyPodmiot.Dane), "Customer created successfully"));
+                        new { id = DynamicPropertyHelper.GetId(dane) },
+                        ApiResponse<CustomerDto>.Ok(MapToDto(dane), "Customer created successfully"));
                 }
                 else
                 {
@@ -255,10 +283,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var podmioty = sfera.Podmioty();
+            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
+            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
-            var podmiot = podmioty.Dane.Wszystkie().FirstOrDefault(p => p.Id == id);
             if (podmiot == null)
             {
                 return NotFound(ApiResponse<CustomerDto>.Error($"Customer with ID {id} not found"));
@@ -271,30 +300,32 @@ public class CustomersController : ControllerBase
                     return NotFound(ApiResponse<CustomerDto>.Error($"Customer with ID {id} not found"));
                 }
 
+                dynamic dane = edytowanyPodmiot.Dane;
+
                 if (!string.IsNullOrEmpty(request.ShortName))
                 {
-                    edytowanyPodmiot.Dane.NazwaSkrocona = request.ShortName;
+                    dane.NazwaSkrocona = request.ShortName;
                 }
 
                 if (!string.IsNullOrEmpty(request.FullName))
                 {
-                    edytowanyPodmiot.Dane.NazwaPelna = request.FullName;
+                    dane.NazwaPelna = request.FullName;
                 }
 
                 if (!string.IsNullOrEmpty(request.NIP))
                 {
-                    edytowanyPodmiot.Dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
+                    dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
                 }
 
                 if (!string.IsNullOrEmpty(request.REGON))
                 {
-                    edytowanyPodmiot.Dane.REGON = request.REGON;
+                    dane.REGON = request.REGON;
                 }
 
-                if (edytowanyPodmiot.Zapisz())
+                if ((bool)edytowanyPodmiot.Zapisz())
                 {
                     _logger.LogInformation("Updated customer {Id}", id);
-                    return Ok(ApiResponse<CustomerDto>.Ok(MapToDto(edytowanyPodmiot.Dane), "Customer updated successfully"));
+                    return Ok(ApiResponse<CustomerDto>.Ok(MapToDto(dane), "Customer updated successfully"));
                 }
                 else
                 {
@@ -318,10 +349,11 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var podmioty = sfera.Podmioty();
+            var allPodmioty = ((IEnumerable<dynamic>)podmioty.Dane.Wszystkie()).ToList();
+            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
-            var podmiot = podmioty.Dane.Wszystkie().FirstOrDefault(p => p.Id == id);
             if (podmiot == null)
             {
                 return NotFound(ApiResponse<bool>.Error($"Customer with ID {id} not found"));
@@ -334,7 +366,7 @@ public class CustomersController : ControllerBase
                     return NotFound(ApiResponse<bool>.Error($"Customer with ID {id} not found"));
                 }
 
-                if (usuwanyPodmiot.Usun())
+                if ((bool)usuwanyPodmiot.Usun())
                 {
                     _logger.LogInformation("Deleted customer {Id}", id);
                     return Ok(ApiResponse<bool>.Ok(true, "Customer deleted successfully"));
@@ -353,76 +385,104 @@ public class CustomersController : ControllerBase
         }
     }
 
-    private static CustomerDto MapToDto(Podmiot podmiot)
+    private static CustomerDto MapToDto(dynamic podmiot)
     {
         var dto = new CustomerDto
         {
-            Id = podmiot.Id,
-            Symbol = podmiot.Symbol,
-            ShortName = podmiot.NazwaSkrocona,
-            FullName = podmiot.NazwaPelna,
-            NIP = podmiot.NIP,
-            REGON = podmiot.REGON,
-            Type = podmiot.Typ == (short)TypPodmiotu.Firmy ? CustomerType.Company : CustomerType.Person,
-            IsActive = podmiot.Aktywny
+            Id = DynamicPropertyHelper.GetId(podmiot),
+            Symbol = DynamicPropertyHelper.GetString(podmiot, "Symbol"),
+            ShortName = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona"),
+            FullName = DynamicPropertyHelper.GetString(podmiot, "NazwaPelna"),
+            NIP = DynamicPropertyHelper.GetString(podmiot, "NIP"),
+            REGON = DynamicPropertyHelper.GetString(podmiot, "REGON"),
+            Type = DynamicPropertyHelper.GetNullableInt(podmiot, "Typ") == 0 ? CustomerType.Company : CustomerType.Person,
+            IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true
         };
 
         // Map address
-        if (podmiot.AdresGlowny != null)
+        var adresGlowny = DynamicPropertyHelper.GetProperty(podmiot, "AdresGlowny");
+        if (adresGlowny != null)
         {
             dto.Address = new AddressDto
             {
-                Street = podmiot.AdresGlowny.Ulica,
-                BuildingNumber = podmiot.AdresGlowny.NumerDomu,
-                ApartmentNumber = podmiot.AdresGlowny.NumerLokalu,
-                City = podmiot.AdresGlowny.Miejscowosc,
-                PostalCode = podmiot.AdresGlowny.KodPocztowy
+                Street = DynamicPropertyHelper.GetString(adresGlowny, "Ulica"),
+                BuildingNumber = DynamicPropertyHelper.GetString(adresGlowny, "NumerDomu"),
+                ApartmentNumber = DynamicPropertyHelper.GetString(adresGlowny, "NumerLokalu"),
+                City = DynamicPropertyHelper.GetString(adresGlowny, "Miejscowosc"),
+                PostalCode = DynamicPropertyHelper.GetString(adresGlowny, "KodPocztowy")
             };
         }
 
         // Map contacts
-        var emailKontakt = podmiot.Kontakty?.FirstOrDefault(k => k.Typ == (int)TypKontaktu.Email);
-        if (emailKontakt != null)
+        var kontakty = DynamicPropertyHelper.GetCollection(podmiot, "Kontakty").ToList();
+        foreach (var kontakt in kontakty)
         {
-            dto.Email = emailKontakt.Wartosc;
-        }
-
-        var telefonKontakt = podmiot.Kontakty?.FirstOrDefault(k => k.Typ == (int)TypKontaktu.Telefon);
-        if (telefonKontakt != null)
-        {
-            dto.Phone = telefonKontakt.Wartosc;
-        }
-
-        var wwwKontakt = podmiot.Kontakty?.FirstOrDefault(k => k.Typ == (int)TypKontaktu.WWW);
-        if (wwwKontakt != null)
-        {
-            dto.Website = wwwKontakt.Wartosc;
+            var typ = DynamicPropertyHelper.GetNullableInt(kontakt, "Typ");
+            var wartosc = DynamicPropertyHelper.GetString(kontakt, "Wartosc");
+            if (!string.IsNullOrEmpty(wartosc))
+            {
+                if (typ == 1) // Email
+                    dto.Email ??= wartosc;
+                else if (typ == 2) // Telefon
+                    dto.Phone ??= wartosc;
+                else if (typ == 3) // WWW
+                    dto.Website ??= wartosc;
+            }
         }
 
         // Map bank account
-        var glownyRachunek = podmiot.RachunkiBankowe?.FirstOrDefault(r => r.Glowny);
+        var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "RachunkiBankowe").ToList();
+        var glownyRachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetBool(r, "Glowny"))
+                           ?? rachunki.FirstOrDefault();
         if (glownyRachunek != null)
         {
-            dto.BankAccount = glownyRachunek.NumerRachunku;
-            dto.BankName = glownyRachunek.NazwaBanku;
+            dto.BankAccount = DynamicPropertyHelper.GetString(glownyRachunek, "NumerRachunku");
+            dto.BankName = DynamicPropertyHelper.GetString(glownyRachunek, "NazwaBanku");
         }
 
         return dto;
     }
 
-    private static List<string> GetBusinessObjectErrors(InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy obiekt)
+    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
-        foreach (var encjaZBledami in obiekt.InvalidData)
+        try
         {
-            foreach (var blad in encjaZBledami.Errors)
+            var invalidData = DynamicPropertyHelper.GetProperty(obiekt, "InvalidData");
+            if (invalidData == null) return errors;
+
+            foreach (var encjaZBledami in invalidData)
             {
-                errors.Add(blad.ToString());
+                var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
+                if (entityErrors != null)
+                {
+                    foreach (var blad in entityErrors)
+                    {
+                        errors.Add(blad?.ToString() ?? "Unknown error");
+                    }
+                }
+
+                var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
+                if (memberErrors != null)
+                {
+                    foreach (var bladNaPolach in memberErrors)
+                    {
+                        try
+                        {
+                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
+                            errors.Add($"{key}: {bladNaPolach}");
+                        }
+                        catch
+                        {
+                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
+                        }
+                    }
+                }
             }
-            foreach (var bladNaPolach in encjaZBledami.MemberErrors)
-            {
-                errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
-            }
+        }
+        catch
+        {
+            errors.Add("Could not retrieve error details");
         }
         return errors;
     }

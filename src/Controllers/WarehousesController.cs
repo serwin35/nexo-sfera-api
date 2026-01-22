@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -34,19 +33,18 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var magazyny = sfera.Magazyny();
+            var allMagazyny = ((IEnumerable<dynamic>)magazyny.Dane.Wszystkie()).ToList();
 
-            var items = magazyny.Dane.Wszystkie()
-                .Select(m => new WarehouseDto
-                {
-                    Id = m.Id,
-                    Symbol = m.Symbol,
-                    Name = m.Nazwa,
-                    Description = m.Opis,
-                    IsActive = m.Aktywny
-                })
-                .ToList();
+            var items = allMagazyny.Select(m => new WarehouseDto
+            {
+                Id = DynamicPropertyHelper.GetId(m),
+                Symbol = DynamicPropertyHelper.GetString(m, "Symbol"),
+                Name = DynamicPropertyHelper.GetString(m, "Nazwa"),
+                Description = DynamicPropertyHelper.GetString(m, "Opis"),
+                IsActive = DynamicPropertyHelper.GetNullableBool(m, "Aktywny") ?? true
+            }).ToList();
 
             return Ok(ApiResponse<List<WarehouseDto>>.Ok(items));
         }
@@ -65,10 +63,11 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var magazyny = sfera.Magazyny();
+            var allMagazyny = ((IEnumerable<dynamic>)magazyny.Dane.Wszystkie()).ToList();
+            var magazyn = allMagazyny.FirstOrDefault(m => DynamicPropertyHelper.GetString(m, "Symbol") == symbol);
 
-            var magazyn = magazyny.Dane.Pierwszy(m => m.Symbol == symbol);
             if (magazyn == null)
             {
                 return NotFound(ApiResponse<WarehouseDto>.Error($"Warehouse with symbol {symbol} not found"));
@@ -76,11 +75,11 @@ public class WarehousesController : ControllerBase
 
             var dto = new WarehouseDto
             {
-                Id = magazyn.Id,
-                Symbol = magazyn.Symbol,
-                Name = magazyn.Nazwa,
-                Description = magazyn.Opis,
-                IsActive = magazyn.Aktywny
+                Id = DynamicPropertyHelper.GetId(magazyn),
+                Symbol = DynamicPropertyHelper.GetString(magazyn, "Symbol"),
+                Name = DynamicPropertyHelper.GetString(magazyn, "Nazwa"),
+                Description = DynamicPropertyHelper.GetString(magazyn, "Opis"),
+                IsActive = DynamicPropertyHelper.GetNullableBool(magazyn, "Aktywny") ?? true
             };
 
             return Ok(ApiResponse<WarehouseDto>.Ok(dto));
@@ -100,7 +99,7 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var asortymenty = sfera.Asortymenty();
 
             var asortyment = asortymenty.Znajdz(productSymbol);
@@ -112,22 +111,24 @@ public class WarehousesController : ControllerBase
             var stock = new List<StockDto>();
 
             // Get stock from all warehouses
-            var stanyMagazynowe = asortyment.Dane.StanyMagazynowe;
-            if (stanyMagazynowe != null)
+            dynamic dane = asortyment.Dane;
+            var stanyMagazynowe = DynamicPropertyHelper.GetCollection(dane, "StanyMagazynowe");
+
+            foreach (var stan in stanyMagazynowe)
             {
-                foreach (var stan in stanyMagazynowe)
+                var magazyn = DynamicPropertyHelper.GetProperty(stan, "Magazyn");
+                stock.Add(new StockDto
                 {
-                    stock.Add(new StockDto
-                    {
-                        ProductId = asortyment.Dane.Id,
-                        ProductSymbol = productSymbol,
-                        WarehouseId = stan.Magazyn?.Id ?? 0,
-                        WarehouseSymbol = stan.Magazyn?.Symbol ?? "",
-                        Quantity = stan.Ilosc,
-                        Reserved = stan.IloscZarezerwowana,
-                        Available = stan.IloscDostepna
-                    });
-                }
+                    ProductId = DynamicPropertyHelper.GetId(dane),
+                    ProductSymbol = productSymbol,
+                    WarehouseId = magazyn != null ? DynamicPropertyHelper.GetId(magazyn) : 0,
+                    WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : "",
+                    Quantity = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna") +
+                               DynamicPropertyHelper.GetDecimal(stan, "IloscZarezerwowanaIlosciowo") +
+                               DynamicPropertyHelper.GetDecimal(stan, "IloscZadysponowana"),
+                    Reserved = DynamicPropertyHelper.GetDecimal(stan, "IloscZarezerwowanaIlosciowo"),
+                    Available = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna")
+                });
             }
 
             return Ok(ApiResponse<List<StockDto>>.Ok(stock));

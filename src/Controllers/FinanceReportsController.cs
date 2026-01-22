@@ -383,7 +383,7 @@ public class FinanceReportsController : ControllerBase
             TotalDeposits = DynamicPropertyHelper.GetDecimal(w, "SumaWplat"),
             TotalWithdrawals = DynamicPropertyHelper.GetDecimal(w, "SumaWyplat"),
             ClosingBalance = DynamicPropertyHelper.GetDecimal(w, "SaldoKoncowe"),
-            CurrencySymbol = DynamicPropertyHelper.GetString(w, "RachunekBankowy", "Waluta", "Symbol"),
+            CurrencySymbol = DynamicPropertyHelper.GetNestedString(w, "RachunekBankowy", "Waluta", "Symbol"),
             Status = DynamicPropertyHelper.GetBool(w, "Zamkniety") ? "Closed" : "Open",
             IsClosed = DynamicPropertyHelper.GetBool(w, "Zamkniety"),
             OperationCount = DynamicPropertyHelper.GetCount(w, "OperacjeBankowe")

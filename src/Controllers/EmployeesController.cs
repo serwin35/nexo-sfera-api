@@ -3,9 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
-using InsERT.Moria.Klienci;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -40,31 +38,46 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var pracownicy = sfera.Podmioty().Dane.WszyscyPracownicy();
+            dynamic sfera = _sferaService.GetSfera();
+            var podmioty = sfera.Podmioty();
+            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
 
             if (activeOnly == true)
             {
-                pracownicy = pracownicy.Where(p => p.Aktywny == true);
+                allPracownicy = allPracownicy.Where(p =>
+                    DynamicPropertyHelper.GetNullableBool(p, "Aktywny") == true).ToList();
             }
 
             if (!string.IsNullOrEmpty(search))
             {
                 var searchLower = search.ToLower();
-                pracownicy = pracownicy.Where(p =>
-                    (p.Osoba.Imie != null && p.Osoba.Imie.ToLower().Contains(searchLower)) ||
-                    (p.Osoba.Nazwisko != null && p.Osoba.Nazwisko.ToLower().Contains(searchLower)) ||
-                    (p.Symbol != null && p.Symbol.ToLower().Contains(searchLower)));
+                allPracownicy = allPracownicy.Where(p =>
+                {
+                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                    var imie = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
+                    var nazwisko = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
+                    var symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? "";
+                    return imie.ToLower().Contains(searchLower) ||
+                           nazwisko.ToLower().Contains(searchLower) ||
+                           symbol.ToLower().Contains(searchLower);
+                }).ToList();
             }
 
-            var totalCount = pracownicy.Count();
-            var items = pracownicy
-                .OrderBy(p => p.Osoba.Nazwisko)
-                .ThenBy(p => p.Osoba.Imie)
+            var totalCount = allPracownicy.Count;
+            var items = allPracownicy
+                .OrderBy(p =>
+                {
+                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                    return osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
+                })
+                .ThenBy(p =>
+                {
+                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                    return osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
+                })
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
-                .Select(MapEmployeeSummary)
+                .Select(p => MapEmployeeSummary(p))
                 .ToList();
 
             return Ok(new PagedResponse<EmployeeSummaryDto>
@@ -92,9 +105,15 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var pracownik = sfera.Podmioty().Dane.WszyscyPracownicy()
-                .FirstOrDefault(p => p.Osoba.Pracownik.Id == id);
+            dynamic sfera = _sferaService.GetSfera();
+            var podmioty = sfera.Podmioty();
+            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var pracownik = allPracownicy.FirstOrDefault(p =>
+            {
+                var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
+                return pracownikObj != null && DynamicPropertyHelper.GetId(pracownikObj) == id;
+            });
 
             if (pracownik == null)
             {
@@ -121,9 +140,11 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var pracownik = sfera.Podmioty().Dane.WszyscyPracownicy()
-                .FirstOrDefault(p => p.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var podmioty = sfera.Podmioty();
+            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var pracownik = allPracownicy.FirstOrDefault(p =>
+                DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
 
             if (pracownik == null)
             {
@@ -150,9 +171,14 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var pracownik = sfera.Podmioty().Dane.WszyscyPracownicy()
-                .FirstOrDefault(p => p.Osoba.PESEL == pesel);
+            dynamic sfera = _sferaService.GetSfera();
+            var podmioty = sfera.Podmioty();
+            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var pracownik = allPracownicy.FirstOrDefault(p =>
+            {
+                var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                return osoba != null && DynamicPropertyHelper.GetString(osoba, "PESEL") == pesel;
+            });
 
             if (pracownik == null)
             {
@@ -171,100 +197,150 @@ public class EmployeesController : ControllerBase
 
     #region Mapping
 
-    private static EmployeeSummaryDto MapEmployeeSummary(IPodmiot p)
+    private static EmployeeSummaryDto MapEmployeeSummary(dynamic p)
     {
-        var primaryEmail = p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("email") == true && k.Podstawowy == true)?.Wartosc
-                        ?? p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("email") == true)?.Wartosc;
+        var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+        var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
+        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty").ToList();
 
-        var primaryPhone = p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("telefon") == true && k.Podstawowy == true)?.Wartosc
-                        ?? p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("telefon") == true)?.Wartosc;
+        var primaryEmail = GetContactByType(kontakty, "email");
+        var primaryPhone = GetContactByType(kontakty, "telefon");
+
+        var imie = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
+        var nazwisko = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
 
         return new EmployeeSummaryDto
         {
-            Id = p.Osoba?.Pracownik?.Id ?? 0,
-            Symbol = p.Symbol,
-            FirstName = p.Osoba?.Imie,
-            LastName = p.Osoba?.Nazwisko,
-            FullName = $"{p.Osoba?.Imie} {p.Osoba?.Nazwisko}".Trim(),
+            Id = pracownikObj != null ? DynamicPropertyHelper.GetId(pracownikObj) : 0,
+            Symbol = DynamicPropertyHelper.GetString(p, "Symbol"),
+            FirstName = imie,
+            LastName = nazwisko,
+            FullName = $"{imie} {nazwisko}".Trim(),
             Email = primaryEmail,
             Phone = primaryPhone,
-            IsActive = p.Aktywny ?? false
+            IsActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? false
         };
     }
 
-    private static EmployeeDto MapEmployee(IPodmiot p, bool includeContacts)
+    private static EmployeeDto MapEmployee(dynamic p, bool includeContacts)
     {
-        var primaryEmail = p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("email") == true && k.Podstawowy == true)?.Wartosc
-                        ?? p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("email") == true)?.Wartosc;
+        var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+        var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
+        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty").ToList();
 
-        var primaryPhone = p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("telefon") == true && k.Podstawowy == true)?.Wartosc
-                        ?? p.Kontakty?.FirstOrDefault(k => k.Rodzaj?.Nazwa?.ToLower().Contains("telefon") == true)?.Wartosc;
+        var primaryEmail = GetContactByType(kontakty, "email");
+        var primaryPhone = GetContactByType(kontakty, "telefon");
+
+        var imie = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
+        var nazwisko = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
+        var pesel = osoba != null ? DynamicPropertyHelper.GetString(osoba, "PESEL") : null;
+        var dataUrodzenia = osoba != null ? DynamicPropertyHelper.GetDateTime(osoba, "DataUrodzenia") : null;
+        var plec = osoba != null ? DynamicPropertyHelper.GetNullableInt(osoba, "Plec") : null;
 
         var dto = new EmployeeDto
         {
-            Id = p.Osoba?.Pracownik?.Id ?? 0,
-            Symbol = p.Symbol,
-            FirstName = p.Osoba?.Imie,
-            LastName = p.Osoba?.Nazwisko,
-            FullName = $"{p.Osoba?.Imie} {p.Osoba?.Nazwisko}".Trim(),
-            Pesel = p.Osoba?.PESEL,
-            BirthDate = p.Osoba?.DataUrodzenia,
-            Gender = p.Osoba?.Plec switch
+            Id = pracownikObj != null ? DynamicPropertyHelper.GetId(pracownikObj) : 0,
+            Symbol = DynamicPropertyHelper.GetString(p, "Symbol"),
+            FirstName = imie,
+            LastName = nazwisko,
+            FullName = $"{imie} {nazwisko}".Trim(),
+            Pesel = pesel,
+            BirthDate = dataUrodzenia,
+            Gender = plec switch
             {
-                (int)Plec.Mezczyzna => "Male",
-                (int)Plec.Kobieta => "Female",
+                0 => "Male",
+                1 => "Female",
                 _ => "Unknown"
             },
             Email = primaryEmail,
             Phone = primaryPhone,
-            IsActive = p.Aktywny ?? false
+            IsActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? false
         };
 
         // Map address
-        if (p.AdresPodstawowy != null)
+        var adresPodstawowy = DynamicPropertyHelper.GetProperty(p, "AdresPodstawowy");
+        if (adresPodstawowy != null)
         {
-            dto.Address = MapAddress(p.AdresPodstawowy);
+            dto.Address = MapAddress(adresPodstawowy);
         }
 
         // Map correspondence address
-        if (p.DomyslnyAdresKorespondencyjny != null)
+        var adresKorespondencyjny = DynamicPropertyHelper.GetProperty(p, "DomyslnyAdresKorespondencyjny");
+        if (adresKorespondencyjny != null)
         {
-            dto.CorrespondenceAddress = MapAddress(p.DomyslnyAdresKorespondencyjny);
+            dto.CorrespondenceAddress = MapAddress(adresKorespondencyjny);
         }
 
         // Map contacts
-        if (includeContacts && p.Kontakty != null)
+        if (includeContacts && kontakty.Any())
         {
-            dto.Contacts = p.Kontakty.Select(k => new EmployeeContactDto
+            dto.Contacts = kontakty.Select(k =>
             {
-                Id = k.Id,
-                Type = k.Rodzaj?.Nazwa,
-                Value = k.Wartosc,
-                IsPrimary = k.Podstawowy ?? false,
-                Comment = k.Komentarz
+                var rodzaj = DynamicPropertyHelper.GetProperty(k, "Rodzaj");
+                return new EmployeeContactDto
+                {
+                    Id = DynamicPropertyHelper.GetId(k),
+                    Type = rodzaj != null ? DynamicPropertyHelper.GetString(rodzaj, "Nazwa") : null,
+                    Value = DynamicPropertyHelper.GetString(k, "Wartosc"),
+                    IsPrimary = DynamicPropertyHelper.GetNullableBool(k, "Podstawowy") ?? false,
+                    Comment = DynamicPropertyHelper.GetString(k, "Komentarz")
+                };
             }).ToList();
         }
 
         return dto;
     }
 
-    private static EmployeeAddressDto? MapAddress(dynamic? adres)
+    private static string? GetContactByType(List<dynamic> kontakty, string typeName)
+    {
+        // First try to find primary contact of given type
+        var primary = kontakty.FirstOrDefault(k =>
+        {
+            var rodzaj = DynamicPropertyHelper.GetProperty(k, "Rodzaj");
+            var nazwa = rodzaj != null ? DynamicPropertyHelper.GetString(rodzaj, "Nazwa")?.ToLower() ?? "" : "";
+            var isPrimary = DynamicPropertyHelper.GetNullableBool(k, "Podstawowy") ?? false;
+            return nazwa.Contains(typeName) && isPrimary;
+        });
+
+        if (primary != null)
+        {
+            return DynamicPropertyHelper.GetString(primary, "Wartosc");
+        }
+
+        // Fall back to any contact of given type
+        var any = kontakty.FirstOrDefault(k =>
+        {
+            var rodzaj = DynamicPropertyHelper.GetProperty(k, "Rodzaj");
+            var nazwa = rodzaj != null ? DynamicPropertyHelper.GetString(rodzaj, "Nazwa")?.ToLower() ?? "" : "";
+            return nazwa.Contains(typeName);
+        });
+
+        return any != null ? DynamicPropertyHelper.GetString(any, "Wartosc") : null;
+    }
+
+    private static EmployeeAddressDto? MapAddress(dynamic adres)
     {
         if (adres == null) return null;
 
+        var szczegoly = DynamicPropertyHelper.GetProperty(adres, "Szczegoly");
+        var panstwo = DynamicPropertyHelper.GetProperty(adres, "Panstwo");
+        var wojewodztwo = szczegoly != null ? DynamicPropertyHelper.GetProperty(szczegoly, "Wojewodztwo") : null;
+        var gmina = szczegoly != null ? DynamicPropertyHelper.GetProperty(szczegoly, "Gmina") : null;
+        var powiat = gmina != null ? DynamicPropertyHelper.GetProperty(gmina, "Powiat") : null;
+
         return new EmployeeAddressDto
         {
-            Name = adres.Nazwa,
-            Street = adres.Szczegoly?.Ulica,
-            BuildingNumber = adres.Szczegoly?.NrDomu,
-            ApartmentNumber = adres.Szczegoly?.NrLokalu,
-            PostalCode = adres.Szczegoly?.KodPocztowy,
-            City = adres.Szczegoly?.Miejscowosc,
-            PostOffice = adres.Szczegoly?.Poczta,
-            Country = adres.Panstwo?.Nazwa,
-            Province = adres.Szczegoly?.Wojewodztwo?.Nazwa,
-            District = adres.Szczegoly?.Gmina?.Powiat?.Nazwa,
-            Municipality = adres.Szczegoly?.Gmina?.Nazwa
+            Name = DynamicPropertyHelper.GetString(adres, "Nazwa"),
+            Street = szczegoly != null ? DynamicPropertyHelper.GetString(szczegoly, "Ulica") : null,
+            BuildingNumber = szczegoly != null ? DynamicPropertyHelper.GetString(szczegoly, "NrDomu") : null,
+            ApartmentNumber = szczegoly != null ? DynamicPropertyHelper.GetString(szczegoly, "NrLokalu") : null,
+            PostalCode = szczegoly != null ? DynamicPropertyHelper.GetString(szczegoly, "KodPocztowy") : null,
+            City = szczegoly != null ? DynamicPropertyHelper.GetString(szczegoly, "Miejscowosc") : null,
+            PostOffice = szczegoly != null ? DynamicPropertyHelper.GetString(szczegoly, "Poczta") : null,
+            Country = panstwo != null ? DynamicPropertyHelper.GetString(panstwo, "Nazwa") : null,
+            Province = wojewodztwo != null ? DynamicPropertyHelper.GetString(wojewodztwo, "Nazwa") : null,
+            District = powiat != null ? DynamicPropertyHelper.GetString(powiat, "Nazwa") : null,
+            Municipality = gmina != null ? DynamicPropertyHelper.GetString(gmina, "Nazwa") : null
         };
     }
 

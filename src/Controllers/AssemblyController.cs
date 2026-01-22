@@ -4,11 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
-using InsERT.Moria.Asortymenty;
-using InsERT.Moria.ModelOrganizacyjny;
-using InsERT.Moria.EgzekutorMagazynowy;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -47,7 +43,7 @@ public class AssemblyController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
 
             // Get the finished product
             var produkt = GetAsortyment(sfera, request.ProductId, request.ProductSymbol, null);
@@ -57,15 +53,16 @@ public class AssemblyController : ControllerBase
             }
 
             // Get warehouse
-            var magazyn = sfera.Magazyny().Dane.Wszystkie()
-                .FirstOrDefault(m => m.Symbol == request.WarehouseSymbol);
+            var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+            var magazyn = magazyny.FirstOrDefault(m =>
+                DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
             if (magazyn == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error($"Warehouse '{request.WarehouseSymbol}' not found"));
             }
 
             // Get magazynier for warehouse operations
-            var magazynier = sfera.PodajObiektTypu<IMagazynier>();
+            var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             // Create assembly (montaż)
             var montaz = magazynier.UtworzMontaz(produkt, request.Quantity);
@@ -86,36 +83,39 @@ public class AssemblyController : ControllerBase
 
                 componentDtos.Add(new AssemblyComponentDto
                 {
-                    ProductId = skladnik.Id,
-                    ProductSymbol = skladnik.Symbol,
-                    ProductName = skladnik.Nazwa,
+                    ProductId = DynamicPropertyHelper.GetId(skladnik),
+                    ProductSymbol = DynamicPropertyHelper.GetString(skladnik, "Symbol"),
+                    ProductName = DynamicPropertyHelper.GetString(skladnik, "Nazwa"),
                     Quantity = component.Quantity,
-                    Unit = skladnik.JednostkaMagazynowa?.Symbol ?? "szt."
+                    Unit = DynamicPropertyHelper.GetString(skladnik, "JednostkaMagazynowa", "Symbol") ?? "szt."
                 });
             }
 
             // Save the assembly
-            if (magazynier.Zapisz())
+            if ((bool)magazynier.Zapisz())
             {
+                var przyjecie = DynamicPropertyHelper.GetProperty(montaz, "Przyjecie");
                 var dto = new AssemblyDto
                 {
-                    Id = montaz.Przyjecie?.Id ?? 0,
+                    Id = przyjecie != null ? DynamicPropertyHelper.GetId(przyjecie) : 0,
                     Type = AssemblyType.Assembly,
-                    ProductId = produkt.Id,
-                    ProductSymbol = produkt.Symbol,
-                    ProductName = produkt.Nazwa,
+                    ProductId = DynamicPropertyHelper.GetId(produkt),
+                    ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
+                    ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
                     Quantity = request.Quantity,
-                    Unit = produkt.JednostkaMagazynowa?.Symbol ?? "szt.",
-                    WarehouseSymbol = magazyn.Symbol,
-                    WarehouseName = magazyn.Nazwa,
+                    Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
+                    WarehouseSymbol = DynamicPropertyHelper.GetString(magazyn, "Symbol"),
+                    WarehouseName = DynamicPropertyHelper.GetString(magazyn, "Nazwa"),
                     Date = DateTime.Now,
                     Status = "Completed",
                     Components = componentDtos,
                     Notes = request.Notes
                 };
 
+                var productSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol") ?? "";
+                var componentCount = request.Components.Count;
                 _logger.LogInformation("Created assembly for product {ProductSymbol} with {ComponentCount} components",
-                    produkt.Symbol, request.Components.Count);
+                    productSymbol, componentCount);
 
                 return CreatedAtAction(nameof(GetAssembly), new { id = dto.Id }, ApiResponse<AssemblyDto>.Ok(dto));
             }
@@ -145,7 +145,7 @@ public class AssemblyController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
 
             // Get the product to disassemble
             var produkt = GetAsortyment(sfera, request.ProductId, request.ProductSymbol, null);
@@ -155,15 +155,16 @@ public class AssemblyController : ControllerBase
             }
 
             // Get warehouse
-            var magazyn = sfera.Magazyny().Dane.Wszystkie()
-                .FirstOrDefault(m => m.Symbol == request.WarehouseSymbol);
+            var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+            var magazyn = magazyny.FirstOrDefault(m =>
+                DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
             if (magazyn == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error($"Warehouse '{request.WarehouseSymbol}' not found"));
             }
 
             // Get magazynier for warehouse operations
-            var magazynier = sfera.PodajObiektTypu<IMagazynier>();
+            var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             // Create disassembly (demontaż)
             var demontaz = magazynier.UtworzDemontaz(produkt, magazyn);
@@ -182,37 +183,38 @@ public class AssemblyController : ControllerBase
 
                         componentDtos.Add(new AssemblyComponentDto
                         {
-                            ProductId = skladnik.Id,
-                            ProductSymbol = skladnik.Symbol,
-                            ProductName = skladnik.Nazwa,
+                            ProductId = DynamicPropertyHelper.GetId(skladnik),
+                            ProductSymbol = DynamicPropertyHelper.GetString(skladnik, "Symbol"),
+                            ProductName = DynamicPropertyHelper.GetString(skladnik, "Nazwa"),
                             Quantity = component.Quantity,
-                            Unit = skladnik.JednostkaMagazynowa?.Symbol ?? "szt."
+                            Unit = DynamicPropertyHelper.GetString(skladnik, "JednostkaMagazynowa", "Symbol") ?? "szt."
                         });
                     }
                 }
             }
 
             // Save the disassembly
-            if (magazynier.Zapisz())
+            if ((bool)magazynier.Zapisz())
             {
                 var dto = new AssemblyDto
                 {
                     Id = 0, // ID from demontaz if available
                     Type = AssemblyType.Disassembly,
-                    ProductId = produkt.Id,
-                    ProductSymbol = produkt.Symbol,
-                    ProductName = produkt.Nazwa,
+                    ProductId = DynamicPropertyHelper.GetId(produkt),
+                    ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
+                    ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
                     Quantity = request.Quantity,
-                    Unit = produkt.JednostkaMagazynowa?.Symbol ?? "szt.",
-                    WarehouseSymbol = magazyn.Symbol,
-                    WarehouseName = magazyn.Nazwa,
+                    Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
+                    WarehouseSymbol = DynamicPropertyHelper.GetString(magazyn, "Symbol"),
+                    WarehouseName = DynamicPropertyHelper.GetString(magazyn, "Nazwa"),
                     Date = DateTime.Now,
                     Status = "Completed",
                     Components = componentDtos,
                     Notes = request.Notes
                 };
 
-                _logger.LogInformation("Created disassembly for product {ProductSymbol}", produkt.Symbol);
+                var productSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol") ?? "";
+                _logger.LogInformation("Created disassembly for product {ProductSymbol}", productSymbol);
 
                 return CreatedAtAction(nameof(GetAssembly), new { id = dto.Id }, ApiResponse<AssemblyDto>.Ok(dto));
             }
@@ -248,44 +250,60 @@ public class AssemblyController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var magazynier = sfera.PodajObiektTypu<IMagazynier>();
+            dynamic sfera = _sferaService.GetSfera();
+            var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             var assemblies = new List<AssemblyListItemDto>();
 
             // Get przyjecia marked as from assembly (montaż)
-            var przyjecia = magazynier.Dane.Przyjecia();
+            var przyjecia = ((IEnumerable<dynamic>)magazynier.Dane.Przyjecia()).ToList();
 
             // Filter przyjecia that are from assembly operations
             var assemblyPrzyjecia = przyjecia
-                .Where(p => p.ZMontazu == true)
+                .Where(p => DynamicPropertyHelper.GetBool(p, "ZMontazu"))
                 .ToList();
 
             if (!string.IsNullOrEmpty(warehouseSymbol))
             {
                 assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p => p.Magazyn?.Symbol == warehouseSymbol)
+                    .Where(p =>
+                    {
+                        var mag = DynamicPropertyHelper.GetProperty(p, "Magazyn");
+                        return mag != null && DynamicPropertyHelper.GetString(mag, "Symbol") == warehouseSymbol;
+                    })
                     .ToList();
             }
 
             if (productId.HasValue)
             {
                 assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p => p.Asortyment?.Id == productId.Value)
+                    .Where(p =>
+                    {
+                        var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                        return asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value;
+                    })
                     .ToList();
             }
 
             if (dateFrom.HasValue)
             {
                 assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p => p.Data >= dateFrom.Value)
+                    .Where(p =>
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(p, "Data");
+                        return data.HasValue && data.Value >= dateFrom.Value;
+                    })
                     .ToList();
             }
 
             if (dateTo.HasValue)
             {
                 assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p => p.Data <= dateTo.Value)
+                    .Where(p =>
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(p, "Data");
+                        return data.HasValue && data.Value <= dateTo.Value;
+                    })
                     .ToList();
             }
 
@@ -294,17 +312,20 @@ public class AssemblyController : ControllerBase
             {
                 foreach (var przyjecie in assemblyPrzyjecia)
                 {
+                    var asortyment = DynamicPropertyHelper.GetProperty(przyjecie, "Asortyment");
+                    var magazyn = DynamicPropertyHelper.GetProperty(przyjecie, "Magazyn");
+
                     assemblies.Add(new AssemblyListItemDto
                     {
-                        Id = przyjecie.Id,
+                        Id = DynamicPropertyHelper.GetId(przyjecie),
                         Type = AssemblyType.Assembly,
-                        ProductId = przyjecie.Asortyment?.Id ?? 0,
-                        ProductSymbol = przyjecie.Asortyment?.Symbol,
-                        ProductName = przyjecie.Asortyment?.Nazwa,
-                        Quantity = przyjecie.Ilosc,
-                        Unit = przyjecie.Asortyment?.JednostkaMagazynowa?.Symbol ?? "szt.",
-                        WarehouseSymbol = przyjecie.Magazyn?.Symbol,
-                        Date = przyjecie.Data ?? DateTime.MinValue,
+                        ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                        ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                        ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                        Quantity = DynamicPropertyHelper.GetDecimal(przyjecie, "Ilosc"),
+                        Unit = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "JednostkaMagazynowa", "Symbol") ?? "szt." : "szt.",
+                        WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+                        Date = DynamicPropertyHelper.GetDateTime(przyjecie, "Data") ?? DateTime.MinValue,
                         Status = "Completed",
                         ComponentCount = 0 // Would need to trace related wydania
                     });
@@ -343,30 +364,34 @@ public class AssemblyController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var magazynier = sfera.PodajObiektTypu<IMagazynier>();
+            dynamic sfera = _sferaService.GetSfera();
+            var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             // Find the przyjecie (receipt) from assembly
-            var przyjecie = magazynier.Dane.Przyjecia()
-                .FirstOrDefault(p => p.Id == id && p.ZMontazu == true);
+            var przyjecia = ((IEnumerable<dynamic>)magazynier.Dane.Przyjecia()).ToList();
+            var przyjecie = przyjecia.FirstOrDefault(p =>
+                DynamicPropertyHelper.GetId(p) == id && DynamicPropertyHelper.GetBool(p, "ZMontazu"));
 
             if (przyjecie == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error($"Assembly with ID {id} not found"));
             }
 
+            var asortyment = DynamicPropertyHelper.GetProperty(przyjecie, "Asortyment");
+            var magazyn = DynamicPropertyHelper.GetProperty(przyjecie, "Magazyn");
+
             var dto = new AssemblyDto
             {
-                Id = przyjecie.Id,
+                Id = DynamicPropertyHelper.GetId(przyjecie),
                 Type = AssemblyType.Assembly,
-                ProductId = przyjecie.Asortyment?.Id ?? 0,
-                ProductSymbol = przyjecie.Asortyment?.Symbol,
-                ProductName = przyjecie.Asortyment?.Nazwa,
-                Quantity = przyjecie.Ilosc,
-                Unit = przyjecie.Asortyment?.JednostkaMagazynowa?.Symbol ?? "szt.",
-                WarehouseSymbol = przyjecie.Magazyn?.Symbol,
-                WarehouseName = przyjecie.Magazyn?.Nazwa,
-                Date = przyjecie.Data ?? DateTime.MinValue,
+                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                Quantity = DynamicPropertyHelper.GetDecimal(przyjecie, "Ilosc"),
+                Unit = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "JednostkaMagazynowa", "Symbol") ?? "szt." : "szt.",
+                WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+                WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+                Date = DynamicPropertyHelper.GetDateTime(przyjecie, "Data") ?? DateTime.MinValue,
                 Status = "Completed",
                 Components = new List<AssemblyComponentDto>()
             };
@@ -384,23 +409,26 @@ public class AssemblyController : ControllerBase
 
     #region Helpers
 
-    private Asortyment? GetAsortyment(Uchwyt sfera, int? id, string? symbol, string? ean)
+    private dynamic? GetAsortyment(dynamic sfera, int? id, string? symbol, string? ean)
     {
         var asortymenty = sfera.Asortymenty();
+        var allAsortymenty = ((IEnumerable<dynamic>)asortymenty.Dane.Wszystkie()).ToList();
 
         if (id.HasValue)
         {
-            return asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Id == id.Value);
+            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id.Value);
         }
 
         if (!string.IsNullOrEmpty(symbol))
         {
-            return asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Symbol == symbol);
+            return allAsortymenty.FirstOrDefault(a =>
+                DynamicPropertyHelper.GetString(a, "Symbol") == symbol);
         }
 
         if (!string.IsNullOrEmpty(ean))
         {
-            return asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.KodEan == ean);
+            return allAsortymenty.FirstOrDefault(a =>
+                DynamicPropertyHelper.GetString(a, "EAN") == ean);
         }
 
         return null;

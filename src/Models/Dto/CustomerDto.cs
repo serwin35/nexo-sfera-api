@@ -7,6 +7,7 @@ public class CustomerDto
     public string ShortName { get; set; } = string.Empty;
     public string? FullName { get; set; }
     public string? NIP { get; set; }
+    public string? TaxId { get => NIP; set => NIP = value; }
     public string? REGON { get; set; }
     public string? Email { get; set; }
     public string? Phone { get; set; }
