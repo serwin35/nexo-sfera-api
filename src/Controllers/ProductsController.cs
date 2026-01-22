@@ -27,6 +27,90 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
+    /// Explore properties of a single Asortyment entity
+    /// </summary>
+    [HttpGet("debug/properties/{id}")]
+    public ActionResult<object> GetProductProperties(int id)
+    {
+        try
+        {
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, new { Error = "Failed to get Asortymenty manager" });
+            }
+
+            dynamic? asortyment = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(a) == id)
+                {
+                    asortyment = a;
+                    break;
+                }
+            }
+
+            if (asortyment == null)
+            {
+                return NotFound(new { Error = $"Product {id} not found" });
+            }
+
+            Type asortymentType = asortyment.GetType();
+            var properties = new Dictionary<string, object>();
+
+            foreach (var prop in asortymentType.GetProperties())
+            {
+                try
+                {
+                    var value = prop.GetValue(asortyment);
+                    var valueType = value?.GetType().Name ?? "null";
+
+                    // For collections, get count
+                    if (value != null && value.GetType().Name.Contains("Collection"))
+                    {
+                        try
+                        {
+                            int count = 0;
+                            foreach (var _ in (dynamic)value) count++;
+                            properties[prop.Name] = new { Type = valueType, Count = count };
+                        }
+                        catch
+                        {
+                            properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                        }
+                    }
+                    else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string)
+                             && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal)
+                             && !prop.PropertyType.IsEnum && prop.PropertyType != typeof(Guid))
+                    {
+                        properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
+                    }
+                    else
+                    {
+                        properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    properties[prop.Name] = new { Error = ex.Message };
+                }
+            }
+
+            return Ok(new
+            {
+                Id = id,
+                EntityType = asortymentType.FullName,
+                PropertyCount = properties.Count,
+                Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
     /// Get all products with optional filtering
     /// </summary>
     [HttpGet]
@@ -490,21 +574,161 @@ public class ProductsController : ControllerBase
 
     private static ProductDto MapToDto(dynamic asortyment)
     {
-        return new ProductDto
+        var dto = new ProductDto
         {
+            // Basic info
             Id = DynamicPropertyHelper.GetId(asortyment),
             Symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol"),
             Name = DynamicPropertyHelper.GetString(asortyment, "Nazwa"),
             Description = DynamicPropertyHelper.GetString(asortyment, "Opis"),
+            FullCharacteristics = DynamicPropertyHelper.GetString(asortyment, "PelnaCharakterystyka"),
             EAN = DynamicPropertyHelper.GetString(asortyment, "EAN"),
             PKWiU = DynamicPropertyHelper.GetString(asortyment, "PKWIU"),
+            CnCode = DynamicPropertyHelper.GetString(asortyment, "KodCN"),
+            SWW = DynamicPropertyHelper.GetString(asortyment, "SWW"),
+
+            // Variant info
+            VariantOriginalName = DynamicPropertyHelper.GetString(asortyment, "OryginalnaNazwaWariantu"),
+            VariantOriginalDescription = DynamicPropertyHelper.GetString(asortyment, "OryginalnyOpisWariantu"),
+            VariantNumber = DynamicPropertyHelper.GetNullableInt(asortyment, "LpWariantu"),
+            ParentProductId = DynamicPropertyHelper.GetNullableInt(asortyment, "AsortymentId"),
+            ModelId = DynamicPropertyHelper.GetNullableInt(asortyment, "Model_Id"),
+
+            // Type and classification
+            Type = (ProductType)(DynamicPropertyHelper.GetNullableInt(asortyment, "Rodzaj_Id") ?? 0),
+            GroupId = DynamicPropertyHelper.GetNullableInt(asortyment, "Grupa_Id"),
+
+            // Units
             SaleUnit = DynamicPropertyHelper.GetString(asortyment, "JednostkaSprzedazy", "Symbol"),
             PurchaseUnit = DynamicPropertyHelper.GetString(asortyment, "JednostkaZakupu", "Symbol"),
+            DefaultSalesQuantity = DynamicPropertyHelper.GetNullableDecimal(asortyment, "DomyslnaIloscSprzedazy"),
+            DefaultPurchaseQuantity = DynamicPropertyHelper.GetNullableDecimal(asortyment, "DomyslnaIloscZakupu"),
+
+            // Pricing
             PriceNet = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaNetto"),
+            PriceGross = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaBrutto"),
+            RecordPrice = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaEwidencyjna"),
+            LaborCost = DynamicPropertyHelper.GetNullableDecimal(asortyment, "KosztRobocizny"),
+            AutoCalculatePrice = DynamicPropertyHelper.GetBool(asortyment, "WyliczajAutomatycznieCene"),
+            CalculationFromValue = DynamicPropertyHelper.GetNullableInt(asortyment, "WyliczenieZWartosci"),
+            PriceLevelId = DynamicPropertyHelper.GetNullableInt(asortyment, "PoziomCenId"),
+
+            // VAT
+            VatMarginEnabled = DynamicPropertyHelper.GetBool(asortyment, "PodlegaObrotowiVATMarza"),
+            ReverseCharge = DynamicPropertyHelper.GetNullableInt(asortyment, "PodlegaOdwrotnemuObciazeniu"),
+            FeeSubjectToVat = DynamicPropertyHelper.GetNullableBool(asortyment, "OplataPodlegaVat") ?? true,
+
+            // Physical properties
             Weight = DynamicPropertyHelper.GetNullableDecimal(asortyment, "Masa"),
             Volume = DynamicPropertyHelper.GetNullableDecimal(asortyment, "Objetosc"),
-            IsActive = DynamicPropertyHelper.GetBool(asortyment, "Aktywny")
+
+            // Status and flags
+            IsActive = DynamicPropertyHelper.GetBool(asortyment, "Aktywny"),
+            IsDeleted = DynamicPropertyHelper.GetBool(asortyment, "IsInRecycleBin"),
+            IsDiscounted = DynamicPropertyHelper.GetBool(asortyment, "Przeceniony"),
+            IsOpenPrice = DynamicPropertyHelper.GetBool(asortyment, "OtwartaCena"),
+            RequiresWeighing = DynamicPropertyHelper.GetBool(asortyment, "PrzeznaczonyDoWazenia"),
+            Markers = DynamicPropertyHelper.GetNullableInt(asortyment, "Znaczniki"),
+            CustomFlagId = DynamicPropertyHelper.GetNullableInt(asortyment, "FlagaWlasna_Id"),
+
+            // Sales channels
+            EcommerceEnabled = DynamicPropertyHelper.GetBool(asortyment, "SklepInternetowy"),
+            MobileSalesEnabled = DynamicPropertyHelper.GetBool(asortyment, "SprzedazMobilna"),
+            AuctionServiceEnabled = DynamicPropertyHelper.GetBool(asortyment, "SerwisAukcyjny"),
+
+            // Delivery times
+            CustomerDeliveryDays = DynamicPropertyHelper.GetNullableInt(asortyment, "LiczbaDniDoRealizacjiOdbiorcy"),
+            SupplierDeliveryDays = DynamicPropertyHelper.GetNullableInt(asortyment, "LiczbaDniDoRealizacjiDostawcy"),
+
+            // Expiry control
+            ExpiryControlEnabled = DynamicPropertyHelper.GetBool(asortyment, "TerminWaznosciKontrola"),
+            ExpiryDays = DynamicPropertyHelper.GetNullableInt(asortyment, "TerminWaznosciLiczbaDni"),
+
+            // Batch management
+            BatchSplitMethod = DynamicPropertyHelper.GetNullableInt(asortyment, "SposobRozbiciaNaPartie"),
+            RequireBatchNumber = DynamicPropertyHelper.GetNullableInt(asortyment, "WymagajNumeruPartii"),
+            RequireBatchExpiry = DynamicPropertyHelper.GetNullableInt(asortyment, "WymagajTerminuWaznosciPartii"),
+            CheckBatchUniqueness = DynamicPropertyHelper.GetNullableInt(asortyment, "SprawdzajUnikalnoscNumerowPartii"),
+            BlockOnDuplicateBatch = DynamicPropertyHelper.GetBool(asortyment, "BlokujPrzyBrakuUnikalnosci"),
+
+            // Additional fees and taxes
+            AdditionalFeeType = DynamicPropertyHelper.GetNullableInt(asortyment, "RodzajDodatkowejOplaty"),
+            SplitPayment = DynamicPropertyHelper.GetNullableInt(asortyment, "PodlegaPodzielonejPlatnosci"),
+            JpkVatGroup = DynamicPropertyHelper.GetNullableInt(asortyment, "GrupaAsortymentuJpkVat"),
+            SugarTax = DynamicPropertyHelper.GetBool(asortyment, "OplataCukrowa"),
+            CaffeineTax = DynamicPropertyHelper.GetBool(asortyment, "OplataKofeinowa"),
+            ForFee = DynamicPropertyHelper.GetBool(asortyment, "PodlegaOplacieNaFOR"),
+
+            // Sugar tax details
+            BeverageVolume = DynamicPropertyHelper.GetNullableDecimal(asortyment, "ObjetoscNapojuWJednostcePodstawowej"),
+            SugarContent = DynamicPropertyHelper.GetNullableDecimal(asortyment, "ZawartoscCukru"),
+            VariableSugarFee = DynamicPropertyHelper.GetBool(asortyment, "StosujTylkoCzescZmiennaOplatyCukrowej"),
+            HasOtherSweeteners = DynamicPropertyHelper.GetBool(asortyment, "ZawieraInneSubstancjeSlodzace"),
+            IsElectrolyteDrink = DynamicPropertyHelper.GetBool(asortyment, "NapojWeglowodanowoElektrolityczny"),
+
+            // Intrastat
+            IncludedInIntrastat = DynamicPropertyHelper.GetBool(asortyment, "UwzglednianyWIntrastacie"),
+            DefaultCountryOfOriginId = DynamicPropertyHelper.GetNullableInt(asortyment, "DomyslnePanstwoPochodzeniaId"),
+            OriginMethod = DynamicPropertyHelper.GetNullableInt(asortyment, "SposobPobieraniaPanstwaPochodzenia"),
+            IntrastatDescMethod = DynamicPropertyHelper.GetNullableInt(asortyment, "SposobPobieraniaOpisuDoIntrastatu"),
+            IntrastatDescription = DynamicPropertyHelper.GetString(asortyment, "OpisDoIntrastatu"),
+
+            // Messages
+            DisplayMessage = DynamicPropertyHelper.GetBool(asortyment, "WyswietlajKomunikat"),
+            MessageText = DynamicPropertyHelper.GetString(asortyment, "TekstKomunikatu"),
+            MessageDisplayType = DynamicPropertyHelper.GetNullableInt(asortyment, "WyswietlajKomunikatJako"),
+
+            // External integration
+            ExternalId = DynamicPropertyHelper.GetNullableInt(asortyment, "IdZewnetrzny"),
+            WebsiteUrl = DynamicPropertyHelper.GetString(asortyment, "StronaWWW"),
+            Notes = DynamicPropertyHelper.GetString(asortyment, "Uwagi"),
+
+            // Related entities
+            RelatedProductId = DynamicPropertyHelper.GetNullableInt(asortyment, "AsortymentPowiazany_Id"),
+            RecServiceId = DynamicPropertyHelper.GetNullableInt(asortyment, "UslugaRec_Id"),
+            FundId = DynamicPropertyHelper.GetNullableInt(asortyment, "Fundusz_Id"),
+            IntegrationAccountId = DynamicPropertyHelper.GetNullableInt(asortyment, "KontoIntegracjiId")
         };
+
+        // Determine if this is a variant
+        dto.IsVariant = dto.ModelId != null;
+
+        // Try to get VAT rate info from StawkaVatSprzedazy navigation property
+        var stawkaVat = DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy");
+        if (stawkaVat != null)
+        {
+            dto.VatRate = DynamicPropertyHelper.GetString(stawkaVat, "Symbol");
+            dto.VatRateSalesId = DynamicPropertyHelper.GetProperty(stawkaVat, "Id")?.ToString();
+        }
+
+        var stawkaVatKupno = DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatKupno");
+        if (stawkaVatKupno != null)
+        {
+            dto.VatRatePurchaseId = DynamicPropertyHelper.GetProperty(stawkaVatKupno, "Id")?.ToString();
+        }
+
+        // Try to get currency ID
+        var waluta = DynamicPropertyHelper.GetProperty(asortyment, "WalutaCenyEwidencyjnej");
+        if (waluta != null)
+        {
+            dto.CurrencyId = DynamicPropertyHelper.GetProperty(waluta, "Id")?.ToString();
+        }
+
+        // Try to get group name from Grupa navigation property
+        var grupa = DynamicPropertyHelper.GetProperty(asortyment, "Grupa");
+        if (grupa != null)
+        {
+            dto.GroupName = DynamicPropertyHelper.GetString(grupa, "Nazwa");
+        }
+
+        // Try to get substitutes group GUID
+        var grupaZamiennikow = DynamicPropertyHelper.GetProperty(asortyment, "GrupaZamiennikow");
+        if (grupaZamiennikow != null)
+        {
+            dto.SubstitutesGroup = grupaZamiennikow.ToString();
+        }
+
+        return dto;
     }
 
     private static List<string> GetBusinessObjectErrors(dynamic obiekt)
