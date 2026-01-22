@@ -7,6 +7,8 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #794 | 7:24 PM | 🔄 | AssemblyController Partially Migrated to GetManager Pattern | ~407 |
+| #769 | 7:09 PM | 🔄 | DocumentsController Refactored to Use GetManager Instead of GetSfera | ~427 |
 | #741 | 7:01 PM | 🔵 | InsERT Nexo SDK API Surface - Manager Pattern for Entity Access | ~320 |
 | #519 | 10:37 AM | 🟣 | Complete Customers REST API controller implemented with full CRUD operations | ~612 |
 </claude-mem-context>
