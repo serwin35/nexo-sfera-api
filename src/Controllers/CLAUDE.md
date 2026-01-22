@@ -7,5 +7,6 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #741 | 7:01 PM | 🔵 | InsERT Nexo SDK API Surface - Manager Pattern for Entity Access | ~320 |
 | #519 | 10:37 AM | 🟣 | Complete Customers REST API controller implemented with full CRUD operations | ~612 |
 </claude-mem-context>
