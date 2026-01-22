@@ -875,7 +875,7 @@ public class DocumentsController : ControllerBase
         }
     }
 
-    private void AddReceiptItems(dynamic sfera, dynamic paragon, List<CreateReceiptItemRequest> items)
+    private void AddReceiptItems(dynamic sfera, dynamic paragon, List<CreateDocumentItemRequest> items)
     {
         if (items == null || !items.Any()) return;
 
