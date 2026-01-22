@@ -169,166 +169,181 @@ DELETE /api/contractor-groups/{id}/remove-contractor/{contractorId}
 
 ---
 
-## Faza 2: Rozszerzenie Dictionary/Finance (Priorytet: ŚREDNI)
+## Faza 2: Rozszerzenie Dictionary/Finance (Priorytet: ŚREDNI) ✅ ZAIMPLEMENTOWANE
 
-### 2.1 Rozszerzenie DictionaryController
+### 2.1 Rozszerzenie DictionaryController ✅
 
-Dodać do `/api/dictionary`:
-
-```
-GET    /api/dictionary/cash-operation-types     - Rodzaje operacji kasowych
-GET    /api/dictionary/bank-operation-types     - Rodzaje operacji bankowych
-GET    /api/dictionary/document-types           - Typy dokumentów
-GET    /api/dictionary/document-statuses        - Statusy dokumentów
-GET    /api/dictionary/countries                - Kraje
-GET    /api/dictionary/regions                  - Województwa
-GET    /api/dictionary/delivery-methods         - Metody dostawy
-GET    /api/dictionary/shipping-carriers        - Przewoźnicy
-```
-
-### 2.2 Rozszerzenie FinanceReportsController
-
-Dodać do `/api/finance`:
+Dodane do `/api/dictionary`:
 
 ```
-GET    /api/finance/aging-report                - Raport wiekowania należności
-GET    /api/finance/aging-report/payables       - Raport wiekowania zobowiązań
-GET    /api/finance/cash-flow                   - Cash flow
-GET    /api/finance/settlements                 - Rozliczenia
-GET    /api/finance/settlements/{id}/payments   - Płatności dla rozliczenia
-POST   /api/finance/settlements/match           - Dopasuj płatności
+GET    /api/dictionary/cash-operation-types     ✅ Rodzaje operacji kasowych
+GET    /api/dictionary/bank-operation-types     ✅ Rodzaje operacji bankowych
+GET    /api/dictionary/document-types           ✅ Typy dokumentów (statyczne)
+GET    /api/dictionary/document-statuses        ✅ Statusy dokumentów (statyczne)
+GET    /api/dictionary/countries                ✅ Kraje (z filtrowaniem EU)
+GET    /api/dictionary/countries/{isoCode}      ✅ Kraj po kodzie ISO
+GET    /api/dictionary/regions                  ❌ Brak w SDK (województwa)
+GET    /api/dictionary/delivery-methods         ❌ Brak standardowego managera
+GET    /api/dictionary/shipping-carriers        ❌ Brak standardowego managera
 ```
 
-### 2.3 Rozszerzenie InventoryController
+### 2.2 Rozszerzenie FinanceReportsController ✅
 
-Dodać do `/api/inventory`:
+Dodane do `/api/finance`:
 
 ```
-GET    /api/inventory/movements                 - Historia ruchów magazynowych
-GET    /api/inventory/movements/product/{id}    - Ruchy dla produktu
-GET    /api/inventory/valuation                 - Wycena magazynu
-GET    /api/inventory/valuation/method/{method} - Wycena wg metody (FIFO/LIFO/AVG)
-POST   /api/inventory/stocktaking               - Rozpocznij inwentaryzację
-GET    /api/inventory/stocktaking/{id}          - Status inwentaryzacji
-POST   /api/inventory/stocktaking/{id}/items    - Dodaj pozycję
-POST   /api/inventory/stocktaking/{id}/close    - Zamknij inwentaryzację
+GET    /api/finance/settlements                 ✅ Rozliczenia (lista z filtrami)
+GET    /api/finance/settlements/{id}            ✅ Szczegóły rozliczenia
+GET    /api/finance/aging-report                ✅ Raport wiekowania należności
+GET    /api/finance/aging-report/payables       ✅ Raport wiekowania zobowiązań
+GET    /api/finance/cash-flow                   ❌ Wymaga agregacji (przyszła faza)
+GET    /api/finance/settlements/{id}/payments   ❌ Wymaga analizy Rozliczenia (przyszła faza)
+POST   /api/finance/settlements/match           ❌ Wymaga logiki dopasowywania (przyszła faza)
+```
+
+### 2.3 Rozszerzenie InventoryController ✅
+
+Dodane do `/api/inventory`:
+
+```
+GET    /api/inventory/movements                 ✅ Historia ruchów magazynowych
+GET    /api/inventory/movements/product/{id}    ✅ Ruchy dla produktu
+GET    /api/inventory/valuation                 ✅ Wycena magazynu
+GET    /api/inventory/stocktaking               ✅ Lista dokumentów inwentaryzacyjnych
+GET    /api/inventory/stocktaking/{id}          ✅ Szczegóły inwentaryzacji
+GET    /api/inventory/stocktaking/{id}/items    ✅ Pozycje inwentaryzacji
+POST   /api/inventory/stocktaking               ❌ Tworzenie (przyszła faza)
+POST   /api/inventory/stocktaking/{id}/items    ❌ Dodawanie pozycji (przyszła faza)
+POST   /api/inventory/stocktaking/{id}/close    ❌ Zamykanie (przyszła faza)
 ```
 
 ---
 
-## Faza 3: Podatki i Deklaracje (Priorytet: ŚREDNI)
+## Faza 3: Podatki i Deklaracje (Priorytet: ŚREDNI) ✅ ZAIMPLEMENTOWANE
 
-### 3.1 DeclarationsController (Deklaracje VAT)
+### 3.1 DeclarationsController (Deklaracje VAT) ✅
 **Endpoint:** `/api/declarations`
 
 ```
-GET    /api/declarations/vat                    - Lista deklaracji VAT
-GET    /api/declarations/vat/{id}               - Szczegóły deklaracji
-POST   /api/declarations/vat/generate           - Generuj deklarację
-GET    /api/declarations/vat/{id}/preview       - Podgląd
-POST   /api/declarations/vat/{id}/send          - Wyślij do US
-GET    /api/declarations/vat/{id}/upo           - Pobierz UPO
+GET    /api/declarations/vat                    ✅ Lista deklaracji VAT
+GET    /api/declarations/vat/{id}               ✅ Szczegóły deklaracji
+GET    /api/declarations/vat/summary            ✅ Podsumowanie VAT za rok
+GET    /api/declarations/types                  ✅ Dostępne typy deklaracji
+POST   /api/declarations/vat/generate           ❌ Generowanie (przyszła faza)
+GET    /api/declarations/vat/{id}/preview       ❌ Podgląd (przyszła faza)
+POST   /api/declarations/vat/{id}/send          ❌ Wysyłka do US (przyszła faza)
+GET    /api/declarations/vat/{id}/upo           ❌ Pobierz UPO (przyszła faza)
 ```
 
-### 3.2 JPKController (Jednolity Plik Kontrolny)
+### 3.2 JPKController (Jednolity Plik Kontrolny) ✅
 **Endpoint:** `/api/jpk`
 
 ```
-GET    /api/jpk                                 - Lista wygenerowanych JPK
-GET    /api/jpk/{id}                            - Szczegóły
-POST   /api/jpk/vat/generate                    - Generuj JPK_VAT
-POST   /api/jpk/fa/generate                     - Generuj JPK_FA
-POST   /api/jpk/mag/generate                    - Generuj JPK_MAG
-GET    /api/jpk/{id}/download                   - Pobierz plik XML
-POST   /api/jpk/{id}/send                       - Wyślij do MF
-GET    /api/jpk/{id}/status                     - Status wysyłki
+GET    /api/jpk                                 ✅ Lista wygenerowanych JPK
+GET    /api/jpk/{id}                            ✅ Szczegóły
+GET    /api/jpk/{id}/status                     ✅ Status wysyłki
+GET    /api/jpk/types                           ✅ Lista typów JPK
+GET    /api/jpk/types/{typeCode}/versions       ✅ Wersje definicji JPK
+GET    /api/jpk/packages                        ✅ Lista paczek JPK
+GET    /api/jpk/packages/{id}                   ✅ Szczegóły paczki
+POST   /api/jpk/vat/generate                    ❌ Generuj JPK_VAT (przyszła faza)
+POST   /api/jpk/fa/generate                     ❌ Generuj JPK_FA (przyszła faza)
+POST   /api/jpk/mag/generate                    ❌ Generuj JPK_MAG (przyszła faza)
+GET    /api/jpk/{id}/download                   ❌ Pobierz plik XML (przyszła faza)
+POST   /api/jpk/{id}/send                       ❌ Wyślij do MF (przyszła faza)
 ```
 
-### 3.3 IntrastatController (Deklaracje Intrastat)
+### 3.3 IntrastatController (Deklaracje Intrastat) ✅
 **Endpoint:** `/api/intrastat`
 
 ```
-GET    /api/intrastat                           - Lista deklaracji
-GET    /api/intrastat/{id}                      - Szczegóły
-POST   /api/intrastat/generate                  - Generuj deklarację
-GET    /api/intrastat/{id}/items                - Pozycje
-POST   /api/intrastat/{id}/send                 - Wyślij
+GET    /api/intrastat                           ✅ Lista deklaracji
+GET    /api/intrastat/{id}                      ✅ Szczegóły
+GET    /api/intrastat/{id}/items                ✅ Pozycje deklaracji
+GET    /api/intrastat/summary                   ✅ Podsumowanie za okres
+POST   /api/intrastat/generate                  ❌ Generuj deklarację (przyszła faza)
+POST   /api/intrastat/{id}/send                 ❌ Wyślij (przyszła faza)
 ```
 
 ---
 
-## Faza 4: Zaawansowane funkcje (Priorytet: NISKI)
+## Faza 4: Zaawansowane funkcje (Priorytet: NISKI) ✅ ZAIMPLEMENTOWANE
 
-### 4.1 ConfigurationsController (Konfiguracje)
+### 4.1 ConfigurationsController (Konfiguracje) ✅
 **Endpoint:** `/api/configurations`
 
 ```
-GET    /api/configurations/documents            - Konfiguracje dokumentów
-GET    /api/configurations/documents/{type}     - Dla typu dokumentu
-PUT    /api/configurations/documents/{type}     - Aktualizuj
-GET    /api/configurations/numbering            - Konfiguracje numeracji
-GET    /api/configurations/numbering/{type}     - Dla typu
+GET    /api/configurations/categories           ✅ Lista kategorii konfiguracji
+GET    /api/configurations/documents            ✅ Konfiguracje dokumentów
+GET    /api/configurations/documents/{type}     ✅ Dla typu dokumentu
+GET    /api/configurations/numbering            ✅ Konfiguracje numeracji
+GET    /api/configurations/numbering/placeholders ✅ Dostępne placeholdery
+GET    /api/configurations/vat                  ✅ Konfiguracja VAT
+GET    /api/configurations/currencies           ✅ Konfiguracja walut
+GET    /api/configurations/payments             ✅ Konfiguracja płatności
+PUT    /api/configurations/documents/{type}     ❌ Modyfikacja (przyszła faza)
 ```
 
-### 4.2 CustomFieldsController (Pola własne)
+### 4.2 CustomFieldsController (Pola własne) ❌
 **Endpoint:** `/api/custom-fields`
 
 ```
-GET    /api/custom-fields                       - Lista definicji pól własnych
-GET    /api/custom-fields/{entityType}          - Pola dla typu encji
-POST   /api/custom-fields                       - Utwórz pole własne
-PUT    /api/custom-fields/{id}                  - Aktualizuj
-DELETE /api/custom-fields/{id}                  - Usuń
-GET    /api/custom-fields/dictionaries          - Słowniki własne
+❌ Wymaga innego podejścia - PolaWlasne2 działa jako accessor per-encja, nie jako manager
 ```
 
-### 4.3 PrintTemplatesController (Szablony wydruków)
-**Endpoint:** `/api/print-templates`
+### 4.3 PrintController (Wydruki) ✅
+**Endpoint:** `/api/print`
 
 ```
-GET    /api/print-templates                     - Lista szablonów
-GET    /api/print-templates/{id}                - Szczegóły
-GET    /api/print-templates/for-document/{type} - Szablony dla typu dokumentu
-POST   /api/print-templates/{id}/generate       - Generuj wydruk
-GET    /api/print-templates/{id}/preview        - Podgląd PDF
+GET    /api/print/headers                       ✅ Nagłówki wydruków
+GET    /api/print/headers/{id}                  ✅ Szczegóły nagłówka
+GET    /api/print/footers                       ✅ Stopki wydruków
+GET    /api/print/footers/{id}                  ✅ Szczegóły stopki
+GET    /api/print/parameters                    ✅ Parametry wydruku
+GET    /api/print/logs                          ✅ Historia wydruków
+GET    /api/print/labels                        ✅ Szablony etykiet
+GET    /api/print/labels/{id}                   ✅ Szczegóły szablonu etykiet
+GET    /api/print/template-types                ✅ Typy szablonów (statyczne)
+POST   /api/print/{id}/generate                 ❌ Generowanie (przyszła faza)
 ```
 
-### 4.4 ReportsController (Raporty)
+### 4.4 ReportsController (Raporty) ✅
 **Endpoint:** `/api/reports`
 
 ```
-GET    /api/reports                             - Lista dostępnych raportów
-GET    /api/reports/{id}                        - Definicja raportu
-POST   /api/reports/{id}/execute                - Wykonaj raport
-GET    /api/reports/sales/summary               - Podsumowanie sprzedaży
-GET    /api/reports/purchases/summary           - Podsumowanie zakupów
-GET    /api/reports/inventory/turnover          - Rotacja magazynowa
-GET    /api/reports/customers/ranking           - Ranking klientów
-GET    /api/reports/products/bestsellers        - Bestsellery
+GET    /api/reports/types                       ✅ Lista typów raportów
+GET    /api/reports/sales/summary               ✅ Podsumowanie sprzedaży
+GET    /api/reports/sales/by-product            ✅ Bestsellery produktów
+GET    /api/reports/sales/by-customer           ✅ Ranking klientów
+GET    /api/reports/purchases/summary           ✅ Podsumowanie zakupów
+GET    /api/reports/inventory/turnover          ✅ Rotacja magazynowa
+POST   /api/reports/{id}/execute                ❌ Wykonaj raport (przyszła faza)
 ```
 
-### 4.5 E-commerceController (Handel elektroniczny)
+### 4.5 EcommerceController (Handel elektroniczny) ✅
 **Endpoint:** `/api/ecommerce`
 
 ```
-GET    /api/ecommerce/integrations              - Lista integracji
-GET    /api/ecommerce/orders                    - Zamówienia z platform
-POST   /api/ecommerce/orders/{id}/import        - Importuj zamówienie
-GET    /api/ecommerce/products/sync-status      - Status synchronizacji
-POST   /api/ecommerce/products/sync             - Synchronizuj produkty
+GET    /api/ecommerce/integrations              ✅ Lista integracji
+GET    /api/ecommerce/integrations/{id}         ✅ Szczegóły integracji
+GET    /api/ecommerce/offers                    ✅ Oferty internetowe
+GET    /api/ecommerce/offers/{id}               ✅ Szczegóły oferty
+GET    /api/ecommerce/offer-groups              ✅ Grupy ofert
+GET    /api/ecommerce/shipping-lists            ✅ Listy wysyłkowe
+GET    /api/ecommerce/packages                  ✅ Paczki wysyłkowe
+GET    /api/ecommerce/packages/{id}             ✅ Szczegóły paczki
+GET    /api/ecommerce/packages/track/{tracking} ✅ Śledzenie po numerze
+GET    /api/ecommerce/package-dimensions        ✅ Gabaryty paczek
+GET    /api/ecommerce/platforms                 ✅ Obsługiwane platformy (statyczne)
+POST   /api/ecommerce/orders/{id}/import        ❌ Import zamówień (przyszła faza)
+POST   /api/ecommerce/products/sync             ❌ Synchronizacja (przyszła faza)
 ```
 
-### 4.6 AutomationController (Automatyzacje)
+### 4.6 AutomationController (Automatyzacje) ❌
 **Endpoint:** `/api/automation`
 
 ```
-GET    /api/automation/rules                    - Lista reguł automatyzacji
-GET    /api/automation/rules/{id}               - Szczegóły reguły
-POST   /api/automation/rules                    - Utwórz regułę
-PUT    /api/automation/rules/{id}               - Aktualizuj
-DELETE /api/automation/rules/{id}               - Usuń
-POST   /api/automation/rules/{id}/execute       - Wykonaj manualnie
-GET    /api/automation/history                  - Historia wykonań
+❌ Brak standardowego managera w SDK - wymaga specyficznej integracji
 ```
 
 ---
@@ -387,15 +402,15 @@ POST   /api/ppk/reports/{id}/send               - Wyślij do instytucji
 | 2 | Rozszerzenie Dictionary | ŚREDNI | 2-3h |
 | 2 | Rozszerzenie Finance | ŚREDNI | 3-4h |
 | 2 | Rozszerzenie Inventory | ŚREDNI | 3-4h |
-| 3 | DeclarationsController | ŚREDNI | 4-5h |
-| 3 | JPKController | ŚREDNI | 4-5h |
-| 3 | IntrastatController | ŚREDNI | 3-4h |
-| 4 | ConfigurationsController | NISKI | 2-3h |
-| 4 | CustomFieldsController | NISKI | 3-4h |
-| 4 | PrintTemplatesController | NISKI | 3-4h |
-| 4 | ReportsController | NISKI | 4-5h |
-| 4 | E-commerceController | NISKI | 4-5h |
-| 4 | AutomationController | NISKI | 3-4h |
+| 3 | DeclarationsController | ŚREDNI | ✅ Zrobione |
+| 3 | JPKController | ŚREDNI | ✅ Zrobione |
+| 3 | IntrastatController | ŚREDNI | ✅ Zrobione |
+| 4 | ConfigurationsController | NISKI | ✅ Zrobione |
+| 4 | CustomFieldsController | NISKI | ❌ Wymaga innego podejścia |
+| 4 | PrintController | NISKI | ✅ Zrobione |
+| 4 | ReportsController | NISKI | ✅ Zrobione |
+| 4 | EcommerceController | NISKI | ✅ Zrobione |
+| 4 | AutomationController | NISKI | ❌ Brak managera w SDK |
 | 5 | HRController | OPCJA | 4-5h |
 | 5 | PayrollController | OPCJA | 4-5h |
 | 5 | PPKController | OPCJA | 3-4h |

@@ -454,6 +454,343 @@ public class FinanceReportsController : ControllerBase
 
     #endregion
 
+    #region Settlements (Rozrachunki) - Phase 2
+
+    /// <summary>
+    /// Get settlements (rozrachunki) - receivables and payables
+    /// </summary>
+    [HttpGet("settlements")]
+    [ProducesResponseType(typeof(PagedResponse<SettlementDto>), StatusCodes.Status200OK)]
+    public ActionResult<PagedResponse<SettlementDto>> GetSettlements(
+        [FromQuery] string? type,           // receivable/payable
+        [FromQuery] int? customerId,
+        [FromQuery] bool? overdueOnly,
+        [FromQuery] bool? unpaidOnly = true,
+        [FromQuery] DateTime? dueDateFrom,
+        [FromQuery] DateTime? dueDateTo,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            if (rozrachunkiManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Rozrachunki manager"));
+            }
+
+            var allRozrachunki = ((IEnumerable<dynamic>)rozrachunkiManager.Dane.Wszystkie()).ToList();
+
+            // Filter by type (receivable/payable)
+            if (!string.IsNullOrEmpty(type))
+            {
+                bool isReceivable = type.Equals("receivable", StringComparison.OrdinalIgnoreCase);
+                allRozrachunki = allRozrachunki.Where(r =>
+                {
+                    var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
+                    var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
+                    return isReceivable ? kwotaNaleznosci > 0 : kwotaZobowiazania > 0;
+                }).ToList();
+            }
+
+            // Filter by customer
+            if (customerId.HasValue)
+            {
+                allRozrachunki = allRozrachunki.Where(r =>
+                {
+                    var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
+                }).ToList();
+            }
+
+            // Filter unpaid only
+            if (unpaidOnly == true)
+            {
+                allRozrachunki = allRozrachunki.Where(r =>
+                    DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia") != 0).ToList();
+            }
+
+            // Filter by due date
+            if (dueDateFrom.HasValue || dueDateTo.HasValue)
+            {
+                allRozrachunki = allRozrachunki.Where(r =>
+                {
+                    var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                    if (!terminPlatnosci.HasValue) return false;
+                    if (dueDateFrom.HasValue && terminPlatnosci.Value < dueDateFrom.Value) return false;
+                    if (dueDateTo.HasValue && terminPlatnosci.Value > dueDateTo.Value) return false;
+                    return true;
+                }).ToList();
+            }
+
+            // Filter overdue only
+            if (overdueOnly == true)
+            {
+                var today = DateTime.Today;
+                allRozrachunki = allRozrachunki.Where(r =>
+                {
+                    var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                    var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                    return terminPlatnosci.HasValue && terminPlatnosci.Value < today && kwotaDoRozliczenia != 0;
+                }).ToList();
+            }
+
+            var totalCount = allRozrachunki.Count;
+            var pagedRozrachunki = allRozrachunki
+                .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci") ?? DateTime.MinValue)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var items = new List<SettlementDto>();
+            foreach (var r in pagedRozrachunki)
+            {
+                items.Add(MapSettlement(r));
+            }
+
+            return Ok(new PagedResponse<SettlementDto>
+            {
+                Data = items,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting settlements");
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving settlements", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get settlement by ID
+    /// </summary>
+    [HttpGet("settlements/{id}")]
+    [ProducesResponseType(typeof(ApiResponse<SettlementDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<SettlementDto>), StatusCodes.Status404NotFound)]
+    public ActionResult<ApiResponse<SettlementDto>> GetSettlement(int id)
+    {
+        try
+        {
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            if (rozrachunkiManager == null)
+            {
+                return StatusCode(500, ApiResponse<SettlementDto>.Error("Failed to get Rozrachunki manager"));
+            }
+
+            var allRozrachunki = ((IEnumerable<dynamic>)rozrachunkiManager.Dane.Wszystkie()).ToList();
+            var rozrachunek = allRozrachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
+
+            if (rozrachunek == null)
+            {
+                return NotFound(ApiResponse<SettlementDto>.Error($"Settlement with ID {id} not found"));
+            }
+
+            return Ok(ApiResponse<SettlementDto>.Ok(MapSettlement(rozrachunek)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting settlement {Id}", id);
+            return StatusCode(500, ApiResponse<SettlementDto>.Error("Error retrieving settlement", new List<string> { ex.Message }));
+        }
+    }
+
+    private static SettlementDto MapSettlement(dynamic r)
+    {
+        var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+        var dokumentZrodlowy = DynamicPropertyHelper.GetProperty(r, "DokumentZrodlowy");
+        var numerWewnetrzny = dokumentZrodlowy != null ? DynamicPropertyHelper.GetProperty(dokumentZrodlowy, "NumerWewnetrzny") : null;
+
+        var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
+        var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
+        var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+        var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+
+        int? daysOverdue = null;
+        if (terminPlatnosci.HasValue && kwotaDoRozliczenia != 0)
+        {
+            daysOverdue = (int)(DateTime.Today - terminPlatnosci.Value).TotalDays;
+            if (daysOverdue < 0) daysOverdue = null;
+        }
+
+        return new SettlementDto
+        {
+            Id = DynamicPropertyHelper.GetId(r),
+            Type = kwotaNaleznosci > 0 ? "Receivable" : "Payable",
+            CustomerId = podmiot != null ? DynamicPropertyHelper.GetId(podmiot) : null,
+            CustomerName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
+            CustomerSymbol = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "Symbol") : null,
+            SourceDocumentId = dokumentZrodlowy != null ? DynamicPropertyHelper.GetId(dokumentZrodlowy) : null,
+            SourceDocumentNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
+            DocumentDate = DynamicPropertyHelper.GetDateTime(r, "DataDokumentu"),
+            DueDate = terminPlatnosci,
+            OriginalAmount = kwotaNaleznosci > 0 ? kwotaNaleznosci : kwotaZobowiazania,
+            PaidAmount = (kwotaNaleznosci > 0 ? kwotaNaleznosci : kwotaZobowiazania) - Math.Abs(kwotaDoRozliczenia),
+            RemainingAmount = Math.Abs(kwotaDoRozliczenia),
+            CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol") ?? "PLN",
+            IsOverdue = daysOverdue.HasValue && daysOverdue.Value > 0,
+            DaysOverdue = daysOverdue,
+            IsPaid = kwotaDoRozliczenia == 0,
+            Description = DynamicPropertyHelper.GetString(r, "Opis")
+        };
+    }
+
+    #endregion
+
+    #region Aging Report (Phase 2)
+
+    /// <summary>
+    /// Get aging report for receivables (należności)
+    /// </summary>
+    [HttpGet("aging-report")]
+    [ProducesResponseType(typeof(ApiResponse<AgingReportDto>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<AgingReportDto>> GetAgingReport(
+        [FromQuery] int? customerId,
+        [FromQuery] DateTime? asOfDate)
+    {
+        return GetAgingReportInternal("receivable", customerId, asOfDate);
+    }
+
+    /// <summary>
+    /// Get aging report for payables (zobowiązania)
+    /// </summary>
+    [HttpGet("aging-report/payables")]
+    [ProducesResponseType(typeof(ApiResponse<AgingReportDto>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<AgingReportDto>> GetAgingReportPayables(
+        [FromQuery] int? customerId,
+        [FromQuery] DateTime? asOfDate)
+    {
+        return GetAgingReportInternal("payable", customerId, asOfDate);
+    }
+
+    private ActionResult<ApiResponse<AgingReportDto>> GetAgingReportInternal(string type, int? customerId, DateTime? asOfDate)
+    {
+        try
+        {
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            if (rozrachunkiManager == null)
+            {
+                return StatusCode(500, ApiResponse<AgingReportDto>.Error("Failed to get Rozrachunki manager"));
+            }
+
+            var referenceDate = asOfDate ?? DateTime.Today;
+            var isReceivable = type == "receivable";
+
+            var allRozrachunki = ((IEnumerable<dynamic>)rozrachunkiManager.Dane.Wszystkie()).ToList();
+
+            // Filter by type
+            allRozrachunki = allRozrachunki.Where(r =>
+            {
+                var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
+                var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
+                var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+
+                // Only unpaid settlements
+                if (kwotaDoRozliczenia == 0) return false;
+
+                return isReceivable ? kwotaNaleznosci > 0 : kwotaZobowiazania > 0;
+            }).ToList();
+
+            // Filter by customer
+            if (customerId.HasValue)
+            {
+                allRozrachunki = allRozrachunki.Where(r =>
+                {
+                    var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
+                }).ToList();
+            }
+
+            // Initialize aging buckets
+            decimal current = 0;      // Not due yet
+            decimal days1To30 = 0;    // 1-30 days overdue
+            decimal days31To60 = 0;   // 31-60 days overdue
+            decimal days61To90 = 0;   // 61-90 days overdue
+            decimal daysOver90 = 0;   // Over 90 days overdue
+
+            var customerDetails = new Dictionary<int, AgingCustomerDto>();
+
+            foreach (var r in allRozrachunki)
+            {
+                var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                var kwotaDoRozliczenia = Math.Abs(DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia"));
+                var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+
+                if (!terminPlatnosci.HasValue) continue;
+
+                int daysOverdue = (int)(referenceDate - terminPlatnosci.Value).TotalDays;
+
+                // Categorize by aging bucket
+                if (daysOverdue <= 0)
+                    current += kwotaDoRozliczenia;
+                else if (daysOverdue <= 30)
+                    days1To30 += kwotaDoRozliczenia;
+                else if (daysOverdue <= 60)
+                    days31To60 += kwotaDoRozliczenia;
+                else if (daysOverdue <= 90)
+                    days61To90 += kwotaDoRozliczenia;
+                else
+                    daysOver90 += kwotaDoRozliczenia;
+
+                // Aggregate by customer
+                if (podmiot != null)
+                {
+                    var podId = DynamicPropertyHelper.GetId(podmiot);
+                    if (!customerDetails.ContainsKey(podId))
+                    {
+                        customerDetails[podId] = new AgingCustomerDto
+                        {
+                            CustomerId = podId,
+                            CustomerName = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona"),
+                            CustomerSymbol = DynamicPropertyHelper.GetString(podmiot, "Symbol")
+                        };
+                    }
+
+                    var customer = customerDetails[podId];
+                    customer.TotalAmount += kwotaDoRozliczenia;
+                    if (daysOverdue <= 0)
+                        customer.Current += kwotaDoRozliczenia;
+                    else if (daysOverdue <= 30)
+                        customer.Days1To30 += kwotaDoRozliczenia;
+                    else if (daysOverdue <= 60)
+                        customer.Days31To60 += kwotaDoRozliczenia;
+                    else if (daysOverdue <= 90)
+                        customer.Days61To90 += kwotaDoRozliczenia;
+                    else
+                        customer.DaysOver90 += kwotaDoRozliczenia;
+                }
+            }
+
+            var report = new AgingReportDto
+            {
+                Type = isReceivable ? "Receivables" : "Payables",
+                AsOfDate = referenceDate,
+                TotalAmount = current + days1To30 + days31To60 + days61To90 + daysOver90,
+                Current = current,
+                Days1To30 = days1To30,
+                Days31To60 = days31To60,
+                Days61To90 = days61To90,
+                DaysOver90 = daysOver90,
+                TotalOverdue = days1To30 + days31To60 + days61To90 + daysOver90,
+                CustomerCount = customerDetails.Count,
+                CustomerDetails = customerDetails.Values
+                    .OrderByDescending(c => c.TotalAmount)
+                    .Take(20)
+                    .ToList()
+            };
+
+            return Ok(ApiResponse<AgingReportDto>.Ok(report));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating aging report");
+            return StatusCode(500, ApiResponse<AgingReportDto>.Error("Error generating aging report", new List<string> { ex.Message }));
+        }
+    }
+
+    #endregion
+
     #region Finance Summary
 
     /// <summary>
@@ -567,4 +904,62 @@ public class BalanceItemDto
     public string? Symbol { get; set; }
     public decimal Balance { get; set; }
     public string CurrencySymbol { get; set; } = "PLN";
+}
+
+/// <summary>
+/// Settlement (rozrachunek) DTO
+/// </summary>
+public class SettlementDto
+{
+    public int Id { get; set; }
+    public string Type { get; set; } = "Receivable"; // Receivable (należność) or Payable (zobowiązanie)
+    public int? CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerSymbol { get; set; }
+    public int? SourceDocumentId { get; set; }
+    public string? SourceDocumentNumber { get; set; }
+    public DateTime? DocumentDate { get; set; }
+    public DateTime? DueDate { get; set; }
+    public decimal OriginalAmount { get; set; }
+    public decimal PaidAmount { get; set; }
+    public decimal RemainingAmount { get; set; }
+    public string CurrencySymbol { get; set; } = "PLN";
+    public bool IsOverdue { get; set; }
+    public int? DaysOverdue { get; set; }
+    public bool IsPaid { get; set; }
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Aging report DTO
+/// </summary>
+public class AgingReportDto
+{
+    public string Type { get; set; } = "Receivables";
+    public DateTime AsOfDate { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal Current { get; set; }        // Not yet due
+    public decimal Days1To30 { get; set; }      // 1-30 days overdue
+    public decimal Days31To60 { get; set; }     // 31-60 days overdue
+    public decimal Days61To90 { get; set; }     // 61-90 days overdue
+    public decimal DaysOver90 { get; set; }     // Over 90 days overdue
+    public decimal TotalOverdue { get; set; }
+    public int CustomerCount { get; set; }
+    public List<AgingCustomerDto> CustomerDetails { get; set; } = new();
+}
+
+/// <summary>
+/// Aging customer detail DTO
+/// </summary>
+public class AgingCustomerDto
+{
+    public int CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerSymbol { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal Current { get; set; }
+    public decimal Days1To30 { get; set; }
+    public decimal Days31To60 { get; set; }
+    public decimal Days61To90 { get; set; }
+    public decimal DaysOver90 { get; set; }
 }

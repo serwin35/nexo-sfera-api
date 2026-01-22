@@ -896,6 +896,525 @@ public class InventoryController : ControllerBase
 
     #endregion
 
+    #region Inventory Movements (Phase 2)
+
+    /// <summary>
+    /// Get inventory movements history
+    /// </summary>
+    [HttpGet("movements")]
+    [ProducesResponseType(typeof(PagedResponse<InventoryMovementDto>), StatusCodes.Status200OK)]
+    public ActionResult<PagedResponse<InventoryMovementDto>> GetInventoryMovements(
+        [FromQuery] int? productId,
+        [FromQuery] string? productSymbol,
+        [FromQuery] string? warehouseSymbol,
+        [FromQuery] string? documentType,
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var movements = new List<InventoryMovementDto>();
+
+            // Get movements from different document types
+            AddMovementsFromDocuments("WydaniaZewnetrzne", movements, productId, productSymbol, warehouseSymbol, documentType, dateFrom, dateTo, "WZ", false);
+            AddMovementsFromDocuments("PrzyjeciaZewnetrzne", movements, productId, productSymbol, warehouseSymbol, documentType, dateFrom, dateTo, "PZ", true);
+            AddMovementsFromDocuments("RozchodyWewnetrzne", movements, productId, productSymbol, warehouseSymbol, documentType, dateFrom, dateTo, "RW", false);
+
+            // Sort by date descending
+            movements = movements
+                .OrderByDescending(m => m.Date)
+                .ToList();
+
+            var totalCount = movements.Count;
+            var pagedMovements = movements
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(new PagedResponse<InventoryMovementDto>
+            {
+                Data = pagedMovements,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting inventory movements");
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving inventory movements", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get inventory movements for a specific product
+    /// </summary>
+    [HttpGet("movements/product/{productId}")]
+    [ProducesResponseType(typeof(PagedResponse<InventoryMovementDto>), StatusCodes.Status200OK)]
+    public ActionResult<PagedResponse<InventoryMovementDto>> GetProductMovements(
+        int productId,
+        [FromQuery] string? warehouseSymbol,
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        return GetInventoryMovements(productId, null, warehouseSymbol, null, dateFrom, dateTo, page, pageSize);
+    }
+
+    private void AddMovementsFromDocuments(
+        string managerName,
+        List<InventoryMovementDto> movements,
+        int? productId,
+        string? productSymbol,
+        string? warehouseSymbol,
+        string? documentType,
+        DateTime? dateFrom,
+        DateTime? dateTo,
+        string docType,
+        bool isIncoming)
+    {
+        try
+        {
+            // Skip if filtering by document type and this isn't the right type
+            if (!string.IsNullOrEmpty(documentType) && !documentType.Equals(docType, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            var manager = _sferaService.GetManager(managerName);
+            if (manager == null) return;
+
+            foreach (var doc in manager.Dane.Wszystkie())
+            {
+                // Filter by warehouse
+                if (!string.IsNullOrEmpty(warehouseSymbol))
+                {
+                    var magazyn = DynamicPropertyHelper.GetProperty(doc, "Magazyn");
+                    if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != warehouseSymbol)
+                        continue;
+                }
+
+                // Filter by date
+                var dataWystawienia = DynamicPropertyHelper.GetDateTime(doc, "DataWystawienia");
+                if (dateFrom.HasValue && (!dataWystawienia.HasValue || dataWystawienia.Value < dateFrom.Value))
+                    continue;
+                if (dateTo.HasValue && (!dataWystawienia.HasValue || dataWystawienia.Value > dateTo.Value))
+                    continue;
+
+                var pozycje = DynamicPropertyHelper.GetCollection(doc, "Pozycje");
+                var numerWewnetrzny = DynamicPropertyHelper.GetProperty(doc, "NumerWewnetrzny");
+                var magazyn = DynamicPropertyHelper.GetProperty(doc, "Magazyn");
+
+                foreach (var poz in pozycje)
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+                    if (asortyment == null) continue;
+
+                    // Filter by product
+                    if (productId.HasValue && DynamicPropertyHelper.GetId(asortyment) != productId.Value)
+                        continue;
+                    if (!string.IsNullOrEmpty(productSymbol) && DynamicPropertyHelper.GetString(asortyment, "Symbol") != productSymbol)
+                        continue;
+
+                    var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+                    var ilosc = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+
+                    movements.Add(new InventoryMovementDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(poz),
+                        DocumentId = DynamicPropertyHelper.GetId(doc),
+                        DocumentNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
+                        DocumentType = docType,
+                        Date = dataWystawienia,
+                        ProductId = DynamicPropertyHelper.GetId(asortyment),
+                        ProductSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol"),
+                        ProductName = DynamicPropertyHelper.GetString(asortyment, "Nazwa"),
+                        WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+                        WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+                        Quantity = ilosc,
+                        Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                        MovementType = isIncoming ? "In" : "Out",
+                        UnitPrice = DynamicPropertyHelper.GetNullableDecimal(poz, "CenaNetto"),
+                        TotalValue = DynamicPropertyHelper.GetNullableDecimal(poz, "WartoscNetto")
+                    });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error getting movements from {Manager}", managerName);
+        }
+    }
+
+    #endregion
+
+    #region Inventory Valuation (Phase 2)
+
+    /// <summary>
+    /// Get inventory valuation summary
+    /// </summary>
+    [HttpGet("valuation")]
+    [ProducesResponseType(typeof(ApiResponse<InventoryValuationDto>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<InventoryValuationDto>> GetInventoryValuation(
+        [FromQuery] string? warehouseSymbol,
+        [FromQuery] string? method = "AVG")
+    {
+        try
+        {
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            var magazynyManager = _sferaService.GetManager("Magazyny");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<InventoryValuationDto>.Error("Failed to get Asortymenty manager"));
+            }
+
+            int? magazynFilterId = null;
+            if (!string.IsNullOrEmpty(warehouseSymbol) && magazynyManager != null)
+            {
+                foreach (var m in magazynyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                    {
+                        magazynFilterId = DynamicPropertyHelper.GetId(m);
+                        break;
+                    }
+                }
+            }
+
+            decimal totalValue = 0;
+            int productCount = 0;
+            var itemsByCategory = new Dictionary<string, decimal>();
+
+            foreach (var produkt in asortymentyManager.Dane.Wszystkie())
+            {
+                bool isHandlowy = DynamicPropertyHelper.GetBool(produkt, "JestHandlowy");
+                bool isMagazynowy = DynamicPropertyHelper.GetBool(produkt, "JestMagazynowy");
+                if (!isHandlowy && !isMagazynowy) continue;
+
+                var stany = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
+
+                if (magazynFilterId.HasValue)
+                {
+                    var filteredStany = new List<dynamic>();
+                    foreach (var s in stany)
+                    {
+                        if (DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value)
+                        {
+                            filteredStany.Add(s);
+                        }
+                    }
+                    stany = filteredStany;
+                }
+
+                decimal productQuantity = 0;
+                foreach (var stan in stany)
+                {
+                    var iloscDostepna = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
+                    var iloscZarezerwowana = DynamicPropertyHelper.GetDecimal(stan, "IloscZarezerwowanaIlosciowo");
+                    var iloscZadysponowana = DynamicPropertyHelper.GetDecimal(stan, "IloscZadysponowana");
+                    productQuantity += iloscDostepna + iloscZarezerwowana + iloscZadysponowana;
+                }
+
+                if (productQuantity <= 0) continue;
+
+                // Get unit cost (using average cost or last purchase price)
+                var cenaZakupu = DynamicPropertyHelper.GetNullableDecimal(produkt, "OstatniaCenaZakupuNetto") ?? 0;
+                var productValue = productQuantity * cenaZakupu;
+
+                totalValue += productValue;
+                productCount++;
+
+                // Group by product group
+                var grupa = DynamicPropertyHelper.GetProperty(produkt, "Grupa");
+                var groupName = grupa != null ? DynamicPropertyHelper.GetString(grupa, "Nazwa") ?? "Bez grupy" : "Bez grupy";
+                if (!itemsByCategory.ContainsKey(groupName))
+                    itemsByCategory[groupName] = 0;
+                itemsByCategory[groupName] += productValue;
+            }
+
+            var valuation = new InventoryValuationDto
+            {
+                WarehouseSymbol = warehouseSymbol,
+                ValuationMethod = method?.ToUpper() ?? "AVG",
+                ValuationDate = DateTime.Today,
+                TotalValue = totalValue,
+                ProductCount = productCount,
+                CategoryBreakdown = itemsByCategory
+                    .Select(kvp => new ValuationCategoryDto { Category = kvp.Key, Value = kvp.Value })
+                    .OrderByDescending(c => c.Value)
+                    .ToList()
+            };
+
+            return Ok(ApiResponse<InventoryValuationDto>.Ok(valuation));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting inventory valuation");
+            return StatusCode(500, ApiResponse<InventoryValuationDto>.Error("Error retrieving inventory valuation", new List<string> { ex.Message }));
+        }
+    }
+
+    #endregion
+
+    #region Stocktaking (Inwentaryzacja) - Phase 2
+
+    /// <summary>
+    /// Get stocktaking documents (spisy inwentaryzacyjne)
+    /// </summary>
+    [HttpGet("stocktaking")]
+    [ProducesResponseType(typeof(PagedResponse<StocktakingDto>), StatusCodes.Status200OK)]
+    public ActionResult<PagedResponse<StocktakingDto>> GetStocktakingDocuments(
+        [FromQuery] string? warehouseSymbol,
+        [FromQuery] string? status,
+        [FromQuery] DateTime? dateFrom,
+        [FromQuery] DateTime? dateTo,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("SpisyInwentaryzacyjne");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get SpisyInwentaryzacyjne manager"));
+            }
+
+            var allSpisy = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+
+            // Filter by warehouse
+            if (!string.IsNullOrEmpty(warehouseSymbol))
+            {
+                allSpisy = allSpisy.Where(s =>
+                {
+                    var magazyn = DynamicPropertyHelper.GetProperty(s, "Magazyn");
+                    return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == warehouseSymbol;
+                }).ToList();
+            }
+
+            // Filter by date
+            if (dateFrom.HasValue)
+            {
+                allSpisy = allSpisy.Where(s =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(s, "DataInwentaryzacji");
+                    return data.HasValue && data.Value >= dateFrom.Value;
+                }).ToList();
+            }
+
+            if (dateTo.HasValue)
+            {
+                allSpisy = allSpisy.Where(s =>
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(s, "DataInwentaryzacji");
+                    return data.HasValue && data.Value <= dateTo.Value;
+                }).ToList();
+            }
+
+            // Filter by status
+            if (!string.IsNullOrEmpty(status))
+            {
+                allSpisy = allSpisy.Where(s =>
+                {
+                    var spisStatus = MapStocktakingStatus(DynamicPropertyHelper.GetNullableInt(s, "Status"));
+                    return spisStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                }).ToList();
+            }
+
+            var totalCount = allSpisy.Count;
+            var pagedSpisy = allSpisy
+                .OrderByDescending(s => DynamicPropertyHelper.GetDateTime(s, "DataInwentaryzacji") ?? DateTime.MinValue)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            var items = new List<StocktakingDto>();
+            foreach (var s in pagedSpisy)
+            {
+                items.Add(MapStocktaking(s, false));
+            }
+
+            return Ok(new PagedResponse<StocktakingDto>
+            {
+                Data = items,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting stocktaking documents");
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving stocktaking documents", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get stocktaking document by ID
+    /// </summary>
+    [HttpGet("stocktaking/{id}")]
+    [ProducesResponseType(typeof(ApiResponse<StocktakingDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<StocktakingDto>), StatusCodes.Status404NotFound)]
+    public ActionResult<ApiResponse<StocktakingDto>> GetStocktaking(int id, [FromQuery] bool includeItems = true)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("SpisyInwentaryzacyjne");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<StocktakingDto>.Error("Failed to get SpisyInwentaryzacyjne manager"));
+            }
+
+            var allSpisy = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var spis = allSpisy.FirstOrDefault(s => DynamicPropertyHelper.GetId(s) == id);
+
+            if (spis == null)
+            {
+                return NotFound(ApiResponse<StocktakingDto>.Error($"Stocktaking document with ID {id} not found"));
+            }
+
+            return Ok(ApiResponse<StocktakingDto>.Ok(MapStocktaking(spis, includeItems)));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting stocktaking document {Id}", id);
+            return StatusCode(500, ApiResponse<StocktakingDto>.Error("Error retrieving stocktaking document", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get stocktaking items (pozycje spisu inwentaryzacyjnego)
+    /// </summary>
+    [HttpGet("stocktaking/{id}/items")]
+    [ProducesResponseType(typeof(PagedResponse<StocktakingItemDto>), StatusCodes.Status200OK)]
+    public ActionResult<PagedResponse<StocktakingItemDto>> GetStocktakingItems(
+        int id,
+        [FromQuery] bool? withDifference,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("SpisyInwentaryzacyjne");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get SpisyInwentaryzacyjne manager"));
+            }
+
+            var allSpisy = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var spis = allSpisy.FirstOrDefault(s => DynamicPropertyHelper.GetId(s) == id);
+
+            if (spis == null)
+            {
+                return NotFound(ApiResponse<object>.Error($"Stocktaking document with ID {id} not found"));
+            }
+
+            var pozycje = DynamicPropertyHelper.GetCollection(spis, "Pozycje");
+            var items = new List<StocktakingItemDto>();
+
+            foreach (var poz in pozycje)
+            {
+                var item = MapStocktakingItem(poz);
+
+                // Filter items with difference
+                if (withDifference.HasValue && withDifference.Value)
+                {
+                    if (item.Difference == 0)
+                        continue;
+                }
+
+                items.Add(item);
+            }
+
+            var totalCount = items.Count;
+            var pagedItems = items
+                .OrderBy(i => i.ProductSymbol)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+            return Ok(new PagedResponse<StocktakingItemDto>
+            {
+                Data = pagedItems,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting stocktaking items for {Id}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving stocktaking items", new List<string> { ex.Message }));
+        }
+    }
+
+    private static StocktakingDto MapStocktaking(dynamic s, bool includeItems)
+    {
+        var magazyn = DynamicPropertyHelper.GetProperty(s, "Magazyn");
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(s, "NumerWewnetrzny");
+        var pozycje = DynamicPropertyHelper.GetCollection(s, "Pozycje");
+
+        var dto = new StocktakingDto
+        {
+            Id = DynamicPropertyHelper.GetId(s),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+            Date = DynamicPropertyHelper.GetDateTime(s, "DataInwentaryzacji"),
+            Status = MapStocktakingStatus(DynamicPropertyHelper.GetNullableInt(s, "Status")),
+            ItemCount = pozycje.Count(),
+            Description = DynamicPropertyHelper.GetString(s, "Opis")
+        };
+
+        if (includeItems)
+        {
+            dto.Items = new List<StocktakingItemDto>();
+            foreach (var poz in pozycje)
+            {
+                dto.Items.Add(MapStocktakingItem(poz));
+            }
+        }
+
+        return dto;
+    }
+
+    private static StocktakingItemDto MapStocktakingItem(dynamic poz)
+    {
+        var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+        var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+        var iloscEwidencyjna = DynamicPropertyHelper.GetDecimal(poz, "IloscEwidencyjna");
+        var iloscRzeczywista = DynamicPropertyHelper.GetDecimal(poz, "IloscRzeczywista");
+
+        return new StocktakingItemDto
+        {
+            Id = DynamicPropertyHelper.GetId(poz),
+            ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+            ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+            ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+            Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+            BookQuantity = iloscEwidencyjna,
+            ActualQuantity = iloscRzeczywista,
+            Difference = iloscRzeczywista - iloscEwidencyjna,
+            UnitPrice = DynamicPropertyHelper.GetNullableDecimal(poz, "Cena"),
+            Notes = DynamicPropertyHelper.GetString(poz, "Uwagi")
+        };
+    }
+
+    private static string MapStocktakingStatus(int? status)
+    {
+        return status switch
+        {
+            0 => "Draft",       // Bufor
+            1 => "InProgress",  // W trakcie
+            2 => "Completed",   // Zakończony
+            3 => "Closed",      // Zamknięty
+            _ => "Unknown"
+        };
+    }
+
+    #endregion
+
     #region Free Quantity (IMagazynier)
 
     /// <summary>
@@ -1078,4 +1597,81 @@ public class InventorySummaryDto
     public decimal TotalStockQuantity { get; set; }
     public decimal TotalReservedQuantity { get; set; }
     public decimal TotalAvailableQuantity { get; set; }
+}
+
+/// <summary>
+/// Inventory movement DTO
+/// </summary>
+public class InventoryMovementDto
+{
+    public int Id { get; set; }
+    public int DocumentId { get; set; }
+    public string? DocumentNumber { get; set; }
+    public string? DocumentType { get; set; }
+    public DateTime? Date { get; set; }
+    public int ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+    public string? ProductName { get; set; }
+    public string? WarehouseSymbol { get; set; }
+    public string? WarehouseName { get; set; }
+    public decimal Quantity { get; set; }
+    public string Unit { get; set; } = "szt.";
+    public string MovementType { get; set; } = "Out"; // In/Out
+    public decimal? UnitPrice { get; set; }
+    public decimal? TotalValue { get; set; }
+}
+
+/// <summary>
+/// Inventory valuation DTO
+/// </summary>
+public class InventoryValuationDto
+{
+    public string? WarehouseSymbol { get; set; }
+    public string ValuationMethod { get; set; } = "AVG";
+    public DateTime ValuationDate { get; set; }
+    public decimal TotalValue { get; set; }
+    public int ProductCount { get; set; }
+    public List<ValuationCategoryDto> CategoryBreakdown { get; set; } = new();
+}
+
+/// <summary>
+/// Valuation category breakdown DTO
+/// </summary>
+public class ValuationCategoryDto
+{
+    public string Category { get; set; } = string.Empty;
+    public decimal Value { get; set; }
+}
+
+/// <summary>
+/// Stocktaking document DTO
+/// </summary>
+public class StocktakingDto
+{
+    public int Id { get; set; }
+    public string? Number { get; set; }
+    public string? WarehouseSymbol { get; set; }
+    public string? WarehouseName { get; set; }
+    public DateTime? Date { get; set; }
+    public string Status { get; set; } = "Draft";
+    public int ItemCount { get; set; }
+    public string? Description { get; set; }
+    public List<StocktakingItemDto>? Items { get; set; }
+}
+
+/// <summary>
+/// Stocktaking item DTO
+/// </summary>
+public class StocktakingItemDto
+{
+    public int Id { get; set; }
+    public int ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+    public string? ProductName { get; set; }
+    public string Unit { get; set; } = "szt.";
+    public decimal BookQuantity { get; set; }      // Ilość ewidencyjna (systemowa)
+    public decimal ActualQuantity { get; set; }    // Ilość rzeczywista (spisana)
+    public decimal Difference { get; set; }        // Różnica
+    public decimal? UnitPrice { get; set; }
+    public string? Notes { get; set; }
 }

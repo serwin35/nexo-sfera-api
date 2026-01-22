@@ -7,8 +7,16 @@ using InsERT.Moria.Dokumenty;
 using InsERT.Moria.Logistyka;
 using InsERT.Moria.Slowniki;
 using InsERT.Moria.Finanse;
-using InsERT.Moria.Cenniki;
-using InsERT.Moria.Rabaty;
+using InsERT.Moria.CennikiICeny;
+using InsERT.Moria.Promocje;
+using InsERT.Moria.Inwentaryzacja;
+using InsERT.Moria.Deklaracje;
+using InsERT.Moria.Intrastat;
+using InsERT.Moria.KontrolaSkarbowa;
+using InsERT.Moria.Raporty;
+using InsERT.Moria.Wydruki;
+using InsERT.Moria.HandelElektroniczny;
+using InsERT.Moria.Naklejki;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 
@@ -153,6 +161,36 @@ public class SferaService : ISferaService, IDisposable
                 "WyciagiBankowe" => _sfera.WyciagiBankowe(),
                 "RodzajeOperacjiKasowych" => _sfera.RodzajeOperacjiKasowych(),
                 "RodzajeOperacjiBankowych" => _sfera.RodzajeOperacjiBankowych(),
+                // InsERT.Moria.Klienci - Countries
+                "Panstwa" => _sfera.Panstwa(),
+                // InsERT.Moria.Inwentaryzacja - Stocktaking
+                "SpisyInwentaryzacyjne" => _sfera.SpisyInwentaryzacyjne(),
+                // InsERT.Moria.Deklaracje - Tax declarations
+                "Deklaracje" => _sfera.Deklaracje(),
+                // InsERT.Moria.Intrastat - Intrastat declarations
+                "DeklaracjeIntrastat" => _sfera.DeklaracjeIntrastat(),
+                // InsERT.Moria.KontrolaSkarbowa - JPK (Jednolity Plik Kontrolny)
+                "JednolitePlikiKontrolne" => _sfera.JednolitePlikiKontrolne(),
+                "PaczkiJednolitychPlikowKontrolnych" => _sfera.PaczkiJednolitychPlikowKontrolnych(),
+                "FabrykaDefinicjiJPK" => _sfera.FabrykaDefinicjiJPK(),
+                "WersjeDefinicjiJPK" => _sfera.WersjeDefinicjiJPK(),
+                "KonfiguracjeGeneratora" => _sfera.KonfiguracjeGeneratora(),
+                // InsERT.Moria.Raporty - Reports
+                "Raporty" => _sfera.Raporty(),
+                // InsERT.Moria.Wydruki - Print templates
+                "NaglowkiWydruku" => _sfera.NaglowkiWydruku(),
+                "StopkiWydruku" => _sfera.StopkiWydruku(),
+                "ParametryWydruku" => _sfera.ParametryWydruku(),
+                "LogaWydruku" => _sfera.LogaWydruku(),
+                // InsERT.Moria.HandelElektroniczny - E-commerce
+                "KontaIntegracji" => _sfera.KontaIntegracji(),
+                "OfertyInternetowe" => _sfera.OfertyInternetowe(),
+                "ListyWysylkowe" => _sfera.ListyWysylkowe(),
+                "PaczkiWysylkowe" => _sfera.PaczkiWysylkowe(),
+                "GabarytyPaczki" => _sfera.GabarytyPaczki(),
+                "GrupyOfert" => _sfera.GrupyOfert(),
+                // InsERT.Moria.Naklejki - Labels
+                "SzablonyNaklejek" => _sfera.SzablonyNaklejek(),
                 // Methods that don't have extension methods - need different approach
                 "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
                 "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),

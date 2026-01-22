@@ -910,4 +910,402 @@ public class DictionaryController : ControllerBase
     }
 
     #endregion
+
+    #region Cash Operation Types (Phase 2)
+
+    /// <summary>
+    /// Get all cash operation types (rodzaje operacji kasowych)
+    /// </summary>
+    [HttpGet("cash-operation-types")]
+    [ProducesResponseType(typeof(ApiResponse<List<OperationTypeDto>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetCashOperationTypes([FromQuery] bool? activeOnly = true)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("RodzajeOperacjiKasowych");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiKasowych manager"));
+            }
+
+            var allRodzaje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+
+            if (activeOnly == true)
+            {
+                var filtered = new List<dynamic>();
+                foreach (var r in allRodzaje)
+                {
+                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    {
+                        filtered.Add(r);
+                    }
+                }
+                allRodzaje = filtered;
+            }
+
+            var dtos = new List<OperationTypeDto>();
+            foreach (var r in allRodzaje)
+            {
+                dtos.Add(new OperationTypeDto
+                {
+                    Id = DynamicPropertyHelper.GetId(r),
+                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(r, "Opis"),
+                    OperationType = MapCashOperationType(DynamicPropertyHelper.GetNullableInt(r, "Typ")),
+                    IsDeposit = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 0,
+                    IsWithdrawal = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 1,
+                    IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                    IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
+                });
+            }
+
+            return Ok(ApiResponse<List<OperationTypeDto>>.Ok(dtos.OrderBy(o => o.Symbol).ToList()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting cash operation types");
+            return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Error retrieving cash operation types", new List<string> { ex.Message }));
+        }
+    }
+
+    private string MapCashOperationType(int? typ)
+    {
+        return typ switch
+        {
+            0 => "Deposit",      // Wpłata
+            1 => "Withdrawal",   // Wypłata
+            _ => "Other"
+        };
+    }
+
+    #endregion
+
+    #region Bank Operation Types (Phase 2)
+
+    /// <summary>
+    /// Get all bank operation types (rodzaje operacji bankowych)
+    /// </summary>
+    [HttpGet("bank-operation-types")]
+    [ProducesResponseType(typeof(ApiResponse<List<OperationTypeDto>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetBankOperationTypes([FromQuery] bool? activeOnly = true)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("RodzajeOperacjiBankowych");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiBankowych manager"));
+            }
+
+            var allRodzaje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+
+            if (activeOnly == true)
+            {
+                var filtered = new List<dynamic>();
+                foreach (var r in allRodzaje)
+                {
+                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    {
+                        filtered.Add(r);
+                    }
+                }
+                allRodzaje = filtered;
+            }
+
+            var dtos = new List<OperationTypeDto>();
+            foreach (var r in allRodzaje)
+            {
+                dtos.Add(new OperationTypeDto
+                {
+                    Id = DynamicPropertyHelper.GetId(r),
+                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(r, "Opis"),
+                    OperationType = MapBankOperationType(DynamicPropertyHelper.GetNullableInt(r, "Typ")),
+                    IsDeposit = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 0,
+                    IsWithdrawal = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 1,
+                    IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                    IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
+                });
+            }
+
+            return Ok(ApiResponse<List<OperationTypeDto>>.Ok(dtos.OrderBy(o => o.Symbol).ToList()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting bank operation types");
+            return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Error retrieving bank operation types", new List<string> { ex.Message }));
+        }
+    }
+
+    private string MapBankOperationType(int? typ)
+    {
+        return typ switch
+        {
+            0 => "Deposit",      // Wpłata
+            1 => "Withdrawal",   // Wypłata
+            2 => "Transfer",     // Przelew
+            _ => "Other"
+        };
+    }
+
+    #endregion
+
+    #region Countries (Phase 2)
+
+    /// <summary>
+    /// Get all countries (państwa)
+    /// </summary>
+    [HttpGet("countries")]
+    [ProducesResponseType(typeof(ApiResponse<List<CountryDto>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<List<CountryDto>>> GetCountries(
+        [FromQuery] bool? activeOnly = true,
+        [FromQuery] bool? euOnly = null)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("Panstwa");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<List<CountryDto>>.Error("Failed to get Panstwa manager"));
+            }
+
+            var allPanstwa = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+
+            if (activeOnly == true)
+            {
+                var filtered = new List<dynamic>();
+                foreach (var p in allPanstwa)
+                {
+                    if (DynamicPropertyHelper.GetBool(p, "Aktywne"))
+                    {
+                        filtered.Add(p);
+                    }
+                }
+                allPanstwa = filtered;
+            }
+
+            if (euOnly.HasValue)
+            {
+                var filtered = new List<dynamic>();
+                foreach (var p in allPanstwa)
+                {
+                    bool isEu = DynamicPropertyHelper.GetBool(p, "CzlonekUE");
+                    if (isEu == euOnly.Value)
+                    {
+                        filtered.Add(p);
+                    }
+                }
+                allPanstwa = filtered;
+            }
+
+            var dtos = new List<CountryDto>();
+            foreach (var p in allPanstwa)
+            {
+                dtos.Add(new CountryDto
+                {
+                    Id = DynamicPropertyHelper.GetId(p),
+                    Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
+                    IsoCode2 = DynamicPropertyHelper.GetString(p, "KodISO"),
+                    IsoCode3 = DynamicPropertyHelper.GetString(p, "KodISO3"),
+                    EuCode = DynamicPropertyHelper.GetString(p, "KodUE"),
+                    IsEuMember = DynamicPropertyHelper.GetBool(p, "CzlonekUE"),
+                    IsActive = DynamicPropertyHelper.GetBool(p, "Aktywne"),
+                    IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslne")
+                });
+            }
+
+            return Ok(ApiResponse<List<CountryDto>>.Ok(dtos.OrderBy(c => c.Name).ToList()));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting countries");
+            return StatusCode(500, ApiResponse<List<CountryDto>>.Error("Error retrieving countries", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get country by ISO code
+    /// </summary>
+    [HttpGet("countries/{isoCode}")]
+    [ProducesResponseType(typeof(ApiResponse<CountryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CountryDto>), StatusCodes.Status404NotFound)]
+    public ActionResult<ApiResponse<CountryDto>> GetCountry(string isoCode)
+    {
+        try
+        {
+            var manager = _sferaService.GetManager("Panstwa");
+            if (manager == null)
+            {
+                return StatusCode(500, ApiResponse<CountryDto>.Error("Failed to get Panstwa manager"));
+            }
+
+            var allPanstwa = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var panstwo = allPanstwa.FirstOrDefault(p =>
+                DynamicPropertyHelper.GetString(p, "KodISO") == isoCode.ToUpper() ||
+                DynamicPropertyHelper.GetString(p, "KodISO3") == isoCode.ToUpper() ||
+                DynamicPropertyHelper.GetString(p, "Symbol") == isoCode);
+
+            if (panstwo == null)
+            {
+                return NotFound(ApiResponse<CountryDto>.Error($"Country with code '{isoCode}' not found"));
+            }
+
+            var dto = new CountryDto
+            {
+                Id = DynamicPropertyHelper.GetId(panstwo),
+                Symbol = DynamicPropertyHelper.GetString(panstwo, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(panstwo, "Nazwa"),
+                IsoCode2 = DynamicPropertyHelper.GetString(panstwo, "KodISO"),
+                IsoCode3 = DynamicPropertyHelper.GetString(panstwo, "KodISO3"),
+                EuCode = DynamicPropertyHelper.GetString(panstwo, "KodUE"),
+                IsEuMember = DynamicPropertyHelper.GetBool(panstwo, "CzlonekUE"),
+                IsActive = DynamicPropertyHelper.GetBool(panstwo, "Aktywne"),
+                IsDefault = DynamicPropertyHelper.GetBool(panstwo, "Domyslne")
+            };
+
+            return Ok(ApiResponse<CountryDto>.Ok(dto));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting country {IsoCode}", isoCode);
+            return StatusCode(500, ApiResponse<CountryDto>.Error("Error retrieving country", new List<string> { ex.Message }));
+        }
+    }
+
+    #endregion
+
+    #region Document Types and Statuses (Phase 2)
+
+    /// <summary>
+    /// Get available document types
+    /// </summary>
+    [HttpGet("document-types")]
+    [ProducesResponseType(typeof(ApiResponse<List<DocumentTypeDto>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<List<DocumentTypeDto>>> GetDocumentTypes([FromQuery] string? category = null)
+    {
+        // Document types are mostly predefined in the system
+        // This endpoint provides a reference list
+        var documentTypes = new List<DocumentTypeDto>
+        {
+            // Sales documents
+            new() { Symbol = "FS", Name = "Faktura sprzedaży", Category = "Sales", Description = "Faktura VAT sprzedaży" },
+            new() { Symbol = "FSK", Name = "Korekta faktury sprzedaży", Category = "Sales", Description = "Korekta faktury VAT sprzedaży" },
+            new() { Symbol = "FZ", Name = "Faktura zaliczkowa sprzedaży", Category = "Sales", Description = "Faktura zaliczkowa" },
+            new() { Symbol = "PA", Name = "Paragon", Category = "Sales", Description = "Paragon fiskalny" },
+            new() { Symbol = "PAK", Name = "Korekta paragonu", Category = "Sales", Description = "Korekta paragonu fiskalnego" },
+            new() { Symbol = "FP", Name = "Faktura proforma", Category = "Sales", Description = "Faktura proforma" },
+
+            // Purchase documents
+            new() { Symbol = "FZ", Name = "Faktura zakupu", Category = "Purchase", Description = "Faktura VAT zakupu" },
+            new() { Symbol = "FZK", Name = "Korekta faktury zakupu", Category = "Purchase", Description = "Korekta faktury VAT zakupu" },
+
+            // Warehouse documents
+            new() { Symbol = "WZ", Name = "Wydanie zewnętrzne", Category = "Warehouse", Description = "Dokument wydania towaru" },
+            new() { Symbol = "PZ", Name = "Przyjęcie zewnętrzne", Category = "Warehouse", Description = "Dokument przyjęcia towaru" },
+            new() { Symbol = "RW", Name = "Rozchód wewnętrzny", Category = "Warehouse", Description = "Dokument rozchodu wewnętrznego" },
+            new() { Symbol = "PW", Name = "Przychód wewnętrzny", Category = "Warehouse", Description = "Dokument przychodu wewnętrznego" },
+            new() { Symbol = "MM", Name = "Przesunięcie międzymagazynowe", Category = "Warehouse", Description = "Dokument przesunięcia między magazynami" },
+
+            // Orders
+            new() { Symbol = "ZK", Name = "Zamówienie od klienta", Category = "Order", Description = "Zamówienie otrzymane od klienta" },
+            new() { Symbol = "ZD", Name = "Zamówienie do dostawcy", Category = "Order", Description = "Zamówienie wysłane do dostawcy" },
+            new() { Symbol = "OF", Name = "Oferta", Category = "Order", Description = "Oferta handlowa" },
+
+            // Financial documents
+            new() { Symbol = "KP", Name = "Kasa przyjmie", Category = "Finance", Description = "Dowód wpłaty kasowej" },
+            new() { Symbol = "KW", Name = "Kasa wyda", Category = "Finance", Description = "Dowód wypłaty kasowej" },
+            new() { Symbol = "BP", Name = "Bank przyjmie", Category = "Finance", Description = "Dowód wpłaty bankowej" },
+            new() { Symbol = "BW", Name = "Bank wyda", Category = "Finance", Description = "Dowód wypłaty bankowej" },
+            new() { Symbol = "RK", Name = "Raport kasowy", Category = "Finance", Description = "Raport kasowy" },
+            new() { Symbol = "WB", Name = "Wyciąg bankowy", Category = "Finance", Description = "Wyciąg bankowy" }
+        };
+
+        if (!string.IsNullOrEmpty(category))
+        {
+            documentTypes = documentTypes.Where(d =>
+                d.Category.Equals(category, StringComparison.OrdinalIgnoreCase)).ToList();
+        }
+
+        return Ok(ApiResponse<List<DocumentTypeDto>>.Ok(documentTypes));
+    }
+
+    /// <summary>
+    /// Get document statuses
+    /// </summary>
+    [HttpGet("document-statuses")]
+    [ProducesResponseType(typeof(ApiResponse<List<DocumentStatusDto>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<List<DocumentStatusDto>>> GetDocumentStatuses()
+    {
+        // Document statuses are predefined in the system
+        var statuses = new List<DocumentStatusDto>
+        {
+            new() { Code = 0, Symbol = "BUFOR", Name = "Bufor", Description = "Dokument w buforze (robocza wersja)" },
+            new() { Code = 1, Symbol = "ZATWIERDZONY", Name = "Zatwierdzony", Description = "Dokument zatwierdzony" },
+            new() { Code = 2, Symbol = "CZESCIOWO_ZREALIZOWANY", Name = "Częściowo zrealizowany", Description = "Dokument częściowo zrealizowany" },
+            new() { Code = 3, Symbol = "ZREALIZOWANY", Name = "Zrealizowany", Description = "Dokument w pełni zrealizowany" },
+            new() { Code = 4, Symbol = "ANULOWANY", Name = "Anulowany", Description = "Dokument anulowany" },
+            new() { Code = 5, Symbol = "ZAMKNIETY", Name = "Zamknięty", Description = "Dokument zamknięty" }
+        };
+
+        return Ok(ApiResponse<List<DocumentStatusDto>>.Ok(statuses));
+    }
+
+    #endregion
+}
+
+/// <summary>
+/// Operation type DTO (for cash and bank operations)
+/// </summary>
+public class OperationTypeDto
+{
+    public int Id { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? Description { get; set; }
+    public string OperationType { get; set; } = "Other";
+    public bool IsDeposit { get; set; }
+    public bool IsWithdrawal { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsDefault { get; set; }
+}
+
+/// <summary>
+/// Country DTO
+/// </summary>
+public class CountryDto
+{
+    public int Id { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? IsoCode2 { get; set; }
+    public string? IsoCode3 { get; set; }
+    public string? EuCode { get; set; }
+    public bool IsEuMember { get; set; }
+    public bool IsActive { get; set; }
+    public bool IsDefault { get; set; }
+}
+
+/// <summary>
+/// Document type DTO
+/// </summary>
+public class DocumentTypeDto
+{
+    public string Symbol { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public string? Description { get; set; }
+}
+
+/// <summary>
+/// Document status DTO
+/// </summary>
+public class DocumentStatusDto
+{
+    public int Code { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
 }
