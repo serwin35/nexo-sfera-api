@@ -43,25 +43,36 @@ public class AssemblyController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
             // Get the finished product
-            var produkt = GetAsortyment(sfera, request.ProductId, request.ProductSymbol, null);
+            var produkt = FindAsortyment(request.ProductId, request.ProductSymbol, null);
             if (produkt == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error("Product not found"));
             }
 
             // Get warehouse
-            var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-            var magazyn = magazyny.FirstOrDefault(m =>
-                DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (magazynyManager == null)
+            {
+                return StatusCode(500, ApiResponse<AssemblyDto>.Error("Failed to get Magazyny manager"));
+            }
+
+            dynamic? magazyn = null;
+            foreach (var m in magazynyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                {
+                    magazyn = m;
+                    break;
+                }
+            }
             if (magazyn == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error($"Warehouse '{request.WarehouseSymbol}' not found"));
             }
 
-            // Get magazynier for warehouse operations
+            // Get magazynier for warehouse operations (requires Sfera for service access)
+            dynamic sfera = _sferaService.GetSfera();
             var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             // Create assembly (montaż)
@@ -71,7 +82,7 @@ public class AssemblyController : ControllerBase
             var componentDtos = new List<AssemblyComponentDto>();
             foreach (var component in request.Components)
             {
-                var skladnik = GetAsortyment(sfera, component.ProductId, component.ProductSymbol, null);
+                var skladnik = FindAsortyment(component.ProductId, component.ProductSymbol, null);
                 if (skladnik == null)
                 {
                     return NotFound(ApiResponse<AssemblyDto>.Error($"Component product not found: {component.ProductSymbol ?? component.ProductId?.ToString()}"));
@@ -145,25 +156,36 @@ public class AssemblyController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
             // Get the product to disassemble
-            var produkt = GetAsortyment(sfera, request.ProductId, request.ProductSymbol, null);
+            var produkt = FindAsortyment(request.ProductId, request.ProductSymbol, null);
             if (produkt == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error("Product not found"));
             }
 
             // Get warehouse
-            var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-            var magazyn = magazyny.FirstOrDefault(m =>
-                DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (magazynyManager == null)
+            {
+                return StatusCode(500, ApiResponse<AssemblyDto>.Error("Failed to get Magazyny manager"));
+            }
+
+            dynamic? magazyn = null;
+            foreach (var m in magazynyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                {
+                    magazyn = m;
+                    break;
+                }
+            }
             if (magazyn == null)
             {
                 return NotFound(ApiResponse<AssemblyDto>.Error($"Warehouse '{request.WarehouseSymbol}' not found"));
             }
 
-            // Get magazynier for warehouse operations
+            // Get magazynier for warehouse operations (requires Sfera for service access)
+            dynamic sfera = _sferaService.GetSfera();
             var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             // Create disassembly (demontaż)
@@ -171,11 +193,11 @@ public class AssemblyController : ControllerBase
 
             // If resulting components are specified, add them
             var componentDtos = new List<AssemblyComponentDto>();
-            if (request.ResultingComponents != null && request.ResultingComponents.Any())
+            if (request.ResultingComponents != null && request.ResultingComponents.Count > 0)
             {
                 foreach (var component in request.ResultingComponents)
                 {
-                    var skladnik = GetAsortyment(sfera, component.ProductId, component.ProductSymbol, null);
+                    var skladnik = FindAsortyment(component.ProductId, component.ProductSymbol, null);
                     if (skladnik != null)
                     {
                         // Create receipt (przyjęcie) for the resulting component
@@ -250,61 +272,52 @@ public class AssemblyController : ControllerBase
     {
         try
         {
+            // Requires Sfera for service access
             dynamic sfera = _sferaService.GetSfera();
             var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             var assemblies = new List<AssemblyListItemDto>();
 
-            // Get przyjecia marked as from assembly (montaż)
-            var przyjecia = ((IEnumerable<dynamic>)magazynier.Dane.Przyjecia()).ToList();
-
-            // Filter przyjecia that are from assembly operations
-            var assemblyPrzyjecia = przyjecia
-                .Where(p => DynamicPropertyHelper.GetBool(p, "ZMontazu"))
-                .ToList();
-
-            if (!string.IsNullOrEmpty(warehouseSymbol))
+            // Get przyjecia marked as from assembly (montaż) with filtering
+            var assemblyPrzyjecia = new List<dynamic>();
+            foreach (var p in magazynier.Dane.Przyjecia())
             {
-                assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p =>
-                    {
-                        var mag = DynamicPropertyHelper.GetProperty(p, "Magazyn");
-                        return mag != null && DynamicPropertyHelper.GetString(mag, "Symbol") == warehouseSymbol;
-                    })
-                    .ToList();
-            }
+                // Must be from assembly
+                if (!DynamicPropertyHelper.GetBool(p, "ZMontazu"))
+                    continue;
 
-            if (productId.HasValue)
-            {
-                assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p =>
-                    {
-                        var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                        return asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value;
-                    })
-                    .ToList();
-            }
+                // Filter by warehouse symbol
+                if (!string.IsNullOrEmpty(warehouseSymbol))
+                {
+                    var mag = DynamicPropertyHelper.GetProperty(p, "Magazyn");
+                    if (mag == null || DynamicPropertyHelper.GetString(mag, "Symbol") != warehouseSymbol)
+                        continue;
+                }
 
-            if (dateFrom.HasValue)
-            {
-                assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p =>
-                    {
-                        var data = DynamicPropertyHelper.GetDateTime(p, "Data");
-                        return data.HasValue && data.Value >= dateFrom.Value;
-                    })
-                    .ToList();
-            }
+                // Filter by product ID
+                if (productId.HasValue)
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                    if (asortyment == null || DynamicPropertyHelper.GetId(asortyment) != productId.Value)
+                        continue;
+                }
 
-            if (dateTo.HasValue)
-            {
-                assemblyPrzyjecia = assemblyPrzyjecia
-                    .Where(p =>
-                    {
-                        var data = DynamicPropertyHelper.GetDateTime(p, "Data");
-                        return data.HasValue && data.Value <= dateTo.Value;
-                    })
-                    .ToList();
+                // Filter by date range
+                if (dateFrom.HasValue)
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(p, "Data");
+                    if (!data.HasValue || data.Value < dateFrom.Value)
+                        continue;
+                }
+
+                if (dateTo.HasValue)
+                {
+                    var data = DynamicPropertyHelper.GetDateTime(p, "Data");
+                    if (!data.HasValue || data.Value > dateTo.Value)
+                        continue;
+                }
+
+                assemblyPrzyjecia.Add(p);
             }
 
             // Only include assembly type if filter is specified
@@ -364,13 +377,20 @@ public class AssemblyController : ControllerBase
     {
         try
         {
+            // Requires Sfera for service access
             dynamic sfera = _sferaService.GetSfera();
             var magazynier = sfera.PodajObiektTypu("InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
 
             // Find the przyjecie (receipt) from assembly
-            var przyjecia = ((IEnumerable<dynamic>)magazynier.Dane.Przyjecia()).ToList();
-            var przyjecie = przyjecia.FirstOrDefault(p =>
-                DynamicPropertyHelper.GetId(p) == id && DynamicPropertyHelper.GetBool(p, "ZMontazu"));
+            dynamic? przyjecie = null;
+            foreach (var p in magazynier.Dane.Przyjecia())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id && DynamicPropertyHelper.GetBool(p, "ZMontazu"))
+                {
+                    przyjecie = p;
+                    break;
+                }
+            }
 
             if (przyjecie == null)
             {
@@ -409,26 +429,27 @@ public class AssemblyController : ControllerBase
 
     #region Helpers
 
-    private dynamic? GetAsortyment(dynamic sfera, int? id, string? symbol, string? ean)
+    private dynamic? FindAsortyment(int? id, string? symbol, string? ean)
     {
-        var asortymenty = sfera.Asortymenty();
-        var allAsortymenty = ((IEnumerable<dynamic>)asortymenty.Dane.Wszystkie()).ToList();
+        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        if (asortymentyManager == null) return null;
 
-        if (id.HasValue)
+        foreach (var a in asortymentyManager.Dane.Wszystkie())
         {
-            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id.Value);
-        }
+            if (id.HasValue && DynamicPropertyHelper.GetId(a) == id.Value)
+            {
+                return a;
+            }
 
-        if (!string.IsNullOrEmpty(symbol))
-        {
-            return allAsortymenty.FirstOrDefault(a =>
-                DynamicPropertyHelper.GetString(a, "Symbol") == symbol);
-        }
+            if (!string.IsNullOrEmpty(symbol) && DynamicPropertyHelper.GetString(a, "Symbol") == symbol)
+            {
+                return a;
+            }
 
-        if (!string.IsNullOrEmpty(ean))
-        {
-            return allAsortymenty.FirstOrDefault(a =>
-                DynamicPropertyHelper.GetString(a, "EAN") == ean);
+            if (!string.IsNullOrEmpty(ean) && DynamicPropertyHelper.GetString(a, "EAN") == ean)
+            {
+                return a;
+            }
         }
 
         return null;

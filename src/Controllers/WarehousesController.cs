@@ -33,12 +33,14 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var magazyny = sfera.Magazyny();
-            var allMagazyny = ((IEnumerable<dynamic>)magazyny.Dane.Wszystkie()).ToList();
+            var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (magazyny == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Magazyny manager"));
+            }
 
             var items = new List<WarehouseDto>();
-            foreach (var m in allMagazyny)
+            foreach (var m in magazyny.Dane.Wszystkie())
             {
                 items.Add(new WarehouseDto
                 {
@@ -67,10 +69,21 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var magazyny = sfera.Magazyny();
-            var allMagazyny = ((IEnumerable<dynamic>)magazyny.Dane.Wszystkie()).ToList();
-            var magazyn = allMagazyny.FirstOrDefault(m => DynamicPropertyHelper.GetString(m, "Symbol") == symbol);
+            var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (magazyny == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Magazyny manager"));
+            }
+
+            dynamic? magazyn = null;
+            foreach (var m in magazyny.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(m, "Symbol") == symbol)
+                {
+                    magazyn = m;
+                    break;
+                }
+            }
 
             if (magazyn == null)
             {
@@ -103,8 +116,11 @@ public class WarehousesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            var asortymenty = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymenty == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
             var asortyment = asortymenty.Znajdz(productSymbol);
             if (asortyment == null)

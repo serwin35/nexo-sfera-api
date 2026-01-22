@@ -34,83 +34,98 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
             var documents = new List<WarehouseDocumentDto>();
             var totalCount = 0;
 
             // Query WZ documents
             if (!query.Type.HasValue || query.Type == WarehouseDocumentType.WZ)
             {
-                var wz = sfera.WydaniaZewnetrzne();
-                var allWz = ((IEnumerable<dynamic>)wz.Dane.Wszystkie()).ToList();
-
-                if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                var wzManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.WydaniaZewnetrzne");
+                if (wzManager != null)
                 {
-                    allWz = allWz.Where(d =>
+                    var allWz = new List<dynamic>();
+                    foreach (var d in wzManager.Dane.Wszystkie())
                     {
-                        var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
-                        return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == query.WarehouseSymbol;
-                    }).ToList();
-                }
+                        bool include = true;
 
-                if (query.DateFrom.HasValue)
-                {
-                    allWz = allWz.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).ToList();
-                }
+                        if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                        {
+                            var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
+                            if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != query.WarehouseSymbol)
+                                include = false;
+                        }
 
-                if (query.DateTo.HasValue)
-                {
-                    allWz = allWz.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).ToList();
-                }
+                        if (include && query.DateFrom.HasValue)
+                        {
+                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") < query.DateFrom.Value)
+                                include = false;
+                        }
 
-                totalCount += allWz.Count;
-                var wzDocs = allWz
-                    .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
-                    .Take(query.PageSize)
-                    .ToList();
-                foreach (var d in wzDocs)
-                {
-                    documents.Add(MapWZToDto(d));
+                        if (include && query.DateTo.HasValue)
+                        {
+                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") > query.DateTo.Value)
+                                include = false;
+                        }
+
+                        if (include)
+                            allWz.Add(d);
+                    }
+
+                    totalCount += allWz.Count;
+                    var wzDocs = allWz
+                        .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
+                        .Take(query.PageSize)
+                        .ToList();
+                    foreach (var d in wzDocs)
+                    {
+                        documents.Add(MapWZToDto(d));
+                    }
                 }
             }
 
             // Query PZ documents
             if (!query.Type.HasValue || query.Type == WarehouseDocumentType.PZ)
             {
-                var pz = sfera.PrzyjeciaZewnetrzne();
-                var allPz = ((IEnumerable<dynamic>)pz.Dane.Wszystkie()).ToList();
-
-                if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                var pzManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.PrzyjeciaZewnetrzne");
+                if (pzManager != null)
                 {
-                    allPz = allPz.Where(d =>
+                    var allPz = new List<dynamic>();
+                    foreach (var d in pzManager.Dane.Wszystkie())
                     {
-                        var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
-                        return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == query.WarehouseSymbol;
-                    }).ToList();
-                }
+                        bool include = true;
 
-                if (query.DateFrom.HasValue)
-                {
-                    allPz = allPz.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).ToList();
-                }
+                        if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                        {
+                            var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
+                            if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != query.WarehouseSymbol)
+                                include = false;
+                        }
 
-                if (query.DateTo.HasValue)
-                {
-                    allPz = allPz.Where(d =>
-                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).ToList();
-                }
+                        if (include && query.DateFrom.HasValue)
+                        {
+                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") < query.DateFrom.Value)
+                                include = false;
+                        }
 
-                totalCount += allPz.Count;
-                var pzDocs = allPz
-                    .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
-                    .Take(query.PageSize)
-                    .ToList();
-                foreach (var d in pzDocs)
-                {
-                    documents.Add(MapPZToDto(d));
+                        if (include && query.DateTo.HasValue)
+                        {
+                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") > query.DateTo.Value)
+                                include = false;
+                        }
+
+                        if (include)
+                            allPz.Add(d);
+                    }
+
+                    totalCount += allPz.Count;
+                    var pzDocs = allPz
+                        .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
+                        .Take(query.PageSize)
+                        .ToList();
+                    foreach (var d in pzDocs)
+                    {
+                        documents.Add(MapPZToDto(d));
+                    }
                 }
             }
 
@@ -139,22 +154,37 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var wydania = sfera.WydaniaZewnetrzne();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.WydanieZewnetrzne;
+            var wydania = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.WydaniaZewnetrzne");
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            if (wydania == null || konfiguracje == null)
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+            }
+
+            var konfiguracja = konfiguracje.DaneDomyslne.WydanieZewnetrzne;
 
             using (var wz = wydania.Utworz(konfiguracja))
             {
                 // Set contractor
-                SetContractor(sfera, wz.Dane, request.ContractorId, request.ContractorNIP);
+                SetContractor(wz.Dane, request.ContractorId, request.ContractorNIP);
 
                 // Set warehouse
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                var magazyn = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
-                if (magazyn != null)
+                var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                if (magazynyManager != null)
                 {
-                    wz.Dane.Magazyn = magazyn;
+                    dynamic? magazyn = null;
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        {
+                            magazyn = m;
+                            break;
+                        }
+                    }
+                    if (magazyn != null)
+                    {
+                        wz.Dane.Magazyn = magazyn;
+                    }
                 }
 
                 if (request.IssueDate.HasValue)
@@ -168,7 +198,7 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 // Add items
-                AddWarehouseDocumentItems(sfera, wz, request.Items);
+                AddWarehouseDocumentItems(wz, request.Items);
 
                 if ((bool)wz.Zapisz())
                 {
@@ -202,22 +232,37 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var przyjecia = sfera.PrzyjeciaZewnetrzne();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.PrzyjecieZewnetrzne;
+            var przyjecia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.PrzyjeciaZewnetrzne");
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            if (przyjecia == null || konfiguracje == null)
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+            }
+
+            var konfiguracja = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
 
             using (var pz = przyjecia.Utworz(konfiguracja))
             {
                 // Set contractor (supplier)
-                SetContractor(sfera, pz.Dane, request.ContractorId, request.ContractorNIP);
+                SetContractor(pz.Dane, request.ContractorId, request.ContractorNIP);
 
                 // Set warehouse
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                var magazyn = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
-                if (magazyn != null)
+                var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                if (magazynyManager != null)
                 {
-                    pz.Dane.Magazyn = magazyn;
+                    dynamic? magazyn = null;
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        {
+                            magazyn = m;
+                            break;
+                        }
+                    }
+                    if (magazyn != null)
+                    {
+                        pz.Dane.Magazyn = magazyn;
+                    }
                 }
 
                 if (request.IssueDate.HasValue)
@@ -236,7 +281,7 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 // Add items
-                AddWarehouseDocumentItems(sfera, pz, request.Items);
+                AddWarehouseDocumentItems(pz, request.Items);
 
                 if ((bool)pz.Zapisz())
                 {
@@ -270,19 +315,34 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var wydania = sfera.WydaniaZewnetrzne();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.RozchodWewnetrzny;
+            var wydania = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.WydaniaZewnetrzne");
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            if (wydania == null || konfiguracje == null)
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+            }
+
+            var konfiguracja = konfiguracje.DaneDomyslne.RozchodWewnetrzny;
 
             using (var rw = wydania.Utworz(konfiguracja))
             {
                 // Set warehouse
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                var magazyn = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
-                if (magazyn != null)
+                var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                if (magazynyManager != null)
                 {
-                    rw.Dane.Magazyn = magazyn;
+                    dynamic? magazyn = null;
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        {
+                            magazyn = m;
+                            break;
+                        }
+                    }
+                    if (magazyn != null)
+                    {
+                        rw.Dane.Magazyn = magazyn;
+                    }
                 }
 
                 if (request.IssueDate.HasValue)
@@ -296,7 +356,7 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 // Add items
-                AddWarehouseDocumentItems(sfera, rw, request.Items);
+                AddWarehouseDocumentItems(rw, request.Items);
 
                 if ((bool)rw.Zapisz())
                 {
@@ -330,19 +390,34 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var przyjecia = sfera.PrzyjeciaZewnetrzne();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.PrzychodWewnetrzny;
+            var przyjecia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.PrzyjeciaZewnetrzne");
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            if (przyjecia == null || konfiguracje == null)
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+            }
+
+            var konfiguracja = konfiguracje.DaneDomyslne.PrzychodWewnetrzny;
 
             using (var pw = przyjecia.Utworz(konfiguracja))
             {
                 // Set warehouse
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                var magazyn = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
-                if (magazyn != null)
+                var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                if (magazynyManager != null)
                 {
-                    pw.Dane.Magazyn = magazyn;
+                    dynamic? magazyn = null;
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        {
+                            magazyn = m;
+                            break;
+                        }
+                    }
+                    if (magazyn != null)
+                    {
+                        pw.Dane.Magazyn = magazyn;
+                    }
                 }
 
                 if (request.IssueDate.HasValue)
@@ -356,7 +431,7 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 // Add items
-                AddWarehouseDocumentItems(sfera, pw, request.Items);
+                AddWarehouseDocumentItems(pw, request.Items);
 
                 if ((bool)pw.Zapisz())
                 {
@@ -395,28 +470,46 @@ public class WarehouseDocumentsController : ControllerBase
                 return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Target warehouse symbol is required for MM"));
             }
 
-            dynamic sfera = _sferaService.GetSfera();
-            var wydania = sfera.WydaniaMiedzymagazynowe();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.PrzesuniecieMiedzymagazynowe;
+            var wydania = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.WydaniaMiedzymagazynowe");
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            if (wydania == null || konfiguracje == null)
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+            }
+
+            var konfiguracja = konfiguracje.DaneDomyslne.PrzesuniecieMiedzymagazynowe;
 
             using (var mm = wydania.Utworz(konfiguracja))
             {
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-
-                // Set source warehouse
-                var magazynZrodlowy = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
-                if (magazynZrodlowy != null)
+                var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                if (magazynyManager != null)
                 {
-                    mm.Dane.Magazyn = magazynZrodlowy;
-                }
+                    // Set source warehouse
+                    dynamic? magazynZrodlowy = null;
+                    dynamic? magazynDocelowy = null;
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        var symbol = DynamicPropertyHelper.GetString(m, "Symbol");
+                        if (symbol == request.WarehouseSymbol)
+                        {
+                            magazynZrodlowy = m;
+                        }
+                        if (symbol == request.TargetWarehouseSymbol)
+                        {
+                            magazynDocelowy = m;
+                        }
+                        if (magazynZrodlowy != null && magazynDocelowy != null)
+                            break;
+                    }
 
-                // Set target warehouse
-                var magazynDocelowy = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == request.TargetWarehouseSymbol);
-                if (magazynDocelowy != null)
-                {
-                    mm.Dane.MagazynDocelowy = magazynDocelowy;
+                    if (magazynZrodlowy != null)
+                    {
+                        mm.Dane.Magazyn = magazynZrodlowy;
+                    }
+                    if (magazynDocelowy != null)
+                    {
+                        mm.Dane.MagazynDocelowy = magazynDocelowy;
+                    }
                 }
 
                 if (request.IssueDate.HasValue)
@@ -430,15 +523,18 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 // Add items
-                var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
-                foreach (var item in request.Items)
+                var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+                if (asortymentyManager != null)
                 {
-                    var asortyment = GetAsortyment(allAsortymenty, item.ProductId, item.ProductSymbol, item.ProductEan);
-
-                    if (asortyment != null)
+                    foreach (var item in request.Items)
                     {
-                        var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
-                        mm.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+                        var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+
+                        if (asortyment != null)
+                        {
+                            var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                            mm.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+                        }
                     }
                 }
 
@@ -466,34 +562,54 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
-    private void SetContractor(dynamic sfera, dynamic dokumentDane, int? contractorId, string? contractorNIP)
+    private void SetContractor(dynamic dokumentDane, int? contractorId, string? contractorNIP)
     {
-        var allPodmioty = ((IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie()).ToList();
+        if (!contractorId.HasValue && string.IsNullOrEmpty(contractorNIP))
+            return;
 
+        var podmiotyManager = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+        if (podmiotyManager == null)
+            return;
+
+        dynamic? podmiot = null;
         if (contractorId.HasValue)
         {
-            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == contractorId.Value);
-            if (podmiot != null)
+            foreach (var p in podmiotyManager.Dane.Wszystkie())
             {
-                dokumentDane.Podmiot = podmiot;
+                if (DynamicPropertyHelper.GetId(p) == contractorId.Value)
+                {
+                    podmiot = p;
+                    break;
+                }
             }
         }
         else if (!string.IsNullOrEmpty(contractorNIP))
         {
-            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == contractorNIP);
-            if (podmiot != null)
+            foreach (var p in podmiotyManager.Dane.Wszystkie())
             {
-                dokumentDane.Podmiot = podmiot;
+                if (DynamicPropertyHelper.GetString(p, "NIP") == contractorNIP)
+                {
+                    podmiot = p;
+                    break;
+                }
             }
+        }
+
+        if (podmiot != null)
+        {
+            dokumentDane.Podmiot = podmiot;
         }
     }
 
-    private void AddWarehouseDocumentItems(dynamic sfera, dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
+    private void AddWarehouseDocumentItems(dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
     {
-        var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
+        var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+        if (asortymentyManager == null)
+            return;
+
         foreach (var item in items)
         {
-            var asortyment = GetAsortyment(allAsortymenty, item.ProductId, item.ProductSymbol, item.ProductEan);
+            var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
 
             if (asortyment != null)
             {
@@ -508,19 +624,25 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
-    private static dynamic? GetAsortyment(List<dynamic> allAsortymenty, int? productId, string? productSymbol, string? productEan)
+    private static dynamic? FindAsortyment(dynamic asortymentyManager, int? productId, string? productSymbol, string? productEan)
     {
-        if (productId.HasValue)
+        foreach (var a in asortymentyManager.Dane.Wszystkie())
         {
-            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == productId.Value);
-        }
-        else if (!string.IsNullOrEmpty(productSymbol))
-        {
-            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetString(a, "Symbol") == productSymbol);
-        }
-        else if (!string.IsNullOrEmpty(productEan))
-        {
-            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetString(a, "KodKreskowy") == productEan);
+            if (productId.HasValue)
+            {
+                if (DynamicPropertyHelper.GetId(a) == productId.Value)
+                    return a;
+            }
+            else if (!string.IsNullOrEmpty(productSymbol))
+            {
+                if (DynamicPropertyHelper.GetString(a, "Symbol") == productSymbol)
+                    return a;
+            }
+            else if (!string.IsNullOrEmpty(productEan))
+            {
+                if (DynamicPropertyHelper.GetString(a, "KodKreskowy") == productEan)
+                    return a;
+            }
         }
         return null;
     }

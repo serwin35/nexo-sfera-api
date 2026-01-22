@@ -576,7 +576,7 @@ public class DictionaryController : ControllerBase
                 return NotFound(ApiResponse<object>.Error($"Price list '{symbol}' not found"));
             }
 
-            var pozycje = DynamicPropertyHelper.GetCollection(cennik, "Pozycje").ToList();
+            var pozycje = DynamicPropertyHelper.GetCollection(cennik, "Pozycje");
 
             if (productId.HasValue)
             {

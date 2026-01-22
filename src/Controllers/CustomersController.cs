@@ -693,7 +693,7 @@ public class CustomersController : ControllerBase
         }
 
         // Map contacts
-        var kontakty = DynamicPropertyHelper.GetCollection(podmiot, "Kontakty").ToList();
+        var kontakty = DynamicPropertyHelper.GetCollection(podmiot, "Kontakty");
         foreach (var kontakt in kontakty)
         {
             var typ = DynamicPropertyHelper.GetNullableInt(kontakt, "Typ");
@@ -710,7 +710,7 @@ public class CustomersController : ControllerBase
         }
 
         // Map bank account
-        var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "RachunkiBankowe").ToList();
+        var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "RachunkiBankowe");
         dynamic? glownyRachunek = null;
         foreach (var r in rachunki)
         {

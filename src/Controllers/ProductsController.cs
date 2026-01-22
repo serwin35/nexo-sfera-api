@@ -39,17 +39,17 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
-
-            List<dynamic> allAsortymenty;
-            if (activeOnly == true)
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
             {
-                allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.WszystkieDostepne()).ToList();
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
             }
-            else
+
+            var allAsortymenty = new List<dynamic>();
+            var sourceData = activeOnly == true ? asortymentyManager.Dane.WszystkieDostepne() : asortymentyManager.Dane.Wszystkie();
+            foreach (var a in sourceData)
             {
-                allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
+                allAsortymenty.Add(a);
             }
 
             if (!string.IsNullOrEmpty(search))
@@ -102,11 +102,21 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
-            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
-            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+            dynamic? asortyment = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(a) == id)
+                {
+                    asortyment = a;
+                    break;
+                }
+            }
 
             if (asortyment == null)
             {
@@ -130,8 +140,11 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
             var asortyment = asortymentyManager.Znajdz(symbol);
             if (asortyment == null)
@@ -156,11 +169,21 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
-            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
-            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetString(a, "EAN") == ean);
+            dynamic? asortyment = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(a, "EAN") == ean)
+                {
+                    asortyment = a;
+                    break;
+                }
+            }
 
             if (asortyment == null)
             {
@@ -184,8 +207,11 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
             // Check if symbol already exists
             var existing = asortymentyManager.Znajdz(request.Symbol);
@@ -201,13 +227,22 @@ public class ProductsController : ControllerBase
                 // Apply template if specified
                 if (!string.IsNullOrEmpty(request.TemplateSymbol))
                 {
-                    var szablonyManager = sfera.SzablonyAsortymentu();
-                    var szablony = ((IEnumerable<dynamic>)szablonyManager.Dane.Wszystkie()).ToList();
-                    var szablon = szablony.FirstOrDefault(s =>
-                        DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol);
-                    if (szablon != null)
+                    var szablonyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.SzablonyAsortymentu");
+                    if (szablonyManager != null)
                     {
-                        nowyAsortyment.WypelnijNaPodstawieSzablonu(szablon);
+                        dynamic? szablon = null;
+                        foreach (var s in szablonyManager.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol)
+                            {
+                                szablon = s;
+                                break;
+                            }
+                        }
+                        if (szablon != null)
+                        {
+                            nowyAsortyment.WypelnijNaPodstawieSzablonu(szablon);
+                        }
                     }
                 }
 
@@ -230,7 +265,7 @@ public class ProductsController : ControllerBase
                 }
 
                 // Set unit
-                var jednostka = GetUnit(sfera, request.SaleUnit);
+                var jednostka = GetUnit(request.SaleUnit);
                 if (jednostka != null)
                 {
                     dane.JednostkaSprzedazy = jednostka;
@@ -238,7 +273,7 @@ public class ProductsController : ControllerBase
 
                 if (!string.IsNullOrEmpty(request.PurchaseUnit))
                 {
-                    var jednostkaZakupu = GetUnit(sfera, request.PurchaseUnit);
+                    var jednostkaZakupu = GetUnit(request.PurchaseUnit);
                     if (jednostkaZakupu != null)
                     {
                         dane.JednostkaZakupu = jednostkaZakupu;
@@ -292,11 +327,21 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
-            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
-            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+            dynamic? asortyment = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(a) == id)
+                {
+                    asortyment = a;
+                    break;
+                }
+            }
 
             if (asortyment == null)
             {
@@ -379,11 +424,21 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymentyManager = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+            }
 
-            var allAsortymenty = ((IEnumerable<dynamic>)asortymentyManager.Dane.Wszystkie()).ToList();
-            var asortyment = allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+            dynamic? asortyment = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(a) == id)
+                {
+                    asortyment = a;
+                    break;
+                }
+            }
 
             if (asortyment == null)
             {
@@ -416,13 +471,21 @@ public class ProductsController : ControllerBase
         }
     }
 
-    private static dynamic? GetUnit(dynamic sfera, string symbol)
+    private dynamic? GetUnit(string symbol)
     {
         if (string.IsNullOrEmpty(symbol)) return null;
 
-        var jednostkiManager = sfera.Jednostki();
-        var jednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
-        return jednostki.FirstOrDefault(j => DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
+        var jednostkiManager = _sferaService.GetManager("InsERT.Moria.ModelDanych", "InsERT.Moria.ModelDanych.Jednostki");
+        if (jednostkiManager == null) return null;
+
+        foreach (var j in jednostkiManager.Dane.Wszystkie())
+        {
+            if (DynamicPropertyHelper.GetString(j, "Symbol") == symbol)
+            {
+                return j;
+            }
+        }
+        return null;
     }
 
     private static ProductDto MapToDto(dynamic asortyment)

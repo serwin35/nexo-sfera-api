@@ -49,42 +49,44 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-
-            if (!string.IsNullOrEmpty(status))
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
             {
-                var statusValue = GetStatusValue(status);
-                if (statusValue.HasValue)
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
+
+            int? statusFilter = !string.IsNullOrEmpty(status) ? GetStatusValue(status) : null;
+
+            var allDokumenty = new List<dynamic>();
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                bool include = true;
+
+                if (statusFilter.HasValue && DynamicPropertyHelper.GetInt(d, "EStatus") != statusFilter.Value)
+                    include = false;
+
+                if (include && dateFrom.HasValue)
                 {
-                    allDokumenty = allDokumenty.Where(d =>
-                        DynamicPropertyHelper.GetInt(d, "EStatus") == statusValue.Value).ToList();
+                    var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
+                    if (!data.HasValue || data.Value < dateFrom.Value)
+                        include = false;
                 }
-            }
 
-            if (dateFrom.HasValue)
-            {
-                allDokumenty = allDokumenty.Where(d =>
+                if (include && dateTo.HasValue)
                 {
                     var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
-                    return data.HasValue && data.Value >= dateFrom.Value;
-                }).ToList();
-            }
+                    if (!data.HasValue || data.Value > dateTo.Value)
+                        include = false;
+                }
 
-            if (dateTo.HasValue)
-            {
-                allDokumenty = allDokumenty.Where(d =>
+                if (include && !string.IsNullOrEmpty(customerTaxId))
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
-                    return data.HasValue && data.Value <= dateTo.Value;
-                }).ToList();
-            }
+                    if (DynamicPropertyHelper.GetString(d, "IdentyfikatorPodatkowyKlienta") != customerTaxId)
+                        include = false;
+                }
 
-            if (!string.IsNullOrEmpty(customerTaxId))
-            {
-                allDokumenty = allDokumenty.Where(d =>
-                    DynamicPropertyHelper.GetString(d, "IdentyfikatorPodatkowyKlienta") == customerTaxId).ToList();
+                if (include)
+                    allDokumenty.Add(d);
             }
 
             var totalCount = allDokumenty.Count;
@@ -125,10 +127,21 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokument = allDokumenty.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<ElectronicDocumentDto>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
+
+            dynamic? dokument = null;
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(d) == id)
+                {
+                    dokument = d;
+                    break;
+                }
+            }
 
             if (dokument == null)
             {
@@ -155,11 +168,21 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokument = allDokumenty.FirstOrDefault(d =>
-                DynamicPropertyHelper.GetString(d, "NumerKSeF") == ksefNumber);
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<ElectronicDocumentDto>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
+
+            dynamic? dokument = null;
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(d, "NumerKSeF") == ksefNumber)
+                {
+                    dokument = d;
+                    break;
+                }
+            }
 
             if (dokument == null)
             {
@@ -190,19 +213,30 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
             // Find the document
-            var dokumentyManager = sfera.DokumentyHandlowe();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokument = allDokumenty.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == documentId);
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyHandlowe");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<EInvoiceGenerationResultDto>.Error("Failed to get DokumentyHandlowe manager"));
+            }
+
+            dynamic? dokument = null;
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(d) == documentId)
+                {
+                    dokument = d;
+                    break;
+                }
+            }
 
             if (dokument == null)
             {
                 return NotFound(ApiResponse<EInvoiceGenerationResultDto>.Error($"Document with ID {documentId} not found"));
             }
 
-            // Generate e-invoice
+            // Generate e-invoice (requires Sfera for factory access)
+            dynamic sfera = _sferaService.GetSfera();
             var fabrykaGeneratorow = sfera.FabrykaGeneratorowEFaktury();
             var generator = fabrykaGeneratorow.PobierzAktualny();
 
@@ -212,7 +246,13 @@ public class KsefController : ControllerBase
                 ?? typeof(object));
 
             var wyniki = generator.WygenerujEFaktury(new[] { dokument }, parametry);
-            var wynik = ((IEnumerable<dynamic>)wyniki).FirstOrDefault();
+
+            dynamic? wynik = null;
+            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            {
+                wynik = w;
+                break;
+            }
 
             var result = new EInvoiceGenerationResultDto
             {
@@ -246,19 +286,29 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
             // Find documents
-            var dokumentyManager = sfera.DokumentyHandlowe();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokumenty = allDokumenty.Where(d => documentIds.Contains(DynamicPropertyHelper.GetId(d))).ToList();
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyHandlowe");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error("Failed to get DokumentyHandlowe manager"));
+            }
 
-            if (!dokumenty.Any())
+            var dokumenty = new List<dynamic>();
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (documentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                {
+                    dokumenty.Add(d);
+                }
+            }
+
+            if (dokumenty.Count == 0)
             {
                 return Ok(ApiResponse<List<EInvoiceGenerationResultDto>>.Error("No documents found with the provided IDs"));
             }
 
-            // Generate e-invoices
+            // Generate e-invoices (requires Sfera for factory access)
+            dynamic sfera = _sferaService.GetSfera();
             var fabrykaGeneratorow = sfera.FabrykaGeneratorowEFaktury();
             var generator = fabrykaGeneratorow.PobierzAktualny();
 
@@ -314,20 +364,38 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<KsefSendResultDto>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
 
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokument = allDokumenty.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == electronicDocumentId);
+            dynamic? dokument = null;
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(d) == electronicDocumentId)
+                {
+                    dokument = d;
+                    break;
+                }
+            }
 
             if (dokument == null)
             {
                 return NotFound(ApiResponse<KsefSendResultDto>.Error($"Electronic document with ID {electronicDocumentId} not found"));
             }
 
+            // Requires Sfera for coordinator access
+            dynamic sfera = _sferaService.GetSfera();
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var wyniki = koordynator.PrzekazDoWysylki(new[] { dokument }, null);
-            var wynik = ((IEnumerable<dynamic>)wyniki).FirstOrDefault();
+
+            dynamic? wynik = null;
+            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            {
+                wynik = w;
+                break;
+            }
 
             var result = new KsefSendResultDto
             {
@@ -355,17 +423,28 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
 
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokumenty = allDokumenty.Where(d => electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d))).ToList();
+            var dokumenty = new List<dynamic>();
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                {
+                    dokumenty.Add(d);
+                }
+            }
 
-            if (!dokumenty.Any())
+            if (dokumenty.Count == 0)
             {
                 return Ok(ApiResponse<List<KsefSendResultDto>>.Error("No electronic documents found with the provided IDs"));
             }
 
+            // Requires Sfera for coordinator access
+            dynamic sfera = _sferaService.GetSfera();
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var wyniki = koordynator.PrzekazDoWysylki(dokumenty.ToArray(), null);
 
@@ -451,17 +530,28 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
 
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokumenty = allDokumenty.Where(d => electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d))).ToList();
+            var dokumenty = new List<dynamic>();
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                {
+                    dokumenty.Add(d);
+                }
+            }
 
-            if (!dokumenty.Any())
+            if (dokumenty.Count == 0)
             {
                 return Ok(ApiResponse<List<KsefStatusResultDto>>.Error("No electronic documents found with the provided IDs"));
             }
 
+            // Requires Sfera for coordinator access
+            dynamic sfera = _sferaService.GetSfera();
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var statusy = koordynator.SprawdzStatus(dokumenty.ToArray());
 
@@ -502,19 +592,29 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
 
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var allDokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
-            var dokumenty = allDokumenty.Where(d =>
-                electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)) &&
-                DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef).ToList();
+            var dokumenty = new List<dynamic>();
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)) &&
+                    DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef)
+                {
+                    dokumenty.Add(d);
+                }
+            }
 
-            if (!dokumenty.Any())
+            if (dokumenty.Count == 0)
             {
                 return Ok(ApiResponse<List<KsefUpoResultDto>>.Error("No documents ready for UPO download found"));
             }
 
+            // Requires Sfera for coordinator access
+            dynamic sfera = _sferaService.GetSfera();
             var koordynator = sfera.KoordynatorWysylaniaEFaktur();
             var wyniki = koordynator.PobierzUpo(dokumenty.ToArray());
 
@@ -552,9 +652,17 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var dokumentyManager = sfera.DokumentyElektroniczne();
-            var dokumenty = ((IEnumerable<dynamic>)dokumentyManager.Dane.Wszystkie()).ToList();
+            var dokumentyManager = _sferaService.GetManager("InsERT.Moria.Dokumenty", "InsERT.Moria.Dokumenty.DokumentyElektroniczne");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<KsefSummaryDto>.Error("Failed to get DokumentyElektroniczne manager"));
+            }
+
+            var dokumenty = new List<dynamic>();
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                dokumenty.Add(d);
+            }
 
             int pendingSend = 0, sent = 0, withKsefNumber = 0, withUpo = 0, errors = 0;
             foreach (var d in dokumenty)

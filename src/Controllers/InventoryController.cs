@@ -42,41 +42,48 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
-
-            // Get all products with their stock levels
-            var allProdukty = ((IEnumerable<dynamic>)asortymenty.Dane.Wszystkie()).ToList();
-            var produktyQuery = allProdukty.Where(a =>
-                DynamicPropertyHelper.GetBool(a, "JestHandlowy") ||
-                DynamicPropertyHelper.GetBool(a, "JestMagazynowy")).ToList();
-
-            if (productId.HasValue)
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (asortymentyManager == null)
             {
-                produktyQuery = produktyQuery.Where(a => DynamicPropertyHelper.GetId(a) == productId.Value).ToList();
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
             }
 
-            if (!string.IsNullOrEmpty(productSymbol))
+            // Get all products with their stock levels
+            var produktyQuery = new List<dynamic>();
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
             {
-                var symbol = DynamicPropertyHelper.GetString(produktyQuery.FirstOrDefault(), "Symbol");
-                produktyQuery = produktyQuery.Where(a =>
+                bool isHandlowy = DynamicPropertyHelper.GetBool(a, "JestHandlowy");
+                bool isMagazynowy = DynamicPropertyHelper.GetBool(a, "JestMagazynowy");
+                if (!isHandlowy && !isMagazynowy)
+                    continue;
+
+                if (productId.HasValue && DynamicPropertyHelper.GetId(a) != productId.Value)
+                    continue;
+
+                if (!string.IsNullOrEmpty(productSymbol))
                 {
                     var s = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
-                    return s == productSymbol || s.Contains(productSymbol);
-                }).ToList();
+                    if (s != productSymbol && !s.Contains(productSymbol))
+                        continue;
+                }
+
+                produktyQuery.Add(a);
             }
 
             // Get warehouse filter
             dynamic? magazynFilter = null;
             int? magazynFilterId = null;
-            if (!string.IsNullOrEmpty(warehouseSymbol))
+            if (!string.IsNullOrEmpty(warehouseSymbol) && magazynyManager != null)
             {
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                magazynFilter = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol);
-                if (magazynFilter != null)
+                foreach (var m in magazynyManager.Dane.Wszystkie())
                 {
-                    magazynFilterId = DynamicPropertyHelper.GetId(magazynFilter);
+                    if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                    {
+                        magazynFilter = m;
+                        magazynFilterId = DynamicPropertyHelper.GetId(m);
+                        break;
+                    }
                 }
             }
 
@@ -85,8 +92,7 @@ public class InventoryController : ControllerBase
             foreach (var produkt in produktyQuery)
             {
                 // Get stock levels for this product
-                var stanyCollection = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
-                var stany = stanyCollection.ToList();
+                var stany = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
 
                 if (magazynFilterId.HasValue)
                 {
@@ -105,10 +111,16 @@ public class InventoryController : ControllerBase
                 {
                     var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
                     dynamic? magazyn = null;
-                    if (magazynId.HasValue)
+                    if (magazynId.HasValue && magazynyManager != null)
                     {
-                        var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                        magazyn = allMagazyny.FirstOrDefault(m => DynamicPropertyHelper.GetId(m) == magazynId.Value);
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetId(m) == magazynId.Value)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
                     }
 
                     var iloscDostepna = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
@@ -148,12 +160,20 @@ public class InventoryController : ControllerBase
                 }
 
                 // If no stock exists for this product but it's requested specifically
-                if (!stany.Any() && (productId.HasValue || !string.IsNullOrEmpty(productSymbol)))
+                if (stany.Count == 0 && (productId.HasValue || !string.IsNullOrEmpty(productSymbol)))
                 {
-                    var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                    var allWarehouses = magazynFilter != null
-                        ? new List<dynamic> { magazynFilter }
-                        : allMagazyny;
+                    var allWarehouses = new List<dynamic>();
+                    if (magazynFilter != null)
+                    {
+                        allWarehouses.Add(magazynFilter);
+                    }
+                    else if (magazynyManager != null)
+                    {
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
+                        {
+                            allWarehouses.Add(m);
+                        }
+                    }
 
                     foreach (var magazyn in allWarehouses)
                     {
@@ -209,27 +229,42 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<InventoryItemDto>>.Error("Failed to get Asortymenty manager"));
+            }
 
-            var allProdukty = ((IEnumerable<dynamic>)asortymenty.Dane.Wszystkie()).ToList();
-            var produkt = allProdukty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == productId);
+            dynamic? produkt = null;
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(a) == productId)
+                {
+                    produkt = a;
+                    break;
+                }
+            }
             if (produkt == null)
             {
                 return NotFound(ApiResponse<List<InventoryItemDto>>.Error($"Product with ID {productId} not found"));
             }
 
-            var stanyCollection = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
-            var stany = stanyCollection.ToList();
+            var stany = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
 
-            if (!string.IsNullOrEmpty(warehouseSymbol))
+            if (!string.IsNullOrEmpty(warehouseSymbol) && magazynyManager != null)
             {
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                var magazynFilter = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol);
-                if (magazynFilter != null)
+                int? magazynFilterId = null;
+                foreach (var m in magazynyManager.Dane.Wszystkie())
                 {
-                    var magazynFilterId = DynamicPropertyHelper.GetId(magazynFilter);
+                    if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                    {
+                        magazynFilterId = DynamicPropertyHelper.GetId(m);
+                        break;
+                    }
+                }
+                if (magazynFilterId.HasValue)
+                {
                     var filteredStany = new List<dynamic>();
                     foreach (var s in stany)
                     {
@@ -247,10 +282,16 @@ public class InventoryController : ControllerBase
             {
                 var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
                 dynamic? magazyn = null;
-                if (magazynId.HasValue)
+                if (magazynId.HasValue && magazynyManager != null)
                 {
-                    var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                    magazyn = allMagazyny.FirstOrDefault(m => DynamicPropertyHelper.GetId(m) == magazynId.Value);
+                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetId(m) == magazynId.Value)
+                        {
+                            magazyn = m;
+                            break;
+                        }
+                    }
                 }
 
                 var iloscDostepna = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
@@ -307,11 +348,14 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var magazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (magazynyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<WarehouseDto>>.Error("Failed to get Magazyny manager"));
+            }
 
             var dtos = new List<WarehouseDto>();
-            foreach (var m in magazyny)
+            foreach (var m in magazynyManager.Dane.Wszystkie())
             {
                 dtos.Add(new WarehouseDto
                 {
@@ -339,10 +383,21 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-            var magazyn = allMagazyny.FirstOrDefault(m =>
-                DynamicPropertyHelper.GetString(m, "Symbol") == symbol);
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (magazynyManager == null)
+            {
+                return StatusCode(500, ApiResponse<WarehouseDto>.Error("Failed to get Magazyny manager"));
+            }
+
+            dynamic? magazyn = null;
+            foreach (var m in magazynyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetString(m, "Symbol") == symbol)
+                {
+                    magazyn = m;
+                    break;
+                }
+            }
 
             if (magazyn == null)
             {
@@ -386,24 +441,28 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
-
-            // Get products first
-            var allProdukty = ((IEnumerable<dynamic>)asortymenty.Dane.Wszystkie()).ToList();
-            var produktyQuery = allProdukty.Where(a =>
-                DynamicPropertyHelper.GetBool(a, "JestHandlowy") ||
-                DynamicPropertyHelper.GetBool(a, "JestMagazynowy")).ToList();
-
-            if (productId.HasValue)
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (asortymentyManager == null)
             {
-                produktyQuery = produktyQuery.Where(a => DynamicPropertyHelper.GetId(a) == productId.Value).ToList();
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
             }
 
-            if (!string.IsNullOrEmpty(productSymbol))
+            // Get products first
+            var produktyQuery = new List<dynamic>();
+            foreach (var a in asortymentyManager.Dane.Wszystkie())
             {
-                produktyQuery = produktyQuery.Where(a =>
-                    DynamicPropertyHelper.GetString(a, "Symbol") == productSymbol).ToList();
+                bool isHandlowy = DynamicPropertyHelper.GetBool(a, "JestHandlowy");
+                bool isMagazynowy = DynamicPropertyHelper.GetBool(a, "JestMagazynowy");
+                if (!isHandlowy && !isMagazynowy)
+                    continue;
+
+                if (productId.HasValue && DynamicPropertyHelper.GetId(a) != productId.Value)
+                    continue;
+
+                if (!string.IsNullOrEmpty(productSymbol) && DynamicPropertyHelper.GetString(a, "Symbol") != productSymbol)
+                    continue;
+
+                produktyQuery.Add(a);
             }
 
             var batches = new List<BatchDto>();
@@ -414,7 +473,7 @@ public class InventoryController : ControllerBase
             foreach (var produkt in produktyQuery)
             {
                 // Get product batches through stock movements
-                var partie = GetProductBatches(sfera, produkt, warehouseSymbol);
+                var partie = GetProductBatches(produkt, warehouseSymbol);
 
                 foreach (var partia in partie)
                 {
@@ -502,18 +561,20 @@ public class InventoryController : ControllerBase
         return GetBatches(null, null, warehouseSymbol, null, true, days, page, pageSize);
     }
 
-    private List<dynamic> GetProductBatches(dynamic sfera, dynamic produkt, string? warehouseSymbol)
+    private List<dynamic> GetProductBatches(dynamic produkt, string? warehouseSymbol)
     {
         var partie = new List<dynamic>();
 
         try
         {
             var produktId = DynamicPropertyHelper.GetId(produkt);
+            var przyjeciaManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.PrzyjeciaZewnetrzne");
+            if (przyjeciaManager == null)
+                return partie;
 
             // Get batches from przyjecia (warehouse receipts)
-            var allPrzyjecia = ((IEnumerable<dynamic>)sfera.PrzyjeciaZewnetrzne().Dane.Wszystkie()).ToList();
             var przyjecia = new List<dynamic>();
-            foreach (var p in allPrzyjecia)
+            foreach (var p in przyjeciaManager.Dane.Wszystkie())
             {
                 var pozycje = DynamicPropertyHelper.GetCollection(p, "Pozycje");
                 bool hasProduct = false;
@@ -528,41 +589,32 @@ public class InventoryController : ControllerBase
                 }
                 if (hasProduct)
                 {
-                    przyjecia.Add(p);
-                }
-            }
-
-            if (!string.IsNullOrEmpty(warehouseSymbol))
-            {
-                var filteredPrzyjecia = new List<dynamic>();
-                foreach (var p in przyjecia)
-                {
-                    var magazyn = DynamicPropertyHelper.GetProperty(p, "Magazyn");
-                    if (magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == warehouseSymbol)
+                    if (!string.IsNullOrEmpty(warehouseSymbol))
                     {
-                        filteredPrzyjecia.Add(p);
+                        var magazyn = DynamicPropertyHelper.GetProperty(p, "Magazyn");
+                        if (magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == warehouseSymbol)
+                        {
+                            przyjecia.Add(p);
+                        }
+                    }
+                    else
+                    {
+                        przyjecia.Add(p);
                     }
                 }
-                przyjecia = filteredPrzyjecia;
             }
 
             foreach (var przyjecie in przyjecia)
             {
                 var allPozycje = DynamicPropertyHelper.GetCollection(przyjecie, "Pozycje");
-                var pozycje = new List<dynamic>();
                 foreach (var poz in allPozycje)
                 {
                     var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
                     if (asortyment != null && DynamicPropertyHelper.GetId(asortyment) == produktId)
                     {
-                        pozycje.Add(poz);
+                        var partieCollection = DynamicPropertyHelper.GetCollection(poz, "Partie");
+                        partie.AddRange(partieCollection);
                     }
-                }
-
-                foreach (var pozycja in pozycje)
-                {
-                    var partieCollection = DynamicPropertyHelper.GetCollection(pozycja, "Partie");
-                    partie.AddRange(partieCollection);
                 }
             }
         }
@@ -592,32 +644,37 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
+            var zamowieniaManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaOdKlientow");
+            if (zamowieniaManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
+            }
 
             // Document status constants
             const int StatusAnulowany = 4;
 
             // Get reservations from customer orders (ZK)
-            var allZamowienia = ((IEnumerable<dynamic>)sfera.ZamowieniaOdKlientow().Dane.Wszystkie()).ToList();
-            var zamowienia = allZamowienia.Where(z =>
-                DynamicPropertyHelper.GetInt(z, "Status") != StatusAnulowany).ToList();
-
-            if (customerId.HasValue)
+            var zamowienia = new List<dynamic>();
+            foreach (var z in zamowieniaManager.Dane.Wszystkie())
             {
-                zamowienia = zamowienia.Where(z =>
+                if (DynamicPropertyHelper.GetInt(z, "Status") == StatusAnulowany)
+                    continue;
+
+                if (customerId.HasValue)
                 {
                     var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
-                }).ToList();
-            }
+                    if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != customerId.Value)
+                        continue;
+                }
 
-            if (!string.IsNullOrEmpty(warehouseSymbol))
-            {
-                zamowienia = zamowienia.Where(z =>
+                if (!string.IsNullOrEmpty(warehouseSymbol))
                 {
                     var magazyn = DynamicPropertyHelper.GetProperty(z, "Magazyn");
-                    return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == warehouseSymbol;
-                }).ToList();
+                    if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != warehouseSymbol)
+                        continue;
+                }
+
+                zamowienia.Add(z);
             }
 
             var reservations = new List<ReservationDto>();
@@ -734,23 +791,23 @@ public class InventoryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var asortymenty = sfera.Asortymenty();
-
-            var allProdukty = ((IEnumerable<dynamic>)asortymenty.Dane.Wszystkie()).ToList();
-            var produkty = allProdukty.Where(a =>
-                DynamicPropertyHelper.GetBool(a, "JestHandlowy") ||
-                DynamicPropertyHelper.GetBool(a, "JestMagazynowy")).ToList();
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            var magazynyManager = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+            if (asortymentyManager == null)
+            {
+                return StatusCode(500, ApiResponse<InventorySummaryDto>.Error("Failed to get Asortymenty manager"));
+            }
 
             int? magazynFilterId = null;
-            if (!string.IsNullOrEmpty(warehouseSymbol))
+            if (!string.IsNullOrEmpty(warehouseSymbol) && magazynyManager != null)
             {
-                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                var magazynFilter = allMagazyny.FirstOrDefault(m =>
-                    DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol);
-                if (magazynFilter != null)
+                foreach (var m in magazynyManager.Dane.Wszystkie())
                 {
-                    magazynFilterId = DynamicPropertyHelper.GetId(magazynFilter);
+                    if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                    {
+                        magazynFilterId = DynamicPropertyHelper.GetId(m);
+                        break;
+                    }
                 }
             }
 
@@ -766,10 +823,14 @@ public class InventoryController : ControllerBase
                 TotalAvailableQuantity = 0
             };
 
-            foreach (var produkt in produkty)
+            foreach (var produkt in asortymentyManager.Dane.Wszystkie())
             {
-                var stanyCollection = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
-                var stany = stanyCollection.ToList();
+                bool isHandlowy = DynamicPropertyHelper.GetBool(produkt, "JestHandlowy");
+                bool isMagazynowy = DynamicPropertyHelper.GetBool(produkt, "JestMagazynowy");
+                if (!isHandlowy && !isMagazynowy)
+                    continue;
+
+                var stany = DynamicPropertyHelper.GetCollection(produkt, "StanyMagazynowe");
 
                 if (magazynFilterId.HasValue)
                 {

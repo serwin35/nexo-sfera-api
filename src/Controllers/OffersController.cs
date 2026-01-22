@@ -43,9 +43,17 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var ofertyManager = sfera.Oferty();
-            var oferty = ((IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie()).ToList();
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Oferty manager"));
+            }
+
+            var oferty = new List<dynamic>();
+            foreach (var o in ofertyManager.Dane.Wszystkie())
+            {
+                oferty.Add(o);
+            }
 
             if (customerId.HasValue)
             {
@@ -169,10 +177,21 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var ofertyManager = sfera.Oferty();
-            var oferty = (IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie();
-            var oferta = oferty.FirstOrDefault(o => (int)o.Id == id);
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            }
+
+            dynamic? oferta = null;
+            foreach (var o in ofertyManager.Dane.Wszystkie())
+            {
+                if ((int)o.Id == id)
+                {
+                    oferta = o;
+                    break;
+                }
+            }
 
             if (oferta == null)
             {
@@ -199,17 +218,26 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var ofertyManager = sfera.Oferty();
-            var oferty = (IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie();
-            var oferta = oferty.FirstOrDefault(o => {
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            }
+
+            dynamic? oferta = null;
+            foreach (var o in ofertyManager.Dane.Wszystkie())
+            {
                 try
                 {
                     string? sygnatura = o.NumerWewnetrzny?.PelnaSygnatura;
-                    return sygnatura != null && sygnatura.Contains(number);
+                    if (sygnatura != null && sygnatura.Contains(number))
+                    {
+                        oferta = o;
+                        break;
+                    }
                 }
-                catch { return false; }
-            });
+                catch { }
+            }
 
             if (oferta == null)
             {
@@ -237,11 +265,14 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var ofertyManager = sfera.Oferty();
-            var allOferty = ((IEnumerable<dynamic>)ofertyManager.Dane.Wszystkie()).ToList();
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<OfferSummaryDto>>.Error("Failed to get Oferty manager"));
+            }
+
             var oferty = new List<dynamic>();
-            foreach (var o in allOferty)
+            foreach (var o in ofertyManager.Dane.Wszystkie())
             {
                 try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
                 catch { }
@@ -307,14 +338,29 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            dynamic oferty = sfera.Oferty();
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            var podmiotyManager = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
+            var asortymentyManager = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            }
 
-            using (var oferta = oferty.Utwórz())
+            using (var oferta = ofertyManager.Utwórz())
             {
                 // Set customer
-                var podmioty = (IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie();
-                var podmiot = podmioty.FirstOrDefault(p => (int)p.Id == request.CustomerId);
+                dynamic? podmiot = null;
+                if (podmiotyManager != null)
+                {
+                    foreach (var p in podmiotyManager.Dane.Wszystkie())
+                    {
+                        if ((int)p.Id == request.CustomerId)
+                        {
+                            podmiot = p;
+                            break;
+                        }
+                    }
+                }
 
                 if (podmiot == null)
                 {
@@ -347,23 +393,33 @@ public class OffersController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = (IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie();
-                foreach (var item in request.Items)
+                if (asortymentyManager != null)
                 {
-                    var asortyment = asortymenty.FirstOrDefault(a => (int)a.Id == item.ProductId);
-
-                    if (asortyment != null)
+                    foreach (var item in request.Items)
                     {
-                        var pozycja = oferta.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                        if (item.UnitPriceNet.HasValue && pozycja != null)
+                        dynamic? asortyment = null;
+                        foreach (var a in asortymentyManager.Dane.Wszystkie())
                         {
-                            pozycja.Dane.CenaNetto = item.UnitPriceNet.Value;
+                            if ((int)a.Id == item.ProductId)
+                            {
+                                asortyment = a;
+                                break;
+                            }
                         }
 
-                        if (item.DiscountPercent.HasValue && pozycja != null)
+                        if (asortyment != null)
                         {
-                            pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                            var pozycja = oferta.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
+
+                            if (item.UnitPriceNet.HasValue && pozycja != null)
+                            {
+                                pozycja.Dane.CenaNetto = item.UnitPriceNet.Value;
+                            }
+
+                            if (item.DiscountPercent.HasValue && pozycja != null)
+                            {
+                                pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                            }
                         }
                     }
                 }
@@ -409,17 +465,28 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            dynamic oferty = sfera.Oferty();
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            }
 
-            var wszystkie = (IEnumerable<dynamic>)oferty.Dane.Wszystkie();
-            var ofertaDane = wszystkie.FirstOrDefault(o => (int)o.Id == id);
+            dynamic? ofertaDane = null;
+            foreach (var o in ofertyManager.Dane.Wszystkie())
+            {
+                if ((int)o.Id == id)
+                {
+                    ofertaDane = o;
+                    break;
+                }
+            }
+
             if (ofertaDane == null)
             {
                 return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
             }
 
-            using (var oferta = oferty.Znajdz(ofertaDane))
+            using (var oferta = ofertyManager.Znajdz(ofertaDane))
             {
                 oferta.Dane.Zaakceptowany = true;
                 oferta.Dane.DataZaakceptowania = DateTime.Now;
@@ -455,17 +522,28 @@ public class OffersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            dynamic oferty = sfera.Oferty();
+            var ofertyManager = _sferaService.GetManager("InsERT.Moria.Oferty", "InsERT.Moria.Oferty.Oferty");
+            if (ofertyManager == null)
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            }
 
-            var wszystkie = (IEnumerable<dynamic>)oferty.Dane.Wszystkie();
-            var ofertaDane = wszystkie.FirstOrDefault(o => (int)o.Id == id);
+            dynamic? ofertaDane = null;
+            foreach (var o in ofertyManager.Dane.Wszystkie())
+            {
+                if ((int)o.Id == id)
+                {
+                    ofertaDane = o;
+                    break;
+                }
+            }
+
             if (ofertaDane == null)
             {
                 return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
             }
 
-            using (var oferta = oferty.Znajdz(ofertaDane))
+            using (var oferta = ofertyManager.Znajdz(ofertaDane))
             {
                 oferta.Dane.Zamkniety = true;
                 oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;

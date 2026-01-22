@@ -248,18 +248,24 @@ public static class DynamicPropertyHelper
     /// <summary>
     /// Safely gets a collection as enumerable of dynamic objects.
     /// </summary>
-    public static IEnumerable<dynamic> GetCollection(dynamic obj, string collectionPropertyName)
+    public static List<dynamic> GetCollection(dynamic obj, string collectionPropertyName)
     {
+        var result = new List<dynamic>();
         try
         {
             dynamic? collection = GetProperty(obj, collectionPropertyName);
-            if (collection == null) return Enumerable.Empty<dynamic>();
-            return ((IEnumerable<dynamic>)collection).ToList();
+            if (collection == null) return result;
+
+            foreach (var item in collection)
+            {
+                result.Add(item);
+            }
         }
         catch
         {
-            return Enumerable.Empty<dynamic>();
+            // Return empty list on error
         }
+        return result;
     }
 
     /// <summary>

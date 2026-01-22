@@ -39,10 +39,17 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var zamowienia = sfera.ZamowieniaDoDostawcow();
+            var zamowienia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaDoDostawcow");
+            if (zamowienia == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
+            }
 
-            var allZamowienia = ((IEnumerable<dynamic>)zamowienia.Dane.Wszystkie()).ToList();
+            var allZamowienia = new List<dynamic>();
+            foreach (var z in zamowienia.Dane.Wszystkie())
+            {
+                allZamowienia.Add(z);
+            }
             var dataQuery = allZamowienia.AsEnumerable();
 
             if (supplierId.HasValue)
@@ -105,10 +112,17 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var zamowienia = sfera.ZamowieniaDoDostawcow();
+            var zamowienia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaDoDostawcow");
+            if (zamowienia == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
+            }
 
-            var allZamowienia = ((IEnumerable<dynamic>)zamowienia.Dane.Wszystkie()).ToList();
+            var allZamowienia = new List<dynamic>();
+            foreach (var z in zamowienia.Dane.Wszystkie())
+            {
+                allZamowienia.Add(z);
+            }
             var zamowienie = allZamowienia.FirstOrDefault(z => DynamicPropertyHelper.GetId(z) == id);
             if (zamowienie == null)
             {
@@ -132,28 +146,47 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var zamowienia = sfera.ZamowieniaDoDostawcow();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.ZamowienieDoDostawcy;
-
-            using (var zamowienie = zamowienia.Utworz(konfiguracja))
+            var zamowienia = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.ZamowieniaDoDostawcow");
+            if (zamowienia == null)
             {
-                var allPodmioty = ((IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie()).ToList();
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
+            }
+
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieDoDostawcy;
+
+            using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())
+            {
+                var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
 
                 // Set supplier
-                if (request.SupplierId.HasValue)
+                if (request.SupplierId.HasValue && podmioty != null)
                 {
-                    var podmiot = allPodmioty.FirstOrDefault(p =>
-                        DynamicPropertyHelper.GetId(p) == request.SupplierId.Value);
+                    dynamic? podmiot = null;
+                    foreach (var p in podmioty.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetId(p) == request.SupplierId.Value)
+                        {
+                            podmiot = p;
+                            break;
+                        }
+                    }
                     if (podmiot != null)
                     {
                         zamowienie.Dane.Podmiot = podmiot;
                     }
                 }
-                else if (!string.IsNullOrEmpty(request.SupplierNIP))
+                else if (!string.IsNullOrEmpty(request.SupplierNIP) && podmioty != null)
                 {
-                    var podmiot = allPodmioty.FirstOrDefault(p =>
-                        DynamicPropertyHelper.GetString(p, "NIP") == request.SupplierNIP);
+                    dynamic? podmiot = null;
+                    foreach (var p in podmioty.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(p, "NIP") == request.SupplierNIP)
+                        {
+                            podmiot = p;
+                            break;
+                        }
+                    }
                     if (podmiot != null)
                     {
                         zamowienie.Dane.Podmiot = podmiot;
@@ -163,12 +196,22 @@ public class OrdersController : ControllerBase
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
-                    var magazyn = allMagazyny.FirstOrDefault(m =>
-                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
-                    if (magazyn != null)
+                    var magazyny = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.Magazyny");
+                    if (magazyny != null)
                     {
-                        zamowienie.Dane.Magazyn = magazyn;
+                        dynamic? magazyn = null;
+                        foreach (var m in magazyny.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
+                        if (magazyn != null)
+                        {
+                            zamowienie.Dane.Magazyn = magazyn;
+                        }
                     }
                 }
 
@@ -183,20 +226,35 @@ public class OrdersController : ControllerBase
                 }
 
                 // Add items
-                var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
+                var asortymenty = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
                 foreach (var item in request.Items)
                 {
                     dynamic? asortyment = null;
 
-                    if (item.ProductId.HasValue)
+                    if (asortymenty != null)
                     {
-                        asortyment = allAsortymenty.FirstOrDefault(a =>
-                            DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = allAsortymenty.FirstOrDefault(a =>
-                            DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
+                        if (item.ProductId.HasValue)
+                        {
+                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                                {
+                                    asortyment = a;
+                                    break;
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(item.ProductSymbol))
+                        {
+                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                                {
+                                    asortyment = a;
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     if (asortyment != null)
@@ -251,10 +309,17 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var oferty = sfera.OfertyDlaKlientow();
+            var oferty = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.OfertyDlaKlientow");
+            if (oferty == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
+            }
 
-            var allOferty = ((IEnumerable<dynamic>)oferty.Dane.Wszystkie()).ToList();
+            var allOferty = new List<dynamic>();
+            foreach (var o in oferty.Dane.Wszystkie())
+            {
+                allOferty.Add(o);
+            }
             var dataQuery = allOferty.AsEnumerable();
 
             if (customerId.HasValue)
@@ -317,28 +382,47 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var oferty = sfera.OfertyDlaKlientow();
-            var konfiguracja = sfera.Konfiguracje().DaneDomyslne.OfertaDlaKlienta;
-
-            using (var oferta = oferty.Utworz(konfiguracja))
+            var oferty = _sferaService.GetManager("InsERT.Moria.Logistyka", "InsERT.Moria.Logistyka.OfertyDlaKlientow");
+            if (oferty == null)
             {
-                var allPodmioty = ((IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie()).ToList();
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
+            }
+
+            var konfiguracje = _sferaService.GetManager("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracja = konfiguracje?.DaneDomyslne?.OfertaDlaKlienta;
+
+            using (var oferta = konfiguracja != null ? oferty.Utworz(konfiguracja) : oferty.Utworz())
+            {
+                var podmioty = _sferaService.GetManager("InsERT.Moria.Klienci", "InsERT.Moria.Klienci.Podmioty");
 
                 // Set customer
-                if (request.CustomerId.HasValue)
+                if (request.CustomerId.HasValue && podmioty != null)
                 {
-                    var podmiot = allPodmioty.FirstOrDefault(p =>
-                        DynamicPropertyHelper.GetId(p) == request.CustomerId.Value);
+                    dynamic? podmiot = null;
+                    foreach (var p in podmioty.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
+                        {
+                            podmiot = p;
+                            break;
+                        }
+                    }
                     if (podmiot != null)
                     {
                         oferta.Dane.Podmiot = podmiot;
                     }
                 }
-                else if (!string.IsNullOrEmpty(request.CustomerNIP))
+                else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
                 {
-                    var podmiot = allPodmioty.FirstOrDefault(p =>
-                        DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP);
+                    dynamic? podmiot = null;
+                    foreach (var p in podmioty.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
+                        {
+                            podmiot = p;
+                            break;
+                        }
+                    }
                     if (podmiot != null)
                     {
                         oferta.Dane.Podmiot = podmiot;
@@ -361,20 +445,35 @@ public class OrdersController : ControllerBase
                 }
 
                 // Add items
-                var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
+                var asortymenty = _sferaService.GetManager("InsERT.Moria.Asortymenty", "InsERT.Moria.Asortymenty.Asortymenty");
                 foreach (var item in request.Items)
                 {
                     dynamic? asortyment = null;
 
-                    if (item.ProductId.HasValue)
+                    if (asortymenty != null)
                     {
-                        asortyment = allAsortymenty.FirstOrDefault(a =>
-                            DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                    {
-                        asortyment = allAsortymenty.FirstOrDefault(a =>
-                            DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
+                        if (item.ProductId.HasValue)
+                        {
+                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                                {
+                                    asortyment = a;
+                                    break;
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(item.ProductSymbol))
+                        {
+                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                                {
+                                    asortyment = a;
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     if (asortyment != null)

@@ -206,7 +206,7 @@ public class EmployeesController : ControllerBase
     {
         var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
         var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
-        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty").ToList();
+        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty");
 
         var primaryEmail = GetContactByType(kontakty, "email");
         var primaryPhone = GetContactByType(kontakty, "telefon");
@@ -231,7 +231,7 @@ public class EmployeesController : ControllerBase
     {
         var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
         var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
-        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty").ToList();
+        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty");
 
         var primaryEmail = GetContactByType(kontakty, "email");
         var primaryPhone = GetContactByType(kontakty, "telefon");

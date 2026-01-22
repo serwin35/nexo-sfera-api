@@ -188,7 +188,7 @@ public class DiscountsController : ControllerBase
                 })
                 .Where(r =>
                 {
-                    var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty").ToList();
+                    var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty");
                     // No subjects = applies to all, OR contractor is in the list
                     if (!podmioty.Any()) return true;
                     foreach (var p in podmioty)
@@ -371,7 +371,7 @@ public class DiscountsController : ControllerBase
             var kontrahenci = new List<dynamic>();
             foreach (var k in allKontrahenci)
             {
-                var grupy = DynamicPropertyHelper.GetCollection(k, "GrupyKontrahenta").ToList();
+                var grupy = DynamicPropertyHelper.GetCollection(k, "GrupyKontrahenta");
                 bool inGroup = false;
                 foreach (var g in grupy)
                 {
@@ -460,7 +460,7 @@ public class DiscountsController : ControllerBase
 
         if (includeDetails)
         {
-            var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty").ToList();
+            var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty");
             if (podmioty.Count > 0)
             {
                 dto.Subjects = new List<DiscountSubjectDto>();
