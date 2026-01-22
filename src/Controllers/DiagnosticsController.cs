@@ -765,7 +765,8 @@ public class DiagnosticsController : ControllerBase
             }
             catch
             {
-                data[propSchema.Name] = "[Error]";
+                if (propSchema.Name != null)
+                    data[propSchema.Name] = "[Error]";
             }
         }
 
