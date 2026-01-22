@@ -133,7 +133,7 @@ public class DiagnosticsController : ControllerBase
                 var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
                 if (dane != null)
                 {
-                    var wszystkie = DynamicPropertyHelper.InvokeMethod(dane, "Wszystkie");
+                    dynamic? wszystkie = dane.Wszystkie();
                     if (wszystkie != null)
                     {
                         int count = 0;
@@ -216,7 +216,7 @@ public class DiagnosticsController : ControllerBase
                 catch
                 {
                     // Fallback to iteration
-                    var wszystkie = DynamicPropertyHelper.InvokeMethod(dane, "Wszystkie");
+                    dynamic? wszystkie = dane.Wszystkie();
                     if (wszystkie != null)
                     {
                         foreach (var e in wszystkie)
@@ -605,7 +605,7 @@ public class DiagnosticsController : ControllerBase
                             var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
                             if (dane != null)
                             {
-                                var wszystkie = DynamicPropertyHelper.InvokeMethod(dane, "Wszystkie");
+                                dynamic? wszystkie = dane.Wszystkie();
                                 if (wszystkie != null)
                                 {
                                     int count = 0;
@@ -740,6 +740,7 @@ public class DiagnosticsController : ControllerBase
         {
             try
             {
+                if (propSchema.Name == null) continue;
                 var prop = entityType.GetProperty(propSchema.Name);
                 if (prop != null)
                 {
