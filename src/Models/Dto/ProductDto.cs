@@ -1,5 +1,22 @@
 namespace NexoSferaApi.Models.Dto;
 
+/// <summary>
+/// Lightweight product DTO for list views (minimal fields for performance)
+/// </summary>
+public class ProductListItemDto
+{
+    public int Id { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public decimal? Price { get; set; }
+    public int? GroupId { get; set; }
+    public string? GroupName { get; set; }
+    public bool IsActive { get; set; }
+}
+
+/// <summary>
+/// Full product DTO with all available fields (for detail view)
+/// </summary>
 public class ProductDto
 {
     // Basic info
