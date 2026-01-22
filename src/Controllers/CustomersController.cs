@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -9,8 +10,13 @@ using InsERT.Moria.Sfera;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Customers (Kontrahenci) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
+[Tags("Customers")]
 public class CustomersController : ControllerBase
 {
     private readonly ISferaService _sferaService;

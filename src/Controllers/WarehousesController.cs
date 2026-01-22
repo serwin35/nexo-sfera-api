@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
@@ -6,8 +7,13 @@ using InsERT.Moria.Sfera;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Warehouses (Magazyny) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
+[Tags("Warehouses")]
 public class WarehousesController : ControllerBase
 {
     private readonly ISferaService _sferaService;

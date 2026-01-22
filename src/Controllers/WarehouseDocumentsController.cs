@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -10,8 +11,13 @@ using InsERT.Moria.Asortymenty;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Warehouse documents (WZ, PZ, RW, PW, MM) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/warehouse-documents")]
+[Authorize]
+[Tags("Warehouse Documents")]
 public class WarehouseDocumentsController : ControllerBase
 {
     private readonly ISferaService _sferaService;

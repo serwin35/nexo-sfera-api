@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -10,8 +11,13 @@ using InsERT.Moria.ModelOrganizacyjny;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Inventory (Stock levels, Batches, Reservations) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/inventory")]
+[Authorize]
+[Tags("Inventory")]
 public class InventoryController : ControllerBase
 {
     private readonly ISferaService _sferaService;

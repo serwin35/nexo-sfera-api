@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -10,8 +11,13 @@ using InsERT.Moria.Asortymenty;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Orders (ZD, ZK, Oferty) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/orders")]
+[Authorize]
+[Tags("Orders")]
 public class OrdersController : ControllerBase
 {
     private readonly ISferaService _sferaService;

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -11,8 +12,13 @@ using InsERT.Moria.Sfera;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Payments (KP, KW, BP, BW) and Receivables (Rozrachunki) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/payments")]
+[Authorize]
+[Tags("Payments")]
 public class PaymentsController : ControllerBase
 {
     private readonly ISferaService _sferaService;

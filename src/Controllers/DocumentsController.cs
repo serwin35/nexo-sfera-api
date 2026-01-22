@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -10,8 +11,13 @@ using InsERT.Moria.Asortymenty;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Commercial documents (Faktury, Paragony, Korekty) management endpoints
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
+[Tags("Documents")]
 public class DocumentsController : ControllerBase
 {
     private readonly ISferaService _sferaService;

@@ -1,11 +1,17 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 
 namespace NexoSferaApi.Controllers;
 
+/// <summary>
+/// Health check endpoints - no authentication required
+/// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[AllowAnonymous]
+[Tags("Health")]
 public class HealthController : ControllerBase
 {
     private readonly ISferaService _sferaService;
