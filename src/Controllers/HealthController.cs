@@ -1,0 +1,113 @@
+using Microsoft.AspNetCore.Mvc;
+using NexoSferaApi.Models.Responses;
+using NexoSferaApi.Services;
+
+namespace NexoSferaApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class HealthController : ControllerBase
+{
+    private readonly ISferaService _sferaService;
+    private readonly ILogger<HealthController> _logger;
+
+    public HealthController(ISferaService sferaService, ILogger<HealthController> logger)
+    {
+        _sferaService = sferaService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Health check endpoint
+    /// </summary>
+    [HttpGet]
+    public ActionResult<HealthCheckResponse> GetHealth()
+    {
+        var response = new HealthCheckResponse
+        {
+            Status = "Healthy",
+            Timestamp = DateTime.UtcNow,
+            Version = "1.0.0",
+            SferaConnected = _sferaService.IsConnected
+        };
+
+        if (!_sferaService.IsConnected)
+        {
+            response.Status = "Degraded";
+            response.Message = "Sfera connection is not available";
+        }
+
+        return Ok(response);
+    }
+
+    /// <summary>
+    /// Get Sfera connection status
+    /// </summary>
+    [HttpGet("sfera")]
+    public ActionResult<ApiResponse<SferaStatusResponse>> GetSferaStatus()
+    {
+        try
+        {
+            if (!_sferaService.IsConnected)
+            {
+                return Ok(ApiResponse<SferaStatusResponse>.Ok(new SferaStatusResponse
+                {
+                    IsConnected = false,
+                    Message = "Sfera is not connected"
+                }));
+            }
+
+            var sfera = _sferaService.GetSfera();
+
+            var response = new SferaStatusResponse
+            {
+                IsConnected = true,
+                Message = "Sfera is connected and ready"
+            };
+
+            return Ok(ApiResponse<SferaStatusResponse>.Ok(response));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking Sfera status");
+            return Ok(ApiResponse<SferaStatusResponse>.Ok(new SferaStatusResponse
+            {
+                IsConnected = false,
+                Message = $"Error: {ex.Message}"
+            }));
+        }
+    }
+
+    /// <summary>
+    /// Reconnect to Sfera
+    /// </summary>
+    [HttpPost("reconnect")]
+    public async Task<ActionResult<ApiResponse<bool>>> Reconnect()
+    {
+        try
+        {
+            await _sferaService.InitializeAsync();
+            return Ok(ApiResponse<bool>.Ok(true, "Successfully reconnected to Sfera"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reconnecting to Sfera");
+            return StatusCode(500, ApiResponse<bool>.Error("Failed to reconnect to Sfera", new List<string> { ex.Message }));
+        }
+    }
+}
+
+public class HealthCheckResponse
+{
+    public string Status { get; set; } = "Healthy";
+    public DateTime Timestamp { get; set; }
+    public string Version { get; set; } = "1.0.0";
+    public bool SferaConnected { get; set; }
+    public string? Message { get; set; }
+}
+
+public class SferaStatusResponse
+{
+    public bool IsConnected { get; set; }
+    public string? Message { get; set; }
+}

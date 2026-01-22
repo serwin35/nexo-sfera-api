@@ -1,0 +1,50 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Nexo Sfera SDK References -->
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.API.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Sfera">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.Sfera.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Product">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Mox.Product.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.ObiektyBiznesowe">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Mox.ObiektyBiznesowe.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.BusinessObjects">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Mox.BusinessObjects.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.ModelDanych">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.ModelDanych.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Asortymenty">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.Asortymenty.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Klienci">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.Klienci.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Dokumenty.Logistyka">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.Dokumenty.Logistyka.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.ModelOrganizacyjny">
+      <HintPath>..\nexoSDK_58.0.2.8985\Bin\InsERT.Moria.ModelOrganizacyjny.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+</Project>

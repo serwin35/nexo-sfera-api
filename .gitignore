@@ -1,0 +1,23 @@
+# Build results
+bin/
+obj/
+out/
+
+# IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# macOS
+.DS_Store
+
+# Nexo SDK (large binary files)
+nexoSDK_58.0.2.8985/
+
+# Logs
+*.log
+
+# NuGet
+packages/
+*.nupkg
