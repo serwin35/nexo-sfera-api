@@ -5,10 +5,6 @@ using InsERT.Moria.Asortymenty;
 using InsERT.Moria.Klienci;
 using InsERT.Moria.Dokumenty;
 using InsERT.Moria.Logistyka;
-using InsERT.Moria.Oferty;
-using InsERT.Moria.Slowniki;
-using InsERT.Moria.Rabaty;
-using InsERT.Moria.Pracownicy;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 
@@ -104,11 +100,16 @@ public class SferaService : ISferaService, IDisposable
         {
             // Call extension methods on static Uchwyt type (not dynamic!)
             // Extension methods are resolved at compile time
+            // Extension methods are in InsERT.Moria.* namespaces
+            // They extend Uchwyt and must be called on static type
             return managerMethodName switch
             {
+                // InsERT.Moria.Asortymenty
                 "Asortymenty" => _sfera.Asortymenty(),
                 "SzablonyAsortymentu" => _sfera.SzablonyAsortymentu(),
+                // InsERT.Moria.Klienci
                 "Podmioty" => _sfera.Podmioty(),
+                // InsERT.Moria.Dokumenty
                 "Dokumenty" => _sfera.Dokumenty(),
                 "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
                 "DokumentyZakupu" => _sfera.DokumentyZakupu(),
@@ -116,6 +117,7 @@ public class SferaService : ISferaService, IDisposable
                 "DokumentyElektroniczne" => _sfera.DokumentyElektroniczne(),
                 "KorektyDokumentowSprzedazy" => _sfera.KorektyDokumentowSprzedazy(),
                 "KorektyDokumentowZakupu" => _sfera.KorektyDokumentowZakupu(),
+                // InsERT.Moria.Logistyka
                 "Magazyny" => _sfera.Magazyny(),
                 "WydaniaZewnetrzne" => _sfera.WydaniaZewnetrzne(),
                 "PrzyjeciaZewnetrzne" => _sfera.PrzyjeciaZewnetrzne(),
@@ -126,9 +128,6 @@ public class SferaService : ISferaService, IDisposable
                 "ZamowieniaDoDostawcow" => _sfera.ZamowieniaDoDostawcow(),
                 "Oferty" => _sfera.Oferty(),
                 "OfertyDlaKlientow" => _sfera.OfertyDlaKlientow(),
-                "Pracownicy" => _sfera.Pracownicy(),
-                "Slowniki" => _sfera.Slowniki(),
-                "Rabaty" => _sfera.Rabaty(),
                 _ => throw new ArgumentException($"Unknown manager: {managerMethodName}")
             };
         }
