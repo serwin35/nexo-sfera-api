@@ -7,6 +7,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #842 | 9:38 PM | 🔄 | Documents List Endpoint Optimized with Lightweight DTO | ~378 |
 | #794 | 7:24 PM | 🔄 | AssemblyController Partially Migrated to GetManager Pattern | ~407 |
 | #769 | 7:09 PM | 🔄 | DocumentsController Refactored to Use GetManager Instead of GetSfera | ~427 |
 | #741 | 7:01 PM | 🔵 | InsERT Nexo SDK API Surface - Manager Pattern for Entity Access | ~320 |
