@@ -27,6 +27,42 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
+    /// Diagnostic endpoint to inspect Sfera Uchwyt available members
+    /// </summary>
+    [HttpGet("debug/sfera-info")]
+    public ActionResult<object> GetSferaInfo()
+    {
+        try
+        {
+            dynamic sfera = _sferaService.GetSfera();
+            var type = sfera.GetType();
+
+            var methods = type.GetMethods()
+                .Select(m => m.Name)
+                .Distinct()
+                .OrderBy(n => n)
+                .ToList();
+
+            var properties = type.GetProperties()
+                .Select(p => p.Name)
+                .Distinct()
+                .OrderBy(n => n)
+                .ToList();
+
+            return Ok(new
+            {
+                TypeName = type.FullName,
+                Methods = methods,
+                Properties = properties
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message });
+        }
+    }
+
+    /// <summary>
     /// Get all customers with optional filtering
     /// </summary>
     [HttpGet]
