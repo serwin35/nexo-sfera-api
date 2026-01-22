@@ -74,6 +74,9 @@
     <Reference Include="InsERT.Mox.EntityFramework.Core">
       <HintPath>lib\nexo-sdk\InsERT.Mox.EntityFramework.Core.dll</HintPath>
     </Reference>
+    <Reference Include="InsERT.Moria.Security.Core">
+      <HintPath>lib\nexo-sdk\InsERT.Moria.Security.Core.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <!-- Copy SDK DLLs to output directory -->
