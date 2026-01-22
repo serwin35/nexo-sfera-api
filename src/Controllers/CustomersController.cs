@@ -34,26 +34,30 @@ public class CustomersController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var type = sfera.GetType();
+            object sferaObj = _sferaService.GetSfera();
+            Type type = sferaObj.GetType();
 
-            var methods = type.GetMethods()
-                .Select(m => m.Name)
-                .Distinct()
-                .OrderBy(n => n)
-                .ToList();
+            var methodNames = new List<string>();
+            foreach (var m in type.GetMethods())
+            {
+                if (!methodNames.Contains(m.Name))
+                    methodNames.Add(m.Name);
+            }
+            methodNames.Sort();
 
-            var properties = type.GetProperties()
-                .Select(p => p.Name)
-                .Distinct()
-                .OrderBy(n => n)
-                .ToList();
+            var propertyNames = new List<string>();
+            foreach (var p in type.GetProperties())
+            {
+                if (!propertyNames.Contains(p.Name))
+                    propertyNames.Add(p.Name);
+            }
+            propertyNames.Sort();
 
             return Ok(new
             {
                 TypeName = type.FullName,
-                Methods = methods,
-                Properties = properties
+                Methods = methodNames,
+                Properties = propertyNames
             });
         }
         catch (Exception ex)
