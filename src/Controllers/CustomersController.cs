@@ -75,73 +75,94 @@ public class CustomersController : ControllerBase
         try
         {
             dynamic sfera = _sferaService.GetSfera();
-
-            // Try different ways to access Podmioty manager
             var results = new Dictionary<string, object>();
 
-            // Method 1: Try PodajObiektTypu with known interface names
-            var managerTypes = new[] {
-                "InsERT.Moria.Klienci.IPodmioty",
-                "InsERT.Moria.Klienci.IPodmiotyManager",
-                "InsERT.Moria.Klienci.Podmioty",
-                "InsERT.Moria.Klienci.PodmiotyManager"
-            };
-
-            foreach (var typeName in managerTypes)
-            {
-                try
-                {
-                    var managerType = Type.GetType(typeName);
-                    if (managerType != null)
-                    {
-                        var manager = sfera.PodajObiektTypu(managerType);
-                        if (manager != null)
-                        {
-                            Type mgrType = manager.GetType();
-                            var mgrMethods = new List<string>();
-                            foreach (var m in mgrType.GetMethods())
-                            {
-                                if (!mgrMethods.Contains(m.Name))
-                                    mgrMethods.Add(m.Name);
-                            }
-                            mgrMethods.Sort();
-                            results[typeName] = new { Found = true, Type = mgrType.FullName, Methods = mgrMethods };
-                        }
-                    }
-                    else
-                    {
-                        results[typeName] = new { Found = false, Error = "Type not found" };
-                    }
-                }
-                catch (Exception ex)
-                {
-                    results[typeName] = new { Found = false, Error = ex.Message };
-                }
-            }
-
-            // Also list all loaded assemblies with InsERT.Moria.Klienci
-            var klienciTypes = new List<string>();
+            // Find Podmioty type from loaded assemblies
+            Type? podmiotyType = null;
             foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
             {
                 try
                 {
                     if (asm.FullName != null && asm.FullName.Contains("InsERT.Moria.Klienci"))
                     {
-                        foreach (var t in asm.GetExportedTypes())
-                        {
-                            klienciTypes.Add(t.FullName ?? t.Name);
-                        }
+                        podmiotyType = asm.GetType("InsERT.Moria.Klienci.Podmioty");
+                        if (podmiotyType != null) break;
                     }
                 }
                 catch { }
             }
-            klienciTypes.Sort();
 
-            return Ok(new
+            if (podmiotyType == null)
             {
-                ManagerTests = results,
-                KlienciAssemblyTypes = klienciTypes
-            });
+                return Ok(new { Error = "Podmioty type not found in loaded assemblies" });
+            }
+
+            results["PodmiotyTypeFound"] = podmiotyType.FullName ?? "unknown";
+
+            // Try to get Podmioty manager
+            try
+            {
+                var podmioty = sfera.PodajObiektTypu(podmiotyType);
+                if (podmioty != null)
+                {
+                    Type mgrType = podmioty.GetType();
+                    var mgrMethods = new List<string>();
+                    foreach (var m in mgrType.GetMethods())
+                    {
+                        if (!mgrMethods.Contains(m.Name))
+                            mgrMethods.Add(m.Name);
+                    }
+                    mgrMethods.Sort();
+
+                    var mgrProps = new List<string>();
+                    foreach (var p in mgrType.GetProperties())
+                    {
+                        if (!mgrProps.Contains(p.Name))
+                            mgrProps.Add(p.Name);
+                    }
+                    mgrProps.Sort();
+
+                    results["PodmiotyManager"] = new {
+                        Found = true,
+                        Type = mgrType.FullName,
+                        Methods = mgrMethods,
+                        Properties = mgrProps
+                    };
+
+                    // Try to access Dane property (common pattern)
+                    try
+                    {
+                        var dane = podmioty.Dane;
+                        if (dane != null)
+                        {
+                            Type daneType = dane.GetType();
+                            var daneMethods = new List<string>();
+                            foreach (var m in daneType.GetMethods())
+                            {
+                                if (!daneMethods.Contains(m.Name))
+                                    daneMethods.Add(m.Name);
+                            }
+                            daneMethods.Sort();
+
+                            results["PodmiotyDane"] = new {
+                                Found = true,
+                                Type = daneType.FullName,
+                                Methods = daneMethods
+                            };
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        results["PodmiotyDane"] = new { Found = false, Error = ex.Message };
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                results["PodmiotyManager"] = new { Found = false, Error = ex.Message };
+            }
+
+            return Ok(results);
         }
         catch (Exception ex)
         {
