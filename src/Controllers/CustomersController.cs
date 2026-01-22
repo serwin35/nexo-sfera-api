@@ -706,14 +706,88 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all customers with optional filtering
+    /// Debug endpoint to explore all properties of a customer entity
+    /// </summary>
+    [HttpGet("debug/properties/{id}")]
+    public ActionResult<object> GetCustomerProperties(int id)
+    {
+        try
+        {
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null)
+            {
+                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
+            }
+
+            dynamic? podmiot = null;
+            foreach (var p in podmioty.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(p) == id)
+                {
+                    podmiot = p;
+                    break;
+                }
+            }
+
+            if (podmiot == null)
+            {
+                return NotFound(new { Error = $"Customer {id} not found" });
+            }
+
+            Type podmiotType = podmiot.GetType();
+            var properties = new SortedDictionary<string, object?>();
+
+            foreach (var prop in podmiotType.GetProperties())
+            {
+                try
+                {
+                    var value = prop.GetValue(podmiot);
+                    if (value == null)
+                    {
+                        properties[prop.Name] = null;
+                    }
+                    else if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) ||
+                             prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(decimal) ||
+                             Nullable.GetUnderlyingType(prop.PropertyType) != null)
+                    {
+                        properties[prop.Name] = value;
+                    }
+                    else if (value.GetType().Name.Contains("Collection"))
+                    {
+                        int count = 0;
+                        try { foreach (var _ in (dynamic)value) count++; } catch { }
+                        properties[prop.Name] = $"[Collection: {count} items]";
+                    }
+                    else
+                    {
+                        properties[prop.Name] = $"[{value.GetType().Name}]";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    properties[prop.Name] = $"Error: {ex.Message}";
+                }
+            }
+
+            return Ok(new
+            {
+                Id = id,
+                EntityType = podmiotType.FullName,
+                PropertyCount = properties.Count,
+                Properties = properties
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
+    /// Get all customers with optional filtering (returns lightweight DTO for performance)
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<CustomerDto>> GetCustomers(
-        [FromQuery] string? search,
-        [FromQuery] CustomerType? type,
-        [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+    public ActionResult<PagedResponse<CustomerListItemDto>> GetCustomers([FromQuery] CustomerQueryRequest query)
     {
         try
         {
@@ -729,43 +803,90 @@ public class CustomersController : ControllerBase
                 allPodmioty.Add(p);
             }
 
-            if (!string.IsNullOrEmpty(search))
+            // Apply filters using foreach to avoid LINQ issues with dynamic types
+            var filteredList = new List<dynamic>();
+
+            foreach (var p in allPodmioty)
             {
-                allPodmioty = allPodmioty.Where(p =>
+                // Filter by active status
+                if (query.ActiveOnly)
                 {
-                    var nazwaSkrocona = DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "";
-                    var nip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
-                    var symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? "";
-                    return nazwaSkrocona.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                           nip.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                           symbol.Contains(search, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
+                    var isActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? true;
+                    if (!isActive) continue;
+                }
+
+                // Filter by contractors only
+                if (query.ContractorsOnly)
+                {
+                    var isContractor = DynamicPropertyHelper.GetNullableBool(p, "Kontrahent") ?? false;
+                    if (!isContractor) continue;
+                }
+
+                // Search filter
+                if (!string.IsNullOrEmpty(query.Search))
+                {
+                    var nazwaSkrocona = (DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "").ToLower();
+                    var nip = (DynamicPropertyHelper.GetString(p, "NIP") ?? "").ToLower();
+                    var symbol = (DynamicPropertyHelper.GetString(p, "Symbol") ?? "").ToLower();
+                    var searchLower = query.Search.ToLower();
+
+                    if (!nazwaSkrocona.Contains(searchLower) &&
+                        !nip.Contains(searchLower) &&
+                        !symbol.Contains(searchLower))
+                    {
+                        continue;
+                    }
+                }
+
+                // Type filter
+                if (query.Type.HasValue)
+                {
+                    var podType = DynamicPropertyHelper.GetNullableInt(p, "Typ");
+                    var expectedType = query.Type.Value == CustomerType.Company ? 0 : 1;
+                    if (podType != expectedType) continue;
+                }
+
+                // Contractor type filter
+                if (query.ContractorType.HasValue)
+                {
+                    var rodzaj = DynamicPropertyHelper.GetNullableInt(p, "RodzajKontrahenta") ?? 0;
+                    if (rodzaj != (int)query.ContractorType.Value) continue;
+                }
+
+                // Document block filter
+                if (query.HasDocumentBlock.HasValue)
+                {
+                    var hasBlock = DynamicPropertyHelper.GetNullableBool(p, "BlokadaWystawianiaDokumentow") ?? false;
+                    if (hasBlock != query.HasDocumentBlock.Value) continue;
+                }
+
+                // EU taxpayer filter
+                if (query.IsEuTaxpayer.HasValue)
+                {
+                    var isEu = DynamicPropertyHelper.GetNullableBool(p, "PodatnikUE") ?? false;
+                    if (isEu != query.IsEuTaxpayer.Value) continue;
+                }
+
+                filteredList.Add(p);
             }
 
-            if (type.HasValue)
-            {
-                short podType = type.Value == CustomerType.Company ? (short)0 : (short)1; // 0=Firmy, 1=Osoby
-                allPodmioty = allPodmioty.Where(p =>
-                    DynamicPropertyHelper.GetNullableInt(p, "Typ") == podType).ToList();
-            }
-
-            var totalCount = allPodmioty.Count;
-            var pagedPodmioty = allPodmioty
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
+            var totalCount = filteredList.Count;
+            var pagedPodmioty = filteredList
+                .Skip((query.Page - 1) * query.PageSize)
+                .Take(query.PageSize)
                 .ToList();
 
-            var items = new List<CustomerDto>();
+            var items = new List<CustomerListItemDto>();
             foreach (var p in pagedPodmioty)
             {
-                items.Add(MapToDto(p));
+                items.Add(MapToListItemDto(p));
             }
 
-            var response = new PagedResponse<CustomerDto>
+            var response = new PagedResponse<CustomerListItemDto>
             {
                 Data = items,
-                Page = page,
-                PageSize = pageSize,
+                Page = query.Page,
+                PageSize = query.PageSize,
                 TotalCount = totalCount
             };
 
@@ -1126,21 +1247,128 @@ public class CustomersController : ControllerBase
         }
     }
 
+    private static CustomerListItemDto MapToListItemDto(dynamic podmiot)
+    {
+        return new CustomerListItemDto
+        {
+            Id = DynamicPropertyHelper.GetId(podmiot),
+            Name = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "",
+            TaxId = DynamicPropertyHelper.GetString(podmiot, "NIP"),
+            Phone = DynamicPropertyHelper.GetString(podmiot, "Telefon"),
+            IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true,
+            ContractorType = (ContractorType)(DynamicPropertyHelper.GetNullableInt(podmiot, "RodzajKontrahenta") ?? 0)
+        };
+    }
+
     private static CustomerDto MapToDto(dynamic podmiot)
     {
         var dto = new CustomerDto
         {
+            // Basic info
             Id = DynamicPropertyHelper.GetId(podmiot),
-            Symbol = DynamicPropertyHelper.GetString(podmiot, "Symbol"),
-            ShortName = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona"),
+            Symbol = DynamicPropertyHelper.GetString(podmiot, "Symbol") ?? "",
+            ShortName = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "",
             FullName = DynamicPropertyHelper.GetString(podmiot, "NazwaPelna"),
             NIP = DynamicPropertyHelper.GetString(podmiot, "NIP"),
+            TaxIdFormatted = DynamicPropertyHelper.GetString(podmiot, "NIPSformatowany"),
+            EuTaxId = DynamicPropertyHelper.GetString(podmiot, "NIPUE"),
+            SUN = DynamicPropertyHelper.GetString(podmiot, "SUN"),
             REGON = DynamicPropertyHelper.GetString(podmiot, "REGON"),
-            Type = DynamicPropertyHelper.GetNullableInt(podmiot, "Typ") == 0 ? CustomerType.Company : CustomerType.Person,
-            IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true,
-            // Phone is directly on Podmiot entity
+
+            // Personal/Company info
+            Greeting = DynamicPropertyHelper.GetString(podmiot, "Powitanie"),
+            AcademicTitle = DynamicPropertyHelper.GetString(podmiot, "TytulNaukowy"),
+
+            // Contact (direct on entity)
             Phone = DynamicPropertyHelper.GetString(podmiot, "Telefon"),
-            Website = DynamicPropertyHelper.GetString(podmiot, "Domena")
+            Website = DynamicPropertyHelper.GetString(podmiot, "Domena"),
+
+            // Type & Status
+            Type = DynamicPropertyHelper.GetNullableInt(podmiot, "Typ") == 0 ? CustomerType.Company : CustomerType.Person,
+            Subtype = DynamicPropertyHelper.GetNullableInt(podmiot, "Podtyp"),
+            IsContractor = DynamicPropertyHelper.GetNullableBool(podmiot, "Kontrahent") ?? false,
+            ContractorType = (ContractorType)(DynamicPropertyHelper.GetNullableInt(podmiot, "RodzajKontrahenta") ?? 0),
+            IsActive = DynamicPropertyHelper.GetNullableBool(podmiot, "Aktywny") ?? true,
+            IsOneTime = DynamicPropertyHelper.GetNullableBool(podmiot, "Jednorazowy") ?? false,
+            CustomerStatus = DynamicPropertyHelper.GetNullableInt(podmiot, "StatusKlienta"),
+
+            // Credit & Limits
+            TradeCreditLimit = DynamicPropertyHelper.GetDecimal(podmiot, "LimitKredytuKupieckiego"),
+            AllowTradeCredit = DynamicPropertyHelper.GetNullableBool(podmiot, "ZezwalajNaKredytKupiecki") ?? false,
+            SalesCreditLimitActive = DynamicPropertyHelper.GetNullableBool(podmiot, "LimitKredytuNaSprzedazyAktywny") ?? false,
+            DeliveryCreditLimitActive = DynamicPropertyHelper.GetNullableBool(podmiot, "LimitKredytuNaWydaniuAktywny") ?? false,
+            OrderCreditLimitActive = DynamicPropertyHelper.GetNullableBool(podmiot, "LimitKredytuNaZamowieniuAktywny") ?? false,
+            MaxCreditPaymentTerm = DynamicPropertyHelper.GetNullableInt(podmiot, "MaksymalnyTerminPlatnosciKredytu"),
+            MaxUnpaidDocuments = DynamicPropertyHelper.GetNullableInt(podmiot, "MaksymalnaLiczbaNiesplaconychDok"),
+            MaxDelayDays = DynamicPropertyHelper.GetNullableInt(podmiot, "MaksymalnyLiczbaDniSpoznien"),
+
+            // Pricing & Negotiation
+            PriceNegotiationAllowed = DynamicPropertyHelper.GetNullableBool(podmiot, "MozliwoscNegocjacjiCeny") ?? false,
+            PriceCalculationFunction = DynamicPropertyHelper.GetGuid(podmiot, "FunkcjaWyliczaniaCeny")?.ToString(),
+
+            // Payment
+            PaymentTermSales = DynamicPropertyHelper.GetNullableInt(podmiot, "TerminPlatnosciSprzedaz"),
+            PaymentTermPurchase = DynamicPropertyHelper.GetNullableInt(podmiot, "TerminPlatnosciZakup"),
+            PaymentDaySales = DynamicPropertyHelper.GetNullableInt(podmiot, "DzienTerminuPlatnosciSprzedaz"),
+            PaymentDayPurchase = DynamicPropertyHelper.GetNullableInt(podmiot, "DzienTerminuPlatnosciZakup"),
+            DefaultReceivablesSettlement = DynamicPropertyHelper.GetNullableInt(podmiot, "DomyslnySposobRozliczaniaNaleznosci"),
+            DefaultLiabilitiesSettlement = DynamicPropertyHelper.GetNullableInt(podmiot, "DomyslnySposobRozliczaniaZobowiazan"),
+            CashMethod = DynamicPropertyHelper.GetNullableBool(podmiot, "MetodaKasowa") ?? false,
+
+            // Interest
+            AppliedInterest = DynamicPropertyHelper.GetGuid(podmiot, "StosowaneOdsetek")?.ToString(),
+            InterestCalculationParam = DynamicPropertyHelper.GetDecimal(podmiot, "ParametrWyliczaniaOdsetek"),
+
+            // Programs & Features
+            LoyaltyProgramParticipant = DynamicPropertyHelper.GetNullableBool(podmiot, "UczestnikProgramuLojalnosciowego") ?? false,
+
+            // Data protection (GDPR)
+            PersonalDataProcessing = DynamicPropertyHelper.GetNullableBool(podmiot, "PrzetwarzanieDanychOsobowych"),
+            MarketingPurposes = DynamicPropertyHelper.GetNullableBool(podmiot, "PrzetwarzanieWCelachMarketingowych"),
+            ElectronicProcessing = DynamicPropertyHelper.GetNullableBool(podmiot, "PrzetwarzanieDrogaElektroniczna"),
+            AcquisitionDate = DynamicPropertyHelper.GetDateTime(podmiot, "DataPozyskania"),
+            LossDate = DynamicPropertyHelper.GetDateTime(podmiot, "DataUtracenia"),
+
+            // Blocking & Messages
+            DocumentBlock = DynamicPropertyHelper.GetNullableBool(podmiot, "BlokadaWystawianiaDokumentow") ?? false,
+            DisplayMessage = DynamicPropertyHelper.GetNullableBool(podmiot, "WyswietlajKomunikat") ?? false,
+            MessageText = DynamicPropertyHelper.GetString(podmiot, "TekstKomunikatu"),
+            MessageDisplayType = DynamicPropertyHelper.GetNullableInt(podmiot, "WyswietlajKomunikatJako"),
+
+            // VAT & Tax
+            IsEuTaxpayer = DynamicPropertyHelper.GetNullableBool(podmiot, "PodatnikUE") ?? false,
+            AlwaysUseEuVat = DynamicPropertyHelper.GetNullableBool(podmiot, "ZawszeStosujNIPUE") ?? false,
+            VatDeductible = DynamicPropertyHelper.GetNullableBool(podmiot, "VatPodlegaOdliczeniu") ?? true,
+            JpkSalesProcedure = DynamicPropertyHelper.GetNullableInt(podmiot, "ProceduraJPKSprzedazy"),
+            JpkPurchaseProcedure = DynamicPropertyHelper.GetNullableInt(podmiot, "ProceduraJPKZakupu"),
+            AgriculturalProducer = DynamicPropertyHelper.GetNullableBool(podmiot, "ProducentRolny") ?? false,
+            SugarTaxHandling = DynamicPropertyHelper.GetNullableInt(podmiot, "ObslugaOplatyCukrowej"),
+
+            // Accounting
+            UseAccountingParams = DynamicPropertyHelper.GetNullableBool(podmiot, "KorzystajZParametrowKsiegowosci") ?? false,
+            UseAutoPostingParams = DynamicPropertyHelper.GetNullableBool(podmiot, "KorzystajZParametrowAutomatycznejDekretacji") ?? false,
+
+            // E-commerce / Vendero
+            VenderoCustomerId = DynamicPropertyHelper.GetNullableInt(podmiot, "VenderoIdKlienta"),
+            EcommerceCustomer = DynamicPropertyHelper.GetNullableBool(podmiot, "KlientSklepuInternetowego") ?? false,
+            UseDefaultEcommerceDiscount = DynamicPropertyHelper.GetNullableBool(podmiot, "StosujDomyslnyRabatWSklepieInternetowym") ?? false,
+            UseIndividualEcommercePricing = DynamicPropertyHelper.GetNullableBool(podmiot, "StosujIndywidualnyCennikWSklepieInternetowym") ?? false,
+            VenderoNewsletterConsent = DynamicPropertyHelper.GetNullableBool(podmiot, "ZgodaNaOtrzymywanieNewsletteraVendero") ?? false,
+
+            // Delivery preferences
+            PreferredTimeFrom = DynamicPropertyHelper.GetTime(podmiot, "PreferowanaGodzinaOd")?.ToString(@"hh\:mm"),
+            PreferredTimeTo = DynamicPropertyHelper.GetTime(podmiot, "PreferowanaGodzinaDo")?.ToString(@"hh\:mm"),
+            DefaultAdditionalAddressType = DynamicPropertyHelper.GetNullableInt(podmiot, "DomyslnyTypAdresuDodatkowego"),
+
+            // Mobile
+            MobileRemoteSourceId = DynamicPropertyHelper.GetNullableInt(podmiot, "Mobilny_ZdalneIdObiektuZrodlowego"),
+            MobileCreatorId = DynamicPropertyHelper.GetGuid(podmiot, "Mobilny_TworcaId")?.ToString(),
+            SendToMobile = DynamicPropertyHelper.GetNullableBool(podmiot, "WysylajDoMobile") ?? true,
+
+            // Notes
+            Notes = DynamicPropertyHelper.GetString(podmiot, "Uwagi"),
+            TransactionTypeCodeId = DynamicPropertyHelper.GetNullableInt(podmiot, "KodRodzajuTransakcjiId"),
+            CountedDocument = DynamicPropertyHelper.GetGuid(podmiot, "DokumentLiczony")?.ToString()
         };
 
         // Map address - AdresPodstawowy is directly available on entity
