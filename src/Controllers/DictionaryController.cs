@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -37,22 +36,23 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var stawki = sfera.StawkiVat().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var stawkiManager = sfera.StawkiVat();
+            var allStawki = ((IEnumerable<dynamic>)stawkiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                stawki = stawki.Where(s => s.Aktywna == true);
+                allStawki = allStawki.Where(s => DynamicPropertyHelper.GetBool(s, "Aktywna")).ToList();
             }
 
-            var dtos = stawki.Select(s => new VatRateDto
+            var dtos = allStawki.Select(s => new VatRateDto
             {
-                Id = s.Id,
-                Symbol = s.Symbol ?? string.Empty,
-                Name = s.Nazwa,
-                Rate = s.Procent ?? 0,
-                IsActive = s.Aktywna ?? false,
-                Type = MapVatRateType(s.Symbol)
+                Id = DynamicPropertyHelper.GetId(s),
+                Symbol = DynamicPropertyHelper.GetString(s, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
+                Rate = DynamicPropertyHelper.GetNullableDecimal(s, "Procent") ?? 0,
+                IsActive = DynamicPropertyHelper.GetBool(s, "Aktywna"),
+                Type = MapVatRateType(DynamicPropertyHelper.GetString(s, "Symbol"))
             }).OrderBy(v => v.Rate).ToList();
 
             return Ok(ApiResponse<List<VatRateDto>>.Ok(dtos));
@@ -74,9 +74,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var stawka = sfera.StawkiVat().Dane.Wszystkie()
-                .FirstOrDefault(s => s.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var stawkiManager = sfera.StawkiVat();
+            var allStawki = ((IEnumerable<dynamic>)stawkiManager.Dane.Wszystkie()).ToList();
+            var stawka = allStawki.FirstOrDefault(s =>
+                DynamicPropertyHelper.GetString(s, "Symbol") == symbol);
 
             if (stawka == null)
             {
@@ -85,12 +87,12 @@ public class DictionaryController : ControllerBase
 
             var dto = new VatRateDto
             {
-                Id = stawka.Id,
-                Symbol = stawka.Symbol ?? string.Empty,
-                Name = stawka.Nazwa,
-                Rate = stawka.Procent ?? 0,
-                IsActive = stawka.Aktywna ?? false,
-                Type = MapVatRateType(stawka.Symbol)
+                Id = DynamicPropertyHelper.GetId(stawka),
+                Symbol = DynamicPropertyHelper.GetString(stawka, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(stawka, "Nazwa"),
+                Rate = DynamicPropertyHelper.GetNullableDecimal(stawka, "Procent") ?? 0,
+                IsActive = DynamicPropertyHelper.GetBool(stawka, "Aktywna"),
+                Type = MapVatRateType(DynamicPropertyHelper.GetString(stawka, "Symbol"))
             };
 
             return Ok(ApiResponse<VatRateDto>.Ok(dto));
@@ -128,21 +130,22 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var jednostki = sfera.JednostkiMiar().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var jednostkiManager = sfera.JednostkiMiar();
+            var allJednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                jednostki = jednostki.Where(j => j.Aktywna == true);
+                allJednostki = allJednostki.Where(j => DynamicPropertyHelper.GetBool(j, "Aktywna")).ToList();
             }
 
-            var dtos = jednostki.Select(j => new UnitOfMeasureDto
+            var dtos = allJednostki.Select(j => new UnitOfMeasureDto
             {
-                Id = j.Id,
-                Symbol = j.Symbol ?? string.Empty,
-                Name = j.Nazwa,
-                DecimalPlaces = j.MiejscPoPrzecinku,
-                IsActive = j.Aktywna ?? false
+                Id = DynamicPropertyHelper.GetId(j),
+                Symbol = DynamicPropertyHelper.GetString(j, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(j, "Nazwa"),
+                DecimalPlaces = DynamicPropertyHelper.GetInt(j, "MiejscPoPrzecinku"),
+                IsActive = DynamicPropertyHelper.GetBool(j, "Aktywna")
             }).OrderBy(u => u.Symbol).ToList();
 
             return Ok(ApiResponse<List<UnitOfMeasureDto>>.Ok(dtos));
@@ -164,9 +167,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var jednostka = sfera.JednostkiMiar().Dane.Wszystkie()
-                .FirstOrDefault(j => j.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var jednostkiManager = sfera.JednostkiMiar();
+            var allJednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
+            var jednostka = allJednostki.FirstOrDefault(j =>
+                DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
 
             if (jednostka == null)
             {
@@ -175,11 +180,11 @@ public class DictionaryController : ControllerBase
 
             var dto = new UnitOfMeasureDto
             {
-                Id = jednostka.Id,
-                Symbol = jednostka.Symbol ?? string.Empty,
-                Name = jednostka.Nazwa,
-                DecimalPlaces = jednostka.MiejscPoPrzecinku,
-                IsActive = jednostka.Aktywna ?? false
+                Id = DynamicPropertyHelper.GetId(jednostka),
+                Symbol = DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(jednostka, "Nazwa"),
+                DecimalPlaces = DynamicPropertyHelper.GetInt(jednostka, "MiejscPoPrzecinku"),
+                IsActive = DynamicPropertyHelper.GetBool(jednostka, "Aktywna")
             };
 
             return Ok(ApiResponse<UnitOfMeasureDto>.Ok(dto));
@@ -206,26 +211,31 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var grupy = sfera.GrupyAsortymentu().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var grupyManager = sfera.GrupyAsortymentu();
+            var allGrupy = ((IEnumerable<dynamic>)grupyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                grupy = grupy.Where(g => g.Aktywna == true);
+                allGrupy = allGrupy.Where(g => DynamicPropertyHelper.GetBool(g, "Aktywna")).ToList();
             }
 
-            var allGroups = grupy.ToList();
-
-            var dtos = allGroups.Select(g => new ProductGroupDto
+            var dtos = allGrupy.Select(g =>
             {
-                Id = g.Id,
-                Symbol = g.Symbol ?? string.Empty,
-                Name = g.Nazwa,
-                Description = g.Opis,
-                ParentId = g.GrupaNadrzedna?.Id,
-                ParentSymbol = g.GrupaNadrzedna?.Symbol,
-                IsActive = g.Aktywna ?? false,
-                ProductCount = g.Asortymenty?.Count ?? 0
+                var grupaNadrzedna = DynamicPropertyHelper.GetProperty(g, "GrupaNadrzedna");
+                var asortymenty = DynamicPropertyHelper.GetCollection(g, "Asortymenty");
+
+                return new ProductGroupDto
+                {
+                    Id = DynamicPropertyHelper.GetId(g),
+                    Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(g, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(g, "Opis"),
+                    ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
+                    ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
+                    IsActive = DynamicPropertyHelper.GetBool(g, "Aktywna"),
+                    ProductCount = asortymenty.Count()
+                };
             }).ToList();
 
             if (hierarchical == true)
@@ -268,25 +278,30 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var grupa = sfera.GrupyAsortymentu().Dane.Wszystkie()
-                .FirstOrDefault(g => g.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var grupyManager = sfera.GrupyAsortymentu();
+            var allGrupy = ((IEnumerable<dynamic>)grupyManager.Dane.Wszystkie()).ToList();
+            var grupa = allGrupy.FirstOrDefault(g =>
+                DynamicPropertyHelper.GetString(g, "Symbol") == symbol);
 
             if (grupa == null)
             {
                 return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group '{symbol}' not found"));
             }
 
+            var grupaNadrzedna = DynamicPropertyHelper.GetProperty(grupa, "GrupaNadrzedna");
+            var asortymenty = DynamicPropertyHelper.GetCollection(grupa, "Asortymenty");
+
             var dto = new ProductGroupDto
             {
-                Id = grupa.Id,
-                Symbol = grupa.Symbol ?? string.Empty,
-                Name = grupa.Nazwa,
-                Description = grupa.Opis,
-                ParentId = grupa.GrupaNadrzedna?.Id,
-                ParentSymbol = grupa.GrupaNadrzedna?.Symbol,
-                IsActive = grupa.Aktywna ?? false,
-                ProductCount = grupa.Asortymenty?.Count ?? 0
+                Id = DynamicPropertyHelper.GetId(grupa),
+                Symbol = DynamicPropertyHelper.GetString(grupa, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(grupa, "Nazwa"),
+                Description = DynamicPropertyHelper.GetString(grupa, "Opis"),
+                ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
+                ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
+                IsActive = DynamicPropertyHelper.GetBool(grupa, "Aktywna"),
+                ProductCount = asortymenty.Count()
             };
 
             return Ok(ApiResponse<ProductGroupDto>.Ok(dto));
@@ -311,23 +326,24 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var poziomy = sfera.PoziomyCen().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var poziomyManager = sfera.PoziomyCen();
+            var allPoziomy = ((IEnumerable<dynamic>)poziomyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                poziomy = poziomy.Where(p => p.Aktywny == true);
+                allPoziomy = allPoziomy.Where(p => DynamicPropertyHelper.GetBool(p, "Aktywny")).ToList();
             }
 
-            var dtos = poziomy.Select(p => new PriceLevelDto
+            var dtos = allPoziomy.Select(p => new PriceLevelDto
             {
-                Id = p.Id,
-                Symbol = p.Symbol ?? string.Empty,
-                Name = p.Nazwa,
-                Description = p.Opis,
-                IsDefault = p.Domyslny ?? false,
-                IsActive = p.Aktywny ?? false,
-                Priority = p.Priorytet ?? 0
+                Id = DynamicPropertyHelper.GetId(p),
+                Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
+                Description = DynamicPropertyHelper.GetString(p, "Opis"),
+                IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslny"),
+                IsActive = DynamicPropertyHelper.GetBool(p, "Aktywny"),
+                Priority = DynamicPropertyHelper.GetNullableInt(p, "Priorytet") ?? 0
             }).OrderBy(p => p.Priority).ToList();
 
             return Ok(ApiResponse<List<PriceLevelDto>>.Ok(dtos));
@@ -349,9 +365,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var poziom = sfera.PoziomyCen().Dane.Wszystkie()
-                .FirstOrDefault(p => p.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var poziomyManager = sfera.PoziomyCen();
+            var allPoziomy = ((IEnumerable<dynamic>)poziomyManager.Dane.Wszystkie()).ToList();
+            var poziom = allPoziomy.FirstOrDefault(p =>
+                DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
 
             if (poziom == null)
             {
@@ -360,13 +378,13 @@ public class DictionaryController : ControllerBase
 
             var dto = new PriceLevelDto
             {
-                Id = poziom.Id,
-                Symbol = poziom.Symbol ?? string.Empty,
-                Name = poziom.Nazwa,
-                Description = poziom.Opis,
-                IsDefault = poziom.Domyslny ?? false,
-                IsActive = poziom.Aktywny ?? false,
-                Priority = poziom.Priorytet ?? 0
+                Id = DynamicPropertyHelper.GetId(poziom),
+                Symbol = DynamicPropertyHelper.GetString(poziom, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(poziom, "Nazwa"),
+                Description = DynamicPropertyHelper.GetString(poziom, "Opis"),
+                IsDefault = DynamicPropertyHelper.GetBool(poziom, "Domyslny"),
+                IsActive = DynamicPropertyHelper.GetBool(poziom, "Aktywny"),
+                Priority = DynamicPropertyHelper.GetNullableInt(poziom, "Priorytet") ?? 0
             };
 
             return Ok(ApiResponse<PriceLevelDto>.Ok(dto));
@@ -391,25 +409,32 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var cenniki = sfera.Cenniki().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var cennikiManager = sfera.Cenniki();
+            var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                cenniki = cenniki.Where(c => c.Aktywny == true);
+                allCenniki = allCenniki.Where(c => DynamicPropertyHelper.GetBool(c, "Aktywny")).ToList();
             }
 
-            var dtos = cenniki.Select(c => new PriceListDto
+            var dtos = allCenniki.Select(c =>
             {
-                Id = c.Id,
-                Symbol = c.Symbol ?? string.Empty,
-                Name = c.Nazwa,
-                Description = c.Opis,
-                ValidFrom = c.DataOd,
-                ValidTo = c.DataDo,
-                IsActive = c.Aktywny ?? false,
-                CurrencySymbol = c.Waluta?.Symbol,
-                ItemCount = c.Pozycje?.Count ?? 0
+                var waluta = DynamicPropertyHelper.GetProperty(c, "Waluta");
+                var pozycje = DynamicPropertyHelper.GetCollection(c, "Pozycje");
+
+                return new PriceListDto
+                {
+                    Id = DynamicPropertyHelper.GetId(c),
+                    Symbol = DynamicPropertyHelper.GetString(c, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(c, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(c, "Opis"),
+                    ValidFrom = DynamicPropertyHelper.GetDateTime(c, "DataOd"),
+                    ValidTo = DynamicPropertyHelper.GetDateTime(c, "DataDo"),
+                    IsActive = DynamicPropertyHelper.GetBool(c, "Aktywny"),
+                    CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
+                    ItemCount = pozycje.Count()
+                };
             }).OrderBy(c => c.Symbol).ToList();
 
             return Ok(ApiResponse<List<PriceListDto>>.Ok(dtos));
@@ -431,26 +456,31 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var cennik = sfera.Cenniki().Dane.Wszystkie()
-                .FirstOrDefault(c => c.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var cennikiManager = sfera.Cenniki();
+            var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
+            var cennik = allCenniki.FirstOrDefault(c =>
+                DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
 
             if (cennik == null)
             {
                 return NotFound(ApiResponse<PriceListDto>.Error($"Price list '{symbol}' not found"));
             }
 
+            var waluta = DynamicPropertyHelper.GetProperty(cennik, "Waluta");
+            var pozycje = DynamicPropertyHelper.GetCollection(cennik, "Pozycje");
+
             var dto = new PriceListDto
             {
-                Id = cennik.Id,
-                Symbol = cennik.Symbol ?? string.Empty,
-                Name = cennik.Nazwa,
-                Description = cennik.Opis,
-                ValidFrom = cennik.DataOd,
-                ValidTo = cennik.DataDo,
-                IsActive = cennik.Aktywny ?? false,
-                CurrencySymbol = cennik.Waluta?.Symbol,
-                ItemCount = cennik.Pozycje?.Count ?? 0
+                Id = DynamicPropertyHelper.GetId(cennik),
+                Symbol = DynamicPropertyHelper.GetString(cennik, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(cennik, "Nazwa"),
+                Description = DynamicPropertyHelper.GetString(cennik, "Opis"),
+                ValidFrom = DynamicPropertyHelper.GetDateTime(cennik, "DataOd"),
+                ValidTo = DynamicPropertyHelper.GetDateTime(cennik, "DataDo"),
+                IsActive = DynamicPropertyHelper.GetBool(cennik, "Aktywny"),
+                CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
+                ItemCount = pozycje.Count()
             };
 
             return Ok(ApiResponse<PriceListDto>.Ok(dto));
@@ -477,45 +507,61 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var cennik = sfera.Cenniki().Dane.Wszystkie()
-                .FirstOrDefault(c => c.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var cennikiManager = sfera.Cenniki();
+            var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
+            var cennik = allCenniki.FirstOrDefault(c =>
+                DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
 
             if (cennik == null)
             {
                 return NotFound(ApiResponse<object>.Error($"Price list '{symbol}' not found"));
             }
 
-            var pozycje = cennik.Pozycje?.AsQueryable() ?? Enumerable.Empty<PozycjaCennika>().AsQueryable();
+            var pozycje = DynamicPropertyHelper.GetCollection(cennik, "Pozycje").ToList();
 
             if (productId.HasValue)
             {
-                pozycje = pozycje.Where(p => p.Asortyment?.Id == productId.Value);
+                pozycje = pozycje.Where(p =>
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                    return asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value;
+                }).ToList();
             }
 
             if (!string.IsNullOrEmpty(productSymbol))
             {
-                pozycje = pozycje.Where(p => p.Asortyment?.Symbol == productSymbol);
+                pozycje = pozycje.Where(p =>
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                    return asortyment != null && DynamicPropertyHelper.GetString(asortyment, "Symbol") == productSymbol;
+                }).ToList();
             }
 
-            var totalCount = pozycje.Count();
+            var totalCount = pozycje.Count;
             var items = pozycje
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .Select(p => new PriceListItemDto
+                .Select(p =>
                 {
-                    Id = p.Id,
-                    PriceListId = cennik.Id,
-                    ProductId = p.Asortyment?.Id ?? 0,
-                    ProductSymbol = p.Asortyment?.Symbol,
-                    ProductName = p.Asortyment?.Nazwa,
-                    PriceNet = p.CenaNetto ?? 0,
-                    PriceGross = p.CenaBrutto ?? 0,
-                    VatRate = p.Asortyment?.StawkaVatSprzedazy?.Symbol,
-                    MinQuantity = p.IloscOd,
-                    MaxQuantity = p.IloscDo,
-                    ValidFrom = p.DataOd,
-                    ValidTo = p.DataDo
+                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                    var stawkaVat = asortyment != null ? DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy") : null;
+
+                    return new PriceListItemDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        PriceListId = DynamicPropertyHelper.GetId(cennik),
+                        ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                        ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                        ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                        PriceNet = DynamicPropertyHelper.GetNullableDecimal(p, "CenaNetto") ?? 0,
+                        PriceGross = DynamicPropertyHelper.GetNullableDecimal(p, "CenaBrutto") ?? 0,
+                        VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
+                        MinQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscOd"),
+                        MaxQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscDo"),
+                        ValidFrom = DynamicPropertyHelper.GetDateTime(p, "DataOd"),
+                        ValidTo = DynamicPropertyHelper.GetDateTime(p, "DataDo")
+                    };
                 }).ToList();
 
             return Ok(new PagedResponse<PriceListItemDto>
@@ -546,23 +592,24 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var waluty = sfera.Waluty().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var walutyManager = sfera.Waluty();
+            var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                waluty = waluty.Where(w => w.Aktywna == true);
+                allWaluty = allWaluty.Where(w => DynamicPropertyHelper.GetBool(w, "Aktywna")).ToList();
             }
 
-            var dtos = waluty.Select(w => new CurrencyDto
+            var dtos = allWaluty.Select(w => new CurrencyDto
             {
-                Id = w.Id,
-                Symbol = w.Symbol ?? string.Empty,
-                Name = w.Nazwa,
-                IsoCode = w.Symbol,
-                ExchangeRate = w.OstatniKurs,
-                IsDefault = w.Bazowa ?? false,
-                IsActive = w.Aktywna ?? false
+                Id = DynamicPropertyHelper.GetId(w),
+                Symbol = DynamicPropertyHelper.GetString(w, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(w, "Nazwa"),
+                IsoCode = DynamicPropertyHelper.GetString(w, "Symbol"),
+                ExchangeRate = DynamicPropertyHelper.GetNullableDecimal(w, "OstatniKurs"),
+                IsDefault = DynamicPropertyHelper.GetBool(w, "Bazowa"),
+                IsActive = DynamicPropertyHelper.GetBool(w, "Aktywna")
             }).OrderBy(c => c.Symbol).ToList();
 
             return Ok(ApiResponse<List<CurrencyDto>>.Ok(dtos));
@@ -587,23 +634,24 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var formy = sfera.FormyPlatnosci().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var formyManager = sfera.FormyPlatnosci();
+            var allFormy = ((IEnumerable<dynamic>)formyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                formy = formy.Where(f => f.Aktywna == true);
+                allFormy = allFormy.Where(f => DynamicPropertyHelper.GetBool(f, "Aktywna")).ToList();
             }
 
-            var dtos = formy.Select(f => new PaymentMethodDto
+            var dtos = allFormy.Select(f => new PaymentMethodDto
             {
-                Id = f.Id,
-                Symbol = f.Symbol ?? string.Empty,
-                Name = f.Nazwa,
-                Type = MapPaymentMethodType(f.Typ),
-                DefaultDueDays = f.DomyslnyTermin,
-                IsActive = f.Aktywna ?? false,
-                IsDefault = f.Domyslna ?? false
+                Id = DynamicPropertyHelper.GetId(f),
+                Symbol = DynamicPropertyHelper.GetString(f, "Symbol") ?? string.Empty,
+                Name = DynamicPropertyHelper.GetString(f, "Nazwa"),
+                Type = MapPaymentMethodType(DynamicPropertyHelper.GetNullableInt(f, "Typ")),
+                DefaultDueDays = DynamicPropertyHelper.GetNullableInt(f, "DomyslnyTermin"),
+                IsActive = DynamicPropertyHelper.GetBool(f, "Aktywna"),
+                IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslna")
             }).OrderBy(p => p.Symbol).ToList();
 
             return Ok(ApiResponse<List<PaymentMethodDto>>.Ok(dtos));

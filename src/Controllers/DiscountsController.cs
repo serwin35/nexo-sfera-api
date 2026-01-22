@@ -3,8 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -41,22 +40,27 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var rabaty = sfera.Rabaty().Dane.Wszystkie();
+            dynamic sfera = _sferaService.GetSfera();
+            var rabatyManager = sfera.Rabaty();
+            var allRabaty = ((IEnumerable<dynamic>)rabatyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                rabaty = rabaty.Where(r => r.Aktywny == true);
+                allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
             }
 
             var checkDate = validAt ?? DateTime.Now;
-            rabaty = rabaty.Where(r =>
-                (!r.OdDaty.HasValue || r.OdDaty.Value <= checkDate) &&
-                (!r.DoDaty.HasValue || r.DoDaty.Value >= checkDate));
+            allRabaty = allRabaty.Where(r =>
+            {
+                var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
+                var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
+                return (!odDaty.HasValue || odDaty.Value <= checkDate) &&
+                       (!doDaty.HasValue || doDaty.Value >= checkDate);
+            }).ToList();
 
-            var totalCount = rabaty.Count();
-            var items = rabaty
-                .OrderBy(r => r.Symbol)
+            var totalCount = allRabaty.Count;
+            var items = allRabaty
+                .OrderBy(r => DynamicPropertyHelper.GetString(r, "Symbol"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList()
@@ -88,9 +92,10 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var rabat = sfera.Rabaty().Dane.Wszystkie()
-                .FirstOrDefault(r => r.Id == id);
+            dynamic sfera = _sferaService.GetSfera();
+            var rabatyManager = sfera.Rabaty();
+            var allRabaty = ((IEnumerable<dynamic>)rabatyManager.Dane.Wszystkie()).ToList();
+            var rabat = allRabaty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
             if (rabat == null)
             {
@@ -117,9 +122,11 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var rabat = sfera.Rabaty().Dane.Wszystkie()
-                .FirstOrDefault(r => r.Symbol == symbol);
+            dynamic sfera = _sferaService.GetSfera();
+            var rabatyManager = sfera.Rabaty();
+            var allRabaty = ((IEnumerable<dynamic>)rabatyManager.Dane.Wszystkie()).ToList();
+            var rabat = allRabaty.FirstOrDefault(r =>
+                DynamicPropertyHelper.GetString(r, "Symbol") == symbol);
 
             if (rabat == null)
             {
@@ -145,32 +152,43 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
 
             // Verify contractor exists
-            var kontrahent = sfera.Kontrahenci().Dane.Wszystkie()
-                .FirstOrDefault(k => k.Id == contractorId);
+            var kontrahenciManager = sfera.Kontrahenci();
+            var allKontrahenci = ((IEnumerable<dynamic>)kontrahenciManager.Dane.Wszystkie()).ToList();
+            var kontrahent = allKontrahenci.FirstOrDefault(k => DynamicPropertyHelper.GetId(k) == contractorId);
 
             if (kontrahent == null)
             {
                 return NotFound(ApiResponse<List<DiscountDto>>.Error($"Contractor with ID {contractorId} not found"));
             }
 
-            var rabaty = sfera.Rabaty().Dane.Wszystkie();
+            var rabatyManager = sfera.Rabaty();
+            var allRabaty = ((IEnumerable<dynamic>)rabatyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
             {
-                rabaty = rabaty.Where(r => r.Aktywny == true);
+                allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
             }
 
             // Filter by contractor
             var now = DateTime.Now;
-            var applicableDiscounts = rabaty
-                .Where(r => (!r.OdDaty.HasValue || r.OdDaty.Value <= now) &&
-                           (!r.DoDaty.HasValue || r.DoDaty.Value >= now))
-                .ToList()
-                .Where(r => r.Podmioty?.Any(p => p.Id == contractorId) == true ||
-                           !r.Podmioty?.Any() == true) // No subjects = applies to all
+            var applicableDiscounts = allRabaty
+                .Where(r =>
+                {
+                    var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
+                    var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
+                    return (!odDaty.HasValue || odDaty.Value <= now) &&
+                           (!doDaty.HasValue || doDaty.Value >= now);
+                })
+                .Where(r =>
+                {
+                    var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty").ToList();
+                    // No subjects = applies to all, OR contractor is in the list
+                    return !podmioty.Any() ||
+                           podmioty.Any(p => DynamicPropertyHelper.GetId(p) == contractorId);
+                })
                 .Select(r => MapDiscount(r, false))
                 .ToList();
 
@@ -197,16 +215,20 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var cechy = sfera.CechyAsortymentu().Dane.Wszystkie()
-                .ToList();
+            dynamic sfera = _sferaService.GetSfera();
+            var cechyManager = sfera.CechyAsortymentu();
+            var allCechy = ((IEnumerable<dynamic>)cechyManager.Dane.Wszystkie()).ToList();
 
-            var dtos = cechy.Select(c => new ProductAttributeDto
+            var dtos = allCechy.Select(c =>
             {
-                Id = c.Id,
-                Name = c.Nazwa,
-                IsActive = true,
-                ProductCount = c.ZbioryAsortymentu?.Count ?? 0
+                var zbiory = DynamicPropertyHelper.GetCollection(c, "ZbioryAsortymentu");
+                return new ProductAttributeDto
+                {
+                    Id = DynamicPropertyHelper.GetId(c),
+                    Name = DynamicPropertyHelper.GetString(c, "Nazwa"),
+                    IsActive = true,
+                    ProductCount = zbiory.Count()
+                };
             }).OrderBy(c => c.Name).ToList();
 
             return Ok(ApiResponse<List<ProductAttributeDto>>.Ok(dtos));
@@ -229,21 +251,24 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var cecha = sfera.CechyAsortymentu().Dane.Wszystkie()
-                .FirstOrDefault(c => c.Id == id);
+            dynamic sfera = _sferaService.GetSfera();
+            var cechyManager = sfera.CechyAsortymentu();
+            var allCechy = ((IEnumerable<dynamic>)cechyManager.Dane.Wszystkie()).ToList();
+            var cecha = allCechy.FirstOrDefault(c => DynamicPropertyHelper.GetId(c) == id);
 
             if (cecha == null)
             {
                 return NotFound(ApiResponse<ProductAttributeDto>.Error($"Product attribute with ID {id} not found"));
             }
 
+            var zbiory = DynamicPropertyHelper.GetCollection(cecha, "ZbioryAsortymentu");
+
             var dto = new ProductAttributeDto
             {
-                Id = cecha.Id,
-                Name = cecha.Nazwa,
+                Id = DynamicPropertyHelper.GetId(cecha),
+                Name = DynamicPropertyHelper.GetString(cecha, "Nazwa"),
                 IsActive = true,
-                ProductCount = cecha.ZbioryAsortymentu?.Count ?? 0
+                ProductCount = zbiory.Count()
             };
 
             return Ok(ApiResponse<ProductAttributeDto>.Ok(dto));
@@ -269,22 +294,32 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var grupy = sfera.Kontrahenci().Dane.Wszystkie()
-                .SelectMany(k => k.GrupyKontrahenta ?? Enumerable.Empty<GrupaKontrahenta>())
-                .Distinct()
-                .ToList();
+            dynamic sfera = _sferaService.GetSfera();
+            var kontrahenciManager = sfera.Kontrahenci();
+            var allKontrahenci = ((IEnumerable<dynamic>)kontrahenciManager.Dane.Wszystkie()).ToList();
 
-            // Alternative approach - get from dedicated groups manager if available
-            // For now, mapping what we can get from contractor relationships
-
-            var dtos = grupy.Select(g => new ContractorGroupDto
+            // Collect all groups from contractor relationships
+            var grupyDict = new Dictionary<int, dynamic>();
+            foreach (var kontrahent in allKontrahenci)
             {
-                Id = g.Id,
-                Symbol = g.Symbol,
-                Name = g.Nazwa,
-                IsActive = g.Aktywna ?? true
-            }).OrderBy(g => g.Symbol).Distinct().ToList();
+                var grupy = DynamicPropertyHelper.GetCollection(kontrahent, "GrupyKontrahenta");
+                foreach (var grupa in grupy)
+                {
+                    var id = DynamicPropertyHelper.GetId(grupa);
+                    if (id != 0 && !grupyDict.ContainsKey(id))
+                    {
+                        grupyDict[id] = grupa;
+                    }
+                }
+            }
+
+            var dtos = grupyDict.Values.Select(g => new ContractorGroupDto
+            {
+                Id = DynamicPropertyHelper.GetId(g),
+                Symbol = DynamicPropertyHelper.GetString(g, "Symbol"),
+                Name = DynamicPropertyHelper.GetString(g, "Nazwa"),
+                IsActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywna") ?? true
+            }).OrderBy(g => g.Symbol).ToList();
 
             return Ok(ApiResponse<List<ContractorGroupDto>>.Ok(dtos));
         }
@@ -308,25 +343,30 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var kontrahenci = sfera.Kontrahenci().Dane.Wszystkie()
-                .Where(k => k.GrupyKontrahenta != null &&
-                           k.GrupyKontrahenta.Any(g => g.Id == groupId));
+            dynamic sfera = _sferaService.GetSfera();
+            var kontrahenciManager = sfera.Kontrahenci();
+            var allKontrahenci = ((IEnumerable<dynamic>)kontrahenciManager.Dane.Wszystkie()).ToList();
 
-            var totalCount = kontrahenci.Count();
+            // Filter contractors in the specified group
+            var kontrahenci = allKontrahenci.Where(k =>
+            {
+                var grupy = DynamicPropertyHelper.GetCollection(k, "GrupyKontrahenta");
+                return grupy.Any(g => DynamicPropertyHelper.GetId(g) == groupId);
+            }).ToList();
+
+            var totalCount = kontrahenci.Count;
             var items = kontrahenci
-                .OrderBy(k => k.NazwaSkrocona)
+                .OrderBy(k => DynamicPropertyHelper.GetString(k, "NazwaSkrocona"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
-                .ToList()
                 .Select(k => new CustomerDto
                 {
-                    Id = k.Id,
-                    Symbol = k.Symbol,
-                    ShortName = k.NazwaSkrocona,
-                    FullName = k.NazwaPelna,
-                    TaxId = k.NIP,
-                    IsActive = k.Aktywny ?? false
+                    Id = DynamicPropertyHelper.GetId(k),
+                    Symbol = DynamicPropertyHelper.GetString(k, "Symbol"),
+                    ShortName = DynamicPropertyHelper.GetString(k, "NazwaSkrocona"),
+                    FullName = DynamicPropertyHelper.GetString(k, "NazwaPelna"),
+                    TaxId = DynamicPropertyHelper.GetString(k, "NIP"),
+                    IsActive = DynamicPropertyHelper.GetBool(k, "Aktywny")
                 }).ToList();
 
             return Ok(new PagedResponse<CustomerDto>
@@ -348,42 +388,50 @@ public class DiscountsController : ControllerBase
 
     #region Mapping
 
-    private static DiscountDto MapDiscount(Rabat r, bool includeDetails)
+    private static DiscountDto MapDiscount(dynamic r, bool includeDetails)
     {
+        var waluta = DynamicPropertyHelper.GetProperty(r, "Waluta");
+        var procentRabatu = DynamicPropertyHelper.GetNullableDecimal(r, "ProcentRabatu");
+        var kwotaRabatu = DynamicPropertyHelper.GetNullableDecimal(r, "KwotaRabatu");
+
         var dto = new DiscountDto
         {
-            Id = r.Id,
-            Symbol = r.Symbol,
-            Name = r.Nazwa,
-            Description = r.Opis,
-            PercentValue = r.ProcentRabatu,
-            AmountValue = r.KwotaRabatu,
-            CurrencySymbol = r.Waluta?.Symbol,
-            ValidFrom = r.OdDaty,
-            ValidTo = r.DoDaty,
-            IsActive = r.Aktywny ?? false,
-            Priority = r.Priorytet
+            Id = DynamicPropertyHelper.GetId(r),
+            Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+            Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+            Description = DynamicPropertyHelper.GetString(r, "Opis"),
+            PercentValue = procentRabatu,
+            AmountValue = kwotaRabatu,
+            CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
+            ValidFrom = DynamicPropertyHelper.GetDateTime(r, "OdDaty"),
+            ValidTo = DynamicPropertyHelper.GetDateTime(r, "DoDaty"),
+            IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+            Priority = DynamicPropertyHelper.GetNullableInt(r, "Priorytet")
         };
 
         // Determine discount type
-        if (r.ProcentRabatu.HasValue && r.ProcentRabatu > 0)
+        if (procentRabatu.HasValue && procentRabatu > 0)
         {
             dto.Type = DiscountType.Percentage;
         }
-        else if (r.KwotaRabatu.HasValue && r.KwotaRabatu > 0)
+        else if (kwotaRabatu.HasValue && kwotaRabatu > 0)
         {
             dto.Type = DiscountType.Amount;
         }
 
-        if (includeDetails && r.Podmioty != null)
+        if (includeDetails)
         {
-            dto.Subjects = r.Podmioty.Select(p => new DiscountSubjectDto
+            var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty").ToList();
+            if (podmioty.Any())
             {
-                Id = p.Id,
-                SubjectType = "Contractor",
-                SubjectId = p.Id,
-                SubjectName = p.NazwaSkrocona
-            }).ToList();
+                dto.Subjects = podmioty.Select(p => new DiscountSubjectDto
+                {
+                    Id = DynamicPropertyHelper.GetId(p),
+                    SubjectType = "Contractor",
+                    SubjectId = DynamicPropertyHelper.GetId(p),
+                    SubjectName = DynamicPropertyHelper.GetString(p, "NazwaSkrocona")
+                }).ToList();
+            }
         }
 
         return dto;

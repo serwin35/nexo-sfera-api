@@ -4,10 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.Logistyka;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
-using InsERT.Moria.Asortymenty;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -37,7 +34,7 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var documents = new List<WarehouseDocumentDto>();
             var totalCount = 0;
 
@@ -45,19 +42,36 @@ public class WarehouseDocumentsController : ControllerBase
             if (!query.Type.HasValue || query.Type == WarehouseDocumentType.WZ)
             {
                 var wz = sfera.WydaniaZewnetrzne();
-                var wzQuery = wz.Dane.Wszystkie();
+                var allWz = ((IEnumerable<dynamic>)wz.Dane.Wszystkie()).ToList();
+                var wzQuery = allWz.AsQueryable();
 
                 if (!string.IsNullOrEmpty(query.WarehouseSymbol))
-                    wzQuery = wzQuery.Where(d => d.Magazyn != null && d.Magazyn.Symbol == query.WarehouseSymbol);
+                {
+                    wzQuery = wzQuery.Where(d =>
+                    {
+                        var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
+                        return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == query.WarehouseSymbol;
+                    }).AsQueryable();
+                }
 
                 if (query.DateFrom.HasValue)
-                    wzQuery = wzQuery.Where(d => d.DataWystawienia >= query.DateFrom.Value);
+                {
+                    wzQuery = wzQuery.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).AsQueryable();
+                }
 
                 if (query.DateTo.HasValue)
-                    wzQuery = wzQuery.Where(d => d.DataWystawienia <= query.DateTo.Value);
+                {
+                    wzQuery = wzQuery.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).AsQueryable();
+                }
 
-                totalCount += wzQuery.Count();
-                var wzDocs = wzQuery.OrderByDescending(d => d.DataWystawienia).Take(query.PageSize).ToList();
+                var wzList = wzQuery.ToList();
+                totalCount += wzList.Count;
+                var wzDocs = wzList
+                    .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
+                    .Take(query.PageSize)
+                    .ToList();
                 documents.AddRange(wzDocs.Select(d => MapWZToDto(d)));
             }
 
@@ -65,19 +79,36 @@ public class WarehouseDocumentsController : ControllerBase
             if (!query.Type.HasValue || query.Type == WarehouseDocumentType.PZ)
             {
                 var pz = sfera.PrzyjeciaZewnetrzne();
-                var pzQuery = pz.Dane.Wszystkie();
+                var allPz = ((IEnumerable<dynamic>)pz.Dane.Wszystkie()).ToList();
+                var pzQuery = allPz.AsQueryable();
 
                 if (!string.IsNullOrEmpty(query.WarehouseSymbol))
-                    pzQuery = pzQuery.Where(d => d.Magazyn != null && d.Magazyn.Symbol == query.WarehouseSymbol);
+                {
+                    pzQuery = pzQuery.Where(d =>
+                    {
+                        var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
+                        return magazyn != null && DynamicPropertyHelper.GetString(magazyn, "Symbol") == query.WarehouseSymbol;
+                    }).AsQueryable();
+                }
 
                 if (query.DateFrom.HasValue)
-                    pzQuery = pzQuery.Where(d => d.DataWystawienia >= query.DateFrom.Value);
+                {
+                    pzQuery = pzQuery.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") >= query.DateFrom.Value).AsQueryable();
+                }
 
                 if (query.DateTo.HasValue)
-                    pzQuery = pzQuery.Where(d => d.DataWystawienia <= query.DateTo.Value);
+                {
+                    pzQuery = pzQuery.Where(d =>
+                        DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") <= query.DateTo.Value).AsQueryable();
+                }
 
-                totalCount += pzQuery.Count();
-                var pzDocs = pzQuery.OrderByDescending(d => d.DataWystawienia).Take(query.PageSize).ToList();
+                var pzList = pzQuery.ToList();
+                totalCount += pzList.Count;
+                var pzDocs = pzList
+                    .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
+                    .Take(query.PageSize)
+                    .ToList();
                 documents.AddRange(pzDocs.Select(d => MapPZToDto(d)));
             }
 
@@ -106,7 +137,7 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var wydania = sfera.WydaniaZewnetrzne();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.WydanieZewnetrzne;
 
@@ -116,7 +147,9 @@ public class WarehouseDocumentsController : ControllerBase
                 SetContractor(sfera, wz.Dane, request.ContractorId, request.ContractorNIP);
 
                 // Set warehouse
-                var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                var magazyn = allMagazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                 if (magazyn != null)
                 {
                     wz.Dane.Magazyn = magazyn;
@@ -135,9 +168,11 @@ public class WarehouseDocumentsController : ControllerBase
                 // Add items
                 AddWarehouseDocumentItems(sfera, wz, request.Items);
 
-                if (wz.Zapisz())
+                if ((bool)wz.Zapisz())
                 {
-                    _logger.LogInformation("Created WZ {Number}", wz.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(wz.Dane, "NumerWewnetrzny");
+                    _logger.LogInformation("Created WZ {Number}",
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -165,7 +200,7 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var przyjecia = sfera.PrzyjeciaZewnetrzne();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.PrzyjecieZewnetrzne;
 
@@ -175,7 +210,9 @@ public class WarehouseDocumentsController : ControllerBase
                 SetContractor(sfera, pz.Dane, request.ContractorId, request.ContractorNIP);
 
                 // Set warehouse
-                var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                var magazyn = allMagazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                 if (magazyn != null)
                 {
                     pz.Dane.Magazyn = magazyn;
@@ -199,9 +236,11 @@ public class WarehouseDocumentsController : ControllerBase
                 // Add items
                 AddWarehouseDocumentItems(sfera, pz, request.Items);
 
-                if (pz.Zapisz())
+                if ((bool)pz.Zapisz())
                 {
-                    _logger.LogInformation("Created PZ {Number}", pz.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pz.Dane, "NumerWewnetrzny");
+                    _logger.LogInformation("Created PZ {Number}",
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -229,14 +268,16 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var wydania = sfera.WydaniaZewnetrzne();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.RozchodWewnetrzny;
 
             using (var rw = wydania.Utworz(konfiguracja))
             {
                 // Set warehouse
-                var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                var magazyn = allMagazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                 if (magazyn != null)
                 {
                     rw.Dane.Magazyn = magazyn;
@@ -255,9 +296,11 @@ public class WarehouseDocumentsController : ControllerBase
                 // Add items
                 AddWarehouseDocumentItems(sfera, rw, request.Items);
 
-                if (rw.Zapisz())
+                if ((bool)rw.Zapisz())
                 {
-                    _logger.LogInformation("Created RW {Number}", rw.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(rw.Dane, "NumerWewnetrzny");
+                    _logger.LogInformation("Created RW {Number}",
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -285,14 +328,16 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var przyjecia = sfera.PrzyjeciaZewnetrzne();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.PrzychodWewnetrzny;
 
             using (var pw = przyjecia.Utworz(konfiguracja))
             {
                 // Set warehouse
-                var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                var magazyn = allMagazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                 if (magazyn != null)
                 {
                     pw.Dane.Magazyn = magazyn;
@@ -311,9 +356,11 @@ public class WarehouseDocumentsController : ControllerBase
                 // Add items
                 AddWarehouseDocumentItems(sfera, pw, request.Items);
 
-                if (pw.Zapisz())
+                if ((bool)pw.Zapisz())
                 {
-                    _logger.LogInformation("Created PW {Number}", pw.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pw.Dane, "NumerWewnetrzny");
+                    _logger.LogInformation("Created PW {Number}",
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -346,21 +393,25 @@ public class WarehouseDocumentsController : ControllerBase
                 return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Target warehouse symbol is required for MM"));
             }
 
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var wydania = sfera.WydaniaMiedzymagazynowe();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.PrzesuniecieMiedzymagazynowe;
 
             using (var mm = wydania.Utworz(konfiguracja))
             {
+                var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+
                 // Set source warehouse
-                var magazynZrodlowy = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                var magazynZrodlowy = allMagazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                 if (magazynZrodlowy != null)
                 {
                     mm.Dane.Magazyn = magazynZrodlowy;
                 }
 
                 // Set target warehouse
-                var magazynDocelowy = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.TargetWarehouseSymbol);
+                var magazynDocelowy = allMagazyny.FirstOrDefault(m =>
+                    DynamicPropertyHelper.GetString(m, "Symbol") == request.TargetWarehouseSymbol);
                 if (magazynDocelowy != null)
                 {
                     mm.Dane.MagazynDocelowy = magazynDocelowy;
@@ -377,20 +428,23 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
+                var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
                 foreach (var item in request.Items)
                 {
-                    Asortyment? asortyment = GetAsortyment(asortymenty, item.ProductId, item.ProductSymbol, item.ProductEan);
+                    var asortyment = GetAsortyment(allAsortymenty, item.ProductId, item.ProductSymbol, item.ProductEan);
 
                     if (asortyment != null)
                     {
-                        mm.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
+                        var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                        mm.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
                     }
                 }
 
-                if (mm.Zapisz())
+                if ((bool)mm.Zapisz())
                 {
-                    _logger.LogInformation("Created MM {Number}", mm.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(mm.Dane, "NumerWewnetrzny");
+                    _logger.LogInformation("Created MM {Number}",
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetWarehouseDocuments),
@@ -410,12 +464,13 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
-    private void SetContractor(Uchwyt sfera, dynamic dokumentDane, int? contractorId, string? contractorNIP)
+    private void SetContractor(dynamic sfera, dynamic dokumentDane, int? contractorId, string? contractorNIP)
     {
+        var allPodmioty = ((IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie()).ToList();
+
         if (contractorId.HasValue)
         {
-            var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                .FirstOrDefault(p => p.Id == contractorId.Value);
+            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == contractorId.Value);
             if (podmiot != null)
             {
                 dokumentDane.Podmiot = podmiot;
@@ -423,7 +478,7 @@ public class WarehouseDocumentsController : ControllerBase
         }
         else if (!string.IsNullOrEmpty(contractorNIP))
         {
-            var podmiot = sfera.Podmioty().Dane.Pierwszy(p => p.NIP == contractorNIP);
+            var podmiot = allPodmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == contractorNIP);
             if (podmiot != null)
             {
                 dokumentDane.Podmiot = podmiot;
@@ -431,16 +486,17 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
-    private void AddWarehouseDocumentItems(Uchwyt sfera, dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
+    private void AddWarehouseDocumentItems(dynamic sfera, dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
     {
-        var asortymenty = sfera.Asortymenty();
+        var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
         foreach (var item in items)
         {
-            Asortyment? asortyment = GetAsortyment(asortymenty, item.ProductId, item.ProductSymbol, item.ProductEan);
+            var asortyment = GetAsortyment(allAsortymenty, item.ProductId, item.ProductSymbol, item.ProductEan);
 
             if (asortyment != null)
             {
-                var pozycja = dokument.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
+                var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                var pozycja = dokument.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
 
                 if (item.PriceNet.HasValue && pozycja != null)
                 {
@@ -450,109 +506,119 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
-    private static Asortyment? GetAsortyment(IAsortymenty asortymenty, int? productId, string? productSymbol, string? productEan)
+    private static dynamic? GetAsortyment(List<dynamic> allAsortymenty, int? productId, string? productSymbol, string? productEan)
     {
         if (productId.HasValue)
         {
-            return asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Id == productId.Value);
+            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == productId.Value);
         }
         else if (!string.IsNullOrEmpty(productSymbol))
         {
-            return asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Symbol == productSymbol);
+            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetString(a, "Symbol") == productSymbol);
         }
         else if (!string.IsNullOrEmpty(productEan))
         {
-            return asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.KodKreskowy == productEan);
+            return allAsortymenty.FirstOrDefault(a => DynamicPropertyHelper.GetString(a, "KodKreskowy") == productEan);
         }
         return null;
     }
 
-    private static WarehouseDocumentDto MapWZToDto(DokumentWZ dokument)
+    private static WarehouseDocumentDto MapWZToDto(dynamic dokument)
     {
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(dokument, "NumerWewnetrzny");
+        var podmiot = DynamicPropertyHelper.GetProperty(dokument, "Podmiot");
+        var magazyn = DynamicPropertyHelper.GetProperty(dokument, "Magazyn");
+
         var dto = new WarehouseDocumentDto
         {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
+            Id = DynamicPropertyHelper.GetId(dokument),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetInt(numerWewnetrzny, "Numer").ToString() : "",
+            FullNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
             Type = WarehouseDocumentType.WZ,
-            IssueDate = dokument.DataWystawienia,
-            ContractorName = dokument.Podmiot?.NazwaSkrocona,
-            ContractorNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            WarehouseName = dokument.Magazyn?.Nazwa,
-            TotalNet = dokument.WartoscNetto,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia,
+            IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+            ContractorName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
+            ContractorNIP = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null,
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+            TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+            TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+            Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+            CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia"),
             Items = new List<WarehouseDocumentItemDto>()
         };
 
-        if (dokument.Pozycje != null)
+        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        int lineNum = 1;
+        foreach (var poz in pozycje)
         {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
+            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            dto.TotalQuantity += DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+            dto.Items.Add(new WarehouseDocumentItemDto
             {
-                dto.TotalQuantity += poz.Ilosc;
-                dto.Items.Add(new WarehouseDocumentItemDto
-                {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt.",
-                    PriceNet = poz.CenaNetto,
-                    ValueNet = poz.WartoscNetto,
-                    ValueGross = poz.WartoscBrutto
-                });
-            }
+                Id = DynamicPropertyHelper.GetId(poz),
+                LineNumber = lineNum++,
+                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
+                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
+                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
+                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+            });
         }
 
         return dto;
     }
 
-    private static WarehouseDocumentDto MapPZToDto(DokumentPZ dokument)
+    private static WarehouseDocumentDto MapPZToDto(dynamic dokument)
     {
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(dokument, "NumerWewnetrzny");
+        var podmiot = DynamicPropertyHelper.GetProperty(dokument, "Podmiot");
+        var magazyn = DynamicPropertyHelper.GetProperty(dokument, "Magazyn");
+
         var dto = new WarehouseDocumentDto
         {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
+            Id = DynamicPropertyHelper.GetId(dokument),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetInt(numerWewnetrzny, "Numer").ToString() : "",
+            FullNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
             Type = WarehouseDocumentType.PZ,
-            IssueDate = dokument.DataWystawienia,
-            ContractorName = dokument.Podmiot?.NazwaSkrocona,
-            ContractorNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            WarehouseName = dokument.Magazyn?.Nazwa,
-            RelatedDocumentNumber = dokument.NumerObcy,
-            TotalNet = dokument.WartoscNetto,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia,
+            IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+            ContractorName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
+            ContractorNIP = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null,
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+            RelatedDocumentNumber = DynamicPropertyHelper.GetString(dokument, "NumerObcy"),
+            TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+            TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+            Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+            CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia"),
             Items = new List<WarehouseDocumentItemDto>()
         };
 
-        if (dokument.Pozycje != null)
+        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        int lineNum = 1;
+        foreach (var poz in pozycje)
         {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
+            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            dto.TotalQuantity += DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+            dto.Items.Add(new WarehouseDocumentItemDto
             {
-                dto.TotalQuantity += poz.Ilosc;
-                dto.Items.Add(new WarehouseDocumentItemDto
-                {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt.",
-                    PriceNet = poz.CenaNetto,
-                    ValueNet = poz.WartoscNetto,
-                    ValueGross = poz.WartoscBrutto
-                });
-            }
+                Id = DynamicPropertyHelper.GetId(poz),
+                LineNumber = lineNum++,
+                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
+                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
+                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
+                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+            });
         }
 
         return dto;
@@ -560,57 +626,89 @@ public class WarehouseDocumentsController : ControllerBase
 
     private static WarehouseDocumentDto MapMMToDto(dynamic dokument)
     {
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(dokument, "NumerWewnetrzny");
+        var magazyn = DynamicPropertyHelper.GetProperty(dokument, "Magazyn");
+        var magazynDocelowy = DynamicPropertyHelper.GetProperty(dokument, "MagazynDocelowy");
+
         var dto = new WarehouseDocumentDto
         {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
+            Id = DynamicPropertyHelper.GetId(dokument),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetInt(numerWewnetrzny, "Numer").ToString() : "",
+            FullNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
             Type = WarehouseDocumentType.MM,
-            IssueDate = dokument.DataWystawienia,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            WarehouseName = dokument.Magazyn?.Nazwa,
-            TargetWarehouseSymbol = dokument.MagazynDocelowy?.Symbol,
-            TargetWarehouseName = dokument.MagazynDocelowy?.Nazwa,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia,
+            IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+            TargetWarehouseSymbol = magazynDocelowy != null ? DynamicPropertyHelper.GetString(magazynDocelowy, "Symbol") : null,
+            TargetWarehouseName = magazynDocelowy != null ? DynamicPropertyHelper.GetString(magazynDocelowy, "Nazwa") : null,
+            Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+            CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia"),
             Items = new List<WarehouseDocumentItemDto>()
         };
 
-        if (dokument.Pozycje != null)
+        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        int lineNum = 1;
+        foreach (var poz in pozycje)
         {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
+            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            dto.TotalQuantity += DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+            dto.Items.Add(new WarehouseDocumentItemDto
             {
-                dto.TotalQuantity += poz.Ilosc;
-                dto.Items.Add(new WarehouseDocumentItemDto
-                {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt."
-                });
-            }
+                Id = DynamicPropertyHelper.GetId(poz),
+                LineNumber = lineNum++,
+                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
+                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt."
+            });
         }
 
         return dto;
     }
 
-    private static List<string> GetBusinessObjectErrors(InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy obiekt)
+    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
-        foreach (var encjaZBledami in obiekt.InvalidData)
+        try
         {
-            foreach (var blad in encjaZBledami.Errors)
+            var invalidData = DynamicPropertyHelper.GetProperty(obiekt, "InvalidData");
+            if (invalidData == null) return errors;
+
+            foreach (var encjaZBledami in invalidData)
             {
-                errors.Add(blad.ToString());
+                var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
+                if (entityErrors != null)
+                {
+                    foreach (var blad in entityErrors)
+                    {
+                        errors.Add(blad?.ToString() ?? "Unknown error");
+                    }
+                }
+
+                var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
+                if (memberErrors != null)
+                {
+                    foreach (var bladNaPolach in memberErrors)
+                    {
+                        try
+                        {
+                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
+                            errors.Add($"{key}: {bladNaPolach}");
+                        }
+                        catch
+                        {
+                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
+                        }
+                    }
+                }
             }
-            foreach (var bladNaPolach in encjaZBledami.MemberErrors)
-            {
-                errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
-            }
+        }
+        catch
+        {
+            errors.Add("Could not retrieve error details");
         }
         return errors;
     }

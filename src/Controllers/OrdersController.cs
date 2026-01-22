@@ -4,10 +4,7 @@ using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
-using InsERT.Moria.Logistyka;
-using InsERT.Moria.ModelDanych;
-using InsERT.Moria.Sfera;
-using InsERT.Moria.Asortymenty;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -42,29 +39,37 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var zamowienia = sfera.ZamowieniaDoDostawcow();
 
-            var dataQuery = zamowienia.Dane.Wszystkie();
+            var allZamowienia = ((IEnumerable<dynamic>)zamowienia.Dane.Wszystkie()).ToList();
+            var dataQuery = allZamowienia.AsEnumerable();
 
             if (supplierId.HasValue)
             {
-                dataQuery = dataQuery.Where(z => z.Podmiot != null && z.Podmiot.Id == supplierId.Value);
+                dataQuery = dataQuery.Where(z =>
+                {
+                    var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
+                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == supplierId.Value;
+                });
             }
 
             if (dateFrom.HasValue)
             {
-                dataQuery = dataQuery.Where(z => z.DataWystawienia >= dateFrom.Value);
+                dataQuery = dataQuery.Where(z =>
+                    DynamicPropertyHelper.GetDateTime(z, "DataWystawienia") >= dateFrom.Value);
             }
 
             if (dateTo.HasValue)
             {
-                dataQuery = dataQuery.Where(z => z.DataWystawienia <= dateTo.Value);
+                dataQuery = dataQuery.Where(z =>
+                    DynamicPropertyHelper.GetDateTime(z, "DataWystawienia") <= dateTo.Value);
             }
 
-            var totalCount = dataQuery.Count();
-            var items = dataQuery
-                .OrderByDescending(z => z.DataWystawienia)
+            var filteredList = dataQuery.ToList();
+            var totalCount = filteredList.Count;
+            var items = filteredList
+                .OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -94,10 +99,11 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var zamowienia = sfera.ZamowieniaDoDostawcow();
 
-            var zamowienie = zamowienia.Dane.Wszystkie().FirstOrDefault(z => z.Id == id);
+            var allZamowienia = ((IEnumerable<dynamic>)zamowienia.Dane.Wszystkie()).ToList();
+            var zamowienie = allZamowienia.FirstOrDefault(z => DynamicPropertyHelper.GetId(z) == id);
             if (zamowienie == null)
             {
                 return NotFound(ApiResponse<SupplierOrderDto>.Error($"Supplier order with ID {id} not found"));
@@ -120,17 +126,19 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var zamowienia = sfera.ZamowieniaDoDostawcow();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.ZamowienieDoDostawcy;
 
             using (var zamowienie = zamowienia.Utworz(konfiguracja))
             {
+                var allPodmioty = ((IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie()).ToList();
+
                 // Set supplier
                 if (request.SupplierId.HasValue)
                 {
-                    var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                        .FirstOrDefault(p => p.Id == request.SupplierId.Value);
+                    var podmiot = allPodmioty.FirstOrDefault(p =>
+                        DynamicPropertyHelper.GetId(p) == request.SupplierId.Value);
                     if (podmiot != null)
                     {
                         zamowienie.Dane.Podmiot = podmiot;
@@ -138,7 +146,8 @@ public class OrdersController : ControllerBase
                 }
                 else if (!string.IsNullOrEmpty(request.SupplierNIP))
                 {
-                    var podmiot = sfera.Podmioty().Dane.Pierwszy(p => p.NIP == request.SupplierNIP);
+                    var podmiot = allPodmioty.FirstOrDefault(p =>
+                        DynamicPropertyHelper.GetString(p, "NIP") == request.SupplierNIP);
                     if (podmiot != null)
                     {
                         zamowienie.Dane.Podmiot = podmiot;
@@ -148,7 +157,9 @@ public class OrdersController : ControllerBase
                 // Set warehouse
                 if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                 {
-                    var magazyn = sfera.Magazyny().Dane.Pierwszy(m => m.Symbol == request.WarehouseSymbol);
+                    var allMagazyny = ((IEnumerable<dynamic>)sfera.Magazyny().Dane.Wszystkie()).ToList();
+                    var magazyn = allMagazyny.FirstOrDefault(m =>
+                        DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol);
                     if (magazyn != null)
                     {
                         zamowienie.Dane.Magazyn = magazyn;
@@ -166,26 +177,28 @@ public class OrdersController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
+                var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
                 foreach (var item in request.Items)
                 {
-                    Asortyment? asortyment = null;
+                    dynamic? asortyment = null;
 
                     if (item.ProductId.HasValue)
                     {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
+                        asortyment = allAsortymenty.FirstOrDefault(a =>
+                            DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
                     }
                     else if (!string.IsNullOrEmpty(item.ProductSymbol))
                     {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
+                        asortyment = allAsortymenty.FirstOrDefault(a =>
+                            DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
                     }
 
                     if (asortyment != null)
                     {
+                        var jednostkaZakupu = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu");
+                        var jednostkaSprzedazy = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
                         var pozycja = zamowienie.Pozycje.Dodaj(asortyment, item.Quantity,
-                            asortyment.JednostkaZakupu ?? asortyment.JednostkaSprzedazy);
+                            jednostkaZakupu ?? jednostkaSprzedazy);
 
                         if (item.PriceNet.HasValue && pozycja != null)
                         {
@@ -194,14 +207,15 @@ public class OrdersController : ControllerBase
                     }
                 }
 
-                if (zamowienie.Zapisz())
+                if ((bool)zamowienie.Zapisz())
                 {
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie.Dane, "NumerWewnetrzny");
                     _logger.LogInformation("Created supplier order {Number}",
-                        zamowienie.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetSupplierOrder),
-                        new { id = zamowienie.Dane.Id },
+                        new { id = DynamicPropertyHelper.GetId(zamowienie.Dane) },
                         ApiResponse<SupplierOrderDto>.Ok(MapSupplierOrderToDto(zamowienie.Dane), "Supplier order created successfully"));
                 }
                 else
@@ -231,29 +245,37 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var oferty = sfera.OfertyDlaKlientow();
 
-            var dataQuery = oferty.Dane.Wszystkie();
+            var allOferty = ((IEnumerable<dynamic>)oferty.Dane.Wszystkie()).ToList();
+            var dataQuery = allOferty.AsEnumerable();
 
             if (customerId.HasValue)
             {
-                dataQuery = dataQuery.Where(o => o.Podmiot != null && o.Podmiot.Id == customerId.Value);
+                dataQuery = dataQuery.Where(o =>
+                {
+                    var podmiot = DynamicPropertyHelper.GetProperty(o, "Podmiot");
+                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
+                });
             }
 
             if (dateFrom.HasValue)
             {
-                dataQuery = dataQuery.Where(o => o.DataWystawienia >= dateFrom.Value);
+                dataQuery = dataQuery.Where(o =>
+                    DynamicPropertyHelper.GetDateTime(o, "DataWystawienia") >= dateFrom.Value);
             }
 
             if (dateTo.HasValue)
             {
-                dataQuery = dataQuery.Where(o => o.DataWystawienia <= dateTo.Value);
+                dataQuery = dataQuery.Where(o =>
+                    DynamicPropertyHelper.GetDateTime(o, "DataWystawienia") <= dateTo.Value);
             }
 
-            var totalCount = dataQuery.Count();
-            var items = dataQuery
-                .OrderByDescending(o => o.DataWystawienia)
+            var filteredList = dataQuery.ToList();
+            var totalCount = filteredList.Count;
+            var items = filteredList
+                .OrderByDescending(o => DynamicPropertyHelper.GetDateTime(o, "DataWystawienia"))
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToList();
@@ -283,17 +305,19 @@ public class OrdersController : ControllerBase
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
+            dynamic sfera = _sferaService.GetSfera();
             var oferty = sfera.OfertyDlaKlientow();
             var konfiguracja = sfera.Konfiguracje().DaneDomyslne.OfertaDlaKlienta;
 
             using (var oferta = oferty.Utworz(konfiguracja))
             {
+                var allPodmioty = ((IEnumerable<dynamic>)sfera.Podmioty().Dane.Wszystkie()).ToList();
+
                 // Set customer
                 if (request.CustomerId.HasValue)
                 {
-                    var podmiot = sfera.Podmioty().Dane.Wszystkie()
-                        .FirstOrDefault(p => p.Id == request.CustomerId.Value);
+                    var podmiot = allPodmioty.FirstOrDefault(p =>
+                        DynamicPropertyHelper.GetId(p) == request.CustomerId.Value);
                     if (podmiot != null)
                     {
                         oferta.Dane.Podmiot = podmiot;
@@ -301,7 +325,8 @@ public class OrdersController : ControllerBase
                 }
                 else if (!string.IsNullOrEmpty(request.CustomerNIP))
                 {
-                    var podmiot = sfera.Podmioty().Dane.Pierwszy(p => p.NIP == request.CustomerNIP);
+                    var podmiot = allPodmioty.FirstOrDefault(p =>
+                        DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP);
                     if (podmiot != null)
                     {
                         oferta.Dane.Podmiot = podmiot;
@@ -324,25 +349,26 @@ public class OrdersController : ControllerBase
                 }
 
                 // Add items
-                var asortymenty = sfera.Asortymenty();
+                var allAsortymenty = ((IEnumerable<dynamic>)sfera.Asortymenty().Dane.Wszystkie()).ToList();
                 foreach (var item in request.Items)
                 {
-                    Asortyment? asortyment = null;
+                    dynamic? asortyment = null;
 
                     if (item.ProductId.HasValue)
                     {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Id == item.ProductId.Value);
+                        asortyment = allAsortymenty.FirstOrDefault(a =>
+                            DynamicPropertyHelper.GetId(a) == item.ProductId.Value);
                     }
                     else if (!string.IsNullOrEmpty(item.ProductSymbol))
                     {
-                        asortyment = asortymenty.Dane.Wszystkie()
-                            .FirstOrDefault(a => a.Symbol == item.ProductSymbol);
+                        asortyment = allAsortymenty.FirstOrDefault(a =>
+                            DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol);
                     }
 
                     if (asortyment != null)
                     {
-                        var pozycja = oferta.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
+                        var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                        var pozycja = oferta.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
 
                         if (item.PriceNet.HasValue && pozycja != null)
                         {
@@ -356,10 +382,11 @@ public class OrdersController : ControllerBase
                     }
                 }
 
-                if (oferta.Zapisz())
+                if ((bool)oferta.Zapisz())
                 {
+                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(oferta.Dane, "NumerWewnetrzny");
                     _logger.LogInformation("Created commercial offer {Number}",
-                        oferta.Dane.NumerWewnetrzny?.PelnaSygnatura);
+                        numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "");
 
                     return CreatedAtAction(
                         nameof(GetCommercialOffers),
@@ -379,47 +406,52 @@ public class OrdersController : ControllerBase
         }
     }
 
-    private static SupplierOrderDto MapSupplierOrderToDto(DokumentZD dokument)
+    private static SupplierOrderDto MapSupplierOrderToDto(dynamic dokument)
     {
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(dokument, "NumerWewnetrzny");
+        var podmiot = DynamicPropertyHelper.GetProperty(dokument, "Podmiot");
+        var magazyn = DynamicPropertyHelper.GetProperty(dokument, "Magazyn");
+
         var dto = new SupplierOrderDto
         {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            OrderDate = dokument.DataWystawienia,
-            SupplierId = dokument.Podmiot?.Id,
-            SupplierName = dokument.Podmiot?.NazwaSkrocona,
-            SupplierNIP = dokument.Podmiot?.NIP,
-            WarehouseSymbol = dokument.Magazyn?.Symbol,
-            TotalNet = dokument.WartoscNetto,
-            TotalVat = dokument.WartoscVat,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia,
+            Id = DynamicPropertyHelper.GetId(dokument),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetInt(numerWewnetrzny, "Numer").ToString() : "",
+            FullNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
+            OrderDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+            SupplierId = podmiot != null ? DynamicPropertyHelper.GetId(podmiot) : null,
+            SupplierName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
+            SupplierNIP = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null,
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+            TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+            TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+            Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+            CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia"),
             Items = new List<DocumentItemDto>()
         };
 
-        if (dokument.Pozycje != null)
+        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        int lineNum = 1;
+        foreach (var poz in pozycje)
         {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
+            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            dto.Items.Add(new DocumentItemDto
             {
-                dto.Items.Add(new DocumentItemDto
-                {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt.",
-                    PriceNet = poz.CenaNetto,
-                    PriceGross = poz.CenaBrutto,
-                    ValueNet = poz.WartoscNetto,
-                    ValueVat = poz.WartoscVat,
-                    ValueGross = poz.WartoscBrutto
-                });
-            }
+                Id = DynamicPropertyHelper.GetId(poz),
+                LineNumber = lineNum++,
+                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
+                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
+                PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
+                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
+                ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
+                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+            });
         }
 
         return dto;
@@ -427,63 +459,94 @@ public class OrdersController : ControllerBase
 
     private static CommercialOfferDto MapOfferToDto(dynamic dokument)
     {
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(dokument, "NumerWewnetrzny");
+        var podmiot = DynamicPropertyHelper.GetProperty(dokument, "Podmiot");
+
         var dto = new CommercialOfferDto
         {
-            Id = dokument.Id,
-            Number = dokument.NumerWewnetrzny?.Numer.ToString() ?? "",
-            FullNumber = dokument.NumerWewnetrzny?.PelnaSygnatura,
-            IssueDate = dokument.DataWystawienia,
-            ValidUntil = dokument.DataWaznosci,
-            CustomerId = dokument.Podmiot?.Id,
-            CustomerName = dokument.Podmiot?.NazwaSkrocona,
-            CustomerNIP = dokument.Podmiot?.NIP,
-            TotalNet = dokument.WartoscNetto,
-            TotalVat = dokument.WartoscVat,
-            TotalGross = dokument.WartoscBrutto,
-            Notes = dokument.Uwagi,
-            CreatedAt = dokument.DataUtworzenia,
+            Id = DynamicPropertyHelper.GetId(dokument),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetInt(numerWewnetrzny, "Numer").ToString() : "",
+            FullNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
+            IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+            ValidUntil = DynamicPropertyHelper.GetDateTime(dokument, "DataWaznosci"),
+            CustomerId = podmiot != null ? DynamicPropertyHelper.GetId(podmiot) : null,
+            CustomerName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
+            CustomerNIP = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null,
+            TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+            TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+            TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+            Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
+            CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia"),
             Items = new List<DocumentItemDto>()
         };
 
-        if (dokument.Pozycje != null)
+        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        int lineNum = 1;
+        foreach (var poz in pozycje)
         {
-            int lineNum = 1;
-            foreach (var poz in dokument.Pozycje)
+            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            dto.Items.Add(new DocumentItemDto
             {
-                dto.Items.Add(new DocumentItemDto
-                {
-                    Id = poz.Id,
-                    LineNumber = lineNum++,
-                    ProductId = poz.Asortyment?.Id,
-                    ProductSymbol = poz.Asortyment?.Symbol,
-                    Name = poz.Nazwa,
-                    Quantity = poz.Ilosc,
-                    Unit = poz.Jednostka?.Symbol ?? "szt.",
-                    PriceNet = poz.CenaNetto,
-                    PriceGross = poz.CenaBrutto,
-                    ValueNet = poz.WartoscNetto,
-                    ValueVat = poz.WartoscVat,
-                    ValueGross = poz.WartoscBrutto
-                });
-            }
+                Id = DynamicPropertyHelper.GetId(poz),
+                LineNumber = lineNum++,
+                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
+                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
+                PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
+                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
+                ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
+                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+            });
         }
 
         return dto;
     }
 
-    private static List<string> GetBusinessObjectErrors(InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy obiekt)
+    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
-        foreach (var encjaZBledami in obiekt.InvalidData)
+        try
         {
-            foreach (var blad in encjaZBledami.Errors)
+            var invalidData = DynamicPropertyHelper.GetProperty(obiekt, "InvalidData");
+            if (invalidData == null) return errors;
+
+            foreach (var encjaZBledami in invalidData)
             {
-                errors.Add(blad.ToString());
+                var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
+                if (entityErrors != null)
+                {
+                    foreach (var blad in entityErrors)
+                    {
+                        errors.Add(blad?.ToString() ?? "Unknown error");
+                    }
+                }
+
+                var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
+                if (memberErrors != null)
+                {
+                    foreach (var bladNaPolach in memberErrors)
+                    {
+                        try
+                        {
+                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
+                            errors.Add($"{key}: {bladNaPolach}");
+                        }
+                        catch
+                        {
+                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
+                        }
+                    }
+                }
             }
-            foreach (var bladNaPolach in encjaZBledami.MemberErrors)
-            {
-                errors.Add($"{bladNaPolach.Key}: {string.Join(", ", bladNaPolach)}");
-            }
+        }
+        catch
+        {
+            errors.Add("Could not retrieve error details");
         }
         return errors;
     }
