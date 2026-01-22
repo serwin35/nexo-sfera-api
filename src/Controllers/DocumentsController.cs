@@ -27,10 +27,93 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
-    /// Get documents with filtering
+    /// Explore properties of a single Document entity (debug endpoint)
+    /// </summary>
+    [HttpGet("debug/properties/{id}")]
+    public ActionResult<object> GetDocumentProperties(int id)
+    {
+        try
+        {
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
+            if (dokumentyManager == null)
+            {
+                return StatusCode(500, new { Error = "Failed to get Dokumenty manager" });
+            }
+
+            dynamic? dokument = null;
+            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            {
+                if (DynamicPropertyHelper.GetId(d) == id)
+                {
+                    dokument = d;
+                    break;
+                }
+            }
+
+            if (dokument == null)
+            {
+                return NotFound(new { Error = $"Document {id} not found" });
+            }
+
+            Type dokumentType = dokument.GetType();
+            var properties = new Dictionary<string, object>();
+
+            foreach (var prop in dokumentType.GetProperties())
+            {
+                try
+                {
+                    var value = prop.GetValue(dokument);
+                    var valueType = value?.GetType().Name ?? "null";
+
+                    if (value != null && value.GetType().Name.Contains("Collection"))
+                    {
+                        try
+                        {
+                            int count = 0;
+                            foreach (var _ in (dynamic)value) count++;
+                            properties[prop.Name] = new { Type = valueType, Count = count };
+                        }
+                        catch
+                        {
+                            properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                        }
+                    }
+                    else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string)
+                             && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal)
+                             && !prop.PropertyType.IsEnum && prop.PropertyType != typeof(Guid))
+                    {
+                        properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
+                    }
+                    else
+                    {
+                        properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    properties[prop.Name] = new { Error = ex.Message };
+                }
+            }
+
+            return Ok(new
+            {
+                Id = id,
+                EntityType = dokumentType.FullName,
+                PropertyCount = properties.Count,
+                Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+            });
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
+    /// Get documents with filtering (lightweight list view)
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<DocumentDto>> GetDocuments([FromQuery] DocumentQueryRequest query)
+    public ActionResult<PagedResponse<DocumentListItemDto>> GetDocuments([FromQuery] DocumentQueryRequest query)
     {
         try
         {
@@ -98,13 +181,13 @@ public class DocumentsController : ControllerBase
                 .Take(query.PageSize)
                 .ToList();
 
-            var mappedItems = new List<DocumentDto>();
+            var mappedItems = new List<DocumentListItemDto>();
             foreach (var item in items)
             {
-                mappedItems.Add(MapDocumentToDto(item));
+                mappedItems.Add(MapToListItemDto(item));
             }
 
-            var response = new PagedResponse<DocumentDto>
+            var response = new PagedResponse<DocumentListItemDto>
             {
                 Data = mappedItems,
                 Page = query.Page,
@@ -1252,6 +1335,29 @@ public class DocumentsController : ControllerBase
                 zwrot.Pozycje.Dodaj(asortyment, qty, jednostka);
             }
         }
+    }
+
+    /// <summary>
+    /// Maps to lightweight DTO for list views (minimal fields for performance)
+    /// </summary>
+    private static DocumentListItemDto MapToListItemDto(dynamic dokument)
+    {
+        return new DocumentListItemDto
+        {
+            Id = DynamicPropertyHelper.GetId(dokument),
+            Symbol = DynamicPropertyHelper.GetString(dokument, "Symbol") ?? "",
+            Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
+            ExternalNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny"),
+            ReferenceNumber = DynamicPropertyHelper.GetString(dokument, "NumerReferencyjny"),
+            IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia") ??
+                        DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+            CustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "PodmiotId") ??
+                         DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id"),
+            CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
+            AmountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty"),
+            StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                       DynamicPropertyHelper.GetNullableInt(dokument, "Status", "Id")
+        };
     }
 
     private static CorrectionDto MapCorrectionToDto(dynamic dokument)
