@@ -92,15 +92,35 @@ public class SferaService : ISferaService, IDisposable
 
         try
         {
-            // Use reflection to call the method by name on Sfera
-            var method = _sfera.GetType().GetMethod(managerMethodName, Type.EmptyTypes);
-            if (method != null)
+            // Use dynamic invocation - this handles extension methods and optional parameters
+            dynamic sfera = _sfera;
+            return managerMethodName switch
             {
-                return method.Invoke(_sfera, null);
-            }
-
-            _logger.LogWarning("Manager method {MethodName} not found on Sfera", managerMethodName);
-            return null;
+                "Asortymenty" => sfera.Asortymenty(),
+                "SzablonyAsortymentu" => sfera.SzablonyAsortymentu(),
+                "Podmioty" => sfera.Podmioty(),
+                "Dokumenty" => sfera.Dokumenty(),
+                "DokumentySprzedazy" => sfera.DokumentySprzedazy(),
+                "DokumentyZakupu" => sfera.DokumentyZakupu(),
+                "DokumentyHandlowe" => sfera.DokumentyHandlowe(),
+                "DokumentyElektroniczne" => sfera.DokumentyElektroniczne(),
+                "KorektyDokumentowSprzedazy" => sfera.KorektyDokumentowSprzedazy(),
+                "KorektyDokumentowZakupu" => sfera.KorektyDokumentowZakupu(),
+                "Magazyny" => sfera.Magazyny(),
+                "WydaniaZewnetrzne" => sfera.WydaniaZewnetrzne(),
+                "PrzyjeciaZewnetrzne" => sfera.PrzyjeciaZewnetrzne(),
+                "WydaniaMiedzymagazynowe" => sfera.WydaniaMiedzymagazynowe(),
+                "RozchodyWewnetrzne" => sfera.RozchodyWewnetrzne(),
+                "PrzychodWewnetrzny" => sfera.PrzychodWewnetrzny(),
+                "ZamowieniaOdKlientow" => sfera.ZamowieniaOdKlientow(),
+                "ZamowieniaDoDostawcow" => sfera.ZamowieniaDoDostawcow(),
+                "Oferty" => sfera.Oferty(),
+                "OfertyDlaKlientow" => sfera.OfertyDlaKlientow(),
+                "Pracownicy" => sfera.Pracownicy(),
+                "Slowniki" => sfera.Slowniki(),
+                "Rabaty" => sfera.Rabaty(),
+                _ => throw new ArgumentException($"Unknown manager: {managerMethodName}")
+            };
         }
         catch (Exception ex)
         {
