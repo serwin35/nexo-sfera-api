@@ -17,6 +17,7 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
+| #1208 | 1:03 AM | 🔄 | Removed Contractor Groups Endpoints from DiscountsController | ~497 |
 | #1113 | 12:18 AM | 🔄 | Fixed LINQ Lambda on Dynamic Type in DictionaryController Exchange Rate Sorting | ~469 |
 | #1086 | 12:08 AM | 🔴 | Duplicate Variable 'magazyn' Declaration in InventoryController | ~436 |
 | #1079 | 12:07 AM | 🔴 | Compilation Errors Fixed in Phase 1 Controllers and SDK Integration | ~536 |
