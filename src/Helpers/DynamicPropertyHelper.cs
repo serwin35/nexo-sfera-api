@@ -312,9 +312,13 @@ public static class DynamicPropertyHelper
     /// </summary>
     public static int GetId(dynamic obj)
     {
+        if (obj == null) return 0;
         try
         {
-            return (int)obj.Id;
+            // Try direct property access first
+            var id = GetProperty(obj, "Id");
+            if (id == null) return 0;
+            return Convert.ToInt32(id);
         }
         catch
         {

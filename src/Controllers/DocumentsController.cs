@@ -1582,37 +1582,59 @@ public class DocumentsController : ControllerBase
     /// </summary>
     private static DocumentListItemDto MapToListItemDto(dynamic dokument)
     {
-        var issueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia") ??
-                        DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia");
-        var dueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci");
-        var amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
-        var totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
-        var paidAmount = totalGross - amountToPay;
+        // Guard against null document
+        if (dokument == null)
+        {
+            return new DocumentListItemDto { Id = 0, Symbol = "NULL" };
+        }
+
+        // Use explicit casting to avoid dynamic binding issues
+        int id = DynamicPropertyHelper.GetId(dokument);
+        string symbol = DynamicPropertyHelper.GetString(dokument, "Symbol") ?? "";
+        string? number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura");
+        string? externalNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny");
+        string? referenceNumber = DynamicPropertyHelper.GetString(dokument, "NumerReferencyjny");
+        string? title = DynamicPropertyHelper.GetString(dokument, "Tytul");
+        DateTime? issueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia") ??
+                              DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia");
+        DateTime? saleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy");
+        DateTime? dueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci");
+        int? customerId = DynamicPropertyHelper.GetNullableInt(dokument, "PodmiotId") ??
+                          DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id");
+        string? customerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona");
+        string? customerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP");
+        string? warehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol");
+        decimal totalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto");
+        decimal totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+        decimal amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
+        decimal paidAmount = totalGross - amountToPay;
+        string currency = DynamicPropertyHelper.GetString(dokument, "Waluta", "Symbol") ?? "PLN";
+        int? statusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                        DynamicPropertyHelper.GetNullableInt(dokument, "Status", "Id");
+        string? statusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol");
 
         return new DocumentListItemDto
         {
-            Id = DynamicPropertyHelper.GetId(dokument),
-            Symbol = DynamicPropertyHelper.GetString(dokument, "Symbol") ?? "",
-            Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
-            ExternalNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny"),
-            ReferenceNumber = DynamicPropertyHelper.GetString(dokument, "NumerReferencyjny"),
-            Title = DynamicPropertyHelper.GetString(dokument, "Tytul"),
+            Id = id,
+            Symbol = symbol,
+            Number = number,
+            ExternalNumber = externalNumber,
+            ReferenceNumber = referenceNumber,
+            Title = title,
             IssueDate = issueDate,
-            SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
+            SaleDate = saleDate,
             DueDate = dueDate,
-            CustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "PodmiotId") ??
-                         DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id"),
-            CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
-            CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
-            WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
-            TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
+            CustomerId = customerId,
+            CustomerName = customerName,
+            CustomerNIP = customerNIP,
+            WarehouseSymbol = warehouseSymbol,
+            TotalNet = totalNet,
             TotalGross = totalGross,
             AmountToPay = amountToPay,
             PaidAmount = paidAmount > 0 ? paidAmount : null,
-            Currency = DynamicPropertyHelper.GetString(dokument, "Waluta", "Symbol") ?? "PLN",
-            StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
-                       DynamicPropertyHelper.GetNullableInt(dokument, "Status", "Id"),
-            StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
+            Currency = currency,
+            StatusId = statusId,
+            StatusSymbol = statusSymbol,
             IsPaid = amountToPay <= 0,
             IsOverdue = dueDate.HasValue && dueDate.Value < DateTime.Today && amountToPay > 0
         };
