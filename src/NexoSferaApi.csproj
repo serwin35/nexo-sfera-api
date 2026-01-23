@@ -29,73 +29,103 @@
 
   <ItemGroup>
     <!-- Nexo Sfera SDK References (included in lib/nexo-sdk) -->
+    <!-- Private=true ensures assemblies are copied to output directory -->
     <Reference Include="InsERT.Moria.API">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.API.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Sfera">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Sfera.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.ModelDanych">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.ModelDanych.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Asortymenty">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Asortymenty.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Klienci">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Klienci.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.ModelOrganizacyjny">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.ModelOrganizacyjny.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Promocje">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Promocje.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Logistyka">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Logistyka.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Finanse">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Finanse.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Kasa">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Kasa.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Bank">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Bank.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Rozrachunki">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Rozrachunki.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Mox.Core">
       <HintPath>$(NexoSdkPath)\InsERT.Mox.Core.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Common.Product">
       <HintPath>$(NexoSdkPath)\InsERT.Common.Product.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Mox.EntityFrameworkSupport">
       <HintPath>$(NexoSdkPath)\InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.DaneDomyslne">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.DaneDomyslne.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Mox.EntityFramework.Core">
       <HintPath>$(NexoSdkPath)\InsERT.Mox.EntityFramework.Core.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Security.Core">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Security.Core.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Moria.Security">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Security.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="InsERT.Mox.Security.Sql">
       <HintPath>$(NexoSdkPath)\InsERT.Mox.Security.Sql.dll</HintPath>
+      <Private>true</Private>
     </Reference>
   </ItemGroup>
 
-  <!-- Copy SDK DLLs to output directory -->
+  <!-- Copy ALL SDK files to output directory -->
   <ItemGroup>
-    <None Include="$(NexoSdkPath)\*.dll">
+    <ContentWithTargetPath Include="$(NexoSdkPath)\**\*.*" Exclude="$(NexoSdkPath)\**\*.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+      <TargetPath>%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
+    </ContentWithTargetPath>
   </ItemGroup>
+
+  <!-- Ensure SDK DLLs are copied even during publish -->
+  <Target Name="CopySdkFiles" AfterTargets="Build">
+    <ItemGroup>
+      <SdkFiles Include="$(NexoSdkPath)\**\*.*" Exclude="$(NexoSdkPath)\**\*.xml" />
+    </ItemGroup>
+    <Copy SourceFiles="@(SdkFiles)" DestinationFolder="$(OutputPath)%(RecursiveDir)" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>
