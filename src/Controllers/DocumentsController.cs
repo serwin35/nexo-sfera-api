@@ -2278,7 +2278,8 @@ public class DocumentsController : ControllerBase
                 "PrzyjeciaZewnetrzne",
                 "WydaniaMiedzymagazynowe",
                 "PrzesunieciaMiedzymagazynowe",
-                "DokumentyMagazynowe"
+                ""RozchodyWewnetrzne",
+                "PrzychodyWewnetrzne""
             };
 
             foreach (var managerName in managersToCheck)
@@ -2435,7 +2436,8 @@ public class DocumentsController : ControllerBase
                 "PrzyjeciaZewnetrzne",
                 "WydaniaMiedzymagazynowe",
                 "PrzesunieciaMiedzymagazynowe",
-                "DokumentyMagazynowe"
+                ""RozchodyWewnetrzne",
+                "PrzychodyWewnetrzne""
             };
 
             foreach (var managerName in managersToCheck)
@@ -2533,7 +2535,8 @@ public class DocumentsController : ControllerBase
                 "PrzyjeciaZewnetrzne",
                 "WydaniaMiedzymagazynowe",
                 "PrzesunieciaMiedzymagazynowe",
-                "DokumentyMagazynowe"
+                ""RozchodyWewnetrzne",
+                "PrzychodyWewnetrzne""
             };
 
             foreach (var managerName in managersToCheck)
