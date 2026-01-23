@@ -2282,26 +2282,52 @@ public class DocumentsController : ControllerBase
                 "PrzychodyWewnetrzne"
             };
 
-            foreach (var managerName in managersToCheck)
+            // First try the main Dokumenty manager by iterating (same as GetDocument)
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
+            if (dokumentyManager != null)
             {
-                var manager = _sferaService.GetManager(managerName);
-                if (manager == null) continue;
-
                 try
                 {
-                    var doc = manager.Dane.Znajdz(id);
-                    if (doc != null)
+                    foreach (var d in dokumentyManager.Dane.Wszystkie())
                     {
-                        sourceDocument = doc;
-                        sourceManager = manager;
-                        sourceManagerName = managerName;
-                        break;
+                        if (DynamicPropertyHelper.GetId(d) == id)
+                        {
+                            sourceDocument = d;
+                            sourceManager = dokumentyManager;
+                            sourceManagerName = "Dokumenty";
+                            break;
+                        }
                     }
                 }
-                catch
+                catch { }
+            }
+
+            // If not found, try other managers
+            if (sourceDocument == null)
+            {
+                foreach (var managerName in managersToCheck.Skip(1)) // Skip "Dokumenty"
                 {
-                    // Manager doesn't support Znajdz or document not found, try next
-                    continue;
+                    var manager = _sferaService.GetManager(managerName);
+                    if (manager == null) continue;
+
+                    try
+                    {
+                        foreach (var d in manager.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetId(d) == id)
+                            {
+                                sourceDocument = d;
+                                sourceManager = manager;
+                                sourceManagerName = managerName;
+                                break;
+                            }
+                        }
+                        if (sourceDocument != null) break;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
                 }
             }
 
@@ -2425,39 +2451,23 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            // Find the document
+            // Find the document using iteration (same pattern as GetDocument)
             dynamic? document = null;
-            var managersToCheck = new[]
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
+            if (dokumentyManager != null)
             {
-                "Dokumenty",
-                "DokumentySprzedazy",
-                "DokumentyZakupu",
-                "WydaniaZewnetrzne",
-                "PrzyjeciaZewnetrzne",
-                "WydaniaMiedzymagazynowe",
-                "PrzesunieciaMiedzymagazynowe",
-                "RozchodyWewnetrzne",
-                "PrzychodyWewnetrzne"
-            };
-
-            foreach (var managerName in managersToCheck)
-            {
-                var manager = _sferaService.GetManager(managerName);
-                if (manager == null) continue;
-
                 try
                 {
-                    var doc = manager.Dane.Znajdz(id);
-                    if (doc != null)
+                    foreach (var d in dokumentyManager.Dane.Wszystkie())
                     {
-                        document = doc;
-                        break;
+                        if (DynamicPropertyHelper.GetId(d) == id)
+                        {
+                            document = d;
+                            break;
+                        }
                     }
                 }
-                catch
-                {
-                    continue;
-                }
+                catch { }
             }
 
             if (document == null)
@@ -2522,42 +2532,26 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            // Find the source document
+            // Find the source document using iteration
             dynamic? sourceDocument = null;
             dynamic? sourceManager = null;
 
-            var managersToCheck = new[]
+            var dokumentyManager = _sferaService.GetManager("Dokumenty");
+            if (dokumentyManager != null)
             {
-                "Dokumenty",
-                "DokumentySprzedazy",
-                "DokumentyZakupu",
-                "WydaniaZewnetrzne",
-                "PrzyjeciaZewnetrzne",
-                "WydaniaMiedzymagazynowe",
-                "PrzesunieciaMiedzymagazynowe",
-                "RozchodyWewnetrzne",
-                "PrzychodyWewnetrzne"
-            };
-
-            foreach (var managerName in managersToCheck)
-            {
-                var manager = _sferaService.GetManager(managerName);
-                if (manager == null) continue;
-
                 try
                 {
-                    var doc = manager.Dane.Znajdz(id);
-                    if (doc != null)
+                    foreach (var d in dokumentyManager.Dane.Wszystkie())
                     {
-                        sourceDocument = doc;
-                        sourceManager = manager;
-                        break;
+                        if (DynamicPropertyHelper.GetId(d) == id)
+                        {
+                            sourceDocument = d;
+                            sourceManager = dokumentyManager;
+                            break;
+                        }
                     }
                 }
-                catch
-                {
-                    continue;
-                }
+                catch { }
             }
 
             if (sourceDocument == null)
