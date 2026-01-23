@@ -315,16 +315,13 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            if (wydania == null || konfiguracje == null)
+            var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
+            if (rozchody == null)
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get RozchodyWewnetrzne manager"));
             }
 
-            var konfiguracja = konfiguracje.DaneDomyslne.RozchodWewnetrzny;
-
-            using (var rw = wydania.Utworz(konfiguracja))
+            using (var rw = rozchody.Utworz())
             {
                 // Set warehouse
                 var magazynyManager = _sferaService.GetManager("Magazyny");
@@ -390,16 +387,13 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            if (przyjecia == null || konfiguracje == null)
+            var przychody = _sferaService.GetManager("PrzychodyWewnetrzne");
+            if (przychody == null)
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get PrzychodyWewnetrzne manager"));
             }
 
-            var konfiguracja = konfiguracje.DaneDomyslne.PrzychodWewnetrzny;
-
-            using (var pw = przyjecia.Utworz(konfiguracja))
+            using (var pw = przychody.Utworz())
             {
                 // Set warehouse
                 var magazynyManager = _sferaService.GetManager("Magazyny");
