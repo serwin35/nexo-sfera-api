@@ -144,7 +144,17 @@ public class DocumentsController : ControllerBase
             var mappedItems = new List<DocumentListItemDto>();
             foreach (var item in items)
             {
-                mappedItems.Add(MapToListItemDto(item));
+                try
+                {
+                    if (item != null)
+                    {
+                        mappedItems.Add(MapToListItemDto(item));
+                    }
+                }
+                catch (Exception mapEx)
+                {
+                    _logger.LogWarning(mapEx, "Failed to map document, skipping");
+                }
             }
 
             var response = new PagedResponse<DocumentListItemDto>
