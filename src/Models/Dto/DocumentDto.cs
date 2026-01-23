@@ -28,6 +28,11 @@ public class DocumentListItemDto
     public string? StatusSymbol { get; set; }
     public bool? IsPaid { get; set; }
     public bool? IsOverdue { get; set; }
+
+    /// <summary>
+    /// Relation type when returned in associations context (related, realization, correction)
+    /// </summary>
+    public string? RelationType { get; set; }
 }
 
 /// <summary>
