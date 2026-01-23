@@ -2346,14 +2346,14 @@ public class DocumentsController : ControllerBase
 
                 if (saved)
                 {
-                    var sourceNumber = DynamicPropertyHelper.GetString(sourceDocument, "NumerWewnetrzny", "PelnaSygnatura")
+                    string sourceNumber = DynamicPropertyHelper.GetString(sourceDocument, "NumerWewnetrzny", "PelnaSygnatura")
                                     ?? DynamicPropertyHelper.GetString(sourceDocument, "Symbol")
                                     ?? id.ToString();
-                    var targetNumber = DynamicPropertyHelper.GetString(targetDocument, "NumerWewnetrzny", "PelnaSygnatura")
+                    string targetNumber = DynamicPropertyHelper.GetString(targetDocument, "NumerWewnetrzny", "PelnaSygnatura")
                                      ?? DynamicPropertyHelper.GetString(targetDocument, "Symbol")
                                      ?? request.TargetDocumentId.ToString();
 
-                    _logger.LogInformation("Associated document {SourceDoc} with {TargetDoc}", sourceNumber, targetNumber);
+                    _logger.LogInformation("Associated document {SourceDoc} with {TargetDoc}", (object)sourceNumber, (object)targetNumber);
 
                     return Ok(ApiResponse<object>.Ok(new
                     {
