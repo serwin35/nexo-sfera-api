@@ -121,10 +121,13 @@ public class SferaService : ISferaService, IDisposable
                 "SzablonyAsortymentu" => _sfera.SzablonyAsortymentu(),
                 "GrupyAsortymentu" => _sfera.GrupyAsortymentu(),
                 "CechyAsortymentu" => _sfera.CechyAsortymentu(),
+                "GrupyCechAsortymentu" => _sfera.GrupyCech(), // Alias for attribute groups
+                "GrupyCech" => _sfera.GrupyCech(),
                 // InsERT.Moria.Klienci
                 "Podmioty" => _sfera.Podmioty(),
-                // GrupyKontrahentow does not have an extension method - access via Podmioty or alternative
-                "GrupyKontrahentow" => throw new NotSupportedException("GrupyKontrahentow extension not available. Use Podmioty manager instead."),
+                // GrupyKontrahentow/GrupyPodmiotow - access via Podmioty manager
+                "GrupyKontrahentow" => _sfera.Podmioty(), // Groups accessible via Podmioty
+                "GrupyPodmiotow" => _sfera.Podmioty(), // Alias for contractor groups
                 // InsERT.Moria.Dokumenty
                 "Dokumenty" => _sfera.Dokumenty(),
                 "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
@@ -137,6 +140,7 @@ public class SferaService : ISferaService, IDisposable
                 "WydaniaZewnetrzne" => _sfera.WydaniaZewnetrzne(),
                 "PrzyjeciaZewnetrzne" => _sfera.PrzyjeciaZewnetrzne(),
                 "WydaniaMiedzymagazynowe" => _sfera.WydaniaMiedzymagazynowe(),
+                "PrzesunieciaMiedzymagazynowe" => _sfera.WydaniaMiedzymagazynowe(), // Alias
                 "RozchodyWewnetrzne" => _sfera.RozchodyWewnetrzne(),
                 "PrzychodyWewnetrzne" => _sfera.PrzychodyWewnetrzne(),
                 "ZamowieniaOdKlientow" => _sfera.ZamowieniaOdKlientow(),
@@ -145,10 +149,12 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Slowniki
                 "StawkiVat" => _sfera.StawkiVat(),
                 "JednostkiMiar" => _sfera.JednostkiMiar(),
+                "Jednostki" => _sfera.JednostkiMiar(), // Alias
                 "Waluty" => _sfera.Waluty(),
                 // KursyWalut does not have an extension method - access via Waluty.Kursy or alternative
                 "KursyWalut" => throw new NotSupportedException("KursyWalut extension not available. Access exchange rates via Waluty manager."),
                 "FormyPlatnosci" => _sfera.FormyPlatnosci(),
+                "SposobyPlatnosci" => _sfera.FormyPlatnosci(), // Alias
                 // InsERT.Moria.Cenniki
                 "Cenniki" => _sfera.Cenniki(),
                 "PoziomyCen" => _sfera.PoziomyCen(),
