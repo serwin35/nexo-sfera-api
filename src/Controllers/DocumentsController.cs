@@ -612,7 +612,7 @@ public class DocumentsController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
 
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
 
             using (var zamowienie = konfiguracja != null ? zamowieniaManager.Utworz(konfiguracja) : zamowieniaManager.Utworz())

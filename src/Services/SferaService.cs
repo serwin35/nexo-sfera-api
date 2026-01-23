@@ -193,6 +193,8 @@ public class SferaService : ISferaService, IDisposable
                 "GrupyOfert" => _sfera.GrupyOfert(),
                 // InsERT.Moria.Naklejki - Labels
                 "SzablonyNaklejek" => _sfera.SzablonyNaklejek(),
+                // InsERT.Moria.Dokumenty.Logistyka - Logistics document configurations
+                "Konfiguracje" => _sfera.Konfiguracje(),
                 // Methods that don't have extension methods - need different approach
                 "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
                 "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),

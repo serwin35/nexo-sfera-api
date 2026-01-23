@@ -299,7 +299,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             // Get default configuration
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
 
             using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())

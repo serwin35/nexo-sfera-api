@@ -152,7 +152,7 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
             }
 
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieDoDostawcy;
 
             using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())
@@ -388,7 +388,7 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
             }
 
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             var konfiguracja = konfiguracje?.DaneDomyslne?.OfertaDlaKlienta;
 
             using (var oferta = konfiguracja != null ? oferty.Utworz(konfiguracja) : oferty.Utworz())

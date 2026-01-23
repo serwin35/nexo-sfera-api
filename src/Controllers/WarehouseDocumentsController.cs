@@ -155,7 +155,7 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             if (wydania == null || konfiguracje == null)
             {
                 return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
@@ -233,7 +233,7 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             if (przyjecia == null || konfiguracje == null)
             {
                 return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
@@ -316,7 +316,7 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             if (wydania == null || konfiguracje == null)
             {
                 return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
@@ -391,7 +391,7 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             if (przyjecia == null || konfiguracje == null)
             {
                 return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
@@ -471,7 +471,7 @@ public class WarehouseDocumentsController : ControllerBase
             }
 
             var wydania = _sferaService.GetManager("WydaniaMiedzymagazynowe");
-            var konfiguracje = _sferaService.GetManagerByType("InsERT.Moria.Sfera", "InsERT.Moria.Sfera.Konfiguracje");
+            var konfiguracje = _sferaService.GetManager("Konfiguracje");
             if (wydania == null || konfiguracje == null)
             {
                 return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
