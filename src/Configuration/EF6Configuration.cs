@@ -23,13 +23,24 @@ public static class EF6Initializer
         {
             if (_initialized) return;
 
-            // Use System.Data.SqlClient - EF6 was designed for it and it properly maps BIT->Boolean
-            // Microsoft.Data.SqlClient has issues with BIT columns returning as Byte[]
+            // Register Microsoft.Data.SqlClient - matching EasyNexoIntegrator configuration
+            try
+            {
+                System.Data.Common.DbProviderFactories.RegisterFactory(
+                    "Microsoft.Data.SqlClient",
+                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
+            }
+            catch (System.ArgumentException)
+            {
+                // Provider already registered, ignore
+            }
+
+            // Also register under System.Data.SqlClient name for SDK compatibility
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
                     "System.Data.SqlClient",
-                    System.Data.SqlClient.SqlClientFactory.Instance);
+                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)
             {

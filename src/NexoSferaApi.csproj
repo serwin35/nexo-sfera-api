@@ -38,11 +38,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
-    <!-- SDK internally uses Microsoft.Data.SqlClient for some operations -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
-    <!-- EF6 in Nexo SDK was designed for System.Data.SqlClient -->
-    <!-- Using System.Data.SqlClient for proper BIT->Boolean type mapping in EF6 -->
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
+    <!-- Match EasyNexoIntegrator configuration - Microsoft.Data.SqlClient 6.1.1 only -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
   </ItemGroup>
 
   <ItemGroup>
