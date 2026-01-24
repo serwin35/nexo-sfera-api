@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace NexoSferaApi.Configuration;
 
 /// <summary>
@@ -44,6 +46,28 @@ public static class EF6Initializer
             catch (System.ArgumentException)
             {
                 // Provider already registered, ignore
+            }
+
+            // Try to activate SDK's MicrosoftSqlDbConfiguration via reflection
+            try
+            {
+                var sdkEfAssembly = Assembly.Load("InsERT.Mox.EntityFramework.Ms.SqlServer");
+                var configType = sdkEfAssembly?.GetType("System.Data.Entity.SqlServer.MicrosoftSqlDbConfiguration");
+                if (configType != null)
+                {
+                    var coreAssembly = Assembly.Load("InsERT.Mox.EntityFramework.Core");
+                    var dbConfigType = coreAssembly?.GetType("System.Data.Entity.DbConfiguration");
+                    var setConfigMethod = dbConfigType?.GetMethod("SetConfiguration", BindingFlags.Public | BindingFlags.Static);
+                    if (setConfigMethod != null)
+                    {
+                        var configInstance = Activator.CreateInstance(configType);
+                        setConfigMethod.Invoke(null, new[] { configInstance });
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore configuration errors - SDK will use default configuration
             }
 
             _initialized = true;
