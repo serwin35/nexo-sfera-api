@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" 
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/przyczynyniepowodzenprocesowofertowych"
+           xmlns="http://schemas.insert.com.pl/2014/hop/przyczynyniepowodzenprocesowofertowych"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:annotation>
+    <xs:documentation>Przyczyny niepowodzeń procesów ofertowych.</xs:documentation>
+  </xs:annotation>
+  
+  <xs:complexType name="TPrzyczynaNiepowodzeniaProcesuOfertowego">
+    <xs:annotation>
+      <xs:documentation>Dane przyczyny niepowodzenia procesu ofertowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa przyczyny niepowodzenia procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="PrzyczynyNiepowodzenProcesowOfertowych">
+    <xs:annotation>
+      <xs:documentation>Przyczyny niepowodzenia procesu ofertowego.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded" >
+        <xs:element name="Przyczyna" type="TPrzyczynaNiepowodzeniaProcesuOfertowego">
+          <xs:annotation>
+            <xs:documentation>Przyczyna niepowodzenia procesu ofertowego.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  
+</xs:schema>

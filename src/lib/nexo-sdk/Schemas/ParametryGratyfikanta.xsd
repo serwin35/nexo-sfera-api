@@ -1,0 +1,271 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/gratyfikant/parametry"
+           xmlns="http://schemas.insert.com.pl/2015/hop/gratyfikant/parametry"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+  
+  <xs:simpleType name="TPodmiotWyplacajacyZasilek">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Pracodawca">
+        <xs:annotation>
+          <xs:documentation>Zasiłki wypłacane są przez pracodawcę.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ZUS">
+        <xs:annotation>
+          <xs:documentation>Zasiłki wypłacane są przez ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TParametryZasilkow">
+    <xs:sequence>
+      <xs:element name="PodmiotWyplacajacyZasilek" type="TPodmiotWyplacajacyZasilek">
+        <xs:annotation>
+          <xs:documentation>Określa przez kogo wypłacane są zasiłki.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ObliczajKosztyiPodatekOdZasilkowDoUCP" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Obliczaj koszty i podatek do zasiłków w rachunkach do umów cywilnoprawnych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TSkladkaWypadkowaPracownik">
+    <xs:sequence>
+      <xs:element name="WartoscSkladki" minOccurs="1" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Wartość stawki ubezpieczenia wypadkowego dla pracowników.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Wartosc" type="xs:decimal">
+              <xs:annotation>
+                <xs:documentation>Wartość.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="DataOd" type="xs:date">
+              <xs:annotation>
+                <xs:documentation>Od kiedy obowiązuje dana stawka.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TPodstawaLiczeniaGodzin">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="PlacaMinimalna">
+        <xs:annotation>
+          <xs:documentation>Płaca minimalna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="StawkaPracownika">
+        <xs:annotation>
+          <xs:documentation>Stawka pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TParametryGodzinNadliczbowychINocnych">
+    <xs:sequence>
+      <xs:element name="GodzinyNadliczbowe">
+        <xs:annotation>
+          <xs:documentation>Parametry godzin nadliczbowych.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="LiczbaGodzinPierwszych" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>Liczba godzin uważanych za pierwsze.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="DodatekZaGodzinyPierwsze" type="xs:decimal">
+              <xs:annotation>
+                <xs:documentation>Dodatek za pierwsze godziny.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="DodatekZaGodzinyKolejne" type="xs:decimal">
+              <xs:annotation>
+                <xs:documentation>Dodatek za kolejne godziny.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="GodzinyNocne">
+        <xs:annotation>
+          <xs:documentation>Parametry godzin nocnych.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="ProcentNaliczania" type="xs:decimal">
+              <xs:annotation>
+                <xs:documentation>Procent naliczania.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="PodstawaLiczeniaGodzin" type="TPodstawaLiczeniaGodzin">
+              <xs:annotation>
+                <xs:documentation>Podstawa liczenia godzin nocnych.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:simpleType name="TPodstawaPrawnaPrzystapieniaDoPPK">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Art_134_1_1_072019">
+        <xs:annotation>
+          <xs:documentation>Art. 134.1.1 ustawy o PPK - 1 lipca 2019 - co najmniej 250 pracowników.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Art_134_1_2_012020">
+        <xs:annotation>
+          <xs:documentation>Art. 134.1.2 ustawy o PPK - 1 stycznia 2020 - co najmniej 50 pracowników.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Art_134_1_3_072020">
+        <xs:annotation>
+          <xs:documentation>Art. 134.1.3 ustawy o PPK - 1 lipca 2020 - co najmniej 20 pracowników.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Art_134_1_4_012021">
+        <xs:annotation>
+          <xs:documentation>Art. 134.1.4 ustawy o PPK - 1 stycznia 2021 - pozostałych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Inna">
+        <xs:annotation>
+          <xs:documentation>Inna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="TSposobGenerowaniaPlikowPPK">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Jeden">
+        <xs:annotation>
+          <xs:documentation>Jeden plik.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wiele">
+        <xs:annotation>
+          <xs:documentation>Wiele plików.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="TTerminPlatnosciDoPPK">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="MiesiacWyplatyWynagrodzenia">
+        <xs:annotation>
+          <xs:documentation>W miesiącu wypłaty wynagrodzenia - podatek liczony w bieżącej wypłacie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Do15NastepnegoMiesiaca">
+        <xs:annotation>
+          <xs:documentation>Do 15 dnia następnego miesiąca - podatek liczony w miesiącu dokonania wpłaty do PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="TParametryPPK">
+    <xs:sequence>
+      <xs:element name="MiesiacPierwszejWplaty" type="xs:date" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Miesiąc naliczenia pierwszej wpłaty.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PodstawaPrawna" type="TPodstawaPrawnaPrzystapieniaDoPPK" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Podstawa prawna przystąpienia do PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Instytucja" type="xs:string" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Sygnatura instytucji finansowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+      <xs:element name="WplataPodstawowaPracodawcy" type="wspolne:TParametryHistoriowane" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Wpłata podstawowa pracodawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WplataDodatkowaPracodawcy" type="wspolne:TParametryHistoriowane" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Wpłata dodatkowa pracodawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WplataPodstawowaPracownika" type="wspolne:TParametryHistoriowane" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Wpłata podstawowa pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TerminPlatnosciDoPPK" type="TTerminPlatnosciDoPPK" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Termin dokonywania wpłat do PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataPlatnosciDoPPK" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dzień płatności do PPK jeżeli termin dokonywania wpłat do PPK do 15go następnego miesiąca.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:int">
+            <xs:minInclusive value="1" />
+            <xs:maxInclusive value="15" />
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="UczestniczyWPPK" type="xs:boolean" use="required" ></xs:attribute>
+  </xs:complexType>
+  
+  
+  <xs:element name="ParametryGratyfikanta">
+    <xs:annotation>
+      <xs:documentation>Parametry związane z Gratyfikantem.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="ParametryZasilkow" type="TParametryZasilkow" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Parametry zasiłków.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="SkladkaWypadkowaPracownik" type="TSkladkaWypadkowaPracownik" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Stawka ubezpieczenia wypadkowago dla pracowników.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="ParametryGodzinNadliczbowych" type="TParametryGodzinNadliczbowychINocnych" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Parametry godzin nadliczbowych i nocnych.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="ParametryPPK" type="TParametryPPK" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Parametry pracowniczych planów kapitałowych.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

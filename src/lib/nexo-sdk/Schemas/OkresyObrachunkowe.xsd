@@ -1,0 +1,1383 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+    targetNamespace="http://schemas.insert.com.pl/2016/hop/okresyobrachunkowe"
+    elementFormDefault="qualified"
+    xmlns="http://schemas.insert.com.pl/2016/hop/okresyobrachunkowe"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+>
+  
+  <xs:simpleType name="TWzorzecKartotekiKsiegowej">
+    <xs:annotation>
+      <xs:documentation>Wzorzec kartoteki księgowej.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Kontrahenci">
+        <xs:annotation>
+          <xs:documentation>Kotrahenci.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Pracownicy">
+        <xs:annotation>
+          <xs:documentation>Pracownicy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wspolnicy">
+        <xs:annotation>
+          <xs:documentation>Wspólnicy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OrganyPodatkowe">
+        <xs:annotation>
+          <xs:documentation>Orgny podatkowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OddzialyZUS">
+        <xs:annotation>
+          <xs:documentation>Oddziały ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Waluty">
+        <xs:annotation>
+          <xs:documentation>Waluty.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="StawkiVAT">
+        <xs:annotation>
+          <xs:documentation>Stawki VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RachunkiBankowe">
+        <xs:annotation>
+          <xs:documentation>Rachunki bankowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kasy">
+        <xs:annotation>
+          <xs:documentation>Kasy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="StanowiskaKasowe">
+        <xs:annotation>
+          <xs:documentation>Stanowiska kasowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="JednostkiOrganizacyjne">
+        <xs:annotation>
+          <xs:documentation>Jednostki organizacyjne.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Magazyny">
+        <xs:annotation>
+          <xs:documentation>Magazyny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="MiejscaSprzedazy">
+        <xs:annotation>
+          <xs:documentation>Miejsca sprzedaży.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="GrupyKlientow">
+        <xs:annotation>
+          <xs:documentation>Grupy klientów.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Branze">
+        <xs:annotation>
+          <xs:documentation>Branże.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="GrupyPracownicze">
+        <xs:annotation>
+          <xs:documentation>Grupy pracownicze.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Panstwa">
+        <xs:annotation>
+          <xs:documentation>Państwa.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wojewodztwa">
+        <xs:annotation>
+          <xs:documentation>Województwa.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Powiaty">
+        <xs:annotation>
+          <xs:documentation>Powiaty.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Gminy">
+        <xs:annotation>
+          <xs:documentation>Gminy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SrodkiTrwale">
+        <xs:annotation>
+          <xs:documentation>Środki trwałe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="GrupySrodkowTrwalych">
+        <xs:annotation>
+          <xs:documentation>Grupy środków trwałych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="TypyWNiP">
+        <xs:annotation>
+          <xs:documentation>Typy wartości niematerialnych i prawnych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="GrupyAsortymentu">
+        <xs:annotation>
+          <xs:documentation>Grupy asortymentu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="MiejscaUzytkowaniaST">
+        <xs:annotation>
+          <xs:documentation>Miejsca użytkowania środków trwałych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="FunduszePromocji">
+        <xs:annotation>
+          <xs:documentation>Fundusze promocji.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="InstytucjeFinansowe">
+        <xs:annotation>
+          <xs:documentation>Instytucje finansowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="InstytucjeInne">
+        <xs:annotation>
+          <xs:documentation>Instytucje inne.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CentraAutoryzacji">
+        <xs:annotation>
+          <xs:documentation>Centra autoryzacji.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WNiP">
+        <xs:annotation>
+          <xs:documentation>Wartości niemateriale i prawne.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Pojazdy">
+        <xs:annotation>
+          <xs:documentation>Pojazdy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTypRejestruKsiegowego">
+    <xs:annotation>
+      <xs:documentation>Typ rejestru księgowego.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Zwykly">
+        <xs:annotation>
+          <xs:documentation>Zwykły.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DotyczacyBO">
+        <xs:annotation>
+          <xs:documentation>Dotyczący BO.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTypKontaKsiegowego">
+    <xs:annotation>
+      <xs:documentation>Typ konta księgowego.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Bilansowe">
+        <xs:annotation>
+          <xs:documentation>Bilansowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wynikowe">
+        <xs:annotation>
+          <xs:documentation>Wynikowe>.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Pozabilansowe">
+        <xs:annotation>
+          <xs:documentation>Pozabilansowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TSposobPodsumowania">
+    <xs:annotation>
+      <xs:documentation>Sposób podsumowania.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="RozdzielnieMiesiecznie">
+        <xs:annotation>
+          <xs:documentation>Rozdzielnie miesięcznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RozdzielnieKwartalnie">
+        <xs:annotation>
+          <xs:documentation>Rozdzielnie kwartalnie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NarastajacoRocznie">
+        <xs:annotation>
+          <xs:documentation>Narastająco rocznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TSposobNumeracji">
+    <xs:annotation>
+      <xs:documentation>Sposób numeracji.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Miesiecznie">
+        <xs:annotation>
+          <xs:documentation>Miesięcznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kwartalnie">
+        <xs:annotation>
+          <xs:documentation>Kwartalnie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Rocznie">
+        <xs:annotation>
+          <xs:documentation>Rocznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TOkresSprawozdawczyUEPiK">
+    <xs:annotation>
+      <xs:documentation>Okres sprawozdawczy UEPiK.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Miesieczny">
+        <xs:annotation>
+          <xs:documentation>Miesięczny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kwartalny">
+        <xs:annotation>
+          <xs:documentation>Kwartalny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="TTypSufiksuNumeracji">
+    <xs:annotation>
+      <xs:documentation>Typ sufiksu numeracji.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Brak">
+        <xs:annotation>
+          <xs:documentation>Brak.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Miesiac">
+        <xs:annotation>
+          <xs:documentation>Miesiąc.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kwartal">
+        <xs:annotation>
+          <xs:documentation>Kwartał.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="TKartotekiKsiegowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja kartotek księgowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="KartotekaKsiegowa" type="TKartotekaKsiegowa">
+        <xs:annotation>
+          <xs:documentation>Kartoteka księgowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>      
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKartotekaKsiegowa">
+    <xs:annotation>
+      <xs:documentation>Kartoteka księgowa.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Filtry" type="TFiltryKartotekKsiegowych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja filtrów.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Analityki" type="TElementyKartotekKsiegowych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja analityk.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator analityki na użytek referencjonowania w pliku XML.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+      <xs:attribute name="Wzorzec" type="TWzorzecKartotekiKsiegowej" use="optional">
+        <xs:annotation>
+          <xs:documentation>Wzorzec.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DlugoscAnalityki" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Długość analityki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ElementPozostaleIstnieje" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Określa, czy element "Pozostałe" istnieje dla tej kartoteki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ElementPozostaleNumerAnalityki" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Numer analityki elementu "Pozostałe".</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ElementPozostaleNazwa" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Nazwa elementu "Pozostałe".</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TElementyKartotekKsiegowych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja elementów kartotek księgowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="ElementKartotekiKsiegowej" type="TElementKartotekiKsiegowej">
+        <xs:annotation>
+          <xs:documentation>Element kartoteki księgowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TZnacznikiKontaKartotekowego">
+    <xs:annotation>
+      <xs:documentation>Znaczniki konta elementów kartoteki.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="ZnacznikGlowny" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Znacznik Bilans lub RZiS (1).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ZnacznikDodatkowy" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Znacznik Bilans lub RZiS (2).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ZnacznikDodatkowyPD" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Znacznik podatku dochodowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Konto" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Konto.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TZnacznikiKontKartotekowych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja znaczników konta kartotekowego</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="ZnacznikiKonta" type="TZnacznikiKontaKartotekowego">
+        <xs:annotation>
+          <xs:documentation>Znaczniki konta kartotekowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TElementKartotekiKsiegowej">
+    <xs:annotation>
+      <xs:documentation>Element kartoteki księgowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ZnacznikiKont" type="TZnacznikiKontKartotekowych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja znaczników kont.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="NumerAnalityki" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Numer analityki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+	  <xs:attribute name="Identyfikator" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator elementu kartoteki źródłowej, np.: symbol podmiotu, symbol waluty etc.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Identyfikator2" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Drugorzędny identyfikator elementu kartoteki źródłowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TFiltryKartotekKsiegowych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja filtrów kartotek księgowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Filtr" type="TFiltrKartotekiKsiegowej">
+        <xs:annotation>
+          <xs:documentation>Filtr kartoteki księgowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TFiltrKartotekiKsiegowej">
+    <xs:annotation>
+      <xs:documentation>Filtr kartoteki księgowej.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Typ" type="TTypFiltraKartotekiKsiegowej" use="required">
+      <xs:annotation>
+        <xs:documentation>Filtr kartoteki księgowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ElementKartoteki" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Element kartoteki (np.: państwo, grupa ŚT) wskazana jako parametr filtra.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TTypFiltraKartotekiKsiegowej">
+    <xs:annotation>
+      <xs:documentation>Typ filtra kartoteki księgowej</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Panstwo">
+        <xs:annotation>
+          <xs:documentation>Państwo (typ wymaga wskazania elementu kartoteki).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PanstwoRozneOdPolski">
+        <xs:annotation>
+          <xs:documentation>Państwo różne od Polski</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PanstwoKrajCzlonkowskiUEBezPolski">
+        <xs:annotation>
+          <xs:documentation>Państwo należące do UE (bez Polski)</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+		<xs:enumeration value="KrajCzlonkowskiUELubGBRoznyOdPolski">
+			<xs:annotation>
+				<xs:documentation>Państwo należące do UE (bez Polski) lub Wielka Brytania</xs:documentation>
+			</xs:annotation>
+		</xs:enumeration>
+		<xs:enumeration value="PanstwoKrajSpozaUE">
+        <xs:annotation>
+          <xs:documentation>Państwo spoza UE</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Grupa">
+        <xs:annotation>
+          <xs:documentation>Grupa (kontrahenta, pracownika) - typ wymaga wskazania elementu kartoteki.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Cecha">
+        <xs:annotation>
+          <xs:documentation>Cecha (kontrahenta, pracownika) - typ wymaga wskazania elementu kartoteki.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="GrupaSrodkowTrwalych">
+        <xs:annotation>
+          <xs:documentation>Grupa środków trwałych (typ wymaga wskazania elementu kartoteki).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RodzajWNiP">
+        <xs:annotation>
+          <xs:documentation>Rodzaj WNiP (typ wymaga wskazania elementu kartoteki).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+
+  <xs:complexType name="TDefinicjeKontKsiegowych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja definicji kont księgowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="DefinicjaKontaKsiegowego" type="TDefinicjaKontaKsiegowego">
+        <xs:annotation>
+          <xs:documentation>Definicja konta księgowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TDefinicjaKontaKsiegowego">
+    <xs:annotation>
+      <xs:documentation>Definicja konta księgowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+
+      <xs:element minOccurs="0" name="WlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych kont ksiegowych.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone">
+              <xs:annotation>
+                <xs:documentation>Pole własne rozszerzone konta ksiegowego. Zawartość tego elementu jest wartością pola.</xs:documentation>
+              </xs:annotation>
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="Nazwa" type="xs:string" use="required">
+                      <xs:annotation>
+                        <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                      </xs:annotation>
+                    </xs:attribute>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      
+      <xs:element name="Analityki" type="TDefinicjeKontKsiegowych">
+        <xs:annotation>
+          <xs:documentation>Analityki.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+
+    </xs:sequence>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator na użytek referencjonowania w pliku XML.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Numer" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Numer.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Nazwa.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Opis" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Opis.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KartotekaId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator kartoteki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Typ" type="TTypKontaKsiegowego" use="optional">
+      <xs:annotation>
+        <xs:documentation>Typ konta księgowego. Należy podać dla syntetyki, nie można dla analityki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="SaldoDwustronne" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Znacznik "saldo dwustronne". Należy podać dla syntetyki, nie można dla analityki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+	  <xs:attribute name="Rozrachunkowe" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Znacznik "rozrachunkowe". Należy podać dla syntetyki, nie można dla analityki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MagazynWalut" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Znacznik "magazyn walut". Należy podać dla syntetyki, nie można dla analityki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DomyslneKontoRoznicaZaokraglenMa" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Określa czy konto jest domyślnym kontem różnicy zaokrągleń "Winien".</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DomyslneKontoRoznicaZaokraglenWinien" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Określa czy konto jest domyślnym kontem różnicy zaokrągleń "Winien".</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KontoWynikFinansowy" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Określa czy konto jest kontem "wynik finansowy".</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KontoKosztowSprzedazy" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Określa czy konto jest kontem kosztów sprzedaży.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+	  <xs:attribute name="ZnacznikGlowny" type="xs:string" use="optional">
+		  <xs:annotation>
+			  <xs:documentation>Znacznik Bilans lub RZiS (1).</xs:documentation>
+		  </xs:annotation>
+	  </xs:attribute>
+	  <xs:attribute name="ZnacznikDodatkowy" type="xs:string" use="optional">
+		  <xs:annotation>
+			  <xs:documentation>Znacznik Bilans lub RZiS (2).</xs:documentation>
+		  </xs:annotation>
+	  </xs:attribute>
+	  <xs:attribute name="ZnacznikDodatkowyPD" type="xs:string" use="optional">
+		  <xs:annotation>
+			  <xs:documentation>Znacznik podatku dochodowego.</xs:documentation>
+		  </xs:annotation>
+	  </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TRejestryKsiegowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja rejestrów księgowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="RejestrKsiegowy" type="TRejestrKsiegowy">
+        <xs:annotation>
+          <xs:documentation>Rejestr księgowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TRejestrKsiegowy">
+    <xs:annotation>
+      <xs:documentation>Rejestr księgowy.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator na użytek referencjonowania w pliku XML.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Symbol" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Symbol.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypRejestru" type="TTypRejestruKsiegowego" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NumerPoczatkowy" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Numer początkowy.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Opis" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Opis.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DomyslnyOpisDekretu" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Domyślny opis dekretu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="OstrzegajOPowtorzonymNumerzeWlasnym" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Znacznik "ostrzegaj o powtórzonym numerze własnym:.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DziennikKsiegowyId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator dzienika księgowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Waluta" type="TTypWaluty" use="optional">
+      <xs:annotation>
+        <xs:documentation>Typ domyślnej walutowości dekretów.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WalutaJednorodna" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Symbol waluty. Podawany tylko w przypadku, gdy Waluta = Jednorodna.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TTypWaluty">
+    <xs:annotation>
+      <xs:documentation>Typ domyślnej walutowości dekretu.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Systemowa">
+        <xs:annotation>
+          <xs:documentation>Systemowa.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Jednorodna">
+        <xs:annotation>
+          <xs:documentation>Jednorodna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TDziennikiKsiegowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja dzienników ksiegowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="DziennikKsiegowy" type="TDziennikKsiegowy">
+        <xs:annotation>
+          <xs:documentation>Dziennik księgowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TDziennikKsiegowy">
+    <xs:annotation>
+      <xs:documentation>Dziennik księgowy.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator na użytek referencjonowania w pliku XML.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Symbol" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Symbol.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NumerPoczatkowy" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Numer początkowy.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Opis" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Opis.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TWariantRZS">
+    <xs:annotation>
+      <xs:documentation>Wariant RZS.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="RZSKalkulacyjny">
+        <xs:annotation>
+          <xs:documentation>Kalkulacyjny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RZSporownawczy">
+        <xs:annotation>
+          <xs:documentation>Porównawczy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RZSUproszczony">
+        <xs:annotation>
+          <xs:documentation>Uproszczony (dla jednostek mikro).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RZSMaleJednostkiKalkulacyjny">
+        <xs:annotation>
+          <xs:documentation>Kalkulacyjny (dla jednostek małych).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RZSMaleJednostkiPorownawczy">
+        <xs:annotation>
+          <xs:documentation>Porównawczy (dla jednostek małych).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="TSprawozdanie">
+    <xs:annotation>
+      <xs:documentation>Typ sprawozdań finansowych.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Standardowe">
+        <xs:annotation>
+          <xs:documentation>Standardowe.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Uproszczone">
+        <xs:annotation>
+          <xs:documentation>Uproszczone.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DlaMalychJednostek">
+        <xs:annotation>
+          <xs:documentation>Dla małych jednostek.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DlaOrganizacjiPozarzadowych">
+        <xs:annotation>
+          <xs:documentation>Dla organizacji pozarządowych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:simpleType name="TPlatnoscCIT">
+    <xs:annotation>
+      <xs:documentation>Typ płatności CIT.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="CITMiesieczny">
+        <xs:annotation>
+          <xs:documentation>Miesięczny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CITKwartalny">
+        <xs:annotation>
+          <xs:documentation>Kwartalny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+    
+  <xs:simpleType name="TZnacznikiKont">
+    <xs:annotation>
+      <xs:documentation>Rodzaj znaczników identyfikujących konta księgowe dla firm o wybranym rodzaju.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Bank">
+        <xs:annotation>
+          <xs:documentation>Bank.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="UbezpieczycielIZakładReasekuracji">
+        <xs:annotation>
+          <xs:documentation>Ubezpieczalnia lub zakład reasekuracji.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    <xs:enumeration value="OrganizacjaPozytkuPublicznegoIWolontariatu">
+        <xs:annotation>
+          <xs:documentation>Organizacja pożytku publicznego lub wolontariat.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    <xs:enumeration value="FunduszInwestycyjny">
+        <xs:annotation>
+          <xs:documentation>Fundusz inwestycyjny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+        <xs:enumeration value="DomMaklerski">
+        <xs:annotation>
+          <xs:documentation>Dom maklerski.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+        <xs:enumeration value="SKOK">
+        <xs:annotation>
+          <xs:documentation>SKOK.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+        <xs:enumeration value="JednostkaPozostala">
+        <xs:annotation>
+          <xs:documentation>Pozostałe jednostki.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TMetodaRozliczenVAT">
+    <xs:annotation>
+      <xs:documentation>Metoda rozliczeń VAT.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="VAT_7">
+        <xs:annotation>
+          <xs:documentation>VAT-7.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="VAT_7K">
+        <xs:annotation>
+          <xs:documentation>VAT-7 K.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="VAT_7D">
+        <xs:annotation>
+          <xs:documentation>VAT-7 D.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Zwolniony">
+        <xs:annotation>
+          <xs:documentation>Zwolniony.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TMetodaRozliczenVATUE">
+    <xs:annotation>
+      <xs:documentation>Metoda rozliczeń VAT UE.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Miesieczna">
+        <xs:annotation>
+          <xs:documentation>Miesięczna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kwartalna">
+        <xs:annotation>
+          <xs:documentation>Kwartalna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TOkresyRozliczenVAT">
+    <xs:annotation>
+      <xs:documentation>Okresy rozliczeń VAT.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Okres" type="TOkresRozliczenVAT">
+        <xs:annotation>
+          <xs:documentation>Okres rozliczeń VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresRozliczenVAT">
+    <xs:annotation>
+      <xs:documentation>Okres rozliczeń VAT.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+    </xs:sequence>
+    <xs:attribute name="Metoda" type="TMetodaRozliczenVAT" use="required">
+      <xs:annotation>
+        <xs:documentation>Metoda rozliczeń.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Poczatek" type="xs:date" use="required">
+      <xs:annotation>
+        <xs:documentation>Początek kwartału (dla metody innej niż Zwolniony) lub roku (dla metody Zwolniony).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="UwzglednijVATpoZaplaceniuDokumentow" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Odliczenie/naliczenie VAT po zapłaceniu dokumentów (dotyczy VAT-7K).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresyRozliczenVATUE">
+    <xs:annotation>
+      <xs:documentation>Okrsy rozliczeń VAT UE.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Okres" type="TOkresRozliczenVATUE">
+        <xs:annotation>
+          <xs:documentation>Okres rozliczeń VAT UE.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresRozliczenVATUE">
+    <xs:annotation>
+      <xs:documentation>Okres rozliczeń VAT UE.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+    </xs:sequence>
+    <xs:attribute name="Metoda" type="TMetodaRozliczenVATUE" use="required">
+      <xs:annotation>
+        <xs:documentation>Metoda rozliczeń.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Poczatek" type="xs:date" use="required">
+      <xs:annotation>
+        <xs:documentation>Początek kwartału.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TSortowanieEwidencji">
+    <xs:annotation>
+      <xs:documentation>Typ sortowania zapisów w ewidencji.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="WgNumeruDokumentu">
+        <xs:annotation>
+          <xs:documentation>Sortowanie według numeru dokumentu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WgNumeruKsiegowego">
+        <xs:annotation>
+          <xs:documentation>Sortowanie według numeru księgowego.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WgKolejnosciWpisywania">
+        <xs:annotation>
+          <xs:documentation>Sortowanie według kolejności wpisywania.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TKontrolaUnikalnosciNumeru">
+    <xs:annotation>
+      <xs:documentation>Sposób kontroli unikalności numeru.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Brak">
+        <xs:annotation>
+          <xs:documentation>Brak kontroli.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Ostrzezenie">
+        <xs:annotation>
+          <xs:documentation>Ostrzeżenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Blad">
+        <xs:annotation>
+          <xs:documentation>Błąd zapisu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>  
+
+  <xs:complexType name="TParametryEwidencjiVAT">
+    <xs:annotation>
+      <xs:documentation>Parametry ewidencji VAT.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:choice>
+        <xs:element name="UnikalnoscNumeruDokumentu" type="xs:boolean">
+          <xs:annotation>
+            <xs:documentation>Przestrzeganie unikalności numerów dokumentów. Obsługiwane do wersji 1.84GT / 56 nexo</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="KontrolaUnikalnosciNumeruDokumentu" type="TKontrolaUnikalnosciNumeru">
+          <xs:annotation>
+            <xs:documentation>Typ kontroli unikalności numerów dokumentów. Obsługiwane od wersji 1.85GT / 57 nexo</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:choice>
+      <xs:element name="SortowanieEwidencjiVATSprzedazy" type="TSortowanieEwidencji">
+        <xs:annotation>
+          <xs:documentation>Typ sortowania ewidencji VAT sprzedaży.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SortowanieEwidencjiVATZakupu" type="TSortowanieEwidencji">
+        <xs:annotation>
+          <xs:documentation>Typ sortowania ewidencji VAT zakupu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TProporcjaBazowa">
+    <xs:annotation>
+      <xs:documentation>Definicja proporcji bazowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence minOccurs="0">
+      <xs:element name="ObrotyOpodatkowane" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartość obrotów opodatkowanych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ObrotyZwolnione" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartość obrotów zwolnionych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Subwencje" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartość subwencji (dotacji) nieopodatkowanych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ProporcjaBazowa" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Wartość proporcji bazowej [%].</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ProporcjaBazowaDoDeklaracji" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Wartość proporcji bazowej do deklaracji [%].</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PreproporcjaWartosc" type="xs:decimal" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Wartość preproporcji VAT [%].</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Rok" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Rok proporcji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TProporcjeBazowe">
+    <xs:annotation>
+      <xs:documentation>Definicja proporcji bazowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence minOccurs="0">
+      <xs:element name="ProporcjaBazowa" type="TProporcjaBazowa" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Proporcja bazowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TOkresObrachunkowy">
+    <xs:annotation>
+      <xs:documentation>Okres obrachunkowy.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="OkresyRozliczenVAT" type="TOkresyRozliczenVAT" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Okresy rozliczeń VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OkresyRozliczenVATUE" type="TOkresyRozliczenVATUE" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Okresy rozliczeń VAT UE.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ParametryEwidencjiVAT" type="TParametryEwidencjiVAT" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Parametry ewidencji VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ProporcjeBazowe" type="TProporcjeBazowe" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Definicje proporcji bazowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="DataPoczatkowa" type="xs:date" use="required">
+      <xs:annotation>
+        <xs:documentation>Data początku okresu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DataKoncowa" type="xs:date" use="required">
+      <xs:annotation>
+        <xs:documentation>Data końca okresu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TOkresObrachunkowyMalejKsiegowosci">
+    <xs:annotation>
+      <xs:documentation>Okres obrachunkowy KPiR lub EP.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="TOkresObrachunkowy">
+        <xs:sequence>
+        </xs:sequence>
+        <xs:attribute name="SposobPodsumowania" type="TSposobPodsumowania" use="required">
+          <xs:annotation>
+            <xs:documentation>Sposób podsumowania.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="SposobNumeracji" type="TSposobNumeracji" use="required">
+          <xs:annotation>
+            <xs:documentation>Sposób numeracji.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="NumerPoczatkowy" type="xs:int" use="required">
+          <xs:annotation>
+            <xs:documentation>Numer początkowy.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="TypSufiksuNumeracji" type="TTypSufiksuNumeracji" use="required">
+          <xs:annotation>
+            <xs:documentation>Typ sufiksu numeracji.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresObrachunkowyKPiR">
+    <xs:annotation>
+      <xs:documentation>Okres obrachunkowy KPiR.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="TOkresObrachunkowyMalejKsiegowosci">
+        <xs:sequence>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresObrachunkowyEP">
+    <xs:annotation>
+      <xs:documentation>Okres obrachunkowy EP.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="TOkresObrachunkowyMalejKsiegowosci">
+        <xs:sequence>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresObrachunkowyKR">
+    <xs:annotation>
+      <xs:documentation>Okres obrachunkowy KR.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="TOkresObrachunkowy">
+        <xs:sequence>
+          <xs:element name="KartotekiKsiegowe" type="TKartotekiKsiegowe" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>Kartoteki księgowe.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="Konta" type="TDefinicjeKontKsiegowych" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>Definicje kont księgowych.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="RejestryKsiegowe" type="TRejestryKsiegowe" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>Rejestry księgowe.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="DziennikiKsiegowe" type="TDziennikiKsiegowe" minOccurs="0">
+            <xs:annotation>
+              <xs:documentation>Dzienniki księgowe.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+        <xs:attribute name="Nazwa" type="xs:string" use="optional">
+          <xs:annotation>
+            <xs:documentation>Nazwa.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="WariantRZS" type="TWariantRZS" use="required">
+          <xs:annotation>
+            <xs:documentation>Wariant RZS.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Sprawozdanie" type="TSprawozdanie" use="required">
+          <xs:annotation>
+            <xs:documentation>Sprawozdanie.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="PlatnoscCIT" type="TPlatnoscCIT" use="required">
+          <xs:annotation>
+            <xs:documentation>Typ płatności CIT.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="ZnacznikiKont" type="TZnacznikiKont" use="optional">
+          <xs:annotation>
+            <xs:documentation>Rodzaj znaczników identyfikujących konta księgowe.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="TOkresObrachunkowyUEPiK">
+    <xs:annotation>
+      <xs:documentation>Okres obrachunkowy UEPiK.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="TOkresObrachunkowy">
+        <xs:attribute name="OkresSprawozdawczy" type="TOkresSprawozdawczyUEPiK" use="required">
+          <xs:annotation>
+            <xs:documentation>Okres sprawozdawczy.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+
+  <xs:complexType name="TOpisOperacjiGospodarczej">
+    <xs:annotation>
+      <xs:documentation>Dane opisujące operację gospodarczą.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Opis" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Opis operacji gospodarczej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Uwagi" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Uwagi do opisu operacji gospodarczej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TOpisyOperacjiGospodarczych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja opisów operacji gospodarczych</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="OpisOperacji" type="TOpisOperacjiGospodarczej" maxOccurs="unbounded" />
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TOkresyObrachunkowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja okresów obrachunkowych z opcjonalnymi dodatkowymi danymi księgowymi.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Okres" type="TOkresObrachunkowy">
+        <xs:annotation>
+          <xs:documentation>Okres obrachunkowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OpisyOperacjiGospodarczych" type="TOpisyOperacjiGospodarczych" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Zbiór opisów operacji gospodarczych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="OkresyObrachunkowe" type="TOkresyObrachunkowe">
+    <xs:annotation>
+      <xs:documentation>Okresy obrachunkowe.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  
+</xs:schema>
