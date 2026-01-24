@@ -24,6 +24,7 @@ public static class EF6Initializer
             if (_initialized) return;
 
             // Register System.Data.SqlClient with its own factory (required by SDK's EF6)
+            // Using ONLY System.Data.SqlClient to avoid BIT->Byte[] mapping issue in Microsoft.Data.SqlClient
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
@@ -35,12 +36,13 @@ public static class EF6Initializer
                 // Provider already registered, ignore
             }
 
-            // Also register Microsoft.Data.SqlClient
+            // Also register under Microsoft.Data.SqlClient name pointing to System.Data.SqlClient
+            // This ensures any code looking for Microsoft.Data.SqlClient uses System.Data.SqlClient instead
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
                     "Microsoft.Data.SqlClient",
-                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
+                    System.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)
             {
