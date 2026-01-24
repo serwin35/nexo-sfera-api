@@ -33,6 +33,10 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+    <!-- EF6 required for Nexo SDK - provides System.Data.Entity namespace -->
+    <PackageReference Include="EntityFramework" Version="6.5.1" />
+    <!-- System.Data.SqlClient required by EF6 (not Microsoft.Data.SqlClient) -->
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 
   <ItemGroup>
