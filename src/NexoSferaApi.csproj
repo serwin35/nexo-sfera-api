@@ -38,10 +38,11 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
-    <!-- Must match Artoit SDK versions exactly -->
-    <!-- Use ONLY Microsoft.Data.SqlClient - having both causes type mapping conflicts -->
-    <!-- Using 5.1.5 for better EF6 compatibility (6.x has BIT->Byte[] mapping issues) -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.1.5" />
+    <!-- SDK internally uses Microsoft.Data.SqlClient for some operations -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <!-- EF6 in Nexo SDK was designed for System.Data.SqlClient -->
+    <!-- Using System.Data.SqlClient for proper BIT->Boolean type mapping in EF6 -->
+    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 
   <ItemGroup>
