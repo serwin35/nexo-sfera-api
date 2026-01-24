@@ -18,6 +18,8 @@
     <RuntimeHostConfigurationOption Include="System.Reflection.Metadata.MetadataUpdater.IsSupported" Value="false" />
     <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization" Value="true" />
     <RuntimeHostConfigurationOption Include="CSWINRT_USE_WINDOWS_UI_XAML_PROJECTIONS" Value="false" />
+    <!-- Required for Nexo SDK globalization compatibility -->
+    <RuntimeHostConfigurationOption Include="System.Globalization.UseNls" Value="true" />
   </ItemGroup>
 
   <!-- Configurable SDK Path - can be overridden via command line or environment -->
@@ -36,7 +38,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
+    <!-- Must match SDK version (6.x) for EF6 compatibility -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.1" />
     <!-- System.Data.SqlClient for DbProviderFactory registration (SDK bundles its own EF6) -->
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>

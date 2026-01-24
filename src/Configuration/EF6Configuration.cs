@@ -23,14 +23,24 @@ public static class EF6Initializer
         {
             if (_initialized) return;
 
+            // Register both SQL Server DbProviderFactories
+            // SDK may use either System.Data.SqlClient or Microsoft.Data.SqlClient
             try
             {
-                // Register the SQL Server DbProviderFactory
-                // This is required in .NET Core/.NET 8 where providers aren't auto-registered
-                // The Nexo SDK's EF6 implementation needs this factory to be available
                 System.Data.Common.DbProviderFactories.RegisterFactory(
                     "System.Data.SqlClient",
                     System.Data.SqlClient.SqlClientFactory.Instance);
+            }
+            catch (System.ArgumentException)
+            {
+                // Provider already registered, ignore
+            }
+
+            try
+            {
+                System.Data.Common.DbProviderFactories.RegisterFactory(
+                    "Microsoft.Data.SqlClient",
+                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)
             {
