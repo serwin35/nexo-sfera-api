@@ -312,12 +312,12 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
                 var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
                 if (rozchody == null)
                 {
-                    return (false, null as WarehouseDocumentDto, "Failed to get RozchodyWewnetrzne manager", new List<string>());
+                    return (false, null, "Failed to get RozchodyWewnetrzne manager", new List<string>());
                 }
 
                 // SDK examples use Utworz() without configuration parameter
@@ -366,22 +366,22 @@ public class WarehouseDocumentsController : ControllerBase
                     else
                     {
                         var errors = GetBusinessObjectErrors(rw);
-                        return (false, null as WarehouseDocumentDto, "Failed to create RW", errors);
+                        return (false, null, "Failed to create RW", errors);
                     }
                 }
             });
 
-            if (result.Item1)
+            if (result.Success)
             {
-                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Item2!, result.Item3));
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
             }
-            else if (result.Item4.Any())
+            else if (result.Errors.Any())
             {
-                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Item3, result.Item4));
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
             }
             else
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Item3));
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -400,12 +400,12 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
                 var przychody = _sferaService.GetManager("PrzychodyWewnetrzne");
                 if (przychody == null)
                 {
-                    return (false, null as WarehouseDocumentDto, "Failed to get PrzychodyWewnetrzne manager", new List<string>());
+                    return (false, null, "Failed to get PrzychodyWewnetrzne manager", new List<string>());
                 }
 
                 // SDK examples use Utworz() without configuration parameter
@@ -454,22 +454,22 @@ public class WarehouseDocumentsController : ControllerBase
                     else
                     {
                         var errors = GetBusinessObjectErrors(pw);
-                        return (false, null as WarehouseDocumentDto, "Failed to create PW", errors);
+                        return (false, null, "Failed to create PW", errors);
                     }
                 }
             });
 
-            if (result.Item1)
+            if (result.Success)
             {
-                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Item2!, result.Item3));
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
             }
-            else if (result.Item4.Any())
+            else if (result.Errors.Any())
             {
-                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Item3, result.Item4));
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
             }
             else
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Item3));
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
