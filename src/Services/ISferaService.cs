@@ -30,4 +30,10 @@ public interface ISferaService
     /// Executes an async SDK operation with thread synchronization.
     /// </summary>
     Task<T> ExecuteWithLockAsync<T>(Func<Task<T>> operation);
+
+    /// <summary>
+    /// Gets the database connection string used by Sfera.
+    /// Returns null if not connected.
+    /// </summary>
+    string? GetConnectionString();
 }

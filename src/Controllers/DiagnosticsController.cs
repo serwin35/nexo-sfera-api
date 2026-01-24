@@ -3,7 +3,10 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 using NexoSferaApi.Helpers;
+using NexoSferaApi.Configuration;
 using System.Reflection;
+using System.Data;
+using Microsoft.Data.SqlClient;
 
 namespace NexoSferaApi.Controllers;
 
@@ -24,6 +27,124 @@ public class DiagnosticsController : ControllerBase
     {
         _sferaService = sferaService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Get EF6 configuration diagnostics - check if the SDK's Entity Framework is properly configured
+    /// </summary>
+    [HttpGet("ef6-config")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<Dictionary<string, object?>>> GetEf6ConfigDiagnostics()
+    {
+        try
+        {
+            var diagnostics = EF6Initializer.GetDiagnostics();
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(diagnostics));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting EF6 config diagnostics");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error getting EF6 diagnostics",
+                new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Test BIT type mapping by querying the database directly with ADO.NET
+    /// This helps diagnose if the issue is at the ADO.NET level or EF6 level
+    /// </summary>
+    [HttpGet("test-bit-mapping")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestBitTypeMapping()
+    {
+        try
+        {
+            var connectionString = _sferaService.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return BadRequest(ApiResponse<Dictionary<string, object?>>.Error("Connection string not available"));
+            }
+
+            var results = new Dictionary<string, object?>();
+
+            // Test with Microsoft.Data.SqlClient
+            await using (var connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                results["ConnectionState"] = connection.State.ToString();
+                results["ServerVersion"] = connection.ServerVersion;
+
+                // Query a table with BIT columns - ParametrPodmiotu.CzyPobieracAutomatycznieRachunkiBankowe
+                const string query = @"
+                    SELECT TOP 1
+                        pp.Id,
+                        pp.CzyPobieracAutomatycznieRachunkiBankowe,
+                        pp.CzyWysylacNotatnik
+                    FROM dbo.ParametrPodmiotu pp";
+
+                await using var cmd = new SqlCommand(query, connection);
+                await using var reader = await cmd.ExecuteReaderAsync();
+
+                var columnInfo = new List<Dictionary<string, object?>>();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    columnInfo.Add(new Dictionary<string, object?>
+                    {
+                        ["Name"] = reader.GetName(i),
+                        ["FieldType"] = reader.GetFieldType(i)?.FullName,
+                        ["DataTypeName"] = reader.GetDataTypeName(i)
+                    });
+                }
+                results["ColumnInfo"] = columnInfo;
+
+                if (await reader.ReadAsync())
+                {
+                    var rowData = new Dictionary<string, object?>();
+                    for (int i = 0; i < reader.FieldCount; i++)
+                    {
+                        var value = reader.GetValue(i);
+                        rowData[reader.GetName(i)] = new Dictionary<string, object?>
+                        {
+                            ["Value"] = value?.ToString(),
+                            ["ClrType"] = value?.GetType().FullName,
+                            ["IsDBNull"] = reader.IsDBNull(i)
+                        };
+
+                        // Try GetBoolean for BIT columns
+                        if (reader.GetDataTypeName(i).ToLower() == "bit" && !reader.IsDBNull(i))
+                        {
+                            try
+                            {
+                                var boolValue = reader.GetBoolean(i);
+                                ((Dictionary<string, object?>)rowData[reader.GetName(i)]!)["GetBooleanResult"] = boolValue;
+                            }
+                            catch (Exception ex)
+                            {
+                                ((Dictionary<string, object?>)rowData[reader.GetName(i)]!)["GetBooleanError"] = ex.Message;
+                            }
+                        }
+                    }
+                    results["SampleRow"] = rowData;
+                }
+                else
+                {
+                    results["SampleRow"] = "No data in ParametrPodmiotu table";
+                }
+            }
+
+            results["Conclusion"] = "If FieldType shows System.Boolean and GetBooleanResult works, " +
+                                   "the issue is in EF6 type mapping, not ADO.NET.";
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error testing BIT type mapping");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error testing BIT type mapping",
+                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+        }
     }
 
     /// <summary>

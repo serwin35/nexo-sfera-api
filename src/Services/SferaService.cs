@@ -484,6 +484,43 @@ public class SferaService : ISferaService, IDisposable
         return await ExecuteOnSdkThreadAsync(() => operation().GetAwaiter().GetResult());
     }
 
+    /// <summary>
+    /// Gets the database connection string built from SferaSettings.
+    /// Used for diagnostic ADO.NET queries.
+    /// </summary>
+    public string? GetConnectionString()
+    {
+        if (!IsConnected) return null;
+
+        try
+        {
+            var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+            {
+                DataSource = _settings.Server,
+                InitialCatalog = _settings.Database
+            };
+
+            if (_settings.UseWindowsAuth)
+            {
+                builder.IntegratedSecurity = true;
+            }
+            else
+            {
+                builder.UserID = _settings.SqlLogin;
+                builder.Password = _settings.SqlPassword;
+                builder.IntegratedSecurity = false;
+            }
+
+            builder.TrustServerCertificate = true;
+            return builder.ConnectionString;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error building connection string");
+            return null;
+        }
+    }
+
     public void Dispose()
     {
         // Signal the SDK thread to stop
