@@ -28,3 +28,5 @@ nexoSDK_58.0.2.8985/
 # NuGet
 packages/
 *.nupkg
+src/lib/nexo-sdk/libcef.dll
+src/lib/nexo-sdk/Deklaracje/Wydruki.zip
