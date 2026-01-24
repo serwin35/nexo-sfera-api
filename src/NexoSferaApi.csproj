@@ -20,6 +20,10 @@
     <RuntimeHostConfigurationOption Include="CSWINRT_USE_WINDOWS_UI_XAML_PROJECTIONS" Value="false" />
     <!-- Required for Nexo SDK globalization compatibility -->
     <RuntimeHostConfigurationOption Include="System.Globalization.UseNls" Value="true" />
+    <!-- Potential fixes for EF6 expression compilation compatibility -->
+    <RuntimeHostConfigurationOption Include="System.Linq.Expressions.DynamicExpressionVisitor.IsSupported" Value="true" />
+    <RuntimeHostConfigurationOption Include="System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported" Value="true" />
+    <RuntimeHostConfigurationOption Include="System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeCompiled" Value="true" />
   </ItemGroup>
 
   <!-- Configurable SDK Path - can be overridden via command line or environment -->
