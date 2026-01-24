@@ -20,19 +20,35 @@ using InsERT.Moria.HandelElektroniczny;
 using InsERT.Moria.Naklejki;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
+using System.Collections.Concurrent;
 
 namespace NexoSferaApi.Services;
 
+/// <summary>
+/// Sfera service that runs ALL SDK operations on a dedicated STA thread.
+///
+/// The InsERT Nexo SDK was designed for Windows desktop applications (Windows Forms, WPF)
+/// which run on a Single-Threaded Apartment (STA) thread. Entity Framework 6 contexts
+/// inside the SDK are NOT thread-safe and must be accessed from the same thread.
+///
+/// This service creates a persistent STA thread that handles:
+/// 1. SDK initialization (connection, login, context setup)
+/// 2. All subsequent SDK operations
+///
+/// This mimics how desktop apps like Artoit work - everything on one UI thread.
+/// </summary>
 public class SferaService : ISferaService, IDisposable
 {
     private readonly SferaSettings _settings;
     private readonly ILogger<SferaService> _logger;
     private Uchwyt? _sfera;
-    private readonly object _lock = new();
 
-    // Semaphore for thread-safe SDK operations - EF6 is NOT thread-safe
-    // Desktop apps (like Artoit) are single-threaded, but ASP.NET Core is multi-threaded
-    private readonly SemaphoreSlim _sdkOperationLock = new(1, 1);
+    // Dedicated STA thread for ALL SDK operations - mimics desktop app behavior
+    private Thread? _sdkThread;
+    private BlockingCollection<Action>? _workQueue;
+    private readonly CancellationTokenSource _cts = new();
+    private bool _threadStarted;
+    private readonly object _threadLock = new();
 
     public bool IsConnected => _sfera != null;
 
@@ -40,61 +56,158 @@ public class SferaService : ISferaService, IDisposable
     {
         _settings = settings.Value;
         _logger = logger;
+        StartSdkThread();
+    }
+
+    /// <summary>
+    /// Starts the dedicated STA thread for SDK operations.
+    /// This thread processes all SDK work items sequentially, just like a desktop app UI thread.
+    /// </summary>
+    private void StartSdkThread()
+    {
+        lock (_threadLock)
+        {
+            if (_threadStarted) return;
+
+            _workQueue = new BlockingCollection<Action>();
+
+            _sdkThread = new Thread(() =>
+            {
+                _logger.LogInformation("SDK STA thread started (ThreadId: {ThreadId})", Environment.CurrentManagedThreadId);
+
+                try
+                {
+                    foreach (var workItem in _workQueue.GetConsumingEnumerable(_cts.Token))
+                    {
+                        try
+                        {
+                            workItem();
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error executing SDK work item");
+                        }
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("SDK STA thread shutting down");
+                }
+
+                _logger.LogInformation("SDK STA thread exited");
+            });
+
+            _sdkThread.SetApartmentState(ApartmentState.STA);
+            _sdkThread.IsBackground = true;
+            _sdkThread.Name = "Nexo SDK STA Thread";
+            _sdkThread.Start();
+            _threadStarted = true;
+        }
     }
 
     public async Task InitializeAsync()
     {
-        await Task.Run(() =>
+        // Run initialization on the dedicated STA thread
+        await ExecuteOnSdkThreadAsync(() =>
         {
-            lock (_lock)
+            if (_sfera != null) return;
+
+            try
             {
-                if (_sfera != null) return;
+                _logger.LogInformation("Connecting to Sfera on STA thread (ThreadId: {ThreadId}): Server={Server}, Database={Database}",
+                    Environment.CurrentManagedThreadId, _settings.Server, _settings.Database);
 
-                try
+                var menedzerPolaczen = new MenedzerPolaczen();
+
+                DanePolaczenia danePolaczenia;
+                if (_settings.UseWindowsAuth)
                 {
-                    _logger.LogInformation("Connecting to Sfera: Server={Server}, Database={Database}",
-                        _settings.Server, _settings.Database);
-
-                    var menedzerPolaczen = new MenedzerPolaczen();
-
-                    DanePolaczenia danePolaczenia;
-                    if (_settings.UseWindowsAuth)
-                    {
-                        danePolaczenia = DanePolaczenia.Jawne(
-                            serwer: _settings.Server,
-                            baza: _settings.Database,
-                            autentykacjaWindowsDoSerwera: true);
-                    }
-                    else
-                    {
-                        danePolaczenia = DanePolaczenia.Jawne(
-                            serwer: _settings.Server,
-                            baza: _settings.Database,
-                            uzytkownikSerwera: _settings.SqlLogin,
-                            hasloUzytkownikaSerwera: _settings.SqlPassword);
-                    }
-
-                    var productId = GetProductId(_settings.Product);
-                    _sfera = menedzerPolaczen.Polacz(danePolaczenia, productId);
-
-                    if (!_sfera.ZalogujOperatora(_settings.NexoLogin, _settings.NexoPassword))
-                    {
-                        throw new InvalidOperationException($"Failed to login operator: {_settings.NexoLogin}");
-                    }
-
-                    // Set working context - CRITICAL for document creation
-                    // SDK examples show this is required before any document operations
-                    SetWorkingContext();
-
-                    _logger.LogInformation("Successfully connected to Sfera");
+                    danePolaczenia = DanePolaczenia.Jawne(
+                        serwer: _settings.Server,
+                        baza: _settings.Database,
+                        autentykacjaWindowsDoSerwera: true);
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogError(ex, "Failed to connect to Sfera");
-                    throw;
+                    danePolaczenia = DanePolaczenia.Jawne(
+                        serwer: _settings.Server,
+                        baza: _settings.Database,
+                        uzytkownikSerwera: _settings.SqlLogin,
+                        hasloUzytkownikaSerwera: _settings.SqlPassword);
                 }
+
+                var productId = GetProductId(_settings.Product);
+                _sfera = menedzerPolaczen.Polacz(danePolaczenia, productId);
+
+                if (!_sfera.ZalogujOperatora(_settings.NexoLogin, _settings.NexoPassword))
+                {
+                    throw new InvalidOperationException($"Failed to login operator: {_settings.NexoLogin}");
+                }
+
+                // Set working context - CRITICAL for document creation
+                // SDK examples show this is required before any document operations
+                SetWorkingContext();
+
+                _logger.LogInformation("Successfully connected to Sfera on STA thread");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to connect to Sfera");
+                throw;
             }
         });
+    }
+
+    /// <summary>
+    /// Executes an action on the dedicated SDK STA thread and waits for completion.
+    /// </summary>
+    private Task ExecuteOnSdkThreadAsync(Action action)
+    {
+        if (_workQueue == null)
+            throw new InvalidOperationException("SDK thread not started");
+
+        var tcs = new TaskCompletionSource();
+
+        _workQueue.Add(() =>
+        {
+            try
+            {
+                action();
+                tcs.SetResult();
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        return tcs.Task;
+    }
+
+    /// <summary>
+    /// Executes a function on the dedicated SDK STA thread and returns the result.
+    /// </summary>
+    private Task<T> ExecuteOnSdkThreadAsync<T>(Func<T> func)
+    {
+        if (_workQueue == null)
+            throw new InvalidOperationException("SDK thread not started");
+
+        var tcs = new TaskCompletionSource<T>();
+
+        _workQueue.Add(() =>
+        {
+            try
+            {
+                var result = func();
+                tcs.SetResult(result);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+
+        return tcs.Task;
     }
 
     public Uchwyt GetSfera()
@@ -331,68 +444,55 @@ public class SferaService : ISferaService, IDisposable
     }
 
     /// <summary>
-    /// Executes an SDK operation on an STA thread with synchronization.
-    /// EF6 and WPF-based SDK components require STA threading model.
-    /// Desktop apps (like Artoit) run on STA threads - this emulates that.
+    /// Executes an SDK operation on the dedicated STA thread.
+    /// All operations run sequentially on the same thread - just like a desktop app.
+    /// No additional synchronization needed because the work queue serializes all operations.
     /// </summary>
-    public async Task<T> ExecuteWithLockAsync<T>(Func<T> operation)
+    public Task<T> ExecuteWithLockAsync<T>(Func<T> operation)
     {
-        await _sdkOperationLock.WaitAsync();
-        try
-        {
-            // Run on a dedicated STA thread - SDK may require Windows Forms/WPF threading model
-            return await RunOnStaThread(operation);
-        }
-        finally
-        {
-            _sdkOperationLock.Release();
-        }
+        return ExecuteOnSdkThreadAsync(operation);
     }
 
     /// <summary>
-    /// Executes an async SDK operation with thread synchronization.
+    /// Executes an async SDK operation on the dedicated STA thread.
+    /// Note: The async operation itself runs on the SDK thread, blocking it until complete.
+    /// For truly async operations, consider wrapping the result.
     /// </summary>
     public async Task<T> ExecuteWithLockAsync<T>(Func<Task<T>> operation)
     {
-        await _sdkOperationLock.WaitAsync();
-        try
-        {
-            return await operation();
-        }
-        finally
-        {
-            _sdkOperationLock.Release();
-        }
-    }
-
-    /// <summary>
-    /// Runs an operation on a dedicated STA (Single Threaded Apartment) thread.
-    /// Required for COM/WPF/WinForms components in the Nexo SDK.
-    /// </summary>
-    private static Task<T> RunOnStaThread<T>(Func<T> operation)
-    {
-        var tcs = new TaskCompletionSource<T>();
-        var thread = new Thread(() =>
-        {
-            try
-            {
-                var result = operation();
-                tcs.SetResult(result);
-            }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
-        });
-        thread.SetApartmentState(ApartmentState.STA);
-        thread.Start();
-        return tcs.Task;
+        // We need to run the async operation on the SDK thread, but we can't await inside
+        // the work queue action. So we run it synchronously with .Result
+        // This is acceptable because we're on a dedicated thread.
+        return await ExecuteOnSdkThreadAsync(() => operation().GetAwaiter().GetResult());
     }
 
     public void Dispose()
     {
-        _sdkOperationLock.Dispose();
-        _sfera?.Dispose();
+        // Signal the SDK thread to stop
+        _cts.Cancel();
+        _workQueue?.CompleteAdding();
+
+        // Wait for the thread to finish (with timeout)
+        if (_sdkThread?.IsAlive == true)
+        {
+            if (!_sdkThread.Join(TimeSpan.FromSeconds(5)))
+            {
+                _logger.LogWarning("SDK thread did not exit gracefully within timeout");
+            }
+        }
+
+        // Dispose Sfera on the SDK thread if possible, otherwise just dispose
+        try
+        {
+            _sfera?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error disposing Sfera");
+        }
+
         _sfera = null;
+        _workQueue?.Dispose();
+        _cts.Dispose();
     }
 }
