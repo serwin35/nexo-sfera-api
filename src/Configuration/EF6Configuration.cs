@@ -23,23 +23,25 @@ public static class EF6Initializer
         {
             if (_initialized) return;
 
-            // Register both SQL Server DbProviderFactories
-            // SDK may use either System.Data.SqlClient or Microsoft.Data.SqlClient
+            // Register ONLY Microsoft.Data.SqlClient - having both causes type mapping conflicts
+            // where BIT columns are returned as Byte[] instead of Boolean
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
-                    "System.Data.SqlClient",
-                    System.Data.SqlClient.SqlClientFactory.Instance);
+                    "Microsoft.Data.SqlClient",
+                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)
             {
                 // Provider already registered, ignore
             }
 
+            // Also register under System.Data.SqlClient name for SDK compatibility
+            // but use Microsoft.Data.SqlClient implementation
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
-                    "Microsoft.Data.SqlClient",
+                    "System.Data.SqlClient",
                     Microsoft.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)

@@ -39,10 +39,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
     <!-- Must match Artoit SDK versions exactly -->
+    <!-- Use ONLY Microsoft.Data.SqlClient - having both causes type mapping conflicts -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.3" />
-    <PackageReference Include="Microsoft.Data.SqlClient.SNI" Version="6.0.2" />
-    <!-- System.Data.SqlClient for DbProviderFactory registration -->
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 
   <ItemGroup>
