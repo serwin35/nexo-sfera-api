@@ -38,8 +38,8 @@
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.1" />
-    <!-- Match EasyNexoIntegrator configuration - Microsoft.Data.SqlClient 6.1.1 only -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.1" />
+    <!-- Match Artoit SDK applications - Microsoft.Data.SqlClient 5.2.2 -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
   </ItemGroup>
 
   <ItemGroup>
