@@ -1,0 +1,135 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/szablonywiadomosci"
+           xmlns="http://schemas.insert.com.pl/2015/hop/szablonywiadomosci"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:annotation>
+    <xs:documentation>Szablony wiadomości.</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TSzablonWiadomosciPocztowych">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa szablonu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Autor" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Temat" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Temat, który zostanie nadany wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Tresc" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Treść wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Format" type="TFormatSzablonu">
+        <xs:annotation>
+          <xs:documentation>Format wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Prywatny" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy szablon jest prywantny (widoczny tylko dla autora).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WiadomoscPrywatna" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy wiadomość wysłana na podstawie szablonu jest prywatna.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="AdresZwrotny" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Adres zwrotny,</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DW" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Lista maila, na które ma zostać wysłana kopia.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="Email" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Adres email.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="UDW" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Lista maila, na które ma zostać wysłana ukryta kopia.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="Email" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Adres email.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Folder" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Folder, do którego trafi wiadomość po wysałniu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Priorytet" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Priorytet, który zostanie nadany wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ZadajPotwierdzenia" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy żądać potwierdzenia przeczytania wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KasujZalaczniki" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy załączniki będą usuwane po wysłaniu wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Fragment" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy szablon będzie doklejony do treści wiadomości, czy ją zastąpi.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="SzablonyWiadomosciPocztowych">
+    <xs:annotation>
+      <xs:documentation>Szablony wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Szablon" type="TSzablonWiadomosciPocztowych" minOccurs="0" maxOccurs="unbounded">
+          <xs:annotation>
+            <xs:documentation>Szablon wiadomosci.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:simpleType name="TFormatSzablonu">
+    <xs:annotation>
+      <xs:documentation>Format.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="HTML" />
+      <xs:enumeration value="Tekst" />
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

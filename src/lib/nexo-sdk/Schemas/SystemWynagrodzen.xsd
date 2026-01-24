@@ -1,0 +1,883 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/gratyfikant/systemWynagrodzen"
+           xmlns="http://schemas.insert.com.pl/2015/hop/gratyfikant/systemWynagrodzen"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Informacje o składnikach płacowych i definicjach list płac.</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TFlagaWlasna">
+    <xs:all>
+      <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Kolor flagi własnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Kształt flagi własnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:all>
+  </xs:complexType>
+  
+  <xs:complexType name="TWlasneRozszerzone">
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Pole własne rozszerzone. Zawartość tego elementu jest wartością pola.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:string">
+              <xs:attribute name="Nazwa" type="xs:string" use="required">
+                <xs:annotation>
+                  <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                </xs:annotation>
+              </xs:attribute>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TRodzajSkladnika">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Naliczenie">
+        <xs:annotation>
+          <xs:documentation>Naliczenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Potracenie">
+        <xs:annotation>
+          <xs:documentation>Potracenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTyp">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Zwykly">
+        <xs:annotation>
+          <xs:documentation>Zwykły składnik płacowy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PotracenieKomornicze">
+        <xs:annotation>
+          <xs:documentation>Potrącenie komornicze.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TPlatnik">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Pracodawca">
+        <xs:annotation>
+          <xs:documentation>Pracodawca.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ZUS">
+        <xs:annotation>
+          <xs:documentation>ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TStawka">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Miesieczna">
+        <xs:annotation>
+          <xs:documentation>Stawka miesięczna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Dzienna">
+        <xs:annotation>
+          <xs:documentation>Stawka dzienna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Godzinowa">
+        <xs:annotation>
+          <xs:documentation>Stawka godzinowa.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TZmiennosc">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Staly">
+        <xs:annotation>
+          <xs:documentation>Składnik stały.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Zmienny">
+        <xs:annotation>
+          <xs:documentation>Składnik zmienny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TMiesiaceObowiazywania">
+      <xs:attribute name="Styczen" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Styczeń.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Luty" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Luty.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Marzec" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Marzec.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Kwiecien" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Kwiecień.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Maj" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Maj.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Czerwiec" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Czerwiec.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Lipiec" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Lipiec.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Sierpien" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Sierpień.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Wrzesien" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Wrzesień.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Pazdziernik" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Październik.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Listopad" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Listopad.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+      <xs:attribute name="Grudzien" type="xs:boolean" default="true">
+        <xs:annotation>
+          <xs:documentation>Grudzień.</xs:documentation>
+        </xs:annotation>
+      </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TOpodatkowanie">
+    <xs:sequence>
+      <xs:element name="Wchodzi" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Czy składnik wchodzi do podstawy opodatkowania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kwota" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna kwota zwolniona z podatku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TSposobLiczenia">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="KwotaWyliczona">
+        <xs:annotation>
+          <xs:documentation>Składnik wchodzi w kwocie wyliczonej.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="KwotaPomniejszona">
+        <xs:annotation>
+          <xs:documentation>Składnik wchodzi w kwocie pomniejszonej o dni choroby.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TUbezpieczenieZdrowotne">
+    <xs:sequence>
+      <xs:element name="Wchodzi" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Czy składnik wchodzi do podstawy ubezpieczenia zdrowotnego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Sposob" type="TSposobLiczenia" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sposób wchodzenia do ubezpieczenia zdrowotnego</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NieOgraniczaj" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nie ograniczaj składki zdrowotnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TSposobWchodzenia">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Nie">
+        <xs:annotation>
+          <xs:documentation>Składnik nie wchodzi do podstawy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="KwotaNominalna">
+        <xs:annotation>
+          <xs:documentation>Składnik wchodzi do podstawy w kwocie nominalnej.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="3Miesiace">
+        <xs:annotation>
+          <xs:documentation>Składnik wchodzi do podstawy w kwocie średniej z 3 miesięcy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="12Miesiecy">
+        <xs:annotation>
+          <xs:documentation>Składnik wchodzi do podstawy w kwocie średniej z 12 miesięcy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TUbezpieczenieIFunduszeZUS">
+    <xs:simpleContent>
+      <xs:extension base="TSposobLiczenia">
+        <xs:attribute name="EmRe" type="xs:boolean" use="required">
+          <xs:annotation>
+            <xs:documentation>Czy składnik wchodzi do podstawy wymairu składek na ubezpieczenia emerytalne i rentowe.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Ch" type="xs:boolean" use="required">
+          <xs:annotation>
+            <xs:documentation>Czy składnik wchodzi do podstawy wymiaru składek na ubezpieczenie chorobowe.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="Wyp" type="xs:boolean" use="required">
+          <xs:annotation>
+            <xs:documentation>Czy składnik wchodzi do podstawy wymiaru składek na ubezpieczenie wypadkowej.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="FPiFGSP" type="xs:boolean" use="required">
+          <xs:annotation>
+            <xs:documentation>Czy składnik wchodzi do podstawy wymiaru składek na Fundusze Pracy i Fundusz Gwarantaowanych Świadczeń pracowniczych.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+        <xs:attribute name="FEP" type="xs:boolean" use="required">
+          <xs:annotation>
+            <xs:documentation>Czy składnik wchodzi do podstawy wymiaru składek na Fundusz Emerytur Pomostowych.</xs:documentation>
+          </xs:annotation>
+        </xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:simpleType name="TSposobWchodzeniaDoZasilkuChorobowego">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Nie">
+        <xs:annotation>
+          <xs:documentation>Nie wchodzi.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Miesiecznie">
+        <xs:annotation>
+          <xs:documentation>Miesięcznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kwartalnie">
+        <xs:annotation>
+          <xs:documentation>Kwartalnie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Polrocznie">
+        <xs:annotation>
+          <xs:documentation>Półrocznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Rocznie">
+        <xs:annotation>
+          <xs:documentation>Rocznie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="TZasilekChorobowy">
+    <xs:simpleContent>
+      <xs:extension base="TSposobWchodzeniaDoZasilkuChorobowego">
+        <xs:attribute name="Kwota" use="optional">
+          <xs:annotation>
+            <xs:documentation>Opcjonalny atrybut mówiący w jakiej kwocie składnik wchodzi do zasiłku chorobowego.</xs:documentation>
+          </xs:annotation>
+          <xs:simpleType>
+            <xs:restriction base="xs:string">
+              <xs:enumeration value="Wyliczona">
+                <xs:annotation>
+                  <xs:documentation>Składnik wchodzi w kwocie wyliczonej.</xs:documentation>
+                </xs:annotation>
+              </xs:enumeration>
+              <xs:enumeration value="Nominalna">
+                <xs:annotation>
+                  <xs:documentation>Składnik wchodzi w kwocie nominalnej.</xs:documentation>
+                </xs:annotation>
+              </xs:enumeration>
+              <xs:enumeration value="Pomniejszona">
+                <xs:annotation>
+                  <xs:documentation>Składnik wchodzi w kwocie pomniejszonej o urlop.</xs:documentation>
+                </xs:annotation>
+              </xs:enumeration>
+              <xs:enumeration value="Uzupelniona">
+                <xs:annotation>
+                  <xs:documentation>Składnik wchodzi w kwocie uzupełnionej do pełnego miesiąca.</xs:documentation>
+                </xs:annotation>
+              </xs:enumeration>
+              <xs:enumeration value="UzupelnionaZUrlopem">
+                <xs:annotation>
+                  <xs:documentation>Składnik wchodzi w kwocie uzupełnionej do pełnego miesiąca łącznie z urlopem.</xs:documentation>
+                </xs:annotation>
+              </xs:enumeration>
+            </xs:restriction>
+          </xs:simpleType>
+        </xs:attribute>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+  <xs:complexType name="TPomniejszanie">
+    <xs:sequence>
+      <xs:element name="BrakUmowy" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Pomniejszanie za czas nieobjęty umową.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Choroba">
+        <xs:annotation>
+          <xs:documentation>Pomniejszanie za czas choroby.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:boolean">
+              <xs:attribute name="Ostrzezenie" type="xs:boolean" use="optional" />
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Urlop">
+        <xs:annotation>
+          <xs:documentation>Pomniejszanie za czas urlopu.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:boolean">
+              <xs:attribute name="Ostrzezenie" type="xs:boolean" use="optional" />
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Nieobecnosc">
+        <xs:annotation>
+          <xs:documentation>Pomniejszanie za czas nieobecności.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:boolean">
+              <xs:attribute name="Ostrzezenie" type="xs:boolean" use="optional" />
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="GodzinyAbsencji" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Pomniejszanie za godziny absencji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TNaliczanie">
+    <xs:sequence>
+      <xs:element name="GodzinyNadliczbowe">
+        <xs:annotation>
+          <xs:documentation>Naliczaj przy godzinach nadliczbowych (stawka).</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:boolean">
+              <xs:attribute name="Dodatek" type="xs:boolean" use="optional">
+                <xs:annotation>
+                  <xs:documentation>Naliczaj przy godzinach nadliczbowych (dodatek).</xs:documentation>
+                </xs:annotation>
+              </xs:attribute>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="GodzinyNocne" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Naliczaj przy godzinach nocnych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TSkladnikPlacowy">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Unikalna nazwa składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rodzaj" type="TRodzajSkladnika">
+        <xs:annotation>
+          <xs:documentation>Rodzaj składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Typ" type="TTyp">
+        <xs:annotation>
+          <xs:documentation>Typ składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Platnik" type="TPlatnik">
+        <xs:annotation>
+          <xs:documentation>Typ płatnika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Stawka" type="TStawka">
+        <xs:annotation>
+          <xs:documentation>Stawka.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Zmiennosc" type="TZmiennosc">
+        <xs:annotation>
+          <xs:documentation>Zmienność.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Aktualna wartość składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="MiesiaceObowiazywania" type="TMiesiaceObowiazywania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna definicja miesiący, w których obowiązuje składnik płacowy (domyślnie obowiązuje przez cały rok).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opodatkowanie" type="TOpodatkowanie">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące wchodzenia do podstawy opodatkowania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UbezpieczenieZdrowotne" type="TUbezpieczenieZdrowotne">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące wchodzenia do podstawy ubezpieczenia zdrowotnego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WynagrodzenieUrlopowe">
+        <xs:annotation>
+          <xs:documentation>Czy składnik wchodzi do podstawy wynagrodzenia urlopowego.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="TSposobWchodzenia">
+              <xs:attribute name="Ostrzezenie" type="xs:boolean" use="optional" />
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="EkwiwalentZaUrlop" type="TSposobWchodzenia">
+        <xs:annotation>
+          <xs:documentation>Czy składnik wchodzi do podstawy ekwiwalentu za urlop.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NagrodaJubileuszowa" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Czy składnik wchodzi do podstawy nagrody jubileuszowek.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UbezpieczenieIFunduszeZUS" type="TUbezpieczenieIFunduszeZUS">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące wchodzenia do podstaw ubezpieczeń i funduszy ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ZasilekChorobowy" type="TZasilekChorobowy">
+        <xs:annotation>
+          <xs:documentation>Czy i jak składnik wchodzi do zasiłku chorobowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Pomniejszanie" type="TPomniejszanie">
+        <xs:annotation>
+          <xs:documentation>Określa w jakich przypadkach wartość składnika ma zostać pomniejszona.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Naliczanie" type="TNaliczanie" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa w jakich przypadkach składnik ma być naliczony.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PrawaAutorskie" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Przychód z tytułu praw autorskich (koszty 50%).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WynMinimalne" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Czy składnik wchodzi do wynagrodzenia minimalnego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opis składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NazwaNaWydruku">
+        <xs:annotation>
+          <xs:documentation>Nazwa na wydruku.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:string">
+              <xs:attribute name="DrukujNaUmowie" type="xs:boolean" default="true">
+                <xs:annotation>
+                  <xs:documentation>Czy składnik ma być drukowany na umowie.</xs:documentation>
+                </xs:annotation>
+              </xs:attribute>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Instytucja" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura instytucji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="WlasneRozszerzone" type="TWlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="FlagaWlasna" type="TFlagaWlasna">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ZwolnienieZPodatkuDlaMlodych" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Czy stosować zwolnienie z podatku dla młodych (do 26 lat).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UlgaDlaKlasySredniej" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Czy stosować ulgę dla klasy średniej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+    </xs:sequence>
+    <xs:attribute name="Aktywny" type="xs:boolean" default="true">
+      <xs:annotation>
+        <xs:documentation>Informacja o aktywności składnika płacowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="UwzglednianyWZaswiadczeniu" type="xs:boolean" default="true">
+      <xs:annotation>
+        <xs:documentation>Czy składnik ma być uwzględniany w zaświadczeniu o wynagrodzeniu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WNaturze" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>Czy składnik ma być wypłacany w naturze.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NaWyplacieGdyZero" type="xs:boolean" default="true">
+      <xs:annotation>
+        <xs:documentation>Czy składnik ma być dodawany do wypłaty, gdy jego wartość wynosi 0.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Uzywany" type="xs:boolean" use="optional" default="true">
+      <xs:annotation>
+        <xs:documentation>Czy składnik jest używany.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TSkladnikiPlacowe">
+    <xs:sequence>
+      <xs:element name="SkladnikPlacowy" type="TSkladnikPlacowy" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TDataWyplaty">
+    <xs:restriction base="xs:string">
+      <xs:pattern value="Ostatni">
+        <xs:annotation>
+          <xs:documentation>Ostatni dzień miesiąca.</xs:documentation>
+        </xs:annotation>
+      </xs:pattern>
+      <xs:pattern value="Przedostatni">
+        <xs:annotation>
+          <xs:documentation>Przedostatni dzień miesiąca.</xs:documentation>
+        </xs:annotation>
+      </xs:pattern>
+      <xs:pattern value="[1-9]|1[0-9]|2[0-8]">
+        <xs:annotation>
+          <xs:documentation>Wybrany dzień miesiąca.</xs:documentation>
+        </xs:annotation>
+      </xs:pattern>
+      <xs:pattern value="N [1-9]|10">
+        <xs:annotation>
+          <xs:documentation>Wybrany dzień następnego miesiąca.</xs:documentation>
+        </xs:annotation>
+      </xs:pattern>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TSkladnikPlacowyWDefinicji">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa składnika płacowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna indywidualna wartość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TDotyczy">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UmowyOPrace">
+        <xs:annotation>
+          <xs:documentation>Dotyczy umów o pracę.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="UmowyCywilnoprawne">
+        <xs:annotation>
+          <xs:documentation>Dotyczy umów cywilnoprawnych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TDefinicjaListyPlac">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Unikalna nazwa definicji listy płac.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dotyczy" type="TDotyczy">
+        <xs:annotation>
+          <xs:documentation>Określa jakich umów dotyczy definicja listy płac.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataWyplaty" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Data wypłaty wynagrodzenia (
+          -2 = przedostatni dzień miesiąca, 
+          -1 = ostatni dzień miesiąca, 
+          0 = pierwszy dzień miesiąca, 
+          1 = drugi dzień miesiaca, 
+          ..., 
+          100 = pierwszy dzień następnego miesiąca, 
+          101 = drugi dzień następnego miesiąca, 
+          ...
+          ).
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RejestrNumeracyjny" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Sygnatura rejestru numeracyjnego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WyplataGlowna" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Wypłata główna - naliczanie zasiłków, wynagrodzenia urlopowego, itp.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KUiUP" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Koszty uzyskania i ulga podatkowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UzupelnienieDoMin" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Uzupełnienie do płacy minimalnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NaliczeniaPotracenia" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Rozliczenie ewidencji naliczeń i potrąceń.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Akordy" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Rozliczenie ewidencji akordów.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Prowizje" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Rozliczenie ewidencji prowizji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PotraceniaKomornicze" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Rozliczenie ewidencji potrąceń komorniczych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Ekwiwalenty" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rozliczenie ekwiwalentów.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Delegacje" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rozliczenie delegacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="MiesiaceObowiazywania" type="TMiesiaceObowiazywania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalne dane dotyczące miesięcy obowiazywania (domyślnie wszystkie).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladnikiPlacowe">
+        <xs:annotation>
+          <xs:documentation>Składniki powiązane z definicją.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="SkladnikPlacowy" type="TSkladnikPlacowyWDefinicji" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Składnik płacowy powiązany z definicją.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element minOccurs="0" name="WlasneRozszerzone" type="TWlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych definicji listy płac.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="FlagaWlasna" type="TFlagaWlasna">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TDefinicjeListPlac">
+    <xs:sequence>
+      <xs:element name="DefinicjaListyPlac" type="TDefinicjaListyPlac" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Dane definicji listy płac.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TSkladnikParametryczny">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Unikalna nazwa składnika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny opis składnika parametrycznego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Aktualna wartość składnika parametrycznego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NazwaNaWydruku" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa na wydruku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="WlasneRozszerzone" type="TWlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych składnika parametrycznego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Aktywny" type="xs:boolean" default="true">
+      <xs:annotation>
+        <xs:documentation>Informacja o aktywności składnika parametrycznego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TSkladnikiParametryczne">
+    <xs:sequence>
+      <xs:element name="SkladnikParametryczny" type="TSkladnikParametryczny" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Dane składnika paramtrycznego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TSystemWynagrodzen">
+    <xs:sequence>
+      <xs:element name="SkladnikiPlacowe" type="TSkladnikiPlacowe">
+        <xs:annotation>
+          <xs:documentation>Dane składników płacowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DefinicjeListPlac" type="TDefinicjeListPlac">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące definicji list płac.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladnikiParametryczne" type="TSkladnikiParametryczne">
+        <xs:annotation>
+          <xs:documentation>Dane składników parametrycznych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="SystemWynagrodzen" type="TSystemWynagrodzen">
+    <xs:annotation>
+      <xs:documentation>Dane składników płacowych i definicji list płac.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  
+</xs:schema>

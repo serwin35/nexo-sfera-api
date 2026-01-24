@@ -1,0 +1,109 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema elementFormDefault="qualified" attributeFormDefault="unqualified"
+           targetNamespace="http://schemas.insert.com.pl/2017/SpisInwentaryzacyjny.xsd"
+           xmlns="http://schemas.insert.com.pl/2017/SpisInwentaryzacyjny.xsd"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Dane spisu inwentaryzacyjnego.</xs:documentation>
+  </xs:annotation>
+  <xs:complexType name="Naglowek">
+    <xs:annotation>
+      <xs:documentation>Nagłówek spisu inwentaryzacyjnego</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wykonujacy" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Osoba wykonująca spis</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataWykonania" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Data wykonania spisu</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SymbolMagazynu" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Symbol magazynu, na którym wykonano spis</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:complexType name="Pozycja">
+    <xs:annotation>
+      <xs:documentation>Pozycja spisu inwentaryzacyjnego</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="1" name="KodKreskowy" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Kod kreskowy asortymentu</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="1" name="Ilosc" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Ilość asortymentu na spisie</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="SymbolAsortymentu" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Symbol kartotekowy asortymentu</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="SymbolJednostkiMiary" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Symbol jednostki miary asortymentu</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="NumerPartii" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer spisanej partii</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="TerminWaznosci" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Termin ważności partii</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="Lokalizacja" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Lokalizacja asortymentu</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="OpisPartii" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Opis partii</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="Cena" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Cena magazynowa spisanego asortymentu</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="SpisInwentaryzacyjny">
+    <xs:annotation>
+      <xs:documentation>Dane spisu inwentaryzacyjnego.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="1" maxOccurs="1" name="Naglowek" type="Naglowek">
+          <xs:annotation>
+            <xs:documentation>Nagłówek spisu inwentaryzacyjnego</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element minOccurs="1" maxOccurs="1" name="Pozycje">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element minOccurs="0" maxOccurs="unbounded" name="Pozycja" type="Pozycja">
+                <xs:annotation>
+                  <xs:documentation>Lista pozycji spisu inwentaryzacyjnego</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+            </xs:sequence>
+          </xs:complexType>
+        </xs:element> 
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>

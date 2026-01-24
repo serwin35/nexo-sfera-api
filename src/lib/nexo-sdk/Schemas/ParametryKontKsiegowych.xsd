@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  attributeFormDefault="unqualified"
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2015/hop/okresyobrachunkowe"
+  targetNamespace="http://schemas.insert.com.pl/2015/hop/okresyobrachunkowe"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:sd="http://schemas.xsddoc.codeplex.com/schemaDoc/2009/3"
+  xmlns:maml="http://ddue.schemas.microsoft.com/authoring/2003/5"
+  xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+>
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+
+  <xs:annotation>
+    <xs:documentation>Parametry kont.</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TParametryKontKsiegowych">
+    <xs:annotation>
+      <xs:documentation>Parametry kont.</xs:documentation>
+    </xs:annotation>
+    <xs:all>
+
+      <xs:element minOccurs="0" name="WlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Definicje rozszerzonych pól własnych dla kont.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone" type="wspolne:TPoleWlasneRozszerzone">
+              <xs:annotation>
+                <xs:documentation>Definicja pola własnego rozszerzonego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="ParametryKontKsiegowych" type="TParametryKontKsiegowych">
+    <xs:annotation>
+      <xs:documentation>Parametry kont, dokumentów księgowych.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

@@ -1,0 +1,161 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/pojazdy"
+           xmlns="http://schemas.insert.com.pl/2014/hop/pojazdy"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Informacje o pojazdach.</xs:documentation>
+  </xs:annotation>
+
+  <xs:simpleType name="TTypPojazdu">
+    <xs:annotation>
+      <xs:documentation>Określa typ pojazdu wg pojemności silnika.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Ponizej900ccm">
+        <xs:annotation>
+          <xs:documentation>Pojazd z silnikiem poniżej 900 cm3.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Powyzej900ccm">
+        <xs:annotation>
+          <xs:documentation>Pojazd z silnikiem powyżej 900 cm3.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTypUzytkowania">
+    <xs:annotation>
+      <xs:documentation>Określa typ użytkowania pojazdu.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Firmowy">
+        <xs:annotation>
+          <xs:documentation>Pojazd firmowy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Pracownika">
+        <xs:annotation>
+          <xs:documentation>Pojazd pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wspolnika">
+        <xs:annotation>
+          <xs:documentation>Pojazd wspólnika.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TUstawienieOdliczeniaVAT">
+    <xs:annotation>
+      <xs:documentation>Informacja o odliczeniu VAT pojazdu.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="WazneOd" type="xs:date" use="required">
+      <xs:annotation>
+        <xs:documentation>Data rozpoczęcia obowiązywania odliczenia VAT.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="PelneOdliczenie" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Określa, czy pełne odliczenie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StanLicznika" type="xs:decimal" use="required">
+      <xs:annotation>
+        <xs:documentation>Stan licznika pojazdu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TUstawieniaOdliczeniaVAT">
+    <xs:annotation>
+      <xs:documentation>Historia ustawień odliczenia pojazdu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="UstawienieOdliczeniaVAT" minOccurs="0" maxOccurs="unbounded" type="TUstawienieOdliczeniaVAT">
+        <xs:annotation>
+          <xs:documentation>Informacja o odliczeniu VAT pojazdu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TPojazd">
+    <xs:annotation>
+      <xs:documentation>Dane pojazdu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Marka" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Marka pojazdu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Model" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Model pojazdu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerRej" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer rejestracyjny pojazdu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TypPojazdu" type="TTypPojazdu">
+        <xs:annotation>
+          <xs:documentation>Typ pojazdu wg pojemności silnika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TypUzytkowania" type="TTypUzytkowania">
+        <xs:annotation>
+          <xs:documentation>Typ użytkowania pojazdu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wlasciciel" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Symbol właściciela, gdy wymagany (pracownika lub wspólnika).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataNabycia" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data nabycia pojazdu, gdy wymagana (firma lub wspólnik).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UstawieniaOdliczeniaVAT" type="TUstawieniaOdliczeniaVAT" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Historia ustawień odliczenia VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Uzywany" type="xs:boolean" use="required" >
+      <xs:annotation>
+        <xs:documentation>Określa, czy pojazd jest w użyciu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Odliczenie" type="xs:boolean" use="optional" >
+      <xs:annotation>
+        <xs:documentation>Określa, czy koszt zakupu paliwa dla tego pojazdu podlega odliczeniu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TPojazdy">
+    <xs:annotation>
+      <xs:documentation>Dane pojazdów.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Pojazd" minOccurs="0" maxOccurs="unbounded" type="TPojazd">
+        <xs:annotation>
+          <xs:documentation>Dane pojazdu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="Pojazdy" type="TPojazdy">
+    <xs:annotation>
+      <xs:documentation>Kolekcja pojazdów.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

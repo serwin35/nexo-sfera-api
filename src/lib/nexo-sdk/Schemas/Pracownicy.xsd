@@ -1,0 +1,377 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema 
+  attributeFormDefault="unqualified" 
+  elementFormDefault="qualified" 
+  targetNamespace="http://schemas.insert.com.pl/2013/hop/pracownicy"
+  xmlns="http://schemas.insert.com.pl/2013/hop/pracownicy"
+  xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+  xmlns:rachunki="http://schemas.insert.com.pl/2013/hop/rachunkibankowe"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Dane pracowników.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+  <xs:import id="RachunkiBankowe" namespace="http://schemas.insert.com.pl/2013/hop/rachunkibankowe" schemaLocation="RachunkiBankowe.xsd"/>
+
+  <xs:complexType name="TPPK">
+    <xs:sequence>
+      <xs:element name="NumerWEwidencji" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer w ewidencji PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="StawkaPodstawowaPracownika" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartości stawki podstawowej pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="StawkaDodatkowaPracownika" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartości stawki dodatkowej pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="StawkaDodatkowaPracodawcy" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartości stawki dodatkowej pracodawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="UczestniczyWPPK" type="xs:boolean" use="optional" default="true"></xs:attribute>
+  </xs:complexType>
+    
+  <xs:element name="Pracownicy">
+    <xs:annotation>
+      <xs:documentation>Kartoteka pracowników.</xs:documentation>
+    </xs:annotation>
+
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" name="Pracownik">
+          <xs:annotation>
+            <xs:documentation>Dane kadrowe pracownika.</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="Sygnatura" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Unikalny symbol pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Imie" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Pierwsze imię pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Imie2" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Drugie imię pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Nazwisko" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Nazwisko pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="NazwiskoRodowe" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Nazwisko rodowe pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="PESEL" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Numer PESEL pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="NIP" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Numer NIP pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="DataUrodzenia" type="xs:date">
+                <xs:annotation>
+                  <xs:documentation>Data urodzenia pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="MiejsceUrodzenia" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Miejscowość urodzenia pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Plec" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Płeć pracownika.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="Mezczyzna">
+                      <xs:annotation>
+                        <xs:documentation>Mężczyzna.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Kobieta">
+                      <xs:annotation>
+                        <xs:documentation>Kobieta.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="StanCywilny" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Stan cywilny pracownika.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="Wdowiec">
+                      <xs:annotation>
+                        <xs:documentation>Wdowiec.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Wdowa">
+                      <xs:annotation>
+                        <xs:documentation>Wdowa.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Zonaty">
+                      <xs:annotation>
+                        <xs:documentation>Żonaty.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Rozwiedziony">
+                      <xs:annotation>
+                        <xs:documentation>Rozwiedziony.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Mezatka">
+                      <xs:annotation>
+                        <xs:documentation>Mężatka.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Rozwiedziona">
+                      <xs:annotation>
+                        <xs:documentation>Rozwiedziona.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Kawaler">
+                      <xs:annotation>
+                        <xs:documentation>Kawaler.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="Panna">
+                      <xs:annotation>
+                        <xs:documentation>Panna.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              <xs:element name="ImieOjca" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Imię ojca pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="ImieMatki" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Imię matki pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Obywatelstwo" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Obywatelstwo pracownika, np.: polskie</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="TypIdentyfikatora" type="wspolne:TypIdentyfikatora">
+                <xs:annotation>
+                  <xs:documentation>Typ identyfikatora podatkowego.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="PrawoDoEmeryturyRenty" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Kod ZUS prawa do emerytury/renty (0, 1, ...).</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="StopienNiepelnosprawnosci" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Kod ZUS stopnia niepełnosprawności (0, 1, ...).</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="DokumentTozsamosci" minOccurs="0" type="wspolne:DokumentTozsamosci">
+                <xs:annotation>
+                  <xs:documentation>Dane dokumentu tożsamości pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Zdjecie" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Ścieżka do pliku ze zdjęciem pracownika (relatywna w stosunku do lokalizacji pliku XML).</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="NazwaUrzeduSkarbowego" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Nazwa urzędu skarbowego, w którym rozlicza się wspólnik.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Kontakty" type="wspolne:Kontakty" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Kontakty pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Adresy" type="wspolne:Adresy" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Adresy pracownika.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element minOccurs="0" name="RachunkiBankowe">
+                <xs:annotation>
+                  <xs:documentation>Lista rachunków bankowych pracownika.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Rachunek" type="rachunki:TRachunekBankowyKlienta">
+                      <xs:annotation>
+                        <xs:documentation>Rachunek bankowy pracownika.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="DaneWdrozeniowe" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Dane wdrożeniowe pracownika.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element name="PrzychodyWyplaty" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Przychody - wypłaty.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="PrzychodyRachunki" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Przychody - rachunki.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="KUPWyplaty" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Koszty uzyskania przychodu - wypłaty.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="KUPRachunki" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Koszty uzyskania przychodu - rachunki.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="ZaliczkiPodatkuWyplaty" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Zapłacone zaliczki na podatek dochodowy - wypłaty.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="ZaliczkiPodatkuRachunki" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Zapłacone zaliczki na podatek dochodowy - rachunki.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="PodstawaSkladekEmerytalnych" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Podstawa składek na ubezpieczenie emerytalno-rentowe.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="SkladkiEmerytalne" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Składki emerytalne, rentowe i chorobowe.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="SkladkiZdrowotneOdliczane" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Składki na ubezpieczenie zdrowotne odliczane od podatku.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="SkladkiZdrowotneNieodliczane" type="xs:decimal">
+                      <xs:annotation>
+                        <xs:documentation>Składki na ubezpieczenie zdrowotne nieodliczane od podatku.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="KwotaWolnaOdPodatkuDlaMlodych" type="xs:decimal" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Wykorzystana kwota wolna od podatku dla młodych.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name ="ZwolnienieZPodatkuDlaMlodych" type="xs:boolean" minOccurs="0">
+                  <xs:annotation>
+                  <xs:documentation>Czy stosować zwolnienie z podatku dla młodych (do 26 lat).</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="UlgaPodatkowa" type="wspolne:TOdliczanieUlgiPracownik" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Wymiar odliczenia ulgi podatkowej.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="PPK" type="TPPK" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Parametry uczestnictwa w PPK.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element minOccurs="0" name="WlasneRozszerzone">
+                <xs:annotation>
+                  <xs:documentation>Wartości pól własnych pracowników.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone">
+                      <xs:annotation>
+                        <xs:documentation>Pole własne rozszerzone pracownika. Zawartość tego elementu jest wartością pola.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:simpleContent>
+                          <xs:extension base="xs:string">
+                            <xs:attribute name="Nazwa" type="xs:string" use="required">
+                              <xs:annotation>
+                                <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                              </xs:annotation>
+                            </xs:attribute>
+                          </xs:extension>
+                        </xs:simpleContent>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="FlagaWlasna" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Dane flagi własnej.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Kolor flagi własnej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Kształt flagi własnej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            <xs:attribute name="Aktywny" type="xs:boolean" use="optional">
+              <xs:annotation>
+                <xs:documentation>Określa, czy pracownik jest aktywny (domyślnie importowany jako aktywny).</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
