@@ -8,14 +8,16 @@
     <SelfContained>false</SelfContained>
     <!-- Required for Nexo SDK - it needs Windows Desktop types -->
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Required for Nexo SDK EF6 serialization -->
+    <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
   </PropertyGroup>
 
   <!-- Runtime configuration matching Nexo SDK Importer settings -->
   <!-- These settings are CRITICAL for Entity Framework compatibility with Nexo SDK -->
   <ItemGroup>
-    <RuntimeHostConfigurationOption Include="System.Globalization.UseNls" Value="true" />
     <RuntimeHostConfigurationOption Include="System.Reflection.Metadata.MetadataUpdater.IsSupported" Value="false" />
     <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization" Value="true" />
+    <RuntimeHostConfigurationOption Include="CSWINRT_USE_WINDOWS_UI_XAML_PROJECTIONS" Value="false" />
   </ItemGroup>
 
   <!-- Configurable SDK Path - can be overridden via command line or environment -->
@@ -35,10 +37,6 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
-    <!-- EF6 required for Nexo SDK - provides System.Data.Entity namespace -->
-    <PackageReference Include="EntityFramework" Version="6.5.1" />
-    <!-- System.Data.SqlClient required by EF6 (not Microsoft.Data.SqlClient) -->
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 
   <ItemGroup>
