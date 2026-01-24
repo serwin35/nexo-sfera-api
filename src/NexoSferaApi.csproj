@@ -8,6 +8,14 @@
     <SelfContained>false</SelfContained>
   </PropertyGroup>
 
+  <!-- Runtime configuration matching Nexo SDK Importer settings -->
+  <!-- These settings are CRITICAL for Entity Framework compatibility with Nexo SDK -->
+  <ItemGroup>
+    <RuntimeHostConfigurationOption Include="System.Globalization.UseNls" Value="true" />
+    <RuntimeHostConfigurationOption Include="System.Reflection.Metadata.MetadataUpdater.IsSupported" Value="false" />
+    <RuntimeHostConfigurationOption Include="System.Runtime.Serialization.EnableUnsafeBinaryFormatterSerialization" Value="true" />
+  </ItemGroup>
+
   <!-- Configurable SDK Path - can be overridden via command line or environment -->
   <!-- Usage: dotnet build -p:NexoSdkPath="C:\Path\To\SDK" -->
   <PropertyGroup>
