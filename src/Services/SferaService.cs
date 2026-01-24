@@ -331,16 +331,17 @@ public class SferaService : ISferaService, IDisposable
     }
 
     /// <summary>
-    /// Executes an SDK operation with thread synchronization.
-    /// EF6 is NOT thread-safe, so all write operations must be serialized.
+    /// Executes an SDK operation on an STA thread with synchronization.
+    /// EF6 and WPF-based SDK components require STA threading model.
+    /// Desktop apps (like Artoit) run on STA threads - this emulates that.
     /// </summary>
     public async Task<T> ExecuteWithLockAsync<T>(Func<T> operation)
     {
         await _sdkOperationLock.WaitAsync();
         try
         {
-            // Run on thread pool to avoid blocking the ASP.NET Core request thread
-            return await Task.Run(operation);
+            // Run on a dedicated STA thread - SDK may require Windows Forms/WPF threading model
+            return await RunOnStaThread(operation);
         }
         finally
         {
@@ -362,6 +363,30 @@ public class SferaService : ISferaService, IDisposable
         {
             _sdkOperationLock.Release();
         }
+    }
+
+    /// <summary>
+    /// Runs an operation on a dedicated STA (Single Threaded Apartment) thread.
+    /// Required for COM/WPF/WinForms components in the Nexo SDK.
+    /// </summary>
+    private static Task<T> RunOnStaThread<T>(Func<T> operation)
+    {
+        var tcs = new TaskCompletionSource<T>();
+        var thread = new Thread(() =>
+        {
+            try
+            {
+                var result = operation();
+                tcs.SetResult(result);
+            }
+            catch (Exception ex)
+            {
+                tcs.SetException(ex);
+            }
+        });
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        return tcs.Task;
     }
 
     public void Dispose()
