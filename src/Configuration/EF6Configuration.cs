@@ -23,23 +23,23 @@ public static class EF6Initializer
         {
             if (_initialized) return;
 
-            // Register Microsoft.Data.SqlClient - matching EasyNexoIntegrator configuration
+            // Register System.Data.SqlClient with its own factory (required by SDK's EF6)
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
-                    "Microsoft.Data.SqlClient",
-                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
+                    "System.Data.SqlClient",
+                    System.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)
             {
                 // Provider already registered, ignore
             }
 
-            // Also register under System.Data.SqlClient name for SDK compatibility
+            // Also register Microsoft.Data.SqlClient
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
-                    "System.Data.SqlClient",
+                    "Microsoft.Data.SqlClient",
                     Microsoft.Data.SqlClient.SqlClientFactory.Instance);
             }
             catch (System.ArgumentException)
