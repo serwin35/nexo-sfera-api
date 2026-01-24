@@ -1,11 +1,9 @@
-using System.Data.Entity;
-using System.Data.Entity.SqlServer;
-
 namespace NexoSferaApi.Configuration;
 
 /// <summary>
 /// Entity Framework 6 initialization helper for .NET 8 compatibility.
-/// Uses official Microsoft.EntityFramework.SqlServer provider for correct BIT type mapping.
+/// The Nexo SDK has its own EF6 implementation (InsERT.Mox.EntityFramework.Core) with
+/// MicrosoftSqlDbConfiguration that should handle type mappings correctly.
 /// </summary>
 public static class EF6Initializer
 {
@@ -13,7 +11,7 @@ public static class EF6Initializer
     private static readonly object _lock = new();
 
     /// <summary>
-    /// Initializes EF6 with the Microsoft.Data.SqlClient provider.
+    /// Initializes the SQL Server DbProviderFactory for use with Nexo SDK's internal EF6.
     /// Must be called early in application startup before any Sfera operations.
     /// </summary>
     public static void Initialize()
@@ -23,10 +21,6 @@ public static class EF6Initializer
         lock (_lock)
         {
             if (_initialized) return;
-
-            // Set the official Microsoft EF6 SQL Server configuration
-            // This configures EF6 to use Microsoft.Data.SqlClient with correct type mappings
-            DbConfiguration.SetConfiguration(new MicrosoftSqlDbConfiguration());
 
             // Register Microsoft.Data.SqlClient provider factory
             try
