@@ -981,131 +981,150 @@ public class CustomersController : ControllerBase
     /// Create a new customer
     /// </summary>
     [HttpPost]
-    public ActionResult<ApiResponse<CustomerDto>> CreateCustomer([FromBody] CreateCustomerRequest request)
+    public async Task<ActionResult<ApiResponse<CustomerDto>>> CreateCustomer([FromBody] CreateCustomerRequest request)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            // Execute all SDK operations on the dedicated STA thread for EF6 thread-safety
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, CustomerDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
-            }
-
-            // Check if symbol already exists
-            dynamic? existing = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol)
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
                 {
-                    existing = p;
-                    break;
-                }
-            }
-            if (existing != null)
-            {
-                return BadRequest(ApiResponse<CustomerDto>.Error($"Customer with symbol {request.Symbol} already exists"));
-            }
-
-            using (var nowyPodmiot = podmioty.Utworz())
-            {
-                dynamic dane = nowyPodmiot.Dane;
-                dane.Symbol = request.Symbol;
-                dane.NazwaSkrocona = request.ShortName;
-                dane.NazwaPelna = request.FullName ?? request.ShortName;
-
-                if (!string.IsNullOrEmpty(request.NIP))
-                {
-                    dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
+                    return (false, null, "Failed to get Podmioty manager", new List<string>());
                 }
 
-                if (!string.IsNullOrEmpty(request.REGON))
+                // Check if symbol already exists
+                dynamic? existing = null;
+                foreach (var p in podmioty.Dane.Wszystkie())
                 {
-                    dane.REGON = request.REGON;
-                }
-
-                // Set customer type (0=Firmy, 1=Osoby)
-                dane.Typ = request.Type == CustomerType.Company ? (short)0 : (short)1;
-
-                // Set address
-                if (request.Address != null)
-                {
-                    var adres = DynamicPropertyHelper.GetProperty(dane, "AdresGlowny");
-                    if (adres != null)
+                    if (DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol)
                     {
-                        adres.Ulica = request.Address.Street;
-                        adres.NumerDomu = request.Address.BuildingNumber;
-                        adres.NumerLokalu = request.Address.ApartmentNumber;
-                        adres.Miejscowosc = request.Address.City;
-                        adres.KodPocztowy = request.Address.PostalCode;
+                        existing = p;
+                        break;
                     }
                 }
-
-                // Set contacts
-                if (!string.IsNullOrEmpty(request.Email))
+                if (existing != null)
                 {
-                    try
+                    return (false, null, $"Customer with symbol {request.Symbol} already exists", new List<string>());
+                }
+
+                // Get default configuration - based on working examples
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                dynamic? konfig = null;
+                try
+                {
+                    konfig = konfiguracje?.DaneDomyslne?.Kontrahent;
+                }
+                catch { /* Configuration might not exist */ }
+
+                using (var nowyPodmiot = konfig != null ? podmioty.Utworz(konfig) : podmioty.Utworz())
+                {
+                    dynamic dane = nowyPodmiot.Dane;
+                    dane.Symbol = request.Symbol;
+                    dane.NazwaSkrocona = request.ShortName;
+                    dane.NazwaPelna = request.FullName ?? request.ShortName;
+
+                    if (!string.IsNullOrEmpty(request.NIP))
                     {
-                        var kontakt = nowyPodmiot.Kontakty.DodajEmail(request.Email);
-                        if (kontakt != null)
+                        dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
+                    }
+
+                    if (!string.IsNullOrEmpty(request.REGON))
+                    {
+                        dane.REGON = request.REGON;
+                    }
+
+                    // Set customer type (0=Firmy, 1=Osoby)
+                    dane.Typ = request.Type == CustomerType.Company ? (short)0 : (short)1;
+
+                    // Set address
+                    if (request.Address != null)
+                    {
+                        var adres = DynamicPropertyHelper.GetProperty(dane, "AdresGlowny");
+                        if (adres != null)
                         {
-                            kontakt.Dane.Glowny = true;
+                            adres.Ulica = request.Address.Street;
+                            adres.NumerDomu = request.Address.BuildingNumber;
+                            adres.NumerLokalu = request.Address.ApartmentNumber;
+                            adres.Miejscowosc = request.Address.City;
+                            adres.KodPocztowy = request.Address.PostalCode;
                         }
                     }
-                    catch { /* Ignore contact errors */ }
-                }
 
-                if (!string.IsNullOrEmpty(request.Phone))
-                {
-                    try
+                    // Set contacts
+                    if (!string.IsNullOrEmpty(request.Email))
                     {
-                        var kontakt = nowyPodmiot.Kontakty.DodajTelefon(request.Phone);
-                        if (kontakt != null)
+                        try
                         {
-                            kontakt.Dane.Glowny = true;
+                            var kontakt = nowyPodmiot.Kontakty.DodajEmail(request.Email);
+                            if (kontakt != null)
+                            {
+                                kontakt.Dane.Glowny = true;
+                            }
                         }
+                        catch { /* Ignore contact errors */ }
                     }
-                    catch { /* Ignore contact errors */ }
-                }
 
-                if (!string.IsNullOrEmpty(request.Website))
-                {
-                    try
+                    if (!string.IsNullOrEmpty(request.Phone))
                     {
-                        nowyPodmiot.Kontakty.DodajWww(request.Website);
-                    }
-                    catch { /* Ignore contact errors */ }
-                }
-
-                // Set bank account
-                if (!string.IsNullOrEmpty(request.BankAccount))
-                {
-                    try
-                    {
-                        var rachunek = nowyPodmiot.RachunkiBankowe.Dodaj();
-                        if (rachunek != null)
+                        try
                         {
-                            rachunek.Dane.NumerRachunku = request.BankAccount;
-                            rachunek.Dane.NazwaBanku = request.BankName;
-                            rachunek.Dane.Glowny = true;
+                            var kontakt = nowyPodmiot.Kontakty.DodajTelefon(request.Phone);
+                            if (kontakt != null)
+                            {
+                                kontakt.Dane.Glowny = true;
+                            }
                         }
+                        catch { /* Ignore contact errors */ }
                     }
-                    catch { /* Ignore bank account errors */ }
-                }
 
-                if ((bool)nowyPodmiot.Zapisz())
-                {
-                    var symbolLog = request.Symbol;
-                    _logger.LogInformation("Created customer {Symbol}", symbolLog);
-                    return CreatedAtAction(
-                        nameof(GetCustomer),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<CustomerDto>.Ok(MapToDto(dane), "Customer created successfully"));
+                    if (!string.IsNullOrEmpty(request.Website))
+                    {
+                        try
+                        {
+                            nowyPodmiot.Kontakty.DodajWww(request.Website);
+                        }
+                        catch { /* Ignore contact errors */ }
+                    }
+
+                    // Set bank account
+                    if (!string.IsNullOrEmpty(request.BankAccount))
+                    {
+                        try
+                        {
+                            var rachunek = nowyPodmiot.RachunkiBankowe.Dodaj();
+                            if (rachunek != null)
+                            {
+                                rachunek.Dane.NumerRachunku = request.BankAccount;
+                                rachunek.Dane.NazwaBanku = request.BankName;
+                                rachunek.Dane.Glowny = true;
+                            }
+                        }
+                        catch { /* Ignore bank account errors */ }
+                    }
+
+                    if ((bool)nowyPodmiot.Zapisz())
+                    {
+                        var symbolLog = request.Symbol;
+                        _logger.LogInformation("Created customer {Symbol}", symbolLog);
+                        return (true, MapToDto(dane), "Customer created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(nowyPodmiot);
+                        return (false, null, "Failed to create customer", errors);
+                    }
                 }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(nowyPodmiot);
-                    return BadRequest(ApiResponse<CustomerDto>.Error("Failed to create customer", errors));
-                }
+            });
+
+            if (result.Success && result.Data != null)
+            {
+                return CreatedAtAction(nameof(GetCustomer), new { id = result.Data.Id }, ApiResponse<CustomerDto>.Ok(result.Data, result.Message));
+            }
+            else
+            {
+                return BadRequest(ApiResponse<CustomerDto>.Error(result.Message, result.Errors));
             }
         }
         catch (Exception ex)
@@ -1119,70 +1138,91 @@ public class CustomersController : ControllerBase
     /// Update an existing customer
     /// </summary>
     [HttpPut("{id}")]
-    public ActionResult<ApiResponse<CustomerDto>> UpdateCustomer(int id, [FromBody] UpdateCustomerRequest request)
+    public async Task<ActionResult<ApiResponse<CustomerDto>>> UpdateCustomer(int id, [FromBody] UpdateCustomerRequest request)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            // Execute all SDK operations on the dedicated STA thread for EF6 thread-safety
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, CustomerDto? Data, string Message, List<string> Errors, int StatusCode)>(() =>
             {
-                return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (false, null, "Failed to get Podmioty manager", new List<string>(), 500);
+                }
+
+                dynamic? podmiot = null;
+                foreach (var p in podmioty.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(p) == id)
+                    {
+                        podmiot = p;
+                        break;
+                    }
+                }
+
+                if (podmiot == null)
+                {
+                    return (false, null, $"Customer with ID {id} not found", new List<string>(), 404);
+                }
+
+                using (var edytowanyPodmiot = podmioty.Znajdz(podmiot))
+                {
+                    if (edytowanyPodmiot == null)
+                    {
+                        return (false, null, $"Customer with ID {id} not found", new List<string>(), 404);
+                    }
+
+                    dynamic dane = edytowanyPodmiot.Dane;
+
+                    if (!string.IsNullOrEmpty(request.ShortName))
+                    {
+                        dane.NazwaSkrocona = request.ShortName;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.FullName))
+                    {
+                        dane.NazwaPelna = request.FullName;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.NIP))
+                    {
+                        dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
+                    }
+
+                    if (!string.IsNullOrEmpty(request.REGON))
+                    {
+                        dane.REGON = request.REGON;
+                    }
+
+                    if ((bool)edytowanyPodmiot.Zapisz())
+                    {
+                        _logger.LogInformation("Updated customer {Id}", id);
+                        return (true, MapToDto(dane), "Customer updated successfully", new List<string>(), 200);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(edytowanyPodmiot);
+                        return (false, null, "Failed to update customer", errors, 400);
+                    }
+                }
+            });
+
+            if (result.Success && result.Data != null)
+            {
+                return Ok(ApiResponse<CustomerDto>.Ok(result.Data, result.Message));
             }
-
-            dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            else if (result.StatusCode == 404)
             {
-                if (DynamicPropertyHelper.GetId(p) == id)
-                {
-                    podmiot = p;
-                    break;
-                }
+                return NotFound(ApiResponse<CustomerDto>.Error(result.Message));
             }
-
-            if (podmiot == null)
+            else if (result.StatusCode == 500)
             {
-                return NotFound(ApiResponse<CustomerDto>.Error($"Customer with ID {id} not found"));
+                return StatusCode(500, ApiResponse<CustomerDto>.Error(result.Message));
             }
-
-            using (var edytowanyPodmiot = podmioty.Znajdz(podmiot))
+            else
             {
-                if (edytowanyPodmiot == null)
-                {
-                    return NotFound(ApiResponse<CustomerDto>.Error($"Customer with ID {id} not found"));
-                }
-
-                dynamic dane = edytowanyPodmiot.Dane;
-
-                if (!string.IsNullOrEmpty(request.ShortName))
-                {
-                    dane.NazwaSkrocona = request.ShortName;
-                }
-
-                if (!string.IsNullOrEmpty(request.FullName))
-                {
-                    dane.NazwaPelna = request.FullName;
-                }
-
-                if (!string.IsNullOrEmpty(request.NIP))
-                {
-                    dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
-                }
-
-                if (!string.IsNullOrEmpty(request.REGON))
-                {
-                    dane.REGON = request.REGON;
-                }
-
-                if ((bool)edytowanyPodmiot.Zapisz())
-                {
-                    _logger.LogInformation("Updated customer {Id}", id);
-                    return Ok(ApiResponse<CustomerDto>.Ok(MapToDto(dane), "Customer updated successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(edytowanyPodmiot);
-                    return BadRequest(ApiResponse<CustomerDto>.Error("Failed to update customer", errors));
-                }
+                return BadRequest(ApiResponse<CustomerDto>.Error(result.Message, result.Errors));
             }
         }
         catch (Exception ex)
@@ -1196,48 +1236,69 @@ public class CustomersController : ControllerBase
     /// Delete a customer
     /// </summary>
     [HttpDelete("{id}")]
-    public ActionResult<ApiResponse<bool>> DeleteCustomer(int id)
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteCustomer(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            // Execute all SDK operations on the dedicated STA thread for EF6 thread-safety
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, string Message, List<string> Errors, int StatusCode)>(() =>
             {
-                return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (false, "Failed to get Podmioty manager", new List<string>(), 500);
+                }
+
+                dynamic? podmiot = null;
+                foreach (var p in podmioty.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(p) == id)
+                    {
+                        podmiot = p;
+                        break;
+                    }
+                }
+
+                if (podmiot == null)
+                {
+                    return (false, $"Customer with ID {id} not found", new List<string>(), 404);
+                }
+
+                using (var usuwanyPodmiot = podmioty.Znajdz(podmiot))
+                {
+                    if (usuwanyPodmiot == null)
+                    {
+                        return (false, $"Customer with ID {id} not found", new List<string>(), 404);
+                    }
+
+                    if ((bool)usuwanyPodmiot.Usun())
+                    {
+                        _logger.LogInformation("Deleted customer {Id}", id);
+                        return (true, "Customer deleted successfully", new List<string>(), 200);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(usuwanyPodmiot);
+                        return (false, "Failed to delete customer", errors, 400);
+                    }
+                }
+            });
+
+            if (result.Success)
+            {
+                return Ok(ApiResponse<bool>.Ok(true, result.Message));
             }
-
-            dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            else if (result.StatusCode == 404)
             {
-                if (DynamicPropertyHelper.GetId(p) == id)
-                {
-                    podmiot = p;
-                    break;
-                }
+                return NotFound(ApiResponse<bool>.Error(result.Message));
             }
-
-            if (podmiot == null)
+            else if (result.StatusCode == 500)
             {
-                return NotFound(ApiResponse<bool>.Error($"Customer with ID {id} not found"));
+                return StatusCode(500, ApiResponse<bool>.Error(result.Message));
             }
-
-            using (var usuwanyPodmiot = podmioty.Znajdz(podmiot))
+            else
             {
-                if (usuwanyPodmiot == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Customer with ID {id} not found"));
-                }
-
-                if ((bool)usuwanyPodmiot.Usun())
-                {
-                    _logger.LogInformation("Deleted customer {Id}", id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Customer deleted successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(usuwanyPodmiot);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to delete customer", errors));
-                }
+                return BadRequest(ApiResponse<bool>.Error(result.Message, result.Errors));
             }
         }
         catch (Exception ex)
