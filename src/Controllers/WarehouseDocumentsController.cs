@@ -307,66 +307,81 @@ public class WarehouseDocumentsController : ControllerBase
     /// Create internal consumption (RW - Rozchód wewnętrzny)
     /// </summary>
     [HttpPost("rw")]
-    public ActionResult<ApiResponse<WarehouseDocumentDto>> CreateRW([FromBody] CreateWarehouseDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreateRW([FromBody] CreateWarehouseDocumentRequest request)
     {
         try
         {
-            var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
-            if (rozchody == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get RozchodyWewnetrzne manager"));
-            }
-
-            // SDK examples use Utworz() without configuration parameter
-            using (var rw = rozchody.Utworz())
-            {
-                // Set warehouse
-                var magazynyManager = _sferaService.GetManager("Magazyny");
-                if (magazynyManager != null)
+                var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
+                if (rozchody == null)
                 {
-                    dynamic? magazyn = null;
-                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    return (false, null as WarehouseDocumentDto, "Failed to get RozchodyWewnetrzne manager", new List<string>());
+                }
+
+                // SDK examples use Utworz() without configuration parameter
+                using (var rw = rozchody.Utworz())
+                {
+                    // Set warehouse
+                    var magazynyManager = _sferaService.GetManager("Magazyny");
+                    if (magazynyManager != null)
                     {
-                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        dynamic? magazyn = null;
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
                         {
-                            magazyn = m;
-                            break;
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
+                        if (magazyn != null)
+                        {
+                            rw.Dane.Magazyn = magazyn;
                         }
                     }
-                    if (magazyn != null)
+
+                    if (request.IssueDate.HasValue)
                     {
-                        rw.Dane.Magazyn = magazyn;
+                        rw.Dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        rw.Dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items
+                    AddWarehouseDocumentItems(rw, request.Items);
+
+                    if ((bool)rw.Zapisz())
+                    {
+                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(rw.Dane, "NumerWewnetrzny");
+                        string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                        _logger.LogInformation("Created RW {Number}", docNumber);
+
+                        return (true, MapWZToDto(rw.Dane), "RW created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(rw);
+                        return (false, null as WarehouseDocumentDto, "Failed to create RW", errors);
                     }
                 }
+            });
 
-                if (request.IssueDate.HasValue)
-                {
-                    rw.Dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    rw.Dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                AddWarehouseDocumentItems(rw, request.Items);
-
-                if ((bool)rw.Zapisz())
-                {
-                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(rw.Dane, "NumerWewnetrzny");
-                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                    _logger.LogInformation("Created RW {Number}", docNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetWarehouseDocuments),
-                        ApiResponse<WarehouseDocumentDto>.Ok(MapWZToDto(rw.Dane), "RW created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(rw);
-                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Failed to create RW", errors));
-                }
+            if (result.Item1)
+            {
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Item2!, result.Item3));
+            }
+            else if (result.Item4.Any())
+            {
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Item3, result.Item4));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Item3));
             }
         }
         catch (Exception ex)
@@ -380,66 +395,81 @@ public class WarehouseDocumentsController : ControllerBase
     /// Create internal receipt (PW - Przychód wewnętrzny)
     /// </summary>
     [HttpPost("pw")]
-    public ActionResult<ApiResponse<WarehouseDocumentDto>> CreatePW([FromBody] CreateWarehouseDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreatePW([FromBody] CreateWarehouseDocumentRequest request)
     {
         try
         {
-            var przychody = _sferaService.GetManager("PrzychodyWewnetrzne");
-            if (przychody == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get PrzychodyWewnetrzne manager"));
-            }
-
-            // SDK examples use Utworz() without configuration parameter
-            using (var pw = przychody.Utworz())
-            {
-                // Set warehouse
-                var magazynyManager = _sferaService.GetManager("Magazyny");
-                if (magazynyManager != null)
+                var przychody = _sferaService.GetManager("PrzychodyWewnetrzne");
+                if (przychody == null)
                 {
-                    dynamic? magazyn = null;
-                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    return (false, null as WarehouseDocumentDto, "Failed to get PrzychodyWewnetrzne manager", new List<string>());
+                }
+
+                // SDK examples use Utworz() without configuration parameter
+                using (var pw = przychody.Utworz())
+                {
+                    // Set warehouse
+                    var magazynyManager = _sferaService.GetManager("Magazyny");
+                    if (magazynyManager != null)
                     {
-                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        dynamic? magazyn = null;
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
                         {
-                            magazyn = m;
-                            break;
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
+                        if (magazyn != null)
+                        {
+                            pw.Dane.Magazyn = magazyn;
                         }
                     }
-                    if (magazyn != null)
+
+                    if (request.IssueDate.HasValue)
                     {
-                        pw.Dane.Magazyn = magazyn;
+                        pw.Dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        pw.Dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items
+                    AddWarehouseDocumentItems(pw, request.Items);
+
+                    if ((bool)pw.Zapisz())
+                    {
+                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pw.Dane, "NumerWewnetrzny");
+                        string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
+                        _logger.LogInformation("Created PW {Number}", docNumber);
+
+                        return (true, MapPZToDto(pw.Dane), "PW created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(pw);
+                        return (false, null as WarehouseDocumentDto, "Failed to create PW", errors);
                     }
                 }
+            });
 
-                if (request.IssueDate.HasValue)
-                {
-                    pw.Dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    pw.Dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                AddWarehouseDocumentItems(pw, request.Items);
-
-                if ((bool)pw.Zapisz())
-                {
-                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pw.Dane, "NumerWewnetrzny");
-                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                    _logger.LogInformation("Created PW {Number}", docNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetWarehouseDocuments),
-                        ApiResponse<WarehouseDocumentDto>.Ok(MapPZToDto(pw.Dane), "PW created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(pw);
-                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Failed to create PW", errors));
-                }
+            if (result.Item1)
+            {
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Item2!, result.Item3));
+            }
+            else if (result.Item4.Any())
+            {
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Item3, result.Item4));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Item3));
             }
         }
         catch (Exception ex)

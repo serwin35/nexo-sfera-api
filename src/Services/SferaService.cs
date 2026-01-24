@@ -30,6 +30,10 @@ public class SferaService : ISferaService, IDisposable
     private Uchwyt? _sfera;
     private readonly object _lock = new();
 
+    // Semaphore for thread-safe SDK operations - EF6 is NOT thread-safe
+    // Desktop apps (like Artoit) are single-threaded, but ASP.NET Core is multi-threaded
+    private readonly SemaphoreSlim _sdkOperationLock = new(1, 1);
+
     public bool IsConnected => _sfera != null;
 
     public SferaService(IOptions<SferaSettings> settings, ILogger<SferaService> logger)
@@ -326,8 +330,43 @@ public class SferaService : ISferaService, IDisposable
         };
     }
 
+    /// <summary>
+    /// Executes an SDK operation with thread synchronization.
+    /// EF6 is NOT thread-safe, so all write operations must be serialized.
+    /// </summary>
+    public async Task<T> ExecuteWithLockAsync<T>(Func<T> operation)
+    {
+        await _sdkOperationLock.WaitAsync();
+        try
+        {
+            // Run on thread pool to avoid blocking the ASP.NET Core request thread
+            return await Task.Run(operation);
+        }
+        finally
+        {
+            _sdkOperationLock.Release();
+        }
+    }
+
+    /// <summary>
+    /// Executes an async SDK operation with thread synchronization.
+    /// </summary>
+    public async Task<T> ExecuteWithLockAsync<T>(Func<Task<T>> operation)
+    {
+        await _sdkOperationLock.WaitAsync();
+        try
+        {
+            return await operation();
+        }
+        finally
+        {
+            _sdkOperationLock.Release();
+        }
+    }
+
     public void Dispose()
     {
+        _sdkOperationLock.Dispose();
         _sfera?.Dispose();
         _sfera = null;
     }
