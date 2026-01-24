@@ -77,11 +77,14 @@ public class SferaService : ISferaService, IDisposable
 
                 try
                 {
+                    _logger.LogInformation("SDK STA thread: Entering work loop");
                     foreach (var workItem in _workQueue.GetConsumingEnumerable(_cts.Token))
                     {
+                        _logger.LogInformation("SDK STA thread: Picked up work item");
                         try
                         {
                             workItem();
+                            _logger.LogInformation("SDK STA thread: Work item finished");
                         }
                         catch (Exception ex)
                         {
@@ -149,6 +152,7 @@ public class SferaService : ISferaService, IDisposable
                 SetWorkingContext();
 
                 _logger.LogInformation("Successfully connected to Sfera on STA thread");
+                _logger.LogInformation("SDK STA thread: Initialization complete, thread ready for work items");
             }
             catch (Exception ex)
             {
@@ -193,16 +197,24 @@ public class SferaService : ISferaService, IDisposable
             throw new InvalidOperationException("SDK thread not started");
 
         var tcs = new TaskCompletionSource<T>();
+        var callerId = Environment.CurrentManagedThreadId;
+
+        _logger.LogInformation("ExecuteOnSdkThread: Adding work item from thread {CallerId}, queue count: {Count}",
+            callerId, _workQueue.Count);
 
         _workQueue.Add(() =>
         {
+            _logger.LogInformation("ExecuteOnSdkThread: Executing work item on thread {ThreadId}",
+                Environment.CurrentManagedThreadId);
             try
             {
                 var result = func();
+                _logger.LogInformation("ExecuteOnSdkThread: Work item completed successfully");
                 tcs.SetResult(result);
             }
             catch (Exception ex)
             {
+                _logger.LogError(ex, "ExecuteOnSdkThread: Work item failed");
                 tcs.SetException(ex);
             }
         });
