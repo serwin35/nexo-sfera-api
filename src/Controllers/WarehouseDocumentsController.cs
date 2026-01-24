@@ -155,15 +155,13 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            if (wydania == null || konfiguracje == null)
+            if (wydania == null)
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get WydaniaZewnetrzne manager"));
             }
 
-            var konfiguracja = konfiguracje.DaneDomyslne.WydanieZewnetrzne;
-
-            using (var wz = wydania.Utworz(konfiguracja))
+            // SDK pattern: use UtworzWydanieZewnetrzne() without configuration parameter
+            using (var wz = wydania.UtworzWydanieZewnetrzne())
             {
                 // Set contractor
                 SetContractor(wz.Dane, request.ContractorId, request.ContractorNIP);
@@ -233,15 +231,13 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            if (przyjecia == null || konfiguracje == null)
+            if (przyjecia == null)
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get PrzyjeciaZewnetrzne manager"));
             }
 
-            var konfiguracja = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
-
-            using (var pz = przyjecia.Utworz(konfiguracja))
+            // SDK pattern: use UtworzPrzyjecieZewnetrzne() without configuration parameter
+            using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
             {
                 // Set contractor (supplier)
                 SetContractor(pz.Dane, request.ContractorId, request.ContractorNIP);
