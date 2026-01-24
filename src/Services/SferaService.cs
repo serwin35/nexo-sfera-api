@@ -1,6 +1,7 @@
 using InsERT.Moria.Sfera;
 using InsERT.Mox.Product;
 // Extension methods for Sfera managers
+using InsERT.Moria.ModelOrganizacyjny;
 using InsERT.Moria.Asortymenty;
 using InsERT.Moria.Klienci;
 using InsERT.Moria.Dokumenty;
@@ -76,6 +77,10 @@ public class SferaService : ISferaService, IDisposable
                     {
                         throw new InvalidOperationException($"Failed to login operator: {_settings.NexoLogin}");
                     }
+
+                    // Set working context - CRITICAL for document creation
+                    // SDK examples show this is required before any document operations
+                    SetWorkingContext();
 
                     _logger.LogInformation("Successfully connected to Sfera");
                 }
@@ -268,6 +273,45 @@ public class SferaService : ISferaService, IDisposable
         // Create concrete method and invoke
         var concreteMethod = genericMethod.MakeGenericMethod(managerType);
         return concreteMethod.Invoke(_sfera, null);
+    }
+
+    /// <summary>
+    /// Sets working context (warehouse, branch, cash register) - required before document operations
+    /// SDK examples show this must be called after login and before any document creation
+    /// </summary>
+    private void SetWorkingContext()
+    {
+        if (_sfera == null) return;
+
+        try
+        {
+            var kontekst = _sfera.Kontekst();
+
+            // Set warehouse context
+            if (!string.IsNullOrEmpty(_settings.DefaultWarehouse))
+            {
+                kontekst.UstawMagazynWedlugSymbolu(_settings.DefaultWarehouse);
+                _logger.LogInformation("Set warehouse context: {Warehouse}", _settings.DefaultWarehouse);
+            }
+
+            // Set branch context
+            if (!string.IsNullOrEmpty(_settings.DefaultBranch))
+            {
+                kontekst.UstawOddzialWedlugSymbolu(_settings.DefaultBranch);
+                _logger.LogInformation("Set branch context: {Branch}", _settings.DefaultBranch);
+            }
+
+            // Set cash register context (optional)
+            if (!string.IsNullOrEmpty(_settings.DefaultCashRegister))
+            {
+                kontekst.UstawStanowiskoKasoweWdlugSymbolu(_settings.DefaultCashRegister);
+                _logger.LogInformation("Set cash register context: {CashRegister}", _settings.DefaultCashRegister);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to set working context. Document operations may fail.");
+        }
     }
 
     private static ProductId GetProductId(string product)
