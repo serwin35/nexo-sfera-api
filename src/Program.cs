@@ -5,6 +5,10 @@ using NexoSferaApi.Services;
 using NexoSferaApi.Middleware;
 using NexoSferaApi.Authentication;
 
+// Initialize Entity Framework 6 for .NET 8 compatibility
+// Must be called before any EF6/Sfera operations
+EF6Initializer.Initialize();
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add environment variables as configuration source with custom prefix mapping
