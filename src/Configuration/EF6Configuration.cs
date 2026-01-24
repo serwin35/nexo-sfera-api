@@ -1,32 +1,10 @@
-using System.Data.Entity;
-using System.Data.Entity.Infrastructure;
-using System.Data.Entity.SqlServer;
-
 namespace NexoSferaApi.Configuration;
 
 /// <summary>
-/// Entity Framework 6 configuration for .NET 8 compatibility.
-/// Required because ASP.NET Core doesn't use app.config/web.config.
-/// This class configures the SQL Server provider services for EF6.
-/// </summary>
-public class EF6Configuration : DbConfiguration
-{
-    public EF6Configuration()
-    {
-        // Set the SQL Server provider services
-        SetProviderServices("System.Data.SqlClient", SqlProviderServices.Instance);
-
-        // Set the default connection factory for SQL Server
-        SetDefaultConnectionFactory(new SqlConnectionFactory());
-
-        // Enable execution strategy for transient fault handling
-        SetExecutionStrategy("System.Data.SqlClient", () => new DefaultExecutionStrategy());
-    }
-}
-
-/// <summary>
-/// Static helper to initialize EF6 configuration before any EF operations.
-/// Must be called early in application startup.
+/// Entity Framework 6 initialization helper for .NET 8 compatibility.
+/// Required because ASP.NET Core doesn't auto-register DbProviderFactories.
+/// NOTE: The Nexo SDK bundles its own EF6 implementation (InsERT.Mox.EntityFramework.Core),
+/// so we only register the SqlClient provider factory here - the SDK handles its own DbConfiguration.
 /// </summary>
 public static class EF6Initializer
 {
@@ -34,8 +12,8 @@ public static class EF6Initializer
     private static readonly object _lock = new();
 
     /// <summary>
-    /// Initializes Entity Framework 6 for use in .NET 8 without app.config.
-    /// Registers the SQL Server provider and sets up the DbConfiguration.
+    /// Initializes the SQL Server DbProviderFactory for use with Nexo SDK's internal EF6.
+    /// Must be called early in application startup before any Sfera operations.
     /// </summary>
     public static void Initialize()
     {
@@ -49,23 +27,14 @@ public static class EF6Initializer
             {
                 // Register the SQL Server DbProviderFactory
                 // This is required in .NET Core/.NET 8 where providers aren't auto-registered
+                // The Nexo SDK's EF6 implementation needs this factory to be available
                 System.Data.Common.DbProviderFactories.RegisterFactory(
                     "System.Data.SqlClient",
                     System.Data.SqlClient.SqlClientFactory.Instance);
             }
-            catch (ArgumentException)
+            catch (System.ArgumentException)
             {
                 // Provider already registered, ignore
-            }
-
-            try
-            {
-                // Set the EF6 configuration
-                DbConfiguration.SetConfiguration(new EF6Configuration());
-            }
-            catch (InvalidOperationException)
-            {
-                // Configuration already set, ignore
             }
 
             _initialized = true;

@@ -37,8 +37,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.0" />
-    <!-- Entity Framework 6 for .NET 8 compatibility with Nexo SDK -->
-    <PackageReference Include="EntityFramework" Version="6.5.1" />
+    <!-- System.Data.SqlClient for DbProviderFactory registration (SDK bundles its own EF6) -->
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
   </ItemGroup>
 
