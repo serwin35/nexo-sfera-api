@@ -41,8 +41,6 @@
     <!-- SqlClient packages matching Artoit SDK configuration -->
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
-    <!-- Official EF6 provider for Microsoft.Data.SqlClient - fixes BIT type mapping -->
-    <PackageReference Include="Microsoft.EntityFramework.SqlServer" Version="6.5.1" />
   </ItemGroup>
 
   <ItemGroup>
