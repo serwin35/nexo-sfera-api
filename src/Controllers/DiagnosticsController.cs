@@ -75,13 +75,56 @@ public class DiagnosticsController : ControllerBase
                 results["ConnectionState"] = connection.State.ToString();
                 results["ServerVersion"] = connection.ServerVersion;
 
-                // Query a table with BIT columns - ParametrPodmiotu.CzyPobieracAutomatycznieRachunkiBankowe
-                const string query = @"
+                // First, find the table with the problematic column
+                const string findTableQuery = @"
                     SELECT TOP 1
-                        pp.Id,
-                        pp.CzyPobieracAutomatycznieRachunkiBankowe,
-                        pp.CzyWysylacNotatnik
-                    FROM dbo.ParametrPodmiotu pp";
+                        TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME, DATA_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE COLUMN_NAME = 'CzyPobieracAutomatycznieRachunkiBankowe'";
+
+                string? tableName = null;
+                string? schemaName = null;
+                await using (var findCmd = new SqlCommand(findTableQuery, connection))
+                await using (var findReader = await findCmd.ExecuteReaderAsync())
+                {
+                    if (await findReader.ReadAsync())
+                    {
+                        schemaName = findReader.GetString(0);
+                        tableName = findReader.GetString(1);
+                        results["FoundTable"] = $"{schemaName}.{tableName}";
+                        results["ColumnDataType"] = findReader.GetString(3);
+                    }
+                }
+
+                if (tableName == null)
+                {
+                    // Fallback: find any table with BIT columns
+                    const string findBitQuery = @"
+                        SELECT TOP 1 TABLE_SCHEMA, TABLE_NAME, COLUMN_NAME
+                        FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE DATA_TYPE = 'bit'
+                        ORDER BY TABLE_NAME";
+
+                    await using var bitCmd = new SqlCommand(findBitQuery, connection);
+                    await using var bitReader = await bitCmd.ExecuteReaderAsync();
+                    if (await bitReader.ReadAsync())
+                    {
+                        schemaName = bitReader.GetString(0);
+                        tableName = bitReader.GetString(1);
+                        results["FoundTable"] = $"{schemaName}.{tableName} (fallback)";
+                    }
+                }
+
+                if (tableName == null)
+                {
+                    results["Error"] = "No tables with BIT columns found";
+                    return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+                }
+
+                // Query the found table
+                var query = $@"
+                    SELECT TOP 1 *
+                    FROM [{schemaName}].[{tableName}]";
 
                 await using var cmd = new SqlCommand(query, connection);
                 await using var reader = await cmd.ExecuteReaderAsync();
@@ -129,7 +172,7 @@ public class DiagnosticsController : ControllerBase
                 }
                 else
                 {
-                    results["SampleRow"] = "No data in ParametrPodmiotu table";
+                    results["SampleRow"] = $"No data in {schemaName}.{tableName} table";
                 }
             }
 
