@@ -1,0 +1,1346 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Asortyment xmlns="http://schemas.insert.com.pl/2018/hop/towary" xmlns:wspolne="http://schemas.insert.com.pl/2013/hop">
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>BANAW200</Sygnatura>
+    <Nazwa>Balsam do ciała nawilżający 200 ml</Nazwa>
+    <Opis>Balsam do Ciała Nawilżający 200 ml</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk popularny</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5901024250844</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Balsam do Ciała Nawilżający 200 ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>19</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>BANAWULTRA250</Sygnatura>
+    <Nazwa>Balsam do ciała ultranawilżenie i dotlenienie 250</Nazwa>
+    <Opis>Balsam do ciała ultranawilżenie i dotlenienie 250 ml</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5901024250644</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Balsam do ciała Ultranawilżenie i dotlenienie 250</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>9.6</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>BAREG200</Sygnatura>
+    <Nazwa>Balsam do ciała intensywnie regenerujący 200 ml</Nazwa>
+    <Opis>Balsam do ciała intensywnie regenerujący 200 ml</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5901024250444</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Balsam do ciała intensywnie regenerujący 200 ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>23</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="US">
+    <Sygnatura>DOSTAWA</Sygnatura>
+    <Nazwa>Dostawa do klienta</Nazwa>
+    <Opis></Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Grupa>Podstawowa</Grupa>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy></PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf></NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>0</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="US">
+    <Sygnatura>PROWIZJA</Sygnatura>
+    <Nazwa>Prowizja za transakcję cesyjną</Nazwa>
+    <Opis></Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Grupa>Podstawowa</Grupa>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy></PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf></NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>1</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>DZFOREVER</Sygnatura>
+    <Nazwa>Forever dezodorant 100ml</Nazwa>
+    <Opis>Dezodorant o miłym leśnym zapachu</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Dezodoranty</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+      <Cecha>Kosmetyk popularny</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5901124350468</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Forever 100ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>154.5</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2002</Pole>
+      <Pole Nazwa="Zapach">Leśny</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>DZSO100</Sygnatura>
+    <Nazwa>So dezodorant perfumowany 100ml</Nazwa>
+    <Opis>Dezodorant o mocnym i długotrwałym zapachu</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Dezodoranty</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk popularny</Cecha>
+      <Cecha>Podróbka</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5903364206499</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>So dez 100ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>23.99</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>DZSO20</Sygnatura>
+    <Nazwa>So dezodorant perfumowany 20ml</Nazwa>
+    <Opis>Dezodorant o mocnym i długotrwałym zapachu</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Dezodoranty</Grupa>
+    <Cechy>
+      <Cecha>Podróbka</Cecha>
+      <Cecha>Kosmetyk popularny</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5903364204877</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>So dez 20ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>68.21</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2001</Pole>
+      <Pole Nazwa="Zapach">Kawowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>DZSO50</Sygnatura>
+    <Nazwa>So dezodorant perfumowany 50ml</Nazwa>
+    <Opis>Dezodorant o mocnym i długotrwałym zapachu. Największe opakowanie</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Dezodoranty</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk popularny</Cecha>
+      <Cecha>Podróbka</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5903364203511</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>So dez 50ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>144.98</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2001</Pole>
+      <Pole Nazwa="Zapach">Kawowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PEFLEUR15</Sygnatura>
+    <Nazwa>Fleur 15ml perfumy toalet.</Nazwa>
+    <Opis>Perfumy dla kobiet</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Perfumy</Grupa>
+    <Cechy>
+      <Cecha>Import nieoficjalny</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5903192016406</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Fleur 15ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>40</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PESO20</Sygnatura>
+    <Nazwa>So perfumy 20ml</Nazwa>
+    <Opis>Perfumy o mocnym i długotrwałym zapachu</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Perfumy</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5902812179392</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>So perf 20ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>8</Symbol>
+      <Nazwa>Podatek VAT 8%</Nazwa>
+      <Wartosc>8</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>8</Symbol>
+      <Nazwa>Podatek VAT 8%</Nazwa>
+      <Wartosc>8</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>150</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2001</Pole>
+      <Pole Nazwa="Zapach">Lawendowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PESO30</Sygnatura>
+    <Nazwa>So perfumy 30ml</Nazwa>
+    <Opis>Perfumy o mocnym i długotrwałym zapachu</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Perfumy</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5902812134391</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>So perf 30ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>8</Symbol>
+      <Nazwa>Podatek VAT 8%</Nazwa>
+      <Wartosc>8</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>8</Symbol>
+      <Nazwa>Podatek VAT 8%</Nazwa>
+      <Wartosc>8</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>180</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2001</Pole>
+      <Pole Nazwa="Zapach">Fiołkowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PESO50</Sygnatura>
+    <Nazwa>So perfumy 50ml</Nazwa>
+    <Opis>Perfumy o mocnym i długotrwałym zapachu</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Perfumy</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232204861</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>So perf 50ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>8</Symbol>
+      <Nazwa>Podatek VAT 8%</Nazwa>
+      <Wartosc>8</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>8</Symbol>
+      <Nazwa>Podatek VAT 8%</Nazwa>
+      <Wartosc>8</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>220</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2001</Pole>
+      <Pole Nazwa="Zapach">Fiołkowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PEWTK50</Sygnatura>
+    <Nazwa>WTK perfumy 50 ml</Nazwa>
+    <Opis>Markowy produkt włoski</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Perfumy</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5902454300611</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Perf WTK 50ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>123.99</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">Orzechowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>POYAR01</Sygnatura>
+    <Nazwa>Pomadka długotrwała 01</Nazwa>
+    <Opis>Szminka z błyszczykiem</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Pomadki</Grupa>
+    <Cechy>
+      <Cecha>Reklamowany w TV</Cecha>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5902454131710</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Pomadka 01</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>75</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2002</Pole>
+      <Pole Nazwa="Zapach">nie dotyczy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>POYAR02</Sygnatura>
+    <Nazwa>Pomadka długotrwała 02</Nazwa>
+    <Opis>Szminka z błyszczykiem</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Pomadki</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5902178003218</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Pomadka 02</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>85</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2002</Pole>
+      <Pole Nazwa="Zapach">nie dotyczy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>POYAR03</Sygnatura>
+    <Nazwa>Pomadka długotrwała 03</Nazwa>
+    <Opis>Szminka z błyszczykiem</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Pomadki</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232200214</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Pomadka 03</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>95</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2002</Pole>
+      <Pole Nazwa="Zapach">nie dotyczy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PUYAR06</Sygnatura>
+    <Nazwa>Puder w kamieniu 06</Nazwa>
+    <Opis>Bardzo delikatny</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Pudry</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+      <Cecha>Podróbka</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232200542</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Puder 06</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>19.99</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">nie dotyczy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>PUYAR07</Sygnatura>
+    <Nazwa>Puder w kamieniu 07</Nazwa>
+    <Opis>Bardzo delikatny</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Pudry</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+      <Cecha>Podróbka</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232200573</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Puder 07</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>0</Symbol>
+      <Nazwa>Podatek VAT 0%</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>1</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>35</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2002</Pole>
+      <Pole Nazwa="Zapach">nie dotyczy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>WOBLACK100</Sygnatura>
+    <Nazwa>Black Tiger woda toaletowa 100ml</Nazwa>
+    <Opis>Produkt dla prawdziwych mężczyzn</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Wody</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232204731</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Black Tiger 100</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>223.99</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">korzenny</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>WOBLACK50</Sygnatura>
+    <Nazwa>Black Tiger woda toaletowa 50ml</Nazwa>
+    <Opis>Produkt dla prawdziwych mężczyzn</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Wody</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232580286</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Black Tiger 50</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>125.99</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">korzenny</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>WOBLACK70</Sygnatura>
+    <Nazwa>Black Tiger woda toaletowa 70ml</Nazwa>
+    <Opis>Produkt dla prawdziwych mężczyzn</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Wody</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk ekskluzywny</Cecha>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900232580392</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Black Tiger 70</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>184</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">korzenny</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>WOFOREVER15O</Sygnatura>
+    <Nazwa>Forever woda toaletowa 15ml ozd.</Nazwa>
+    <Opis>Idealny prezent dla ukochanego mężczyzny</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Wody</Grupa>
+    <Cechy>
+      <Cecha>Kosmetyk popularny</Cecha>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900263010523</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Wo Forever 15</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>197.99</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">Lawendowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>WOPINKLACE</Sygnatura>
+    <Nazwa>Pink Lace woda toaletowa 15ml</Nazwa>
+    <Opis>Coś dla wymagających</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Wody</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+      <Cecha>Reklamowany w TV</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5900263023035</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Wo Pink Lace 15</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>247</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Wlasne>
+      <Pole Nazwa="Rok produkcji">2003</Pole>
+      <Pole Nazwa="Zapach">Aloesowy</Pole>
+    </Wlasne>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>ZELALGI</Sygnatura>
+    <Nazwa>Żel pod prysznic Algi 200 ml</Nazwa>
+    <Opis>Algi morskie żel pod prysznic 200 ml</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla kobiet</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5903566205790</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>ALGI - ŻEL POD PRYSZNIC 200 ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>5</Symbol>
+      <Nazwa>Podatek VAT 5%</Nazwa>
+      <Wartosc>5</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>5</Symbol>
+      <Nazwa>Podatek VAT 5%</Nazwa>
+      <Wartosc>5</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>6.8</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="TW">
+    <Sygnatura>ZELAQUA</Sygnatura>
+    <Nazwa>Żel pod prysznic Aqua 300 ml</Nazwa>
+    <Opis>Aqua - Żel pod prysznic 300 ml</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Charakterystyka></Charakterystyka>
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Produkt dla mężczyzn</Cecha>
+    </Cechy>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy>5903566205689</PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf>Żel pod prysznic 300 ml</NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>5</Symbol>
+      <Nazwa>Podatek VAT 5%</Nazwa>
+      <Wartosc>5</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup>
+      <Symbol>5</Symbol>
+      <Nazwa>Podatek VAT 5%</Nazwa>
+      <Wartosc>5</Wartosc>
+    </StawkaVatZakup>
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>36</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="KT">
+    <Sygnatura>ZESO20</Sygnatura>
+    <Nazwa>Zestaw ekskluzywny</Nazwa>
+    <Opis>Perfumy plus pomadka</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Grupa>Podstawowa</Grupa>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy></PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf></NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+        <Objetosc>
+          <Jednostka>m3</Jednostka>
+          <Wartosc>0.02</Wartosc>
+        </Objetosc>
+        <Masa>
+          <Jednostka>kg</Jednostka>
+          <Wartosc>0.2</Wartosc>
+        </Masa>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>23</Symbol>
+      <Nazwa>Podstawowy podatek VAT 23%</Nazwa>
+      <Wartosc>23</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup JakPrzySprzedazy="1" />
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>225</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+    <Skladniki>
+      <Skladnik>
+        <Symbol>PESO20</Symbol>
+        <Liczba>1</Liczba>
+        <Jm>szt</Jm>
+      </Skladnik>
+      <Skladnik>
+        <Symbol>POYAR01</Symbol>
+        <Liczba>1</Liczba>
+        <Jm>szt</Jm>
+      </Skladnik>
+    </Skladniki>
+  </Pozycja>
+  <Pozycja Rodzaj="OP">
+    <Sygnatura>OPKSK</Sygnatura>
+    <Nazwa>Paleta mała</Nazwa>
+    <Opis>Paleta mała</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Grupa>Podstawowa</Grupa>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy></PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf></NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+        <Objetosc>
+          <Jednostka>m3</Jednostka>
+          <Wartosc>0.1</Wartosc>
+        </Objetosc>
+        <Masa>
+          <Jednostka>kg</Jednostka>
+          <Wartosc>5</Wartosc>
+        </Masa>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup JakPrzySprzedazy="1" />
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>15</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+  <Pozycja Rodzaj="OP">
+    <Sygnatura>OPKKR</Sygnatura>
+    <Nazwa>Paleta duża</Nazwa>
+    <Opis>Paleta duża</Opis>
+    <Uwagi></Uwagi>
+    <StronaWww></StronaWww>
+    <Grupa>Podstawowa</Grupa>
+    <JednostkiMiar>
+      <PodstJm>
+        <Symbol>szt</Symbol>
+        <PodstKodKreskowy></PodstKodKreskowy>
+        <Precyzja>3</Precyzja>
+        <Opakowanie></Opakowanie>
+        <NazwaDlaUf></NazwaDlaUf>
+        <PLU></PLU>
+        <WysylajNaUrz>1</WysylajNaUrz>
+        <Objetosc>
+          <Jednostka>m3</Jednostka>
+          <Wartosc>0.12</Wartosc>
+        </Objetosc>
+        <Masa>
+          <Jednostka>kg</Jednostka>
+          <Wartosc>5.5</Wartosc>
+        </Masa>
+      </PodstJm>
+    </JednostkiMiar>
+    <JmSprzedazy>szt</JmSprzedazy>
+    <JmZakupu>szt</JmZakupu>
+    <StawkaVatSprzedaz>
+      <Symbol>zw</Symbol>
+      <Nazwa>Zwolnione z podatku VAT</Nazwa>
+      <Wartosc>0</Wartosc>
+    </StawkaVatSprzedaz>
+    <StawkaVatZakup JakPrzySprzedazy="1" />
+    <Stany />
+    <OtwartaCena>0</OtwartaCena>
+    <Wazony>0</Wazony>
+    <ObrotMarza>0</ObrotMarza>
+    <CenaEwidencyjna>25</CenaEwidencyjna>
+    <SklepInternet>0</SklepInternet>
+    <SerwisAukcyjny>0</SerwisAukcyjny>
+    <SprzedazMobilna>0</SprzedazMobilna>
+  </Pozycja>
+</Asortyment>

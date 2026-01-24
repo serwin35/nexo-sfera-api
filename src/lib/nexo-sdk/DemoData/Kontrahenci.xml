@@ -1,0 +1,2907 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Podmioty xmlns="http://schemas.insert.com.pl/2018/hop/klienci" xmlns:w="http://schemas.insert.com.pl/2013/hop" xmlns:r="http://schemas.insert.com.pl/2013/hop/rachunkibankowe">
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ABC</Sygnatura>
+    <DaneFirmy>
+      <REGON>932446859</REGON>
+      <Nazwa>ABC s.c.Sklep spożywczy</Nazwa>
+      <NazwaSkrocona>ABC s.c.</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-56-53-563</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>456-46-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@abc.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="WWW">
+        <w:Wartosc>www.abc.com.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wrocław</Miasto>
+          <Ulica>Polanka  12/6</Ulica>
+          <Kod>54-365</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Sklep osiedlowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>NBP Oddział Zamiejsc. w Bielsku-B.  O/Okr.Katowice</r:Nazwa>
+        <r:Numer>10101052-122345456789456123</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">DW 1732Y</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ADMAR</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>AD-MAR s.c.</Nazwa>
+      <NazwaSkrocona>AD-MAR s.c.</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>873-521-22-43</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>327-54-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@admar.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Bierkowice</Miasto>
+          <Ulica>Romanowskiego 23</Ulica>
+          <Kod>44-753</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Rzetelny</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>NBP Oddział Zamiejscowy w Zamościu  O/Okr.Lublin</r:Nazwa>
+        <r:Numer>10101690-456789878945646656</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">PO 17832</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>AGA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep AGA</Nazwa>
+      <NazwaSkrocona>Sklep AGA</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>842-853-77-42</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>254-52-24</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@agar.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Gołdapia</Miasto>
+          <Ulica>Rynek 12</Ulica>
+          <Kod>45-266</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Hurtownie</Grupa>
+    <Cechy>
+      <Cecha>Zagraniczny</Cecha>
+      <Cecha>Hurtownia</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>NBP O/Okr. w Białymstoku</r:Nazwa>
+        <r:Numer>10101049-12345678549975456548</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">SI 92749</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ALA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Hurtownia ALA</Nazwa>
+      <NazwaSkrocona>Hurtownia ALA</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>853-74-64-241</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>356-46-24</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@ala.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Oleśnica</Miasto>
+          <Ulica>Romanowskiego 134</Ulica>
+          <Kod>54-948</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Drogerie</Grupa>
+    <Cechy>
+      <Cecha>Inna drogeria</Cecha>
+      <Cecha>Drogeria w sieci ROSSMAN</Cecha>
+      <Cecha>Hurtownia</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Świętochłowicach</r:Nazwa>
+        <r:Numer>10202502-655648949877878456465</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">TK 18380</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ALEGRO</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Drogeria ALEGRO</Nazwa>
+      <NazwaSkrocona>Drogeria ALEGRO</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>898-42-42-421</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>331-21-42</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@alegro.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Głogów</Miasto>
+          <Ulica>Cicha  15/5</Ulica>
+          <Kod>42-561</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Drogeria w sieci STOKROTKA</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP I O. w Bydgoszczy</r:Nazwa>
+        <r:Numer>10201462-965874589653258465</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">ZK 83800</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ALEX</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep wielobranżowy  ALEX</Nazwa>
+      <NazwaSkrocona>Sklep wielobranżowy  ALEX</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>897-56-85-135</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>789-45-11</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@alex.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Konin</Miasto>
+          <Ulica>Szpitalna  41a</Ulica>
+          <Kod>31-345</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Sklep osiedlowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP I O. w Bydgoszczy</r:Nazwa>
+        <r:Numer>10201462-564865953215468576</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">DWR 7810H</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ALF</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep przemysłowy ALF</Nazwa>
+      <NazwaSkrocona>Sklep przemysłowy ALF</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-56-85-456</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>656-55-48</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@alf.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Katowice</Miasto>
+          <Ulica>Kasprowicza  13/3</Ulica>
+          <Kod>24-115</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP I O. w Bydgoszczy</r:Nazwa>
+        <r:Numer>10201462-5656589845454</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">OP 84890</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ALFA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Alfa - Tech s.c.Władysław Kozak</Nazwa>
+      <NazwaSkrocona>Alfa - Tech s.c.</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>821-53-15-245</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>65-456-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@alfa.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wałbrzych</Miasto>
+          <Ulica>Męckiego  83</Ulica>
+          <Kod>44-738</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Fabryki</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP I O. w Bydgoszczy</r:Nazwa>
+        <r:Numer>10201462-5656565655556565455</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">OB 1894K</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>AREX</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep AREX, Jan Rutkowski</Nazwa>
+      <NazwaSkrocona>Sklep AREX</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>842-63-63-615</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>656-54-48</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@arex.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kalisz</Miasto>
+          <Ulica>Bończyka  63/13</Ulica>
+          <Kod>94-473</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Sklep osiedlowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">WI 1130N</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ARTUR</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Kiosk ARTUR</Nazwa>
+      <NazwaSkrocona>Kiosk ARTUR</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>836-84-63-635</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>333-53-64</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@artur.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Lublin</Miasto>
+          <Ulica>Legnicka  57/2</Ulica>
+          <Kod>96-534</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Świętochłowicach</r:Nazwa>
+        <r:Numer>10202502-56648889798787878556</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">LB 18929</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>BEATRICE</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Hurtownia kosmetyków BEATRICE</Nazwa>
+      <NazwaSkrocona>Hurtownia kosmetyków BEATRICE</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>848-54-54-547</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>565-56-44</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@beatrice.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Warszawa</Miasto>
+          <Ulica>Wielka  42</Ulica>
+          <Kod>05-465</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Hurtownie</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+      <Cecha>Hurtownia</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKO SA I O/Wrocław</r:Nazwa>
+        <r:Numer>234242-234234-123122-123123-343</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">OD 77263</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>BEAUTY</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Salon kosmetyczny BEAUTY</Nazwa>
+      <NazwaSkrocona>Salon BEAUTY</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>954-877-12-64</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>665-54-44</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@beauty.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Hrubieszów</Miasto>
+          <Ulica>Wrzosowa  45</Ulica>
+          <Kod>64-654</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Drogerie</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Drogeria w sieci URODA</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Świętochłowicach</r:Nazwa>
+        <r:Numer>10202502-66544789798945646</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">BD 88732</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>BOSS</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Perfumeria BOSS</Nazwa>
+      <NazwaSkrocona>Perfumeria BOSS</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>811-24-62-146</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>545-88-56</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@boss.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Bielsko Biała</Miasto>
+          <Ulica>Szczęśliwa  137</Ulica>
+          <Kod>62-726</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Drogerie</Grupa>
+    <Cechy>
+      <Cecha>Drogeria w sieci ROSSMAN</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Świętochłowicach</r:Nazwa>
+        <r:Numer>10202502-4568764123645899</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">DS 82873</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>DANUTA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep przemysłowy DANUTA</Nazwa>
+      <NazwaSkrocona>Sklep przemysłowy DANUTA</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>843-56-67-543</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>446-46-73</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@danuta.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Łódź</Miasto>
+          <Ulica>Piesza  26/3</Ulica>
+          <Kod>46-527</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Duży market</Cecha>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKO SA I O/Wrocław</r:Nazwa>
+        <r:Numer>3213232-4546465465-7777777-545</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">ZX 7643J</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>DOMOSAD</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep wielobranżowy DOMOSAD</Nazwa>
+      <NazwaSkrocona>Sklep wielobranżowy DOMOSAD</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>859-236-55-86</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>125-55-74</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@domosad.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kołobrzeg</Miasto>
+          <Ulica>Boczna  15/6</Ulica>
+          <Kod>44-444</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Głogowie</r:Nazwa>
+        <r:Numer>10203033-8899448978978975456</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">SJ 8378P</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ERIE</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Hurtownia ERIE, Danuta Kołodziejczyk</Nazwa>
+      <NazwaSkrocona>Hurtownia ERIE</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>832-65-62-042</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>656-58-52</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@erie.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Bydgoszcz</Miasto>
+          <Ulica>Jagiellońska  66/22</Ulica>
+          <Kod>14-622</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Hurtownie</Grupa>
+    <Cechy>
+      <Cecha>Zagraniczny</Cecha>
+      <Cecha>Hipermarket</Cecha>
+      <Cecha>Hurtownia</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Głogowie</r:Nazwa>
+        <r:Numer>10203033-6565656565678987</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">GE 88290</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>GAMA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Gama Trans Sp.z o.o.</Nazwa>
+      <NazwaSkrocona>Gama Trans Sp.z o.o.</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>854-48-65-987</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>654-46-44</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@gama.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wrocław</Miasto>
+          <Ulica>Piastów Śląskich 185</Ulica>
+          <Kod>54-654</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Fabryki</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Głogowie</r:Nazwa>
+        <r:Numer>10203033-6544789798797878</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">ZK 9439K</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>GRAFIT</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep papierniczy GRAFIT</Nazwa>
+      <NazwaSkrocona>Sklep papierniczy GRAFIT</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>887-684-21-54</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>145-55-74</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@grafit.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kraków</Miasto>
+          <Ulica>Krawiecka  65/9</Ulica>
+          <Kod>65-466</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Sklep osiedlowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Głogowie</r:Nazwa>
+        <r:Numer>10203033-455487945645647879</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">SA 89272</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>GROM</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep wielobranżowy GROM</Nazwa>
+      <NazwaSkrocona>Sklep wielobranżowy GROM</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>885-66-89-919</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>658-55-44</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@grom.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Poznań</Miasto>
+          <Ulica>Pokojowa  78/9</Ulica>
+          <Kod>62-148</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Głogowie</r:Nazwa>
+        <r:Numer>10203033-5678987464897815189</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">HJ 8381H</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>HUGO</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Perfumeria HUGO, Renata Kowalska</Nazwa>
+      <NazwaSkrocona>Perfumeria HUGO</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>846-75-35-314</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>545-54-45</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@hugo.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Katowice</Miasto>
+          <Ulica>Wilcza  13/42</Ulica>
+          <Kod>74-869</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Drogerie</Grupa>
+    <Cechy>
+      <Cecha>Drogeria w sieci STOKROTKA</Cecha>
+      <Cecha>Zagraniczny</Cecha>
+      <Cecha>Duży market</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-88965468798645643</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">AW 9190D</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>HURT</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Hurtownia kosmetyków, Małgorzata Konik</Nazwa>
+      <NazwaSkrocona>Hurtownia kosmetyków</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>854-77-88-999</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>466-85-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@hurt.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Koło</Miasto>
+          <Ulica>Gospodarna  43</Ulica>
+          <Kod>87-979</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Hurtownie</Grupa>
+    <Cechy>
+      <Cecha>Hurtownia</Cecha>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-998865678979783324</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">KL 92899</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>INSERT</Sygnatura>
+    <DaneFirmy>
+      <REGON>932283479</REGON>
+      <Nazwa>InsERT Spółka akcyjna</Nazwa>
+      <NazwaSkrocona>InsERT S.A.</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>898-19-45-134</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>(071) 78-76-100</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>insert@insert.com.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="WWW">
+        <w:Wartosc>www.insert.com.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wrocław</Miasto>
+          <Ulica>Jerzmanowska 2</Ulica>
+          <Kod>54-519</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Zagraniczny</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">DW 9910K</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>JAS</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Przedsiębiorstwo produkcyjno - handlowo - usługowe Jaś i Małgosia</Nazwa>
+      <NazwaSkrocona>PPHU Jaś i Małgosia</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-598-65-88</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>983-89-54</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@jas.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Świdnica</Miasto>
+          <Ulica>Koperkowa  98</Ulica>
+          <Kod>65-466</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Fabryki</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Hurtownia</Cecha>
+      <Cecha>Drogeria w sieci ROSSMAN</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-65998798764654646646</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">DWR 9920M</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>KOBRA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Agencja detektywistyczna KOBRA</Nazwa>
+      <NazwaSkrocona>AD KOBRA</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>865-256-66-42</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>125-55-88</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@kobra.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kraków</Miasto>
+          <Ulica>Więzienna  85</Ulica>
+          <Kod>66-666</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Importerzy</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-8997894756465464668</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">DSW 0103B</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>KOLOROWA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Restauracja KOLOROWARestauracja-Hotel</Nazwa>
+      <NazwaSkrocona>Restauracja KOLOROWA</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>888-77-77-444</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>026-25-85</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@kolorowa.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Sosnowiec</Miasto>
+          <Ulica>Podjazdowa  21/5</Ulica>
+          <Kod>65-665</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-796543489856484589</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">XM 9293J</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>KOPARSKI</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Handel Obwoźny Grzegorz Koparski</Nazwa>
+      <NazwaSkrocona>Handel Obwoźny</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>852-663-99-88</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>513-55-88</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@koparski.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Polanica Zdrój</Miasto>
+          <Ulica>Kwiatowa  77</Ulica>
+          <Kod>44-447</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-898765485451598</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">WS 9019L</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>KOZICKO</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Export - Import Artykuły przemysłowe</Nazwa>
+      <NazwaSkrocona>Export - Import</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>887-745-77-52</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>545-48-54</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@kozicko.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kozicko</Miasto>
+          <Ulica>Podjazdowa 45</Ulica>
+          <Kod>54-564</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Importerzy</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-65689555488556844</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">LM 9198G</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>KSAVON</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Agencja reklamowa KSAVON</Nazwa>
+      <NazwaSkrocona>Agencja reklamowa KSAVON</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>847-88-99-698</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>31-32-22</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@ksavon.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Koszalin</Miasto>
+          <Ulica>Piękna  44/2</Ulica>
+          <Kod>52-365</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Zagraniczny</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKO SA I O/Wrocław</r:Nazwa>
+        <r:Numer>56353453-345345345-56756756-444</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">AD 0207J</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>MAGNUM</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Magnum s.c. Ryszard Malicki</Nazwa>
+      <NazwaSkrocona>Magnum s.c.</NazwaSkrocona>
+    </DaneFirmy>
+    <UE>
+      <w:NIPUE>SK8637464842</w:NIPUE>
+      <w:PanstwoUE>Słowacja</w:PanstwoUE>
+    </UE>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>44-53-54</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@magnum.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Słowacja</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Warszawa</Miasto>
+          <Ulica>Lotnicza  35/65</Ulica>
+          <Kod>65-938</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-895546898981531213</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">MK 1939H</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>MAJA</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep MAJA</Nazwa>
+      <NazwaSkrocona>Sklep MAJA</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>833-62-62-464</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>32-42-25</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@maja.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kołobrzeg</Miasto>
+          <Ulica>Szpitalna  45/44a</Ulica>
+          <Kod>43-466</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP XX O. w Poznaniu</r:Nazwa>
+        <r:Numer>10204085-978965487787534543</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">AQ 9128E</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="0" Odbiorca="1">
+    <Sygnatura>MICHALAK</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Arkadiusz Michalak</Nazwa>
+      <NazwaSkrocona>Arkadiusz Michalak</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-754-45-55</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>150-52-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@michalak.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Nowa Ruda</Miasto>
+          <Ulica>Lipowa  2/2</Ulica>
+          <Kod>57-400</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKO SA I O/Wrocław</r:Nazwa>
+        <r:Numer>578935218-89321651-616553656-555</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">ML 9284S</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>MIKOŁAJ</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Piekarnia MIKOŁAJ</Nazwa>
+      <NazwaSkrocona>Piekarnia MIKOŁAJ</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-156-55-54</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>44-545-52</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@mikolaj.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kalisz</Miasto>
+          <Ulica>Polna  33</Ulica>
+          <Kod>41-431</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Fabryki</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-866564564894735136</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">FD 91988</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="0">
+    <Sygnatura>NOVUM</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Drogeria NOVUM</Nazwa>
+      <NazwaSkrocona>Drogeria NOVUM</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-151-57-99</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>564-12-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@Novum.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Sosnowiec</Miasto>
+          <Ulica>Kolorowa  98/3</Ulica>
+          <Kod>65-465</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Drogeria w sieci URODA</Cecha>
+      <Cecha>Duży market</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-5764654561315898456</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">OP 01293</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ODEON</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Drogeria ODEON</Nazwa>
+      <NazwaSkrocona>Drogeria ODEON</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>884-54-52-622</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>433-35-26</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@odeon.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Koszalin</Miasto>
+          <Ulica>Bałtycka  13/6</Ulica>
+          <Kod>74-439</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inna drogeria</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-65897894765461313</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">OB 01291</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>OLEK</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Hurtownia OLEK</Nazwa>
+      <NazwaSkrocona>Hurtownia OLEK</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>897-43-45-452</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>322-33-33</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@olek.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Warszawa</Miasto>
+          <Ulica>Baczyńskiego  24/22a</Ulica>
+          <Kod>66-272</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Hurtownie</Grupa>
+    <Cechy>
+      <Cecha>Hurtownia</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-56789131564654876</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">AF 91288</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>PRUSK</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>P.R.U.S.K. Sp.z o.o.</Nazwa>
+      <NazwaSkrocona>P.R.U.S.K. Sp.z o.o.</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>852-56-52-753</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>212-44-55</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@prusk.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wałcz</Miasto>
+          <Ulica>Wiktora  74</Ulica>
+          <Kod>87-878</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Importerzy</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+      <Cecha>Hurtownia</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-45689797898789756455</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">FG 66424</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>ROGALIK</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Piekarnia ROGALIK</Nazwa>
+      <NazwaSkrocona>Piekarnia ROGALIK</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-56-53-56</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>342-45-45</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@rogalik.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wrocław</Miasto>
+          <Ulica>Leśna  45</Ulica>
+          <Kod>54-572</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Fabryki</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-658987645646546</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">BG 98745</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>SALON</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Salon komputerowy Jacek Kaleciński</Nazwa>
+      <NazwaSkrocona>Salon komputerowy</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>892-35-45-73</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>325-64-64</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@salon.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wałbrzych</Miasto>
+          <Ulica>Paprotna  244</Ulica>
+          <Kod>75-681</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Duży market</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-5456488945616516516</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">XC 99845</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>SKLEP1</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep wielobranżowy Tadeusz Kwiatkowski</Nazwa>
+      <NazwaSkrocona>Sklep wielobranżowy</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>863-63-63-357</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>848-54-41</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@sklep1.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Konin</Miasto>
+          <Ulica>Milicka  244</Ulica>
+          <Kod>93-848</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Inny sklep</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-56489793135876465456</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">NM 92892</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>SKLEP2</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep odzieżowy Zofia Kowalska</Nazwa>
+      <NazwaSkrocona>Sklep odzieżowy</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>895-540-65-55</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>655-65-74</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@sklep2.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Konstancin</Miasto>
+          <Ulica>Rynek  96</Ulica>
+          <Kod>54-666</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Rzetelny</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-589879878944565466</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">HN 92839</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>STAŚ</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Sklep STAŚ</Nazwa>
+      <NazwaSkrocona>Sklep STAŚ</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-44-45-355</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>413-22-32</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@stas.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Kalisz</Miasto>
+          <Ulica>Brodzińskiego  12/6</Ulica>
+          <Kod>54-364</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Sklepy</Grupa>
+    <Cechy>
+      <Cecha>Początkujący</Cecha>
+      <Cecha>Krajowy</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-654654313131545</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">JK 99813</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>SUN</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Solarium SUN, Małgorzata Bakalarczyk</Nazwa>
+      <NazwaSkrocona>Solarium SUN</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>895-45-24-460</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>656-52-20</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@sun.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Poznań</Miasto>
+          <Ulica>Jagiellońska  36/22</Ulica>
+          <Kod>62-455</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Podstawowa</Grupa>
+    <Cechy>
+      <Cecha>Krajowy</Cecha>
+      <Cecha>Początkujący</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-45689789613564664</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">QQ 9981J</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="1" Odbiorca="1">
+    <Sygnatura>TABIS</Sygnatura>
+    <DaneFirmy>
+      <REGON>546789123</REGON>
+      <Nazwa>Hurtownia TABIS</Nazwa>
+      <NazwaSkrocona>Hurtownia TABIS</NazwaSkrocona>
+    </DaneFirmy>
+    <NIP>894-155-44-65</NIP>
+    <Kontakty>
+      <w:Kontakt Podstawowy="1" Typ="Telefon">
+        <w:Wartosc>343-62-63</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="Email">
+        <w:Wartosc>info@tabis.insert.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+      <w:Kontakt Podstawowy="1" Typ="WWW">
+        <w:Wartosc>www.tabis.com.pl</w:Wartosc>
+        <w:Komentarz></w:Komentarz>
+      </w:Kontakt>
+    </Kontakty>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Piła</Miasto>
+          <Ulica>Baczyńskiego  42a/2</Ulica>
+          <Kod>12-422</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <Branze />
+    <Grupa>Hurtownie</Grupa>
+    <Cechy>
+      <Cecha>Hurtownia</Cecha>
+      <Cecha>Rzetelny</Cecha>
+      <Cecha>Drogeria w sieci ROSSMAN</Cecha>
+    </Cechy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>PKOBP O. w Grudziądzu</r:Nazwa>
+        <r:Numer>10205040-544654646546489877</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+    <Wlasne>
+      <Pole Nazwa="Samochód dostawczy">Ford Mondeo QE 9298H</Pole>
+    </Wlasne>
+    <Opiekun>Pers_1</Opiekun>
+    <CennikGlowny></CennikGlowny>
+    <Negocjacja>1</Negocjacja>
+    <Kredyt Zezwalaj="1">
+      <Forma>Przelew</Forma>
+    </Kredyt>
+    <MetodaKasowa>0</MetodaKasowa>
+    <Komunikat Aktywny="0" Pokaz="Zawsze" />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_1</Sygnatura>
+    <DaneOsoby>
+      <Imie>Grzegorz</Imie>
+      <Nazwisko>Brzęczyszczykiewicz</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ABC</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_2</Sygnatura>
+    <DaneOsoby>
+      <Imie>Janina</Imie>
+      <Nazwisko>Herbuska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ADMAR</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_3</Sygnatura>
+    <DaneOsoby>
+      <Imie>Krystyna</Imie>
+      <Nazwisko>Krawczyk</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>AGA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_4</Sygnatura>
+    <DaneOsoby>
+      <Imie>Maja</Imie>
+      <Nazwisko>Dąbrowska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ALA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_5</Sygnatura>
+    <DaneOsoby>
+      <Imie>Eleonora</Imie>
+      <Nazwisko>Wójcik</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ALEGRO</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_6</Sygnatura>
+    <DaneOsoby>
+      <Imie>Jacek</Imie>
+      <Nazwisko>Kamiński</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ALEX</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_7</Sygnatura>
+    <DaneOsoby>
+      <Imie>Julia</Imie>
+      <Nazwisko>Zielińska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ALF</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_8</Sygnatura>
+    <DaneOsoby>
+      <Imie>Aldona</Imie>
+      <Nazwisko>Woźniak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ALFA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_9</Sygnatura>
+    <DaneOsoby>
+      <Imie>Hubert</Imie>
+      <Nazwisko>Jankowski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>AREX</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_10</Sygnatura>
+    <DaneOsoby>
+      <Imie>Jerzy</Imie>
+      <Nazwisko>Kwiatkowski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ARTUR</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_11</Sygnatura>
+    <DaneOsoby>
+      <Imie>Dominika</Imie>
+      <Nazwisko>Mazur</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>BEATRICE</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_12</Sygnatura>
+    <DaneOsoby>
+      <Imie>Paweł</Imie>
+      <Nazwisko>Pawłowski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>BEAUTY</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_13</Sygnatura>
+    <DaneOsoby>
+      <Imie>Stefan</Imie>
+      <Nazwisko>Grabowski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>BOSS</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_14</Sygnatura>
+    <DaneOsoby>
+      <Imie>Maria</Imie>
+      <Nazwisko>Michalska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>DANUTA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_15</Sygnatura>
+    <DaneOsoby>
+      <Imie>Wojciech</Imie>
+      <Nazwisko>Adamczyk</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>DOMOSAD</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_16</Sygnatura>
+    <DaneOsoby>
+      <Imie>Natalia</Imie>
+      <Nazwisko>Dudek</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ERIE</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_17</Sygnatura>
+    <DaneOsoby>
+      <Imie>Tomasz</Imie>
+      <Nazwisko>Jabłoński</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>GAMA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_18</Sygnatura>
+    <DaneOsoby>
+      <Imie>Karolina</Imie>
+      <Nazwisko>Majewska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>GRAFIT</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_19</Sygnatura>
+    <DaneOsoby>
+      <Imie>Franciszka</Imie>
+      <Nazwisko>Wróbel</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>GROM</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_20</Sygnatura>
+    <DaneOsoby>
+      <Imie>Beata</Imie>
+      <Nazwisko>Malinowska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>HUGO</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_21</Sygnatura>
+    <DaneOsoby>
+      <Imie>Lucyna</Imie>
+      <Nazwisko>Walczak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>HURT</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_22</Sygnatura>
+    <DaneOsoby>
+      <Imie>Marianna</Imie>
+      <Nazwisko>Sikora</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>INSERT</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_23</Sygnatura>
+    <DaneOsoby>
+      <Imie>Marek</Imie>
+      <Nazwisko>Górski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>JAS</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_24</Sygnatura>
+    <DaneOsoby>
+      <Imie>Wiesław</Imie>
+      <Nazwisko>Rutkowski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>KOBRA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_25</Sygnatura>
+    <DaneOsoby>
+      <Imie>Jan</Imie>
+      <Nazwisko>Duda</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>KOLOROWA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_26</Sygnatura>
+    <DaneOsoby>
+      <Imie>Grzegorz</Imie>
+      <Nazwisko>Szewczyk</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>KOPARSKI</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_27</Sygnatura>
+    <DaneOsoby>
+      <Imie>Marcin</Imie>
+      <Nazwisko>Marciniak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>KOZICKO</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_28</Sygnatura>
+    <DaneOsoby>
+      <Imie>Teresa</Imie>
+      <Nazwisko>Zawadzka</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>KSAVON</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_29</Sygnatura>
+    <DaneOsoby>
+      <Imie>Anna</Imie>
+      <Nazwisko>Zawadzka</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>MAGNUM</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_30</Sygnatura>
+    <DaneOsoby>
+      <Imie>Celina</Imie>
+      <Nazwisko>Kaźmierczak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>MAJA</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_31</Sygnatura>
+    <DaneOsoby>
+      <Imie>Arkadiusz</Imie>
+      <Nazwisko>Michalak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>MICHALAK</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_32</Sygnatura>
+    <DaneOsoby>
+      <Imie>Grażyna</Imie>
+      <Nazwisko>Czerwińska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>MIKOŁAJ</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_33</Sygnatura>
+    <DaneOsoby>
+      <Imie>Irena</Imie>
+      <Nazwisko>Kołodziej</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>NOVUM</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_34</Sygnatura>
+    <DaneOsoby>
+      <Imie>Krystyna</Imie>
+      <Nazwisko>Sikorska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ODEON</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_35</Sygnatura>
+    <DaneOsoby>
+      <Imie>Łucja</Imie>
+      <Nazwisko>Cieślak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>OLEK</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_36</Sygnatura>
+    <DaneOsoby>
+      <Imie>Natalia</Imie>
+      <Nazwisko>Krupa</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>PRUSK</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_37</Sygnatura>
+    <DaneOsoby>
+      <Imie>Marian</Imie>
+      <Nazwisko>Wesołowski</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>ROGALIK</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_38</Sygnatura>
+    <DaneOsoby>
+      <Imie>Aleksandra</Imie>
+      <Nazwisko>Kania</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>SALON</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_39</Sygnatura>
+    <DaneOsoby>
+      <Imie>Stefan</Imie>
+      <Nazwisko>Nowacki</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>SKLEP1</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_40</Sygnatura>
+    <DaneOsoby>
+      <Imie>Roman</Imie>
+      <Nazwisko>Szulc</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>SKLEP2</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_41</Sygnatura>
+    <DaneOsoby>
+      <Imie>Grzegorz</Imie>
+      <Nazwisko>Kozak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>STAŚ</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_42</Sygnatura>
+    <DaneOsoby>
+      <Imie>Maria</Imie>
+      <Nazwisko>Domańska</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>SUN</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>PracKh_43</Sygnatura>
+    <DaneOsoby>
+      <Imie>Jan</Imie>
+      <Nazwisko>Żak</Nazwisko>
+      <PrzedstawicielFirmy>
+        <Firma>TABIS</Firma>
+      </PrzedstawicielFirmy>
+      <RolnikRyczaltowy>0</RolnikRyczaltowy>
+    </DaneOsoby>
+    <Adresy />
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="0" Odbiorca="0">
+    <Sygnatura>US ŚRÓDMIEŚCIE</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>Urząd Skarbowy Wrocław - Śródmieście</Nazwa>
+      <NazwaSkrocona>Urząd Skarbowy Wrocław - Śródmieście</NazwaSkrocona>
+    </DaneFirmy>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Nazwa>Urząd Skarbowy Wrocław - Śródmieście</Nazwa>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wrocław</Miasto>
+          <Ulica>pl.Solidarności</Ulica>
+          <NrDomu>1/3/5</NrDomu>
+          <Kod>53-661</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+    <RachunkiBankowe>
+      <Rachunek Podstawowy="1">
+        <r:Nazwa>NBP O/Okr. we Wrocławiu</r:Nazwa>
+        <r:Numer>38101016740005502223000000</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+      <Rachunek Podstawowy="0">
+        <r:Nazwa>NBP O/Okr. we Wrocławiu </r:Nazwa>
+        <r:Numer>41101016740005502221000000</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+      <Rachunek Podstawowy="0">
+        <r:Nazwa>NBP O/Okr. we Wrocławiu  </r:Nazwa>
+        <r:Numer>88101016740005502222000000</r:Numer>
+        <r:Waluta>PLN</r:Waluta>
+      </Rachunek>
+    </RachunkiBankowe>
+  </Podmiot>
+  <Podmiot Typ="Firma" Dostawca="0" Odbiorca="0">
+    <Sygnatura>ZUS WROCŁAW</Sygnatura>
+    <DaneFirmy>
+      <Nazwa>ZUS, Oddział Wrocław</Nazwa>
+      <NazwaSkrocona>ZUS, Oddział Wrocław</NazwaSkrocona>
+    </DaneFirmy>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Nazwa>ZUS, Oddział Wrocław</Nazwa>
+          <Panstwo>Polska</Panstwo>
+          <Wojewodztwo>dolnośląskie</Wojewodztwo>
+          <Miasto>Wrocław</Miasto>
+          <Ulica>Pretficza</Ulica>
+          <NrDomu>9</NrDomu>
+          <NrLokalu>11</NrLokalu>
+          <Kod>50-926</Kod>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0" Szef="1">
+    <Sygnatura>Pers_1</Sygnatura>
+    <DaneOsoby>
+      <Imie>Szef</Imie>
+      <Nazwisko>firmy</Nazwisko>
+    </DaneOsoby>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Nazwa>Szef </Nazwa>
+          <Panstwo>Polska</Panstwo>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+  </Podmiot>
+  <Podmiot Typ="Osoba" Dostawca="0" Odbiorca="0">
+    <Sygnatura>Pers_3</Sygnatura>
+    <DaneOsoby>
+      <Imie>Jan</Imie>
+      <Nazwisko>Kowalski</Nazwisko>
+    </DaneOsoby>
+    <Adresy>
+      <Adres xmlns="http://schemas.insert.com.pl/2013/hop" Rodzaj="Glowny">
+        <AdresSzczegoly>
+          <Nazwa>Kowalski Jan</Nazwa>
+          <Panstwo>Polska</Panstwo>
+        </AdresSzczegoly>
+      </Adres>
+    </Adresy>
+  </Podmiot>
+</Podmioty>
