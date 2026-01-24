@@ -164,13 +164,16 @@ public class SferaService : ISferaService, IDisposable
 
     /// <summary>
     /// Executes an action on the dedicated SDK STA thread and waits for completion.
+    /// RunContinuationsAsynchronously prevents continuations from running on the SDK thread.
     /// </summary>
     private Task ExecuteOnSdkThreadAsync(Action action)
     {
         if (_workQueue == null)
             throw new InvalidOperationException("SDK thread not started");
 
-        var tcs = new TaskCompletionSource();
+        // CRITICAL: RunContinuationsAsynchronously ensures that await continuations
+        // don't run on the SDK thread, which would block it from processing more items
+        var tcs = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
 
         _workQueue.Add(() =>
         {
@@ -190,13 +193,16 @@ public class SferaService : ISferaService, IDisposable
 
     /// <summary>
     /// Executes a function on the dedicated SDK STA thread and returns the result.
+    /// RunContinuationsAsynchronously prevents continuations from running on the SDK thread.
     /// </summary>
     private Task<T> ExecuteOnSdkThreadAsync<T>(Func<T> func)
     {
         if (_workQueue == null)
             throw new InvalidOperationException("SDK thread not started");
 
-        var tcs = new TaskCompletionSource<T>();
+        // CRITICAL: RunContinuationsAsynchronously ensures that await continuations
+        // don't run on the SDK thread, which would block it from processing more items
+        var tcs = new TaskCompletionSource<T>(TaskCreationOptions.RunContinuationsAsynchronously);
         var callerId = Environment.CurrentManagedThreadId;
 
         _logger.LogInformation("ExecuteOnSdkThread: Adding work item from thread {CallerId}, queue count: {Count}",
