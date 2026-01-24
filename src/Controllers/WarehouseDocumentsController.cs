@@ -320,8 +320,13 @@ public class WarehouseDocumentsController : ControllerBase
                     return (false, null, "Failed to get RozchodyWewnetrzne manager", new List<string>());
                 }
 
-                // SDK examples use Utworz() without configuration parameter
-                using (var rw = rozchody.Utworz())
+                // Get default configuration - based on working example from GitHub
+                // https://github.com/mariuszbyahoo/InsERTSubiektNexoAsortymenty
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                dynamic? konfig = konfiguracje?.DaneDomyslne?.RozchodWewnetrzny;
+
+                // Use Utworz(konfig) with configuration like in working examples
+                using (var rw = konfig != null ? rozchody.Utworz(konfig) : rozchody.Utworz())
                 {
                     // Set warehouse
                     var magazynyManager = _sferaService.GetManager("Magazyny");
@@ -408,8 +413,12 @@ public class WarehouseDocumentsController : ControllerBase
                     return (false, null, "Failed to get PrzychodyWewnetrzne manager", new List<string>());
                 }
 
-                // SDK examples use Utworz() without configuration parameter
-                using (var pw = przychody.Utworz())
+                // Get default configuration - based on working example from GitHub
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                dynamic? konfig = konfiguracje?.DaneDomyslne?.PrzychodWewnetrzny;
+
+                // Use Utworz(konfig) with configuration like in working examples
+                using (var pw = konfig != null ? przychody.Utworz(konfig) : przychody.Utworz())
                 {
                     // Set warehouse
                     var magazynyManager = _sferaService.GetManager("Magazyny");
