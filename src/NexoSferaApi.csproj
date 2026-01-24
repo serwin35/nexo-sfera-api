@@ -6,6 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>false</SelfContained>
+    <!-- Required for Nexo SDK - it needs Windows Desktop types -->
+    <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <!-- Runtime configuration matching Nexo SDK Importer settings -->
