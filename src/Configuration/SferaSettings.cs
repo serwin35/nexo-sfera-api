@@ -10,4 +10,9 @@ public class SferaSettings
     public string NexoLogin { get; set; } = "Szef";
     public string NexoPassword { get; set; } = "robocze";
     public string Product { get; set; } = "Subiekt"; // Subiekt, Rachmistrz, Rewizor, Gratyfikant
+
+    // Context settings - required for document operations
+    public string? DefaultWarehouse { get; set; } // e.g., "MAG"
+    public string? DefaultBranch { get; set; } // e.g., "CENTRALA"
+    public string? DefaultCashRegister { get; set; } // e.g., "CENTR"
 }
