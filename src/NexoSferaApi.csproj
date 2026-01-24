@@ -126,6 +126,19 @@
       <HintPath>$(NexoSdkPath)\InsERT.Mox.Security.Sql.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <!-- Additional references from Artoit SDK required for document operations -->
+    <Reference Include="InsERT.Moria.SladRewizyjny">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.SladRewizyjny.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Komentarze">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Komentarze.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Wspolne">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Wspolne.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Copy ALL SDK files to output directory -->
