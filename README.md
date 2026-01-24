@@ -51,6 +51,12 @@ dotnet run
 API bedzie dostepne pod adresem: `http://localhost:5000`
 Swagger UI: `http://localhost:5000/swagger`
 
+## Srodowisko testowe
+
+- **API URL:** `http://mssql-insert.sys.dmservice.pl:5000/`
+- **Swagger:** `http://mssql-insert.sys.dmservice.pl:5000/swagger`
+- **API Key:** Wymagany w headerze `X-API-Key`
+
 ## Endpointy API
 
 ### Health Check
