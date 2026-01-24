@@ -7,5 +7,59 @@
 
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
-| #1886 | 4:08 PM | 🔴 | Fixed Konfiguracje Manager Access Across All Document Controllers | ~474 |
+| #1982 | 4:43 PM | ✅ | Document Association Implementation Complete | ~293 |
+| #1981 | 4:41 PM | 🔵 | Znajdz Method Usage in DocumentsController | ~235 |
+| #1980 | " | 🟣 | Document Disassociation Endpoint Implementation | ~422 |
+| #1979 | " | 🔵 | Document Lookup Uses manager.Dane.Znajdz(id) Pattern Once Per Manager Type | ~352 |
+| #1978 | 4:40 PM | 🔵 | DocumentsController Uses Multi-Manager Search to Locate Documents by ID | ~455 |
+| #1977 | " | 🔵 | DocumentsController Provides Three ID-Based Retrieval Endpoints | ~411 |
+| #1976 | " | 🔵 | Document Association Endpoint Uses Manager Fan-Out Pattern to Locate Source Documents | ~489 |
+| #1973 | 4:39 PM | ✅ | Resolved Git Merge Conflicts in DocumentsController | ~315 |
+| #1972 | 4:38 PM | 🔵 | Document Association Searches Eight Manager Types for Source and Target Documents | ~443 |
+| #1971 | " | ✅ | Added Internal Warehouse Managers to Document Association Manager List | ~342 |
+| #1970 | " | 🔵 | Git Merge Conflict in DocumentsController managersToCheck Array | ~153 |
+| #1969 | " | 🔵 | Git Merge Conflict in DocumentsController with Duplicate Manager Names | ~413 |
+| #1967 | 4:37 PM | 🔵 | DocumentsController Aggregates Data From Eight Sfera Manager Types | ~460 |
+| #1966 | " | 🔵 | Document Associations Endpoint Iterates Through 8 Manager Types | ~482 |
+| #1965 | " | 🔵 | Compilation Errors from String Array Syntax Issues in DocumentsController | ~420 |
+| #1964 | 4:36 PM | 🔴 | Replaced Non-Existent DokumentyMagazynowe with Correct Warehouse Managers | ~378 |
+| #1963 | " | 🔴 | Added RozchodyWewnetrzne and PrzychodyWewnetrzne to Document Association Manager List | ~387 |
+| #1953 | 4:34 PM | 🔵 | Controllers Use 52 Different Manager Types with Heavy Reliance on Core Managers | ~490 |
+| #1946 | 4:29 PM | ✅ | Enhanced Null Safety in DocumentsController and DynamicPropertyHelper | ~399 |
+| #1944 | " | 🔴 | Added Null Guard to MapToListItemDto Preventing Runtime Binding Errors | ~423 |
+| #1943 | 4:28 PM | 🔄 | Refactored MapToListItemDto to Use Explicit Variable Casting for Dynamic Properties | ~475 |
+| #1942 | " | 🔴 | Refactored MapToListItemDto to Use Explicit Casting Instead of Dynamic Binding | ~440 |
+| #1939 | 4:26 PM | 🔴 | Added Null Safety to DocumentsController GetDocuments Mapping | ~403 |
+| #1938 | " | 🔴 | Added Null Checking and Error Handling to Document List Mapping | ~431 |
+| #1937 | " | 🔴 | Added Defensive Error Handling for Document List Mapping | ~407 |
+| #1936 | " | 🔵 | DocumentsController Uses DynamicPropertyHelper for Safe Sfera SDK Property Access | ~475 |
+| #1926 | 4:23 PM | 🔵 | HealthController Uses AllowAnonymous Attribute Bypassing Authentication | ~464 |
+| #1905 | 4:12 PM | 🔄 | Switched PW Document Creation to Use PrzychodyWewnetrzne Manager Directly | ~402 |
+| #1904 | " | 🔵 | WarehouseDocumentsController CreatePW Mirrors CreateRW Pattern with PrzychodWewnetrzny Config | ~444 |
+| #1903 | " | 🔴 | Fixed RW Document Creation Using Correct RozchodyWewnetrzne Manager | ~424 |
+| #1894 | 4:11 PM | 🔵 | WarehouseDocumentsController CreateRW Uses GetManager for Konfiguracje | ~428 |
+
+### Jan 24, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #2168 | 12:32 PM | 🔵 | Root Cause Identified - Entity Framework Metadata Index Out of Range in PrzychodWewnetrznyBO | ~574 |
+| #2118 | 11:48 AM | 🔵 | RW and PW document creation implementation details | ~456 |
+| #2099 | 11:29 AM | 🔵 | Root Cause of Entity Framework Metadata Error Identified in InsERT SDK | ~634 |
+| #2093 | 11:17 AM | 🔵 | Sfera initialization failure causing RW creation errors | ~353 |
+| #2087 | 11:00 AM | 🔵 | WarehouseDocumentsController Uses Parameterless SDK Creation Methods | ~453 |
+| #2086 | " | 🔴 | Fixed PZ Document Creation to Use UtworzPrzyjecieZewnetrzne Method | ~381 |
+| #2085 | " | 🔵 | WarehouseDocumentsController CreatePZ Uses PrzyjecieZewnetrzne Configuration | ~440 |
+| #2084 | 10:59 AM | 🔴 | Fixed WZ Document Creation Using Correct SDK Method | ~305 |
+| #2083 | " | 🟣 | CreateWZ Endpoint Implements External Release Document Creation | ~529 |
+| #2072 | 10:58 AM | 🔵 | Searching for InsERT SDK context initialization patterns in codebase | ~422 |
+| #2059 | 10:54 AM | 🔵 | WarehouseDocumentsController implements RW and PW creation without configuration parameters | ~472 |
+| #2053 | 1:34 AM | 🔵 | Entity Framework Metadata Error Affects ALL Document Types in InsERT SDK | ~768 |
+| #2036 | 1:26 AM | ⚖️ | Configuration-based initialization removed for internal warehouse documents (RW/PW) | ~523 |
+| #2035 | 1:24 AM | ⚖️ | Reverted RW Creation to Use Utworz Without Configuration Parameter | ~405 |
+| #2034 | " | 🔵 | WarehouseDocumentsController Implements Corrected Manager Usage for All Document Types | ~537 |
+| #2022 | 1:11 AM | 🔵 | DocumentsController Provides 8 Document Creation Endpoints | ~531 |
+| #2018 | 1:05 AM | 🔵 | Warehouse Document Creation Pattern - WZ and PZ Endpoints | ~436 |
+| #2011 | 1:04 AM | 🔵 | PW Endpoint Uses PrzychodyWewnetrzne Manager for Internal Receipt Documents | ~416 |
+| #1985 | 12:01 AM | 🔴 | RW creation fails with ArgumentOutOfRangeException in Entity Framework metadata | ~643 |
 </claude-mem-context>
