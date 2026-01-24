@@ -106,6 +106,10 @@
       <HintPath>$(NexoSdkPath)\InsERT.Mox.EntityFramework.Core.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <Reference Include="InsERT.Mox.EntityFramework.Ms.SqlServer">
+      <HintPath>$(NexoSdkPath)\InsERT.Mox.EntityFramework.Ms.SqlServer.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
     <Reference Include="InsERT.Moria.Security.Core">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Security.Core.dll</HintPath>
       <Private>true</Private>
