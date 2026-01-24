@@ -39,30 +39,33 @@ public static class EF6Initializer
             var log = new System.Text.StringBuilder();
             log.AppendLine($"EF6Initializer started at {DateTime.Now:O}");
 
-            // Register Microsoft.Data.SqlClient provider factory
-            try
-            {
-                System.Data.Common.DbProviderFactories.RegisterFactory(
-                    "Microsoft.Data.SqlClient",
-                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
-                log.AppendLine("Registered Microsoft.Data.SqlClient provider factory");
-            }
-            catch (System.ArgumentException)
-            {
-                log.AppendLine("Microsoft.Data.SqlClient provider already registered");
-            }
-
-            // Also register System.Data.SqlClient for compatibility
+            // IMPORTANT: Register System.Data.SqlClient FIRST as the primary provider
+            // The SDK was designed for .NET Framework 4.7.2 which used System.Data.SqlClient
+            // Registration order matters for provider resolution
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
                     "System.Data.SqlClient",
                     System.Data.SqlClient.SqlClientFactory.Instance);
-                log.AppendLine("Registered System.Data.SqlClient provider factory");
+                log.AppendLine("Registered System.Data.SqlClient provider factory (primary)");
             }
             catch (System.ArgumentException)
             {
                 log.AppendLine("System.Data.SqlClient provider already registered");
+            }
+
+            // Also register Microsoft.Data.SqlClient for compatibility with newer code
+            // But register it AFTER System.Data.SqlClient
+            try
+            {
+                System.Data.Common.DbProviderFactories.RegisterFactory(
+                    "Microsoft.Data.SqlClient",
+                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
+                log.AppendLine("Registered Microsoft.Data.SqlClient provider factory (secondary)");
+            }
+            catch (System.ArgumentException)
+            {
+                log.AppendLine("Microsoft.Data.SqlClient provider already registered");
             }
 
             // Try to activate SDK's MicrosoftSqlDbConfiguration via reflection
