@@ -598,13 +598,10 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // CRITICAL: Reserve number BEFORE adding items
-                    faktura.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
-
-                    // Set dates - try multiple property names as they vary by document type
+                    // CRITICAL: Set dates BEFORE reserving number (number format includes year/month)
                     if (request.IssueDate.HasValue)
                     {
+                        _logger.LogInformation("Setting FS IssueDate to: {Date}", request.IssueDate.Value);
                         if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
                         {
                             DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
@@ -615,6 +612,10 @@ public class DocumentsController : ControllerBase
                     {
                         DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.SaleDate.Value);
                     }
+
+                    // Reserve number AFTER setting date (number depends on date!)
+                    faktura.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set due date - property name may vary by document type
                     if (request.DueDate.HasValue)
@@ -730,7 +731,16 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // CRITICAL: Reserve number BEFORE adding items
+                    // CRITICAL: Set dates BEFORE ZarezerwujNumer so document number includes correct year/month
+                    if (request.IssueDate.HasValue)
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        }
+                    }
+
+                    // CRITICAL: Reserve number AFTER setting dates - number depends on date
                     zamowienie.ZarezerwujNumer();
                     _logger.LogInformation("Reserved customer order number: {Number}", (string?)zamowienie.PodajPodgladNumeru()?.ToString() ?? "");
 
@@ -833,18 +843,19 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // CRITICAL: Reserve number BEFORE adding items
-                    faktura.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
-
-                    // Set dates - try multiple property names as they vary by document type
+                    // CRITICAL: Set dates BEFORE reserving number (number format includes year/month)
                     if (request.IssueDate.HasValue)
                     {
+                        _logger.LogInformation("Setting FZ IssueDate to: {Date}", request.IssueDate.Value);
                         if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
                         {
                             DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
                         }
                     }
+
+                    // Reserve number AFTER setting date (number depends on date!)
+                    faktura.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set notes
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -1160,10 +1171,7 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
-                // CRITICAL: Reserve number BEFORE adding items
-                paragon.ZarezerwujNumer();
-                _logger.LogInformation("Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
-
+                // CRITICAL: Set dates BEFORE ZarezerwujNumer so document number includes correct year/month
                 if (request.IssueDate.HasValue)
                 {
                     if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
@@ -1171,6 +1179,10 @@ public class DocumentsController : ControllerBase
                         DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
                     }
                 }
+
+                // CRITICAL: Reserve number AFTER setting dates - number depends on date
+                paragon.ZarezerwujNumer();
+                _logger.LogInformation("Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
 
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
@@ -1518,16 +1530,67 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Common payment method name mappings from various systems to Nexo symbols
+    /// </summary>
+    private static readonly Dictionary<string, string> PaymentMethodMappings = new(StringComparer.OrdinalIgnoreCase)
+    {
+        // Polish names
+        { "gotówka", "GOTOWKA" },
+        { "gotowka", "GOTOWKA" },
+        { "przelew", "PRZELEW" },
+        { "karta", "KARTA" },
+        { "kredyt", "KREDYT" },
+        { "pobranie", "POBRANIE" },
+        { "za pobraniem", "POBRANIE" },
+        { "kompensata", "KOMPENSATA" },
+        { "barter", "BARTER" },
+        { "przedpłata", "PRZEDPLATA" },
+        { "przedplata", "PRZEDPLATA" },
+        // English names
+        { "cash", "GOTOWKA" },
+        { "transfer", "PRZELEW" },
+        { "card", "KARTA" },
+        { "credit", "KREDYT" },
+        { "cod", "POBRANIE" },
+        // Variations
+        { "przelew bankowy", "PRZELEW" },
+        { "karta płatnicza", "KARTA" },
+        { "karta platnicza", "KARTA" },
+    };
+
+    /// <summary>
     /// Sets payment method on a document by symbol or ID.
     /// </summary>
     private void SetPaymentMethodOnDocument(dynamic dokumentDane, string? paymentMethodSymbol, int? paymentMethodId)
     {
-        if (string.IsNullOrEmpty(paymentMethodSymbol) && !paymentMethodId.HasValue) return;
+        _logger.LogDebug("SetPaymentMethodOnDocument called with Symbol={Symbol}, Id={Id}",
+            (object?)paymentMethodSymbol ?? "(null)", (object?)paymentMethodId?.ToString() ?? "(null)");
+
+        if (string.IsNullOrEmpty(paymentMethodSymbol) && !paymentMethodId.HasValue)
+        {
+            _logger.LogDebug("No payment method specified - skipping");
+            return;
+        }
 
         try
         {
             var formyManager = _sferaService.GetManager("FormyPlatnosci");
-            if (formyManager == null) return;
+            if (formyManager == null)
+            {
+                _logger.LogWarning("FormyPlatnosci manager is null");
+                return;
+            }
+
+            // Log available payment methods for debugging
+            var availableMethods = new List<string>();
+            foreach (var f in formyManager.Dane.Wszystkie())
+            {
+                var id = DynamicPropertyHelper.GetId(f);
+                var sym = DynamicPropertyHelper.GetString(f, "Symbol");
+                var nazwa = DynamicPropertyHelper.GetString(f, "Nazwa");
+                availableMethods.Add($"[{id}] {sym} ({nazwa})");
+            }
+            _logger.LogDebug("Available payment methods: {Methods}", string.Join(", ", availableMethods));
 
             dynamic? formaPlatnosci = null;
 
@@ -1544,19 +1607,45 @@ public class DocumentsController : ControllerBase
             }
             else if (!string.IsNullOrEmpty(paymentMethodSymbol))
             {
+                // Apply mapping if exists
+                string searchSymbol = paymentMethodSymbol;
+                if (PaymentMethodMappings.TryGetValue(paymentMethodSymbol, out var mappedSymbol))
+                {
+                    _logger.LogDebug("Mapped payment method '{Original}' to '{Mapped}'", paymentMethodSymbol, mappedSymbol);
+                    searchSymbol = mappedSymbol;
+                }
+
                 // Try exact match first
                 foreach (var f in formyManager.Dane.Wszystkie())
                 {
                     var symbol = DynamicPropertyHelper.GetString(f, "Symbol");
-                    if (string.Equals(symbol, paymentMethodSymbol, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(symbol, searchSymbol, StringComparison.OrdinalIgnoreCase))
                     {
                         formaPlatnosci = f;
                         break;
                     }
                 }
 
-                // Try partial match if no exact match
+                // Try partial match on symbol or name if no exact match
                 if (formaPlatnosci == null)
+                {
+                    foreach (var f in formyManager.Dane.Wszystkie())
+                    {
+                        var symbol = DynamicPropertyHelper.GetString(f, "Symbol");
+                        var nazwa = DynamicPropertyHelper.GetString(f, "Nazwa");
+                        if ((symbol != null && symbol.Contains(searchSymbol, StringComparison.OrdinalIgnoreCase)) ||
+                            (nazwa != null && nazwa.Contains(searchSymbol, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            formaPlatnosci = f;
+                            var fId = DynamicPropertyHelper.GetId(f);
+                            _logger.LogDebug("Found payment method by partial match: [{Id}] {Symbol} ({Nazwa})", fId, symbol, nazwa);
+                            break;
+                        }
+                    }
+                }
+
+                // Try original value if mapping didn't help
+                if (formaPlatnosci == null && searchSymbol != paymentMethodSymbol)
                 {
                     foreach (var f in formyManager.Dane.Wszystkie())
                     {
@@ -1566,6 +1655,8 @@ public class DocumentsController : ControllerBase
                             (nazwa != null && nazwa.Contains(paymentMethodSymbol, StringComparison.OrdinalIgnoreCase)))
                         {
                             formaPlatnosci = f;
+                            var fId = DynamicPropertyHelper.GetId(f);
+                            _logger.LogDebug("Found payment method by original value partial match: [{Id}] {Symbol} ({Nazwa})", fId, symbol, nazwa);
                             break;
                         }
                     }
@@ -1575,17 +1666,22 @@ public class DocumentsController : ControllerBase
             if (formaPlatnosci != null)
             {
                 dokumentDane.FormaPlatnosci = formaPlatnosci;
+                int? id = DynamicPropertyHelper.GetId(formaPlatnosci);
                 string? symbol = DynamicPropertyHelper.GetString(formaPlatnosci, "Symbol");
-                _logger.LogInformation("Set payment method: {Symbol}", symbol);
+                string? nazwa = DynamicPropertyHelper.GetString(formaPlatnosci, "Nazwa");
+                _logger.LogInformation("Set payment method: [{Id}] {Symbol} ({Nazwa})", (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
             }
             else
             {
-                _logger.LogWarning("Payment method not found: Symbol={Symbol}, Id={Id}", paymentMethodSymbol, paymentMethodId);
+                _logger.LogWarning("Payment method not found: Symbol={Symbol}, Id={Id}. Available: {Available}",
+                    (object?)paymentMethodSymbol ?? "(null)",
+                    (object?)paymentMethodId?.ToString() ?? "(null)",
+                    string.Join(", ", availableMethods));
             }
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Error setting payment method");
+            _logger.LogWarning(ex, "Error setting payment method: {Message}", ex.Message);
         }
     }
 
