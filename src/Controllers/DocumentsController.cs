@@ -616,10 +616,13 @@ public class DocumentsController : ControllerBase
                         DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.SaleDate.Value);
                     }
 
-                    // Set due date
+                    // Set due date - property name may vary by document type
                     if (request.DueDate.HasValue)
                     {
-                        dane.TerminPlatnosci = request.DueDate.Value;
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "TerminPlatnosci", request.DueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataPlatnosci", request.DueDate.Value);
+                        }
                     }
 
                     // Set payment method
