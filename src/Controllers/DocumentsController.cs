@@ -576,26 +576,59 @@ public class DocumentsController : ControllerBase
                     // Set customer
                     SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
 
-                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
-                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                    // CRITICAL: Set warehouse and branch on Dokument - required for sales documents!
+                    var magazyny = _sferaService.GetManager("Magazyny");
+                    var oddzialy = _sferaService.GetManager("Oddzialy");
+
+                    // Set warehouse (use from request or default "MG")
+                    string warehouseSymbol = !string.IsNullOrEmpty(request.WarehouseSymbol) ? request.WarehouseSymbol : "MG";
+                    if (magazyny != null)
                     {
-                        var magazyny = _sferaService.GetManager("Magazyny");
-                        if (magazyny != null)
+                        dynamic? magazyn = null;
+                        foreach (var m in magazyny.Dane.Wszystkie())
                         {
-                            dynamic? magazyn = null;
-                            foreach (var m in magazyny.Dane.Wszystkie())
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
                             {
-                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
-                                {
-                                    magazyn = m;
-                                    break;
-                                }
-                            }
-                            if (magazyn != null)
-                            {
-                                faktura.Dokument.Magazyn = magazyn;
+                                magazyn = m;
+                                break;
                             }
                         }
+                        if (magazyn != null)
+                        {
+                            faktura.Dokument.Magazyn = magazyn;
+                            _logger.LogInformation("[FS-v2] Set Dokument.Magazyn = {Symbol}", warehouseSymbol);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[FS-v2] Warehouse not found: {Symbol}", warehouseSymbol);
+                        }
+                    }
+
+                    // Set branch (use default "DMs")
+                    if (oddzialy != null)
+                    {
+                        dynamic? oddzial = null;
+                        foreach (var o in oddzialy.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetString(o, "Symbol") == "DMs")
+                            {
+                                oddzial = o;
+                                break;
+                            }
+                        }
+                        if (oddzial != null)
+                        {
+                            faktura.Dokument.Oddzial = oddzial;
+                            _logger.LogInformation("[FS-v2] Set Dokument.Oddzial = DMs");
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[FS-v2] Branch 'DMs' not found");
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[FS-v2] Could not get Oddzialy manager");
                     }
 
                     // CRITICAL: Set dates BEFORE reserving number (number format includes year/month)
@@ -858,6 +891,29 @@ public class DocumentsController : ControllerBase
                         _logger.LogInformation("[FS-v2] WalidujDane() not available: {Msg}", valEx.Message);
                     }
 
+                    // Check warehouse and branch settings
+                    try
+                    {
+                        var magazyn = faktura.Dokument.Magazyn;
+                        var magazynSymbol = DynamicPropertyHelper.GetString(magazyn, "Symbol");
+                        _logger.LogInformation("[FS-v2] Dokument.Magazyn: {Symbol}", (object)(magazynSymbol ?? "(not set)"));
+                    }
+                    catch (Exception magEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not check Magazyn: {Msg}", magEx.Message);
+                    }
+
+                    try
+                    {
+                        var oddzial = faktura.Dokument.Oddzial;
+                        var oddzialSymbol = DynamicPropertyHelper.GetString(oddzial, "Symbol");
+                        _logger.LogInformation("[FS-v2] Dokument.Oddzial: {Symbol}", (object)(oddzialSymbol ?? "(not set)"));
+                    }
+                    catch (Exception oddEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not check Oddzial: {Msg}", oddEx.Message);
+                    }
+
                     // Check if document can be saved
                     try
                     {
@@ -965,6 +1021,37 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
+                    // List all available methods on faktura that might help with validation/errors
+                    try
+                    {
+                        var fakturaType = ((object)faktura).GetType();
+                        var errorMethods = fakturaType.GetMethods()
+                            .Where(m => m.Name.Contains("Error") || m.Name.Contains("Valid") || m.Name.Contains("Blad") || m.Name.Contains("Zapisz") || m.Name.Contains("Mozna"))
+                            .Select(m => m.Name)
+                            .Distinct()
+                            .ToList();
+                        _logger.LogInformation("[FS-v2] faktura error/validation methods: {Methods}", string.Join(", ", errorMethods));
+
+                        // List properties that might contain errors
+                        var errorProps = fakturaType.GetProperties()
+                            .Where(p => p.Name.Contains("Error") || p.Name.Contains("Blad") || p.Name.Contains("Invalid") || p.Name.Contains("Status") || p.Name.Contains("Stan"))
+                            .Select(p => p.Name)
+                            .ToList();
+                        _logger.LogInformation("[FS-v2] faktura error/status properties: {Props}", string.Join(", ", errorProps));
+                    }
+                    catch (Exception typeEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not list faktura methods: {Msg}", typeEx.Message);
+                    }
+
+                    // Check if number is already taken
+                    try
+                    {
+                        string reservedNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("[FS-v2] Will save with number: {Number}", reservedNumber);
+                    }
+                    catch { }
+
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
                     var saveResult = faktura.Zapisz();
                     bool isSaved = false;
@@ -989,6 +1076,60 @@ public class DocumentsController : ControllerBase
                     else
                     {
                         _logger.LogWarning("[FS-v2] Zapisz() failed, extracting errors...");
+
+                        // Try to call PobierzBledy or similar methods
+                        try
+                        {
+                            var bledy = faktura.PobierzBledy();
+                            if (bledy != null)
+                            {
+                                foreach (var b in bledy)
+                                {
+                                    _logger.LogWarning("[FS-v2] PobierzBledy: {Error}", (object)(b?.ToString() ?? "Unknown"));
+                                }
+                            }
+                        }
+                        catch (Exception pbEx)
+                        {
+                            _logger.LogDebug("[FS-v2] PobierzBledy() not available: {Msg}", pbEx.Message);
+                        }
+
+                        // Try BledyWalidacji
+                        try
+                        {
+                            var bledyWal = faktura.BledyWalidacji;
+                            if (bledyWal != null)
+                            {
+                                foreach (var b in bledyWal)
+                                {
+                                    _logger.LogWarning("[FS-v2] BledyWalidacji: {Error}", (object)(b?.ToString() ?? "Unknown"));
+                                }
+                            }
+                        }
+                        catch (Exception bwEx)
+                        {
+                            _logger.LogDebug("[FS-v2] BledyWalidacji not available: {Msg}", bwEx.Message);
+                        }
+
+                        // Try Informacje
+                        try
+                        {
+                            var info = faktura.Informacje;
+                            if (info != null)
+                            {
+                                _logger.LogInformation("[FS-v2] faktura.Informacje: {Info}", (object)(info?.ToString() ?? "(null)"));
+                            }
+                        }
+                        catch { }
+
+                        // Try Status
+                        try
+                        {
+                            var status = faktura.Status;
+                            _logger.LogInformation("[FS-v2] faktura.Status: {Status}", (object)(status?.ToString() ?? "(null)"));
+                        }
+                        catch { }
+
                         List<string> errors = GetBusinessObjectErrors(faktura);
                         _logger.LogWarning("[FS-v2] GetBusinessObjectErrors returned {Count} errors", errors?.Count ?? 0);
                         if (errors != null && errors.Count > 0)
