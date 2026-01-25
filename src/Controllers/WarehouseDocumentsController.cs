@@ -340,7 +340,16 @@ public class WarehouseDocumentsController : ControllerBase
 
                     if (!string.IsNullOrEmpty(request.RelatedDocumentNumber))
                     {
-                        pz.Dane.NumerObcy = request.RelatedDocumentNumber;
+                        // NumerZewnetrzny - correct property name for external document number
+                        try
+                        {
+                            pz.Dane.NumerZewnetrzny = request.RelatedDocumentNumber;
+                            _logger.LogInformation("Set NumerZewnetrzny: {Value}", request.RelatedDocumentNumber);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("Could not set NumerZewnetrzny: {Error}", ex.Message);
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -1340,7 +1349,8 @@ public class WarehouseDocumentsController : ControllerBase
             ContractorNIP = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null,
             WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
             WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
-            RelatedDocumentNumber = DynamicPropertyHelper.GetString(dokument, "NumerObcy"),
+            RelatedDocumentNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny")
+                                 ?? DynamicPropertyHelper.GetString(dokument, "NumerObcy"),
             TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
             TotalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
             Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
