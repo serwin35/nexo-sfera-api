@@ -22,8 +22,16 @@ public class CreateDocumentRequest
 
     public DateTime? DueDate { get; set; }
 
-    [MaxLength(10)]
+    /// <summary>
+    /// Payment method symbol (e.g., GOTOWKA, PRZELEW, KARTA, PAYNOW)
+    /// </summary>
+    [MaxLength(50)]
     public string? PaymentMethod { get; set; }
+
+    /// <summary>
+    /// Payment method ID (alternative to PaymentMethod symbol)
+    /// </summary>
+    public int? PaymentMethodId { get; set; }
 
     [MaxLength(3)]
     public string Currency { get; set; } = "PLN";
