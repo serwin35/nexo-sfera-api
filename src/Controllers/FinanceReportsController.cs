@@ -36,8 +36,8 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var stanowiskaManager = sfera.StanowiskaKasowe();
+            var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
+            if (stanowiskaManager == null) return StatusCode(500, ApiResponse<List<CashRegisterDto>>.Error("StanowiskaKasowe manager not available"));
             var allStanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
