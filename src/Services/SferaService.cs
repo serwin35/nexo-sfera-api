@@ -21,6 +21,7 @@ using InsERT.Moria.Naklejki;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 using System.Collections.Concurrent;
+using System.Windows.Forms;
 
 namespace NexoSferaApi.Services;
 
@@ -62,6 +63,7 @@ public class SferaService : ISferaService, IDisposable
     /// <summary>
     /// Starts the dedicated STA thread for SDK operations.
     /// This thread processes all SDK work items sequentially, just like a desktop app UI thread.
+    /// CRITICAL: The thread must have WindowsFormsSynchronizationContext installed for EF6 to work!
     /// </summary>
     private void StartSdkThread()
     {
@@ -77,6 +79,22 @@ public class SferaService : ISferaService, IDisposable
 
                 try
                 {
+                    // CRITICAL: Initialize Windows Forms context on this STA thread
+                    // This is REQUIRED for Entity Framework 6 to work correctly!
+                    // Without this, EF6 throws "Index was out of range" errors during document creation.
+                    Application.SetHighDpiMode(HighDpiMode.SystemAware);
+                    Application.EnableVisualStyles();
+                    Application.SetCompatibleTextRenderingDefault(false);
+
+                    // Create a hidden form to initialize the SynchronizationContext
+                    // This mimics how desktop apps (like Subiekt) initialize their UI thread
+                    using var hiddenForm = new Form { Visible = false };
+                    hiddenForm.Show();
+                    hiddenForm.Hide();
+
+                    _logger.LogInformation("SDK STA thread: WindowsFormsSynchronizationContext installed: {Context}",
+                        SynchronizationContext.Current?.GetType().Name ?? "null");
+
                     _logger.LogInformation("SDK STA thread: Entering work loop");
                     foreach (var workItem in _workQueue.GetConsumingEnumerable(_cts.Token))
                     {
