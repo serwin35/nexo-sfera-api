@@ -712,13 +712,13 @@ public class DocumentsController : ControllerBase
                     else
                     {
                         _logger.LogWarning("FS Zapisz() failed, extracting errors...");
-                        var errors = GetBusinessObjectErrors(faktura);
-                        _logger.LogWarning("FS errors count: {Count}", (object)(errors?.Count ?? 0));
-                        if (errors != null && errors.Any())
+                        List<string> errors = GetBusinessObjectErrors(faktura);
+                        _logger.LogWarning("FS errors count: {Count}", errors?.Count ?? 0);
+                        if (errors != null && errors.Count > 0)
                         {
-                            foreach (var err in errors)
+                            foreach (string err in errors)
                             {
-                                _logger.LogWarning("FS error: {Error}", (object)err);
+                                _logger.LogWarning("FS error: {Error}", err);
                             }
                         }
                         else
@@ -729,11 +729,11 @@ public class DocumentsController : ControllerBase
                                 var validationErrors = faktura.WalidujDane();
                                 if (validationErrors != null)
                                 {
+                                    errors ??= new List<string>();
                                     foreach (var ve in validationErrors)
                                     {
                                         string errMsg = ve?.ToString() ?? "unknown validation error";
                                         _logger.LogWarning("FS validation error: {Error}", errMsg);
-                                        errors ??= new List<string>();
                                         if (!errors.Contains(errMsg))
                                             errors.Add(errMsg);
                                     }
