@@ -31,32 +31,73 @@ builder.Services.AddSwaggerGen(c =>
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "Nexo Sfera REST API",
-        Version = "v1",
-        Description = @"REST API for InsERT Nexo Sfera ERP integration.
+        Version = "v1.5.0",
+        Description = @"# Nexo Sfera REST API by DMservice
 
-## Features
-- **Customers** - CRUD operations for contractors (kontrahenci)
-- **Products** - Product/assortment management (asortyment)
-- **Documents** - Commercial documents (invoices, orders, receipts)
-- **Warehouse** - Warehouse documents (WZ, PZ, RW, PW, MM)
-- **Payments** - Cash and bank operations (KP, KW, BP, BW)
-- **Inventory** - Stock levels, batches, reservations
-- **Assembly (ZM)** - Assembly and disassembly operations
+REST API do integracji z systemem InsERT Nexo / Subiekt / Rachmistrz / Rewizor.
 
-## Authentication
-This API uses Bearer token authentication. Include your API key in the `Authorization` header:
+## 🚀 Funkcjonalności
+
+### Kontrahenci (Customers)
+- Pełny CRUD dla kontrahentów i grup kontrahentów
+- Wyszukiwanie po NIP, ID, nazwie
+- Zarządzanie adresami i danymi kontaktowymi
+
+### Asortyment (Products)
+- Zarządzanie produktami, usługami, kompletami
+- Szablony produktów, grupy, cechy
+- Kody EAN, jednostki miar, poziomy cen
+
+### Dokumenty handlowe (Documents)
+- Faktury sprzedaży (FS) i zakupu (FZ)
+- Paragony (PA, PAi, PAf)
+- Zamówienia od klientów (ZK) i do dostawców (ZD)
+- Korekty dokumentów
+
+### Dokumenty magazynowe (Warehouse)
+- Wydania zewnętrzne (WZ) i przyjęcia (PZ)
+- Rozchody wewnętrzne (RW) i przychody (PW)
+- Przesunięcia międzymagazynowe (MM)
+- Kompletacja i dekompletacja (ZM)
+
+### Finanse (Payments)
+- Operacje kasowe (KP, KW)
+- Operacje bankowe (BP, BW)
+- Rozrachunki i należności
+
+### Magazyn (Inventory)
+- Stany magazynowe i rezerwacje
+- Partie i daty ważności
+- Wycena FIFO/LIFO
+- Inwentaryzacja
+
+### Słowniki i konfiguracja
+- Stawki VAT, jednostki miar, waluty
+- Formy płatności, poziomy cen
+- Grupy produktów i kontrahentów
+
+## 🔐 Autentykacja
+
+API używa tokenów Bearer (API Key). Dodaj nagłówek `Authorization` do każdego żądania:
+
 ```
-Authorization: Bearer your-api-key-here
+Authorization: Bearer twoj-klucz-api
 ```
+
+## 📞 Kontakt
+
+**DMservice** - Integracje systemów ERP
+📧 mateusz.serwinowski@dmservice.pl
 ",
         Contact = new OpenApiContact
         {
-            Name = "Nexo Sfera API Support",
-            Email = "support@example.com"
+            Name = "DMservice - Mateusz Serwinowski",
+            Email = "mateusz.serwinowski@dmservice.pl",
+            Url = new Uri("https://dmservice.pl")
         },
         License = new OpenApiLicense
         {
-            Name = "Proprietary"
+            Name = "Licencja komercyjna DMservice"
         }
     });
 

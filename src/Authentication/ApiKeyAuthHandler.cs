@@ -83,19 +83,35 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
             return Task.FromResult(AuthenticateResult.Fail("Invalid API Key"));
         }
 
-        // Create claims
-        var claims = new[]
+        // Create claims with optional Nexo credentials override
+        var claims = new List<Claim>
         {
             new Claim(ClaimTypes.Name, matchingKey.Name),
             new Claim("ApiKeyName", matchingKey.Name),
             new Claim(ClaimTypes.AuthenticationMethod, ApiKeyAuthenticationDefaults.AuthenticationScheme)
         };
 
+        // Add optional override claims for multi-tenant support
+        if (!string.IsNullOrEmpty(matchingKey.NexoLogin))
+            claims.Add(new Claim("NexoLogin", matchingKey.NexoLogin));
+        if (!string.IsNullOrEmpty(matchingKey.NexoPassword))
+            claims.Add(new Claim("NexoPassword", matchingKey.NexoPassword));
+        if (!string.IsNullOrEmpty(matchingKey.Database))
+            claims.Add(new Claim("NexoDatabase", matchingKey.Database));
+        if (!string.IsNullOrEmpty(matchingKey.DefaultWarehouse))
+            claims.Add(new Claim("NexoWarehouse", matchingKey.DefaultWarehouse));
+        if (!string.IsNullOrEmpty(matchingKey.DefaultBranch))
+            claims.Add(new Claim("NexoBranch", matchingKey.DefaultBranch));
+        if (!string.IsNullOrEmpty(matchingKey.CompanyDescription))
+            claims.Add(new Claim("NexoCompany", matchingKey.CompanyDescription));
+
         var identity = new ClaimsIdentity(claims, ApiKeyAuthenticationDefaults.AuthenticationScheme);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, ApiKeyAuthenticationDefaults.AuthenticationScheme);
 
-        Logger.LogInformation("API key authenticated: {KeyName}", matchingKey.Name);
+        Logger.LogInformation("API key authenticated: {KeyName} (Company: {Company})",
+            matchingKey.Name,
+            matchingKey.CompanyDescription ?? "default");
 
         return Task.FromResult(AuthenticateResult.Success(ticket));
     }
