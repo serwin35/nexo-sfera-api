@@ -653,9 +653,14 @@ public class DocumentsController : ControllerBase
                     }
 
                     // Add items using product ID
+                    _logger.LogInformation("Adding {Count} items to sales invoice...", request.Items?.Count ?? 0);
                     AddItemsToDocumentById(faktura, request.Items);
+                    _logger.LogInformation("Items added to FS, calling Zapisz()...");
 
-                    if ((bool)faktura.Zapisz())
+                    var saveResult = faktura.Zapisz();
+                    _logger.LogInformation("FS Zapisz() returned: {Result}", saveResult?.ToString() ?? "(null)");
+
+                    if ((bool)saveResult)
                     {
                         string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
                         int docId = (int)faktura.Dokument.Id;
