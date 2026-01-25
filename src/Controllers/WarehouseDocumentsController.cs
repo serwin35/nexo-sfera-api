@@ -854,6 +854,134 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Associate two warehouse documents (e.g., link RW with PW)
+    /// </summary>
+    /// <param name="id">Source document ID</param>
+    /// <param name="request">Association request with target document ID</param>
+    /// <returns>Success status</returns>
+    [HttpPost("{id}/associate")]
+    public async Task<ActionResult<ApiResponse<object>>> AssociateDocuments(int id, [FromBody] DocumentAssociationRequest request)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, string Message)>(() =>
+            {
+                // Managers to check for warehouse documents
+                var managersToCheck = new[]
+                {
+                    ("WydaniaZewnetrzne", WarehouseDocumentType.WZ),
+                    ("PrzyjeciaZewnetrzne", WarehouseDocumentType.PZ),
+                    ("RozchodyWewnetrzne", WarehouseDocumentType.RW),
+                    ("PrzychodyWewnetrzne", WarehouseDocumentType.PW),
+                    ("PrzesunieciaMiedzymagazynowe", WarehouseDocumentType.MM)
+                };
+
+                // Find source document
+                dynamic? sourceDocument = null;
+                string? sourceManagerName = null;
+
+                foreach (var (managerName, docType) in managersToCheck)
+                {
+                    var manager = _sferaService.GetManager(managerName);
+                    if (manager == null) continue;
+
+                    try
+                    {
+                        foreach (var d in manager.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetId(d) == id)
+                            {
+                                sourceDocument = d;
+                                sourceManagerName = managerName;
+                                break;
+                            }
+                        }
+                        if (sourceDocument != null) break;
+                    }
+                    catch { continue; }
+                }
+
+                if (sourceDocument == null)
+                {
+                    return (false, $"Source warehouse document with ID {id} not found");
+                }
+
+                // Find target document
+                dynamic? targetDocument = null;
+
+                foreach (var (managerName, docType) in managersToCheck)
+                {
+                    var manager = _sferaService.GetManager(managerName);
+                    if (manager == null) continue;
+
+                    try
+                    {
+                        foreach (var d in manager.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetId(d) == request.TargetDocumentId)
+                            {
+                                targetDocument = d;
+                                break;
+                            }
+                        }
+                        if (targetDocument != null) break;
+                    }
+                    catch { continue; }
+                }
+
+                if (targetDocument == null)
+                {
+                    return (false, $"Target warehouse document with ID {request.TargetDocumentId} not found");
+                }
+
+                // Create association using DokumentyPowiazane
+                try
+                {
+                    var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(sourceDocument, "DokumentyPowiazane");
+                    if (dokumentyPowiazane == null)
+                    {
+                        return (false, "Source document does not support document associations (DokumentyPowiazane)");
+                    }
+
+                    // Add the target document to the collection
+                    dokumentyPowiazane.Dodaj(targetDocument);
+
+                    string sourceNumber = DynamicPropertyHelper.GetNestedString(sourceDocument, "NumerWewnetrzny", "PelnaSygnatura") ?? id.ToString();
+                    string targetNumber = DynamicPropertyHelper.GetNestedString(targetDocument, "NumerWewnetrzny", "PelnaSygnatura") ?? request.TargetDocumentId.ToString();
+
+                    _logger.LogInformation("Associated warehouse document {SourceDoc} with {TargetDoc}", sourceNumber, targetNumber);
+
+                    return (true, $"Documents {sourceNumber} and {targetNumber} associated successfully");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error creating document association");
+                    return (false, $"Error creating association: {ex.Message}");
+                }
+            });
+
+            if (result.Success)
+            {
+                return Ok(ApiResponse<object>.Ok(new
+                {
+                    SourceDocumentId = id,
+                    TargetDocumentId = request.TargetDocumentId,
+                    RelationType = request.RelationType
+                }, result.Message));
+            }
+            else
+            {
+                return BadRequest(ApiResponse<object>.Error(result.Message));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error associating warehouse documents {SourceId} with {TargetId}", id, request.TargetDocumentId);
+            return StatusCode(500, ApiResponse<object>.Error("Error associating documents", new List<string> { ex.Message }));
+        }
+    }
+
     private void SetContractor(dynamic dokumentDane, int? contractorId, string? contractorNIP)
     {
         if (!contractorId.HasValue && string.IsNullOrEmpty(contractorNIP))
