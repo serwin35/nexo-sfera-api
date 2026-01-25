@@ -170,116 +170,134 @@ public class PaymentsController : ControllerBase
     /// Create KP (cash receipt - wpłata gotówkowa)
     /// </summary>
     [HttpPost("cash/kp")]
-    public ActionResult<ApiResponse<PaymentDto>> CreateKP([FromBody] CreatePaymentRequest request)
+    public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateKP([FromBody] CreatePaymentRequest request)
     {
-        return CreateCashOperation(request, TypOperacjiKasowejEnum.Wplyw);
+        return await CreateCashOperationAsync(request, TypOperacjiKasowejEnum.Wplyw);
     }
 
     /// <summary>
     /// Create KW (cash disbursement - wypłata gotówkowa)
     /// </summary>
     [HttpPost("cash/kw")]
-    public ActionResult<ApiResponse<PaymentDto>> CreateKW([FromBody] CreatePaymentRequest request)
+    public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateKW([FromBody] CreatePaymentRequest request)
     {
-        return CreateCashOperation(request, TypOperacjiKasowejEnum.Wyplyw);
+        return await CreateCashOperationAsync(request, TypOperacjiKasowejEnum.Wyplyw);
     }
 
-    private ActionResult<ApiResponse<PaymentDto>> CreateCashOperation(CreatePaymentRequest request, TypOperacjiKasowejEnum typ)
+    /// <remarks>
+    /// IMPORTANT: This method uses ExecuteWithLockAsync for thread safety with EF6.
+    /// </remarks>
+    private async Task<ActionResult<ApiResponse<PaymentDto>>> CreateCashOperationAsync(CreatePaymentRequest request, TypOperacjiKasowejEnum typ)
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var operacjeManager = sfera.OperacjeKasowe();
-
-            using (var operacja = operacjeManager.Utworz())
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, PaymentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                dynamic dane = operacja.Dane;
+                dynamic sfera = _sferaService.GetSfera();
+                var operacjeManager = sfera.OperacjeKasowe();
 
-                // Set cash register (stanowisko kasowe)
-                dynamic? stanowisko = null;
-                var stanowiskaManager = sfera.StanowiskaKasowe();
-                var stanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
+                using (var operacja = operacjeManager.Utworz())
+                {
+                    dynamic dane = operacja.Dane;
 
-                if (request.CashRegisterId.HasValue)
-                {
-                    stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetId(s) == request.CashRegisterId.Value);
-                }
-                else if (!string.IsNullOrEmpty(request.CashRegisterSymbol))
-                {
-                    stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetString(s, "Symbol") == request.CashRegisterSymbol);
-                }
-                else
-                {
-                    stanowisko = stanowiska.FirstOrDefault();
-                }
+                    // Set cash register (stanowisko kasowe)
+                    dynamic? stanowisko = null;
+                    var stanowiskaManager = sfera.StanowiskaKasowe();
+                    var stanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
 
-                if (stanowisko != null)
-                {
-                    dane.Stanowisko = stanowisko;
-                }
-
-                // Set contractor
-                if (request.ContractorId.HasValue || !string.IsNullOrEmpty(request.ContractorNIP))
-                {
-                    var podmiotyManager = sfera.Podmioty();
-                    var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
-
-                    dynamic? podmiot = null;
-                    if (request.ContractorId.HasValue)
+                    if (request.CashRegisterId.HasValue)
                     {
-                        podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
+                        stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetId(s) == request.CashRegisterId.Value);
                     }
-                    else if (!string.IsNullOrEmpty(request.ContractorNIP))
+                    else if (!string.IsNullOrEmpty(request.CashRegisterSymbol))
                     {
-                        podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
+                        stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetString(s, "Symbol") == request.CashRegisterSymbol);
+                    }
+                    else
+                    {
+                        stanowisko = stanowiska.FirstOrDefault();
                     }
 
-                    if (podmiot != null)
+                    if (stanowisko != null)
                     {
-                        try { operacja.UstawPodmiot(podmiot); } catch { /* Method may not exist */ }
+                        dane.Stanowisko = stanowisko;
+                    }
+
+                    // Set contractor
+                    if (request.ContractorId.HasValue || !string.IsNullOrEmpty(request.ContractorNIP))
+                    {
+                        var podmiotyManager = sfera.Podmioty();
+                        var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
+
+                        dynamic? podmiot = null;
+                        if (request.ContractorId.HasValue)
+                        {
+                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
+                        }
+                        else if (!string.IsNullOrEmpty(request.ContractorNIP))
+                        {
+                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
+                        }
+
+                        if (podmiot != null)
+                        {
+                            try { operacja.UstawPodmiot(podmiot); } catch { /* Method may not exist */ }
+                        }
+                    }
+
+                    // Set operation type (Rodzaj)
+                    var rodzajeManager = sfera.RodzajeOperacjiKasowych();
+                    var rodzaje = ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList();
+                    var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)typ);
+
+                    if (rodzaj != null)
+                    {
+                        dane.Rodzaj = rodzaj;
+                    }
+
+                    // Set description
+                    if (!string.IsNullOrEmpty(request.Title))
+                    {
+                        dane.Opis = request.Title;
+                    }
+
+                    // Set payment date
+                    if (request.PaymentDate.HasValue)
+                    {
+                        dane.DataUtworzenia = request.PaymentDate.Value;
+                    }
+
+                    if ((bool)operacja.Zapisz())
+                    {
+                        int newId = DynamicPropertyHelper.GetId(dane);
+                        _logger.LogInformation("Created cash operation {Type} with ID {Id}",
+                            typ == TypOperacjiKasowejEnum.Wplyw ? "KP" : "KW",
+                            newId);
+
+                        return (true, MapCashOperationToDto(dane),
+                            $"Cash operation {(typ == TypOperacjiKasowejEnum.Wplyw ? "KP" : "KW")} created successfully",
+                            new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(operacja);
+                        return (false, null, "Failed to create cash operation", errors);
                     }
                 }
+            });
 
-                // Set operation type (Rodzaj)
-                var rodzajeManager = sfera.RodzajeOperacjiKasowych();
-                var rodzaje = ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList();
-                var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)typ);
-
-                if (rodzaj != null)
-                {
-                    dane.Rodzaj = rodzaj;
-                }
-
-                // Set description
-                if (!string.IsNullOrEmpty(request.Title))
-                {
-                    dane.Opis = request.Title;
-                }
-
-                // Set payment date
-                if (request.PaymentDate.HasValue)
-                {
-                    dane.DataUtworzenia = request.PaymentDate.Value;
-                }
-
-                if ((bool)operacja.Zapisz())
-                {
-                    int newId = DynamicPropertyHelper.GetId(dane);
-                    _logger.LogInformation("Created cash operation {Type} with ID {Id}",
-                        typ == TypOperacjiKasowejEnum.Wplyw ? "KP" : "KW",
-                        newId);
-
-                    return CreatedAtAction(
-                        nameof(GetCashOperation),
-                        new { id = newId },
-                        ApiResponse<PaymentDto>.Ok(MapCashOperationToDto(dane),
-                            $"Cash operation {(typ == TypOperacjiKasowejEnum.Wplyw ? "KP" : "KW")} created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(operacja);
-                    return BadRequest(ApiResponse<PaymentDto>.Error("Failed to create cash operation", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetCashOperation), new { id = result.Data?.Id }, ApiResponse<PaymentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<PaymentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<PaymentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -427,119 +445,137 @@ public class PaymentsController : ControllerBase
     /// Create BP (bank receipt - wpływ bankowy)
     /// </summary>
     [HttpPost("bank/bp")]
-    public ActionResult<ApiResponse<PaymentDto>> CreateBP([FromBody] CreatePaymentRequest request)
+    public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateBP([FromBody] CreatePaymentRequest request)
     {
-        return CreateBankOperation(request, true);
+        return await CreateBankOperationAsync(request, true);
     }
 
     /// <summary>
     /// Create BW (bank disbursement - wypłata bankowa)
     /// </summary>
     [HttpPost("bank/bw")]
-    public ActionResult<ApiResponse<PaymentDto>> CreateBW([FromBody] CreatePaymentRequest request)
+    public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateBW([FromBody] CreatePaymentRequest request)
     {
-        return CreateBankOperation(request, false);
+        return await CreateBankOperationAsync(request, false);
     }
 
-    private ActionResult<ApiResponse<PaymentDto>> CreateBankOperation(CreatePaymentRequest request, bool isIncome)
+    /// <remarks>
+    /// IMPORTANT: This method uses ExecuteWithLockAsync for thread safety with EF6.
+    /// </remarks>
+    private async Task<ActionResult<ApiResponse<PaymentDto>>> CreateBankOperationAsync(CreatePaymentRequest request, bool isIncome)
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var operacjeManager = sfera.OperacjeBankowe();
-
-            using (var operacja = operacjeManager.Utworz())
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, PaymentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                dynamic dane = operacja.Dane;
+                dynamic sfera = _sferaService.GetSfera();
+                var operacjeManager = sfera.OperacjeBankowe();
 
-                // Set bank account
-                dynamic? rachunek = null;
-                var rachunkiManager = sfera.RachunkiBankowe();
-                var rachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
+                using (var operacja = operacjeManager.Utworz())
+                {
+                    dynamic dane = operacja.Dane;
 
-                if (request.BankAccountId.HasValue)
-                {
-                    rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == request.BankAccountId.Value);
-                }
-                else if (!string.IsNullOrEmpty(request.BankAccountSymbol))
-                {
-                    rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetString(r, "Symbol") == request.BankAccountSymbol);
-                }
-                else
-                {
-                    rachunek = rachunki.FirstOrDefault();
-                }
+                    // Set bank account
+                    dynamic? rachunek = null;
+                    var rachunkiManager = sfera.RachunkiBankowe();
+                    var rachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
 
-                if (rachunek != null)
-                {
-                    dane.Rachunek = rachunek;
-                }
-
-                // Set contractor
-                if (request.ContractorId.HasValue || !string.IsNullOrEmpty(request.ContractorNIP))
-                {
-                    var podmiotyManager = sfera.Podmioty();
-                    var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
-
-                    dynamic? podmiot = null;
-                    if (request.ContractorId.HasValue)
+                    if (request.BankAccountId.HasValue)
                     {
-                        podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
+                        rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == request.BankAccountId.Value);
                     }
-                    else if (!string.IsNullOrEmpty(request.ContractorNIP))
+                    else if (!string.IsNullOrEmpty(request.BankAccountSymbol))
                     {
-                        podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
+                        rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetString(r, "Symbol") == request.BankAccountSymbol);
+                    }
+                    else
+                    {
+                        rachunek = rachunki.FirstOrDefault();
                     }
 
-                    if (podmiot != null)
+                    if (rachunek != null)
                     {
-                        dane.Podmiot = podmiot;
+                        dane.Rachunek = rachunek;
+                    }
+
+                    // Set contractor
+                    if (request.ContractorId.HasValue || !string.IsNullOrEmpty(request.ContractorNIP))
+                    {
+                        var podmiotyManager = sfera.Podmioty();
+                        var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
+
+                        dynamic? podmiot = null;
+                        if (request.ContractorId.HasValue)
+                        {
+                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
+                        }
+                        else if (!string.IsNullOrEmpty(request.ContractorNIP))
+                        {
+                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
+                        }
+
+                        if (podmiot != null)
+                        {
+                            dane.Podmiot = podmiot;
+                        }
+                    }
+
+                    // Set operation type (Rodzaj)
+                    var rodzajeManager = sfera.RodzajeOperacjiBankowych();
+                    var rodzaje = ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList();
+                    var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)TypOperacjiBankowejEnum.Przelew);
+
+                    if (rodzaj != null)
+                    {
+                        dane.RodzajOperacji = rodzaj;
+                    }
+
+                    // Set amount (positive for income, negative for expense)
+                    dane.Kwota = isIncome ? request.Amount : -request.Amount;
+
+                    // Set description
+                    if (!string.IsNullOrEmpty(request.Title))
+                    {
+                        dane.Opis = request.Title;
+                    }
+
+                    // Set payment date
+                    if (request.PaymentDate.HasValue)
+                    {
+                        dane.DataEfektywna = request.PaymentDate.Value;
+                    }
+
+                    if ((bool)operacja.Zapisz())
+                    {
+                        int newId = DynamicPropertyHelper.GetId(dane);
+                        _logger.LogInformation("Created bank operation {Type} with ID {Id}",
+                            isIncome ? "BP" : "BW",
+                            newId);
+
+                        return (true, MapBankOperationToDto(dane),
+                            $"Bank operation {(isIncome ? "BP" : "BW")} created successfully",
+                            new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(operacja);
+                        return (false, null, "Failed to create bank operation", errors);
                     }
                 }
+            });
 
-                // Set operation type (Rodzaj)
-                var rodzajeManager = sfera.RodzajeOperacjiBankowych();
-                var rodzaje = ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList();
-                var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)TypOperacjiBankowejEnum.Przelew);
-
-                if (rodzaj != null)
-                {
-                    dane.RodzajOperacji = rodzaj;
-                }
-
-                // Set amount (positive for income, negative for expense)
-                dane.Kwota = isIncome ? request.Amount : -request.Amount;
-
-                // Set description
-                if (!string.IsNullOrEmpty(request.Title))
-                {
-                    dane.Opis = request.Title;
-                }
-
-                // Set payment date
-                if (request.PaymentDate.HasValue)
-                {
-                    dane.DataEfektywna = request.PaymentDate.Value;
-                }
-
-                if ((bool)operacja.Zapisz())
-                {
-                    int newId = DynamicPropertyHelper.GetId(dane);
-                    _logger.LogInformation("Created bank operation {Type} with ID {Id}",
-                        isIncome ? "BP" : "BW",
-                        newId);
-
-                    return CreatedAtAction(
-                        nameof(GetBankOperation),
-                        new { id = newId },
-                        ApiResponse<PaymentDto>.Ok(MapBankOperationToDto(dane),
-                            $"Bank operation {(isIncome ? "BP" : "BW")} created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(operacja);
-                    return BadRequest(ApiResponse<PaymentDto>.Error("Failed to create bank operation", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetBankOperation), new { id = result.Data?.Id }, ApiResponse<PaymentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<PaymentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<PaymentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
