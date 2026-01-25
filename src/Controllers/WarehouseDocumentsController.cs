@@ -220,16 +220,17 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                     }
 
-                    // CRITICAL: Reserve number BEFORE adding items
-                    wz.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved WZ number: {Number}", (string?)wz.PodajPodgladNumeru()?.ToString() ?? "");
-
+                    // CRITICAL: Set date BEFORE reserving number (number depends on date!)
                     if (request.IssueDate.HasValue)
                     {
-                        // DataWydaniaWystawienia - correct property for document date
+                        _logger.LogInformation("Setting WZ IssueDate to: {Date}", request.IssueDate.Value);
                         wz.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
                         wz.Dane.DataWprowadzenia = request.IssueDate.Value;
                     }
+
+                    // Reserve number AFTER setting date (number format includes year/month)
+                    wz.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved WZ number: {Number}", (string?)wz.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
@@ -325,16 +326,17 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                     }
 
-                    // CRITICAL: Reserve number BEFORE adding items
-                    pz.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved PZ number: {Number}", (string?)pz.PodajPodgladNumeru()?.ToString() ?? "");
-
+                    // CRITICAL: Set date BEFORE reserving number (number depends on date!)
                     if (request.IssueDate.HasValue)
                     {
-                        // DataWydaniaWystawienia - correct property for document date
+                        _logger.LogInformation("Setting PZ IssueDate to: {Date}", request.IssueDate.Value);
                         pz.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
                         pz.Dane.DataWprowadzenia = request.IssueDate.Value;
                     }
+
+                    // Reserve number AFTER setting date (number format includes year/month)
+                    pz.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved PZ number: {Number}", (string?)pz.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (!string.IsNullOrEmpty(request.RelatedDocumentNumber))
                     {
@@ -1726,7 +1728,7 @@ public class WarehouseDocumentsController : ControllerBase
                     string productsInfo = invalidProducts.Count > 0
                         ? string.Join(", ", invalidProducts)
                         : $"{entityIndex} position(s)";
-                    errors.Add($"Validation failed for: {productsInfo}. For RW (internal issue) documents, check if products have sufficient stock available in warehouse.");
+                    errors.Add($"Validation failed for: {productsInfo}. Check product data, prices, and stock availability.");
                 }
             }
 
