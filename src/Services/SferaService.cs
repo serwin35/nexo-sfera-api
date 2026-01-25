@@ -1,5 +1,6 @@
 using InsERT.Moria.Sfera;
 using InsERT.Mox.Product;
+using Microsoft.CSharp.RuntimeBinder;
 // Extension methods for Sfera managers
 using InsERT.Moria.ModelOrganizacyjny;
 using InsERT.Moria.Asortymenty;
@@ -311,8 +312,9 @@ public class SferaService : ISferaService, IDisposable
                 "Waluty" => _sfera.Waluty(),
                 // KursyWalut does not have an extension method - access via Waluty.Kursy or alternative
                 "KursyWalut" => throw new NotSupportedException("KursyWalut extension not available. Access exchange rates via Waluty manager."),
-                "FormyPlatnosci" => _sfera.FormyPlatnosci(),
-                "SposobyPlatnosci" => _sfera.FormyPlatnosci(), // Alias
+                // FormyPlatnosci - try extension method, fallback to PodajObiektTypu
+                "FormyPlatnosci" => GetFormyPlatnosciManager(),
+                "SposobyPlatnosci" => GetFormyPlatnosciManager(), // Alias
                 // InsERT.Moria.Cenniki
                 "Cenniki" => _sfera.Cenniki(),
                 "PoziomyCen" => _sfera.PoziomyCen(),
@@ -371,6 +373,52 @@ public class SferaService : ISferaService, IDisposable
             _logger.LogError(ex, "Error getting manager {MethodName}", managerMethodName);
             throw; // Re-throw so we can see the real error
         }
+    }
+
+    /// <summary>
+    /// Gets FormyPlatnosci manager with fallback for different SDK versions.
+    /// </summary>
+    private dynamic? GetFormyPlatnosciManager()
+    {
+        if (_sfera == null) return null;
+
+        // Try extension method first
+        try
+        {
+            return _sfera.FormyPlatnosci();
+        }
+        catch (RuntimeBinderException)
+        {
+            _logger.LogInformation("FormyPlatnosci extension not available, trying PodajObiektTypu");
+        }
+
+        // Fallback: try getting via PodajObiektTypu with known interface names
+        var interfaceNames = new[]
+        {
+            "InsERT.Moria.Slowniki.IFormyPlatnosci",
+            "InsERT.Moria.Finanse.IFormyPlatnosci",
+            "InsERT.Moria.IFormyPlatnosci"
+        };
+
+        foreach (var interfaceName in interfaceNames)
+        {
+            try
+            {
+                var result = GetManagerByType("InsERT.Moria", interfaceName);
+                if (result != null)
+                {
+                    _logger.LogInformation("Got FormyPlatnosci via {Interface}", interfaceName);
+                    return result;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to get FormyPlatnosci via {Interface}", interfaceName);
+            }
+        }
+
+        _logger.LogWarning("FormyPlatnosci manager not available in this SDK version");
+        return null;
     }
 
     /// <summary>
