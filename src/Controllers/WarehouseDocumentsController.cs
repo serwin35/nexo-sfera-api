@@ -519,18 +519,53 @@ public class WarehouseDocumentsController : ControllerBase
                     // Add items using product ID
                     AddWarehouseDocumentItemsById(rw, request.Items);
 
-                    if ((bool)rw.Zapisz())
-                    {
-                        string docNumber = rw.PodajPodgladNumeru()?.ToString() ?? "";
-                        int docId = (int)rw.Dokument.Id;
-                        _logger.LogInformation("Created RW {Number}, Id={Id}", docNumber, docId);
+                    _logger.LogInformation("RW: Calling Zapisz() with {Count} positions", request.Items?.Count ?? 0);
 
-                        return (true, MapRWToDto(rw), "RW created successfully", new List<string>());
-                    }
-                    else
+                    try
                     {
-                        var errors = GetBusinessObjectErrors(rw);
-                        return (false, null, "Failed to create RW", errors);
+                        bool saveResult = (bool)rw.Zapisz();
+                        _logger.LogInformation("RW Zapisz() returned: {Result}", saveResult);
+
+                        if (saveResult)
+                        {
+                            string docNumber = rw.PodajPodgladNumeru()?.ToString() ?? "";
+                            int docId = (int)rw.Dokument.Id;
+                            _logger.LogInformation("Created RW {Number}, Id={Id}", docNumber, docId);
+
+                            return (true, MapRWToDto(rw), "RW created successfully", new List<string>());
+                        }
+                        else
+                        {
+                            var errors = GetBusinessObjectErrors(rw);
+                            _logger.LogWarning("RW Zapisz() failed. InvalidData errors: {Errors}", string.Join("; ", errors));
+
+                            // Try to get more error details from different sources
+                            try
+                            {
+                                var validationErrors = rw.WalidujDane();
+                                if (validationErrors != null)
+                                {
+                                    foreach (var err in validationErrors)
+                                    {
+                                        var errStr = err?.ToString() ?? "Unknown validation error";
+                                        _logger.LogWarning("RW validation error: {Error}", errStr);
+                                        if (!errors.Contains(errStr))
+                                            errors.Add(errStr);
+                                    }
+                                }
+                            }
+                            catch (Exception vex)
+                            {
+                                _logger.LogInformation("Could not call WalidujDane: {Error}", vex.Message);
+                            }
+
+                            return (false, null, "Failed to create RW", errors);
+                        }
+                    }
+                    catch (Exception saveEx)
+                    {
+                        _logger.LogError(saveEx, "RW Zapisz() threw exception");
+                        return (false, null, $"RW save exception: {saveEx.Message}", new List<string> { saveEx.ToString() });
                     }
                 }
             });
@@ -1059,16 +1094,31 @@ public class WarehouseDocumentsController : ControllerBase
     {
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
         if (asortymentyManager == null)
+        {
+            _logger.LogError("Asortymenty manager is null - cannot add items!");
             return;
+        }
+
+        int addedCount = 0;
+        int skippedCount = 0;
 
         foreach (var item in items)
         {
             var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
 
-            if (asortyment != null)
+            if (asortyment == null)
+            {
+                var searchInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
+                _logger.LogWarning("Product NOT FOUND: {Search} - position will be skipped!", searchInfo);
+                skippedCount++;
+                continue;
+            }
+
             {
                 int towarId = DynamicPropertyHelper.GetId(asortyment);
+                var towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
                 // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
+                _logger.LogInformation("Adding position: TowarId={TowarId}, Symbol={Symbol}, Qty={Qty}", towarId, towarSymbol, item.Quantity);
                 var pozycja = dokument.Pozycje.Dodaj(towarId);
 
                 if (pozycja != null)
@@ -1163,9 +1213,20 @@ public class WarehouseDocumentsController : ControllerBase
                             _logger.LogWarning("Could not set price on position - document may use inventory valuation");
                         }
                     }
+                    else
+                    {
+                        // Log when item has no price - this might cause validation errors on RW documents
+                        var symbolInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
+                        _logger.LogWarning("Position {Symbol} has no price (PriceNet is null) - may cause validation error", symbolInfo);
+                    }
+
+                    addedCount++;
                 }
             }
         }
+
+        _logger.LogInformation("AddWarehouseDocumentItemsById completed: {Added} added, {Skipped} skipped, {Total} total requested",
+            addedCount, skippedCount, items?.Count ?? 0);
     }
 
     private static dynamic? FindAsortyment(dynamic asortymentyManager, int? productId, string? productSymbol, string? productEan)
@@ -1447,46 +1508,107 @@ public class WarehouseDocumentsController : ControllerBase
         return dto;
     }
 
-    private static List<string> GetBusinessObjectErrors(dynamic obiekt)
+    private List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
         var errors = new List<string>();
         try
         {
+            // Try InvalidData property (standard SDK pattern)
             var invalidData = DynamicPropertyHelper.GetProperty(obiekt, "InvalidData");
-            if (invalidData == null) return errors;
-
-            foreach (var encjaZBledami in invalidData)
+            if (invalidData != null)
             {
-                var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
-                if (entityErrors != null)
+                _logger.LogInformation("Found InvalidData property");
+                foreach (var encjaZBledami in invalidData)
                 {
-                    foreach (var blad in entityErrors)
+                    var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
+                    if (entityErrors != null)
                     {
-                        errors.Add(blad?.ToString() ?? "Unknown error");
-                    }
-                }
-
-                var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
-                if (memberErrors != null)
-                {
-                    foreach (var bladNaPolach in memberErrors)
-                    {
-                        try
+                        foreach (var blad in entityErrors)
                         {
-                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
-                            errors.Add($"{key}: {bladNaPolach}");
+                            var errStr = blad?.ToString() ?? "Unknown error";
+                            _logger.LogWarning("InvalidData.Errors: {Error}", errStr);
+                            errors.Add(errStr);
                         }
-                        catch
+                    }
+
+                    var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
+                    if (memberErrors != null)
+                    {
+                        foreach (var bladNaPolach in memberErrors)
                         {
-                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
+                            try
+                            {
+                                var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
+                                var errStr = $"{key}: {bladNaPolach}";
+                                _logger.LogWarning("InvalidData.MemberErrors: {Error}", errStr);
+                                errors.Add(errStr);
+                            }
+                            catch
+                            {
+                                var errStr = bladNaPolach?.ToString() ?? "Unknown error";
+                                _logger.LogWarning("InvalidData.MemberErrors: {Error}", errStr);
+                                errors.Add(errStr);
+                            }
                         }
                     }
                 }
             }
+
+            // Try Bledy property (alternative error collection)
+            try
+            {
+                var bledy = DynamicPropertyHelper.GetProperty(obiekt, "Bledy");
+                if (bledy != null)
+                {
+                    _logger.LogInformation("Found Bledy property");
+                    foreach (var blad in bledy)
+                    {
+                        var errStr = blad?.ToString() ?? "Unknown error";
+                        _logger.LogWarning("Bledy: {Error}", errStr);
+                        if (!errors.Contains(errStr))
+                            errors.Add(errStr);
+                    }
+                }
+            }
+            catch { }
+
+            // Try Errors property (English naming)
+            try
+            {
+                var errorsCol = DynamicPropertyHelper.GetProperty(obiekt, "Errors");
+                if (errorsCol != null)
+                {
+                    _logger.LogInformation("Found Errors property");
+                    foreach (var err in errorsCol)
+                    {
+                        var errStr = err?.ToString() ?? "Unknown error";
+                        _logger.LogWarning("Errors: {Error}", errStr);
+                        if (!errors.Contains(errStr))
+                            errors.Add(errStr);
+                    }
+                }
+            }
+            catch { }
+
+            // Log available properties for debugging if no errors found
+            if (errors.Count == 0)
+            {
+                try
+                {
+                    var objType = ((object)obiekt).GetType();
+                    var props = objType.GetProperties()
+                        .Where(p => p.Name.Contains("Error") || p.Name.Contains("Blad") || p.Name.Contains("Invalid") || p.Name.Contains("Valid"))
+                        .Select(p => p.Name)
+                        .ToList();
+                    _logger.LogInformation("Available error-related properties: {Props}", string.Join(", ", props));
+                }
+                catch { }
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            errors.Add("Could not retrieve error details");
+            _logger.LogError(ex, "Could not retrieve error details");
+            errors.Add($"Could not retrieve error details: {ex.Message}");
         }
         return errors;
     }
