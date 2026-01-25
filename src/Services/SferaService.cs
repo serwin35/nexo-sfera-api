@@ -19,6 +19,7 @@ using InsERT.Moria.Raporty;
 using InsERT.Moria.Wydruki;
 using InsERT.Moria.HandelElektroniczny;
 using InsERT.Moria.Naklejki;
+using InsERT.Moria.EFaktura;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 using System.Collections.Concurrent;
@@ -362,6 +363,9 @@ public class SferaService : ISferaService, IDisposable
                 "SzablonyNaklejek" => _sfera.SzablonyNaklejek(),
                 // InsERT.Moria.Dokumenty.Logistyka - Logistics document configurations
                 "Konfiguracje" => _sfera.Konfiguracje(),
+                // InsERT.Moria.EFaktura - E-invoice (KSeF)
+                "FabrykaGeneratorowEFaktury" => _sfera.FabrykaGeneratorowEFaktury(),
+                "KoordynatorWysylaniaEFaktur" => _sfera.KoordynatorWysylaniaEFaktur(),
                 // Methods that don't have extension methods - need different approach
                 "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
                 "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),

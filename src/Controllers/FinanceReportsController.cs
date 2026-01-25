@@ -97,8 +97,8 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var raportyManager = sfera.RaportyKasowe();
+            var raportyManager = _sferaService.GetManager("RaportyKasowe");
+            if (raportyManager == null) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
             var allRaporty = ((IEnumerable<dynamic>)raportyManager.Dane.Wszystkie()).ToList();
 
             if (!string.IsNullOrEmpty(cashRegisterSymbol))
@@ -168,8 +168,8 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var raportyManager = sfera.RaportyKasowe();
+            var raportyManager = _sferaService.GetManager("RaportyKasowe");
+            if (raportyManager == null) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
             var allRaporty = ((IEnumerable<dynamic>)raportyManager.Dane.Wszystkie()).ToList();
             var raport = allRaporty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
@@ -246,8 +246,8 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var rachunkiManager = sfera.RachunkiBankowe();
+            var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
+            if (rachunkiManager == null) return StatusCode(500, ApiResponse<List<BankAccountDto>>.Error("RachunkiBankowe manager not available"));
             var allRachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -310,8 +310,8 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var wyciagiManager = sfera.WyciagiBankowe();
+            var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
+            if (wyciagiManager == null) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
             var allWyciagi = ((IEnumerable<dynamic>)wyciagiManager.Dane.Wszystkie()).ToList();
 
             if (!string.IsNullOrEmpty(bankAccountSymbol))
@@ -381,8 +381,8 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var wyciagiManager = sfera.WyciagiBankowe();
+            var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
+            if (wyciagiManager == null) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
             var allWyciagi = ((IEnumerable<dynamic>)wyciagiManager.Dane.Wszystkie()).ToList();
             var wyciag = allWyciagi.FirstOrDefault(w => DynamicPropertyHelper.GetId(w) == id);
 
@@ -802,10 +802,9 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
             // Get cash register balances
-            var stanowiskaManager = sfera.StanowiskaKasowe();
+            var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
+            if (stanowiskaManager == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("StanowiskaKasowe manager not available"));
             var allStanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
             var stanowiska = new List<dynamic>();
             foreach (var s in allStanowiska)
@@ -832,7 +831,8 @@ public class FinanceReportsController : ControllerBase
             }
 
             // Get bank account balances
-            var rachunkiManager = sfera.RachunkiBankowe();
+            var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
+            if (rachunkiManager == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("RachunkiBankowe manager not available"));
             var allRachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
             var rachunki = new List<dynamic>();
             foreach (var r in allRachunki)

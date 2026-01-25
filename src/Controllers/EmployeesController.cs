@@ -38,8 +38,8 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
             var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
 
             if (activeOnly == true)
@@ -110,8 +110,8 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
             var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
             var pracownik = allPracownicy.FirstOrDefault(p =>
             {
@@ -145,8 +145,8 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
             var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
             var pracownik = allPracownicy.FirstOrDefault(p =>
                 DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
@@ -176,8 +176,8 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var podmioty = sfera.Podmioty();
+            var podmioty = _sferaService.GetManager("Podmioty");
+            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
             var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
             var pracownik = allPracownicy.FirstOrDefault(p =>
             {

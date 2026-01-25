@@ -194,8 +194,11 @@ public class PaymentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, PaymentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                dynamic sfera = _sferaService.GetSfera();
-                var operacjeManager = sfera.OperacjeKasowe();
+                var operacjeManager = _sferaService.GetManager("OperacjeKasowe");
+                if (operacjeManager == null)
+                {
+                    return (false, null, "OperacjeKasowe manager not available", new List<string>());
+                }
 
                 using (var operacja = operacjeManager.Utworz())
                 {
@@ -203,20 +206,23 @@ public class PaymentsController : ControllerBase
 
                     // Set cash register (stanowisko kasowe)
                     dynamic? stanowisko = null;
-                    var stanowiskaManager = sfera.StanowiskaKasowe();
-                    var stanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
+                    var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
+                    if (stanowiskaManager != null)
+                    {
+                        var stanowiska = ((IEnumerable<dynamic>)stanowiskaManager.Dane.Wszystkie()).ToList();
 
-                    if (request.CashRegisterId.HasValue)
-                    {
-                        stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetId(s) == request.CashRegisterId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(request.CashRegisterSymbol))
-                    {
-                        stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetString(s, "Symbol") == request.CashRegisterSymbol);
-                    }
-                    else
-                    {
-                        stanowisko = stanowiska.FirstOrDefault();
+                        if (request.CashRegisterId.HasValue)
+                        {
+                            stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetId(s) == request.CashRegisterId.Value);
+                        }
+                        else if (!string.IsNullOrEmpty(request.CashRegisterSymbol))
+                        {
+                            stanowisko = stanowiska.FirstOrDefault(s => DynamicPropertyHelper.GetString(s, "Symbol") == request.CashRegisterSymbol);
+                        }
+                        else
+                        {
+                            stanowisko = stanowiska.FirstOrDefault();
+                        }
                     }
 
                     if (stanowisko != null)
@@ -227,28 +233,31 @@ public class PaymentsController : ControllerBase
                     // Set contractor
                     if (request.ContractorId.HasValue || !string.IsNullOrEmpty(request.ContractorNIP))
                     {
-                        var podmiotyManager = sfera.Podmioty();
-                        var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
+                        var podmiotyManager = _sferaService.GetManager("Podmioty");
+                        if (podmiotyManager != null)
+                        {
+                            var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
 
-                        dynamic? podmiot = null;
-                        if (request.ContractorId.HasValue)
-                        {
-                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
-                        }
-                        else if (!string.IsNullOrEmpty(request.ContractorNIP))
-                        {
-                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
-                        }
+                            dynamic? podmiot = null;
+                            if (request.ContractorId.HasValue)
+                            {
+                                podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
+                            }
+                            else if (!string.IsNullOrEmpty(request.ContractorNIP))
+                            {
+                                podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
+                            }
 
-                        if (podmiot != null)
-                        {
-                            try { operacja.UstawPodmiot(podmiot); } catch { /* Method may not exist */ }
+                            if (podmiot != null)
+                            {
+                                try { operacja.UstawPodmiot(podmiot); } catch { /* Method may not exist */ }
+                            }
                         }
                     }
 
                     // Set operation type (Rodzaj)
-                    var rodzajeManager = sfera.RodzajeOperacjiKasowych();
-                    var rodzaje = ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList();
+                    var rodzajeManager = _sferaService.GetManager("RodzajeOperacjiKasowych");
+                    var rodzaje = rodzajeManager != null ? ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList() : new List<dynamic>();
                     var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)typ);
 
                     if (rodzaj != null)
@@ -469,8 +478,11 @@ public class PaymentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, PaymentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                dynamic sfera = _sferaService.GetSfera();
-                var operacjeManager = sfera.OperacjeBankowe();
+                var operacjeManager = _sferaService.GetManager("OperacjeBankowe");
+                if (operacjeManager == null)
+                {
+                    return (false, null, "OperacjeBankowe manager not available", new List<string>());
+                }
 
                 using (var operacja = operacjeManager.Utworz())
                 {
@@ -478,20 +490,23 @@ public class PaymentsController : ControllerBase
 
                     // Set bank account
                     dynamic? rachunek = null;
-                    var rachunkiManager = sfera.RachunkiBankowe();
-                    var rachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
+                    var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
+                    if (rachunkiManager != null)
+                    {
+                        var rachunki = ((IEnumerable<dynamic>)rachunkiManager.Dane.Wszystkie()).ToList();
 
-                    if (request.BankAccountId.HasValue)
-                    {
-                        rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == request.BankAccountId.Value);
-                    }
-                    else if (!string.IsNullOrEmpty(request.BankAccountSymbol))
-                    {
-                        rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetString(r, "Symbol") == request.BankAccountSymbol);
-                    }
-                    else
-                    {
-                        rachunek = rachunki.FirstOrDefault();
+                        if (request.BankAccountId.HasValue)
+                        {
+                            rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == request.BankAccountId.Value);
+                        }
+                        else if (!string.IsNullOrEmpty(request.BankAccountSymbol))
+                        {
+                            rachunek = rachunki.FirstOrDefault(r => DynamicPropertyHelper.GetString(r, "Symbol") == request.BankAccountSymbol);
+                        }
+                        else
+                        {
+                            rachunek = rachunki.FirstOrDefault();
+                        }
                     }
 
                     if (rachunek != null)
@@ -502,28 +517,31 @@ public class PaymentsController : ControllerBase
                     // Set contractor
                     if (request.ContractorId.HasValue || !string.IsNullOrEmpty(request.ContractorNIP))
                     {
-                        var podmiotyManager = sfera.Podmioty();
-                        var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
+                        var podmiotyManager = _sferaService.GetManager("Podmioty");
+                        if (podmiotyManager != null)
+                        {
+                            var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
 
-                        dynamic? podmiot = null;
-                        if (request.ContractorId.HasValue)
-                        {
-                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
-                        }
-                        else if (!string.IsNullOrEmpty(request.ContractorNIP))
-                        {
-                            podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
-                        }
+                            dynamic? podmiot = null;
+                            if (request.ContractorId.HasValue)
+                            {
+                                podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == request.ContractorId.Value);
+                            }
+                            else if (!string.IsNullOrEmpty(request.ContractorNIP))
+                            {
+                                podmiot = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "NIP") == request.ContractorNIP);
+                            }
 
-                        if (podmiot != null)
-                        {
-                            dane.Podmiot = podmiot;
+                            if (podmiot != null)
+                            {
+                                dane.Podmiot = podmiot;
+                            }
                         }
                     }
 
                     // Set operation type (Rodzaj)
-                    var rodzajeManager = sfera.RodzajeOperacjiBankowych();
-                    var rodzaje = ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList();
+                    var rodzajeManager = _sferaService.GetManager("RodzajeOperacjiBankowych");
+                    var rodzaje = rodzajeManager != null ? ((IEnumerable<dynamic>)rodzajeManager.Dane.Wszystkie()).ToList() : new List<dynamic>();
                     var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)TypOperacjiBankowejEnum.Przelew);
 
                     if (rodzaj != null)

@@ -235,12 +235,16 @@ public class KsefController : ControllerBase
                 return NotFound(ApiResponse<EInvoiceGenerationResultDto>.Error($"Document with ID {documentId} not found"));
             }
 
-            // Generate e-invoice (requires Sfera for factory access)
-            dynamic sfera = _sferaService.GetSfera();
-            var fabrykaGeneratorow = sfera.FabrykaGeneratorowEFaktury();
+            // Generate e-invoice (requires factory access)
+            var fabrykaGeneratorow = _sferaService.GetManager("FabrykaGeneratorowEFaktury");
+            if (fabrykaGeneratorow == null)
+            {
+                return StatusCode(500, ApiResponse<EInvoiceGenerationResultDto>.Error("FabrykaGeneratorowEFaktury manager not available"));
+            }
             var generator = fabrykaGeneratorow.PobierzAktualny();
 
             // Create parameters object dynamically
+            var sfera = _sferaService.GetSfera();
             dynamic parametry = Activator.CreateInstance(
                 sfera.GetType().Assembly.GetType("InsERT.Moria.Sfera.ParametryGenerowaniaEFaktury")
                 ?? typeof(object));
@@ -307,11 +311,15 @@ public class KsefController : ControllerBase
                 return Ok(ApiResponse<List<EInvoiceGenerationResultDto>>.Error("No documents found with the provided IDs"));
             }
 
-            // Generate e-invoices (requires Sfera for factory access)
-            dynamic sfera = _sferaService.GetSfera();
-            var fabrykaGeneratorow = sfera.FabrykaGeneratorowEFaktury();
+            // Generate e-invoices (requires factory access)
+            var fabrykaGeneratorow = _sferaService.GetManager("FabrykaGeneratorowEFaktury");
+            if (fabrykaGeneratorow == null)
+            {
+                return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error("FabrykaGeneratorowEFaktury manager not available"));
+            }
             var generator = fabrykaGeneratorow.PobierzAktualny();
 
+            var sfera = _sferaService.GetSfera();
             dynamic parametry = Activator.CreateInstance(
                 sfera.GetType().Assembly.GetType("InsERT.Moria.Sfera.ParametryGenerowaniaEFaktury")
                 ?? typeof(object));
@@ -385,9 +393,12 @@ public class KsefController : ControllerBase
                 return NotFound(ApiResponse<KsefSendResultDto>.Error($"Electronic document with ID {electronicDocumentId} not found"));
             }
 
-            // Requires Sfera for coordinator access
-            dynamic sfera = _sferaService.GetSfera();
-            var koordynator = sfera.KoordynatorWysylaniaEFaktur();
+            // Get coordinator for KSeF sending
+            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+            if (koordynator == null)
+            {
+                return StatusCode(500, ApiResponse<KsefSendResultDto>.Error("KoordynatorWysylaniaEFaktur manager not available"));
+            }
             var wyniki = koordynator.PrzekazDoWysylki(new[] { dokument }, null);
 
             dynamic? wynik = null;
@@ -443,9 +454,12 @@ public class KsefController : ControllerBase
                 return Ok(ApiResponse<List<KsefSendResultDto>>.Error("No electronic documents found with the provided IDs"));
             }
 
-            // Requires Sfera for coordinator access
-            dynamic sfera = _sferaService.GetSfera();
-            var koordynator = sfera.KoordynatorWysylaniaEFaktur();
+            // Get coordinator for KSeF sending
+            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+            if (koordynator == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
+            }
             var wyniki = koordynator.PrzekazDoWysylki(dokumenty.ToArray(), null);
 
             var results = new List<KsefSendResultDto>();
@@ -492,8 +506,11 @@ public class KsefController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var koordynator = sfera.KoordynatorWysylaniaEFaktur();
+            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+            if (koordynator == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
+            }
 
             var statusy = koordynator.SprawdzStatus();
 
@@ -550,9 +567,12 @@ public class KsefController : ControllerBase
                 return Ok(ApiResponse<List<KsefStatusResultDto>>.Error("No electronic documents found with the provided IDs"));
             }
 
-            // Requires Sfera for coordinator access
-            dynamic sfera = _sferaService.GetSfera();
-            var koordynator = sfera.KoordynatorWysylaniaEFaktur();
+            // Get coordinator for KSeF status check
+            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+            if (koordynator == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
+            }
             var statusy = koordynator.SprawdzStatus(dokumenty.ToArray());
 
             var results = new List<KsefStatusResultDto>();
@@ -613,9 +633,12 @@ public class KsefController : ControllerBase
                 return Ok(ApiResponse<List<KsefUpoResultDto>>.Error("No documents ready for UPO download found"));
             }
 
-            // Requires Sfera for coordinator access
-            dynamic sfera = _sferaService.GetSfera();
-            var koordynator = sfera.KoordynatorWysylaniaEFaktur();
+            // Get coordinator for UPO download
+            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+            if (koordynator == null)
+            {
+                return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
+            }
             var wyniki = koordynator.PobierzUpo(dokumenty.ToArray());
 
             var results = new List<KsefUpoResultDto>();
