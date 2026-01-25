@@ -19,11 +19,16 @@ public class DocumentsController : ControllerBase
 {
     private readonly ISferaService _sferaService;
     private readonly ILogger<DocumentsController> _logger;
+    private readonly StockValidationHelper _stockHelper;
 
-    public DocumentsController(ISferaService sferaService, ILogger<DocumentsController> logger)
+    public DocumentsController(
+        ISferaService sferaService,
+        ILogger<DocumentsController> logger,
+        StockValidationHelper stockHelper)
     {
         _sferaService = sferaService;
         _logger = logger;
+        _stockHelper = stockHelper;
     }
 
     /// <summary>
@@ -537,6 +542,24 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            // Validate stock availability for outgoing sales document
+            if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
+            {
+                var stockValidation = _stockHelper.ValidateStock(
+                    request.Items,
+                    request.WarehouseSymbol,
+                    item => item.ProductId,
+                    item => item.ProductSymbol,
+                    item => item.ProductEan,
+                    item => item.Quantity);
+
+                if (!stockValidation.AllItemsAvailable)
+                {
+                    _logger.LogWarning("Sales invoice creation failed - insufficient stock: {Errors}", string.Join("; ", stockValidation.Errors));
+                    return BadRequest(ApiResponse<DocumentDto>.Error("Insufficient stock for sales invoice", stockValidation.Errors));
+                }
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -577,7 +600,7 @@ public class DocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     faktura.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved sales invoice number: {Number}", faktura.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set dates
                     if (request.IssueDate.HasValue)
@@ -602,7 +625,8 @@ public class DocumentsController : ControllerBase
                     if ((bool)faktura.Zapisz())
                     {
                         string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created sales invoice {Number}, Id={Id}", docNumber, faktura.Dokument.Id);
+                        int docId = (int)faktura.Dokument.Id;
+                        _logger.LogInformation("Created sales invoice {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapSalesDocumentToDto(dane), "Sales invoice created successfully", new List<string>());
                     }
@@ -693,7 +717,7 @@ public class DocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     zamowienie.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved customer order number: {Number}", zamowienie.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved customer order number: {Number}", (string?)zamowienie.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set notes
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -707,7 +731,8 @@ public class DocumentsController : ControllerBase
                     if ((bool)zamowienie.Zapisz())
                     {
                         string docNumber = zamowienie.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created customer order {Number}, Id={Id}", docNumber, zamowienie.Dokument.Id);
+                        int docId = (int)zamowienie.Dokument.Id;
+                        _logger.LogInformation("Created customer order {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapOrderToDto(dane), "Customer order created successfully", new List<string>());
                     }
@@ -795,7 +820,7 @@ public class DocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     faktura.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved purchase invoice number: {Number}", faktura.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set dates
                     if (request.IssueDate.HasValue)
@@ -815,7 +840,8 @@ public class DocumentsController : ControllerBase
                     if ((bool)faktura.Zapisz())
                     {
                         string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created purchase invoice {Number}, Id={Id}", docNumber, faktura.Dokument.Id);
+                        int docId = (int)faktura.Dokument.Id;
+                        _logger.LogInformation("Created purchase invoice {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapPurchaseDocumentToDto(dane), "Purchase invoice created successfully", new List<string>());
                     }
@@ -1046,6 +1072,24 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            // Validate stock availability for outgoing receipt
+            if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
+            {
+                var stockValidation = _stockHelper.ValidateStock(
+                    request.Items,
+                    request.WarehouseSymbol,
+                    item => item.ProductId,
+                    item => item.ProductSymbol,
+                    item => item.ProductEan,
+                    item => item.Quantity);
+
+                if (!stockValidation.AllItemsAvailable)
+                {
+                    _logger.LogWarning("Receipt creation failed - insufficient stock: {Errors}", string.Join("; ", stockValidation.Errors));
+                    return BadRequest(ApiResponse<DocumentDto>.Error("Insufficient stock for receipt", stockValidation.Errors));
+                }
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -1094,7 +1138,7 @@ public class DocumentsController : ControllerBase
 
                 // CRITICAL: Reserve number BEFORE adding items
                 paragon.ZarezerwujNumer();
-                _logger.LogInformation("Reserved receipt number: {Number}", paragon.PodajPodgladNumeru());
+                _logger.LogInformation("Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
 
                 if (request.IssueDate.HasValue)
                 {
@@ -1112,7 +1156,8 @@ public class DocumentsController : ControllerBase
                 if ((bool)paragon.Zapisz())
                 {
                     string docNumber = paragon.PodajPodgladNumeru()?.ToString() ?? "";
-                    _logger.LogInformation("Created receipt {Number}, Id={Id}", docNumber, paragon.Dokument.Id);
+                    int docId = (int)paragon.Dokument.Id;
+                    _logger.LogInformation("Created receipt {Number}, Id={Id}", docNumber, docId);
 
                     return (true, MapSalesDocumentToDto(dane), "Receipt created successfully", new List<string>());
                 }
