@@ -421,8 +421,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var operacjeManager = sfera.OperacjeBankowe();
+            var operacjeManager = _sferaService.GetManager("OperacjeBankowe");
+            if (operacjeManager == null) return StatusCode(500, ApiResponse<PaymentDto>.Error("OperacjeBankowe manager not available"));
 
             var allOperations = ((IEnumerable<dynamic>)operacjeManager.Dane.Wszystkie()).ToList();
             var operacja = allOperations.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
@@ -605,8 +605,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var rozrachunkiManager = sfera.Rozrachunki();
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            if (rozrachunkiManager == null) return StatusCode(500, ApiResponse<object>.Error("Rozrachunki manager not available"));
 
             var allRozrachunki = ((IEnumerable<dynamic>)rozrachunkiManager.Dane.Wszystkie()).ToList();
 
@@ -732,8 +732,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var rozrachunkiManager = sfera.Rozrachunki();
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            if (rozrachunkiManager == null) return StatusCode(500, ApiResponse<object>.Error("Rozrachunki manager not available"));
 
             var allRozrachunki = ((IEnumerable<dynamic>)rozrachunkiManager.Dane.Wszystkie()).ToList();
             var rozrachunek = allRozrachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
