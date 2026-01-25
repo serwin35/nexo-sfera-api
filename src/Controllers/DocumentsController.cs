@@ -713,12 +713,12 @@ public class DocumentsController : ControllerBase
                     {
                         _logger.LogWarning("FS Zapisz() failed, extracting errors...");
                         var errors = GetBusinessObjectErrors(faktura);
-                        _logger.LogWarning("FS errors count: {Count}", errors?.Count ?? 0);
+                        _logger.LogWarning("FS errors count: {Count}", (object)(errors?.Count ?? 0));
                         if (errors != null && errors.Any())
                         {
                             foreach (var err in errors)
                             {
-                                _logger.LogWarning("FS error: {Error}", err);
+                                _logger.LogWarning("FS error: {Error}", (object)err);
                             }
                         }
                         else
