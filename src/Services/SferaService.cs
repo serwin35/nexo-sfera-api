@@ -45,6 +45,9 @@ public class SferaService : ISferaService, IDisposable
     private readonly ILogger<SferaService> _logger;
     private Uchwyt? _sfera;
 
+    // Track currently logged-in operator for per-request operator switching
+    private string? _currentNexoLogin;
+
     // Dedicated STA thread for ALL SDK operations - mimics desktop app behavior
     private Thread? _sdkThread;
     private BlockingCollection<Action>? _workQueue;
@@ -165,6 +168,9 @@ public class SferaService : ISferaService, IDisposable
                 {
                     throw new InvalidOperationException($"Failed to login operator: {_settings.NexoLogin}");
                 }
+
+                // Track the initial operator for per-request switching
+                _currentNexoLogin = _settings.NexoLogin;
 
                 // Set working context - CRITICAL for document creation
                 // SDK examples show this is required before any document operations
@@ -572,6 +578,69 @@ public class SferaService : ISferaService, IDisposable
             _logger.LogWarning(ex, "Failed to set working context. Document operations may fail.");
         }
     }
+
+    /// <summary>
+    /// Switches to a different operator if credentials differ from current login.
+    /// This enables per-request operator context based on API key credentials.
+    /// Must be called on the SDK STA thread (inside ExecuteWithLockAsync).
+    /// </summary>
+    /// <param name="nexoLogin">The Nexo operator login (from API key claims)</param>
+    /// <param name="nexoPassword">The Nexo operator password (from API key claims)</param>
+    /// <returns>True if switch was successful or not needed, false if switch failed</returns>
+    public bool SwitchOperatorIfNeeded(string? nexoLogin, string? nexoPassword)
+    {
+        if (_sfera == null) return false;
+
+        // If no login specified or same as current, no switch needed
+        if (string.IsNullOrEmpty(nexoLogin) || nexoLogin == _currentNexoLogin)
+        {
+            return true;
+        }
+
+        try
+        {
+            _logger.LogInformation("Switching operator from {Current} to {New}",
+                (object?)_currentNexoLogin ?? "unknown", (object)nexoLogin);
+
+            // Wyloguj current operator first
+            try
+            {
+                _sfera.WylogujOperatora();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error logging out previous operator, continuing with login attempt");
+            }
+
+            // Login new operator
+            if (!_sfera.ZalogujOperatora(nexoLogin, nexoPassword ?? ""))
+            {
+                _logger.LogError("Failed to login operator: {Login}. Attempting to restore previous operator.", (object)nexoLogin);
+
+                // Try to restore previous operator
+                if (!string.IsNullOrEmpty(_currentNexoLogin))
+                {
+                    _sfera.ZalogujOperatora(_currentNexoLogin, _settings.NexoPassword);
+                }
+
+                return false;
+            }
+
+            _currentNexoLogin = nexoLogin;
+            _logger.LogInformation("Successfully switched to operator: {Login}", (object)nexoLogin);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error switching operator to {Login}", (object)nexoLogin);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets the currently logged-in operator login.
+    /// </summary>
+    public string? GetCurrentOperatorLogin() => _currentNexoLogin;
 
     private static ProductId GetProductId(string product)
     {
