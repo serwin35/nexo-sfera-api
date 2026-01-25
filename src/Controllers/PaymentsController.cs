@@ -760,9 +760,10 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var rozrachunkiManager = sfera.Rozrachunki();
-            var podmiotyManager = sfera.Podmioty();
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            var podmiotyManager = _sferaService.GetManager("Podmioty");
+            if (rozrachunkiManager == null || podmiotyManager == null)
+                return StatusCode(500, ApiResponse<ContractorBalanceDto>.Error("Required managers not available"));
 
             var podmioty = ((IEnumerable<dynamic>)podmiotyManager.Dane.Wszystkie()).ToList();
             var kontrahent = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == contractorId);
@@ -867,8 +868,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var rozrachunkiManager = sfera.Rozrachunki();
+            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+            if (rozrachunkiManager == null) return StatusCode(500, ApiResponse<object>.Error("Rozrachunki manager not available"));
 
             var today = DateTime.Today;
             var allRozrachunki = ((IEnumerable<dynamic>)rozrachunkiManager.Dane.Wszystkie()).ToList()
