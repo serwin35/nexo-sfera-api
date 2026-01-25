@@ -1,6 +1,21 @@
 # Nexo Sfera REST API
 
-REST API dla systemu InsERT Nexo, wykorzystujace Sfere jako warstwa komunikacji.
+**REST API dla systemu InsERT Nexo / Subiekt / Rachmistrz / Rewizor / Gestor**
+
+Rozwijane przez **DMservice** | Kontakt: mateusz.serwinowski@dmservice.pl
+
+---
+
+## 📋 Spis treści
+
+- [Wymagania](#wymagania)
+- [Konfiguracja](#konfiguracja)
+- [Multi-tenant (wiele firm)](#multi-tenant-wiele-firm)
+- [Autentykacja](#autentykacja)
+- [Endpointy API](#endpointy-api)
+- [Przykłady użycia](#przykłady-użycia)
+
+---
 
 ## Wymagania
 
