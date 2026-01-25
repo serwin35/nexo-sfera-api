@@ -226,7 +226,9 @@ public class WarehouseDocumentsController : ControllerBase
 
                     if (request.IssueDate.HasValue)
                     {
-                        wz.Dane.DataWystawienia = request.IssueDate.Value;
+                        // DataWydaniaWystawienia - correct property for document date
+                        wz.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
+                        wz.Dane.DataWprowadzenia = request.IssueDate.Value;
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -329,7 +331,9 @@ public class WarehouseDocumentsController : ControllerBase
 
                     if (request.IssueDate.HasValue)
                     {
-                        pz.Dane.DataWystawienia = request.IssueDate.Value;
+                        // DataWydaniaWystawienia - correct property for document date
+                        pz.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
+                        pz.Dane.DataWprowadzenia = request.IssueDate.Value;
                     }
 
                     if (!string.IsNullOrEmpty(request.RelatedDocumentNumber))
