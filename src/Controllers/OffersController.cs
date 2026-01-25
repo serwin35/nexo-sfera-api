@@ -329,119 +329,150 @@ public class OffersController : ControllerBase
     #region Create Offer
 
     /// <summary>
-    /// Create a new offer
+    /// Create a new offer (Oferta OE)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set customer on Dane.Podmiot
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status400BadRequest)]
-    public ActionResult<ApiResponse<OfferDto>> CreateOffer([FromBody] CreateOfferRequest request)
+    public async Task<ActionResult<ApiResponse<OfferDto>>> CreateOffer([FromBody] CreateOfferRequest request)
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            var podmiotyManager = _sferaService.GetManager("Podmioty");
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (ofertyManager == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, OfferDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
-            }
-
-            using (var oferta = ofertyManager.Utwórz())
-            {
-                // Set customer
-                dynamic? podmiot = null;
-                if (podmiotyManager != null)
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                var podmiotyManager = _sferaService.GetManager("Podmioty");
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (ofertyManager == null)
                 {
-                    foreach (var p in podmiotyManager.Dane.Wszystkie())
+                    return (false, null, "Failed to get Oferty manager", new List<string>());
+                }
+
+                using (var oferta = ofertyManager.Utwórz())
+                {
+                    // Set customer
+                    dynamic? podmiot = null;
+                    if (podmiotyManager != null)
                     {
-                        if ((int)p.Id == request.CustomerId)
+                        foreach (var p in podmiotyManager.Dane.Wszystkie())
                         {
-                            podmiot = p;
-                            break;
-                        }
-                    }
-                }
-
-                if (podmiot == null)
-                {
-                    return BadRequest(ApiResponse<OfferDto>.Error($"Customer with ID {request.CustomerId} not found"));
-                }
-
-                oferta.Dane.Podmiot = podmiot;
-
-                // Set validity dates
-                if (request.ValidFrom.HasValue)
-                {
-                    oferta.Dane.ObowiazujeOd = request.ValidFrom.Value;
-                }
-
-                if (request.ValidTo.HasValue)
-                {
-                    oferta.Dane.ObowiazujeDo = request.ValidTo.Value;
-                }
-
-                // Set days to realization
-                if (request.DaysToRealization.HasValue)
-                {
-                    oferta.Dane.DniDoRealizacji = request.DaysToRealization.Value;
-                }
-
-                // Set description
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    oferta.Dane.OpisKrotki = request.Description;
-                }
-
-                // Add items
-                if (asortymentyManager != null)
-                {
-                    foreach (var item in request.Items)
-                    {
-                        dynamic? asortyment = null;
-                        foreach (var a in asortymentyManager.Dane.Wszystkie())
-                        {
-                            if ((int)a.Id == item.ProductId)
+                            if ((int)p.Id == request.CustomerId)
                             {
-                                asortyment = a;
+                                podmiot = p;
                                 break;
                             }
                         }
+                    }
 
-                        if (asortyment != null)
+                    if (podmiot == null)
+                    {
+                        return (false, null, $"Customer with ID {request.CustomerId} not found", new List<string>());
+                    }
+
+                    oferta.Dane.Podmiot = podmiot;
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    oferta.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved offer number: {Number}", oferta.PodajPodgladNumeru());
+
+                    // Set validity dates
+                    if (request.ValidFrom.HasValue)
+                    {
+                        oferta.Dane.ObowiazujeOd = request.ValidFrom.Value;
+                    }
+
+                    if (request.ValidTo.HasValue)
+                    {
+                        oferta.Dane.ObowiazujeDo = request.ValidTo.Value;
+                    }
+
+                    // Set days to realization
+                    if (request.DaysToRealization.HasValue)
+                    {
+                        oferta.Dane.DniDoRealizacji = request.DaysToRealization.Value;
+                    }
+
+                    // Set description
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        oferta.Dane.OpisKrotki = request.Description;
+                    }
+
+                    // Add items using product ID pattern
+                    if (asortymentyManager != null)
+                    {
+                        foreach (var item in request.Items)
                         {
-                            var pozycja = oferta.Pozycje.Dodaj(asortyment, item.Quantity, asortyment.JednostkaSprzedazy);
-
-                            if (item.UnitPriceNet.HasValue && pozycja != null)
+                            dynamic? asortyment = null;
+                            foreach (var a in asortymentyManager.Dane.Wszystkie())
                             {
-                                pozycja.Dane.CenaNetto = item.UnitPriceNet.Value;
+                                if ((int)a.Id == item.ProductId)
+                                {
+                                    asortyment = a;
+                                    break;
+                                }
                             }
 
-                            if (item.DiscountPercent.HasValue && pozycja != null)
+                            if (asortyment != null)
                             {
-                                pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                                int towarId = (int)asortyment.Id;
+                                // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
+                                var pozycja = oferta.Pozycje.Dodaj(towarId);
+
+                                if (pozycja != null)
+                                {
+                                    pozycja.Ilosc = item.Quantity;
+
+                                    if (item.UnitPriceNet.HasValue)
+                                    {
+                                        pozycja.CenaNetto = item.UnitPriceNet.Value;
+                                    }
+
+                                    if (item.DiscountPercent.HasValue)
+                                    {
+                                        pozycja.RabatProcent = item.DiscountPercent.Value;
+                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                if (oferta.Zapisz())
-                {
-                    string? numer = null;
-                    try { numer = oferta.Dane.NumerWewnetrzny?.PelnaSygnatura; } catch { }
-                    _logger.LogInformation("Created offer {Number}", numer);
+                    if (oferta.Zapisz())
+                    {
+                        string docNumber = oferta.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created offer {Number}, Id={Id}", docNumber, oferta.Dane.Id);
 
-                    var dto = MapOffer(oferta.Dane, true);
+                        var dto = MapOffer(oferta.Dane, true);
+                        return (true, dto, "Offer created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(oferta);
+                        return (false, null, "Failed to create offer", errors);
+                    }
+                }
+            });
 
-                    return CreatedAtAction(
-                        nameof(GetOffer),
-                        new { id = (int)oferta.Dane.Id },
-                        ApiResponse<OfferDto>.Ok(dto, "Offer created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(oferta);
-                    return BadRequest(ApiResponse<OfferDto>.Error("Failed to create offer", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetOffer), new { id = result.Data?.Id }, ApiResponse<OfferDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<OfferDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -461,48 +492,69 @@ public class OffersController : ControllerBase
     [HttpPost("{id}/accept")]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<OfferDto>> AcceptOffer(int id)
+    public async Task<ActionResult<ApiResponse<OfferDto>>> AcceptOffer(int id)
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            if (ofertyManager == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, OfferDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
-            }
-
-            dynamic? ofertaDane = null;
-            foreach (var o in ofertyManager.Dane.Wszystkie())
-            {
-                if ((int)o.Id == id)
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                if (ofertyManager == null)
                 {
-                    ofertaDane = o;
-                    break;
+                    return (false, null, "Failed to get Oferty manager", new List<string>());
                 }
-            }
 
-            if (ofertaDane == null)
-            {
-                return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
-            }
-
-            using (var oferta = ofertyManager.Znajdz(ofertaDane))
-            {
-                oferta.Dane.Zaakceptowany = true;
-                oferta.Dane.DataZaakceptowania = DateTime.Now;
-                oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;
-
-                if (oferta.Zapisz())
+                dynamic? ofertaDane = null;
+                foreach (var o in ofertyManager.Dane.Wszystkie())
                 {
-                    _logger.LogInformation("Accepted offer {Id}", id);
-                    var dto = MapOffer(oferta.Dane, false);
-                    return Ok(ApiResponse<OfferDto>.Ok(dto, "Offer accepted successfully"));
+                    if ((int)o.Id == id)
+                    {
+                        ofertaDane = o;
+                        break;
+                    }
                 }
-                else
+
+                if (ofertaDane == null)
                 {
-                    var errors = GetBusinessObjectErrors(oferta);
-                    return BadRequest(ApiResponse<OfferDto>.Error("Failed to accept offer", errors));
+                    return (false, null, $"Offer with ID {id} not found", new List<string>());
                 }
+
+                using (var oferta = ofertyManager.Znajdz(ofertaDane))
+                {
+                    oferta.Dane.Zaakceptowany = true;
+                    oferta.Dane.DataZaakceptowania = DateTime.Now;
+                    oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;
+
+                    if (oferta.Zapisz())
+                    {
+                        _logger.LogInformation("Accepted offer {Id}", id);
+                        var dto = MapOffer(oferta.Dane, false);
+                        return (true, dto, "Offer accepted successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(oferta);
+                        return (false, null, "Failed to accept offer", errors);
+                    }
+                }
+            });
+
+            if (result.Success)
+            {
+                return Ok(ApiResponse<OfferDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Message.Contains("not found"))
+            {
+                return NotFound(ApiResponse<OfferDto>.Error(result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<OfferDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -518,47 +570,68 @@ public class OffersController : ControllerBase
     [HttpPost("{id}/close")]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<OfferDto>> CloseOffer(int id)
+    public async Task<ActionResult<ApiResponse<OfferDto>>> CloseOffer(int id)
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            if (ofertyManager == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, OfferDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
-            }
-
-            dynamic? ofertaDane = null;
-            foreach (var o in ofertyManager.Dane.Wszystkie())
-            {
-                if ((int)o.Id == id)
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                if (ofertyManager == null)
                 {
-                    ofertaDane = o;
-                    break;
+                    return (false, null, "Failed to get Oferty manager", new List<string>());
                 }
-            }
 
-            if (ofertaDane == null)
-            {
-                return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
-            }
-
-            using (var oferta = ofertyManager.Znajdz(ofertaDane))
-            {
-                oferta.Dane.Zamkniety = true;
-                oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;
-
-                if (oferta.Zapisz())
+                dynamic? ofertaDane = null;
+                foreach (var o in ofertyManager.Dane.Wszystkie())
                 {
-                    _logger.LogInformation("Closed offer {Id}", id);
-                    var dto = MapOffer(oferta.Dane, false);
-                    return Ok(ApiResponse<OfferDto>.Ok(dto, "Offer closed successfully"));
+                    if ((int)o.Id == id)
+                    {
+                        ofertaDane = o;
+                        break;
+                    }
                 }
-                else
+
+                if (ofertaDane == null)
                 {
-                    var errors = GetBusinessObjectErrors(oferta);
-                    return BadRequest(ApiResponse<OfferDto>.Error("Failed to close offer", errors));
+                    return (false, null, $"Offer with ID {id} not found", new List<string>());
                 }
+
+                using (var oferta = ofertyManager.Znajdz(ofertaDane))
+                {
+                    oferta.Dane.Zamkniety = true;
+                    oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;
+
+                    if (oferta.Zapisz())
+                    {
+                        _logger.LogInformation("Closed offer {Id}", id);
+                        var dto = MapOffer(oferta.Dane, false);
+                        return (true, dto, "Offer closed successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(oferta);
+                        return (false, null, "Failed to close offer", errors);
+                    }
+                }
+            });
+
+            if (result.Success)
+            {
+                return Ok(ApiResponse<OfferDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Message.Contains("not found"))
+            {
+                return NotFound(ApiResponse<OfferDto>.Error(result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<OfferDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<OfferDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
