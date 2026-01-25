@@ -427,13 +427,13 @@ public static class DynamicPropertyHelper
                 // Handle specific type conversions
                 if (value != null)
                 {
-                    if (targetType == typeof(DateTime) && value is DateTime dt)
+                    if (targetType == typeof(DateTime) && value is DateTime)
                     {
-                        convertedValue = dt;
+                        convertedValue = (DateTime)value;
                     }
-                    else if (targetType == typeof(decimal) && value is decimal dec)
+                    else if (targetType == typeof(decimal) && value is decimal)
                     {
-                        convertedValue = dec;
+                        convertedValue = (decimal)value;
                     }
                     else if (targetType == typeof(decimal))
                     {
@@ -443,9 +443,17 @@ public static class DynamicPropertyHelper
                     {
                         convertedValue = Convert.ToInt32(value);
                     }
+                    else if (targetType == typeof(long))
+                    {
+                        convertedValue = Convert.ToInt64(value);
+                    }
                     else if (targetType == typeof(string))
                     {
                         convertedValue = value.ToString();
+                    }
+                    else if (targetType == typeof(bool) && value is bool)
+                    {
+                        convertedValue = (bool)value;
                     }
                     else
                     {
