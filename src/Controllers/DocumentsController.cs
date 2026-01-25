@@ -1647,39 +1647,56 @@ public class DocumentsController : ControllerBase
 
     private void SetCustomerOnDocument(dynamic dokumentDane, int? customerId, string? customerNIP)
     {
-        if (customerId.HasValue || !string.IsNullOrEmpty(customerNIP))
+        _logger.LogDebug("SetCustomerOnDocument: CustomerId={Id}, NIP={NIP}", customerId?.ToString() ?? "(null)", customerNIP ?? "(null)");
+
+        if (!customerId.HasValue && string.IsNullOrEmpty(customerNIP))
         {
-            var podmiotyManager = _sferaService.GetManager("Podmioty");
-            if (podmiotyManager == null) return;
+            _logger.LogWarning("SetCustomerOnDocument: No customer ID or NIP provided!");
+            return;
+        }
 
-            dynamic? podmiot = null;
-            if (customerId.HasValue)
+        var podmiotyManager = _sferaService.GetManager("Podmioty");
+        if (podmiotyManager == null)
+        {
+            _logger.LogError("SetCustomerOnDocument: Podmioty manager is null!");
+            return;
+        }
+
+        dynamic? podmiot = null;
+        if (customerId.HasValue)
+        {
+            foreach (var p in podmiotyManager.Dane.Wszystkie())
             {
-                foreach (var p in podmiotyManager.Dane.Wszystkie())
+                if (DynamicPropertyHelper.GetId(p) == customerId.Value)
                 {
-                    if (DynamicPropertyHelper.GetId(p) == customerId.Value)
-                    {
-                        podmiot = p;
-                        break;
-                    }
+                    podmiot = p;
+                    break;
                 }
             }
-            else if (!string.IsNullOrEmpty(customerNIP))
+        }
+        else if (!string.IsNullOrEmpty(customerNIP))
+        {
+            foreach (var p in podmiotyManager.Dane.Wszystkie())
             {
-                foreach (var p in podmiotyManager.Dane.Wszystkie())
+                string? nip = DynamicPropertyHelper.GetString(p, "NIP");
+                if (nip == customerNIP)
                 {
-                    if (DynamicPropertyHelper.GetString(p, "NIP") == customerNIP)
-                    {
-                        podmiot = p;
-                        break;
-                    }
+                    podmiot = p;
+                    break;
                 }
             }
+        }
 
-            if (podmiot != null)
-            {
-                dokumentDane.Podmiot = podmiot;
-            }
+        if (podmiot != null)
+        {
+            int podmiotId = DynamicPropertyHelper.GetId(podmiot);
+            string? podmiotNazwa = DynamicPropertyHelper.GetString(podmiot, "Nazwa");
+            _logger.LogInformation("SetCustomerOnDocument: Found customer [{Id}] {Name}", podmiotId, podmiotNazwa ?? "(no name)");
+            dokumentDane.Podmiot = podmiot;
+        }
+        else
+        {
+            _logger.LogWarning("SetCustomerOnDocument: Customer NOT FOUND! ID={Id}, NIP={NIP}", customerId?.ToString() ?? "(null)", customerNIP ?? "(null)");
         }
     }
 
