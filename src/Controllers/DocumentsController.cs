@@ -1945,12 +1945,24 @@ public class DocumentsController : ControllerBase
                     {
                         DynamicPropertyHelper.TrySetProperty(pozycja, "RabatProcent", item.DiscountPercent.Value);
                     }
+
+                    addedCount++;
+                    _logger.LogDebug("Added item: {Symbol}, Qty={Qty}", searchKey, item.Quantity);
+                }
+                else
+                {
+                    _logger.LogWarning("AddItemsToDocumentById: Pozycje.Dodaj returned null for {SearchKey}", searchKey);
+                    skippedCount++;
                 }
             }
-            else if (!string.IsNullOrEmpty(item.Name))
-            {
-                _logger.LogWarning("Product not found for item: {Name}", item.Name);
-            }
+        }
+
+        _logger.LogInformation("AddItemsToDocumentById completed: {Added} added, {Skipped} skipped out of {Total} items",
+            addedCount, skippedCount, items.Count);
+
+        if (addedCount == 0)
+        {
+            _logger.LogError("AddItemsToDocumentById: NO ITEMS WERE ADDED! Document will likely fail to save.");
         }
     }
 
