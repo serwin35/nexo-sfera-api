@@ -959,49 +959,38 @@ public class WarehouseDocumentsController : ControllerBase
                             .ToList();
                         _logger.LogInformation("Position price properties: {Props}", string.Join(", ", priceProps));
 
-                        // Cena is a complex type - explore its structure
+                        // Try multiple approaches to set price
                         bool priceSet = false;
+
+                        // 1. Try Cena.NettoPrzedRabatem (Net before discount)
                         try
                         {
                             var cenaObj = pozycja.Cena;
                             if (cenaObj != null)
                             {
-                                var cenaType = ((object)cenaObj).GetType();
-                                var cenaProps = cenaType.GetProperties()
-                                    .Select(p => $"{p.Name}({p.PropertyType.Name})")
-                                    .ToList();
-                                _logger.LogInformation("Cena object properties: {Props}", string.Join(", ", cenaProps));
-
-                                // Try to set Netto on the Cena object
                                 try
                                 {
-                                    cenaObj.Netto = item.PriceNet.Value;
+                                    cenaObj.NettoPrzedRabatem = item.PriceNet.Value;
                                     priceSet = true;
-                                    _logger.LogInformation("Direct assignment Cena.Netto={Price}: Success", item.PriceNet.Value);
+                                    _logger.LogInformation("Direct assignment Cena.NettoPrzedRabatem={Price}: Success", item.PriceNet.Value);
                                 }
                                 catch (Exception ex)
                                 {
-                                    _logger.LogInformation("Direct assignment Cena.Netto: Failed - {Error}", ex.Message);
+                                    _logger.LogInformation("Direct assignment Cena.NettoPrzedRabatem: Failed - {Error}", ex.Message);
                                 }
 
                                 if (!priceSet)
                                 {
                                     try
                                     {
-                                        cenaObj.Wartosc = item.PriceNet.Value;
+                                        cenaObj.NettoPoRabacie = item.PriceNet.Value;
                                         priceSet = true;
-                                        _logger.LogInformation("Direct assignment Cena.Wartosc: Success");
+                                        _logger.LogInformation("Direct assignment Cena.NettoPoRabacie: Success");
                                     }
                                     catch (Exception ex)
                                     {
-                                        _logger.LogInformation("Direct assignment Cena.Wartosc: Failed - {Error}", ex.Message);
+                                        _logger.LogInformation("Direct assignment Cena.NettoPoRabacie: Failed - {Error}", ex.Message);
                                     }
-                                }
-
-                                if (!priceSet)
-                                {
-                                    priceSet = DynamicPropertyHelper.TrySetProperty(cenaObj, "Netto", item.PriceNet.Value);
-                                    _logger.LogInformation("TrySetProperty Cena.Netto: {Result}", priceSet);
                                 }
                             }
                         }
@@ -1010,7 +999,7 @@ public class WarehouseDocumentsController : ControllerBase
                             _logger.LogInformation("Could not access Cena object: {Error}", ex.Message);
                         }
 
-                        // Try CenaEwidencyjna (record/accounting price) for internal documents
+                        // 2. Try CenaEwidencyjna (record/accounting price)
                         if (!priceSet)
                         {
                             try
@@ -1022,6 +1011,21 @@ public class WarehouseDocumentsController : ControllerBase
                             catch (Exception ex)
                             {
                                 _logger.LogInformation("Direct assignment CenaEwidencyjna: Failed - {Error}", ex.Message);
+                            }
+                        }
+
+                        // 3. Try CenaZCennika (price from price list)
+                        if (!priceSet)
+                        {
+                            try
+                            {
+                                pozycja.CenaZCennika = item.PriceNet.Value;
+                                priceSet = true;
+                                _logger.LogInformation("Direct assignment CenaZCennika={Price}: Success", item.PriceNet.Value);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogInformation("Direct assignment CenaZCennika: Failed - {Error}", ex.Message);
                             }
                         }
 
