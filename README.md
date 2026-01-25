@@ -261,6 +261,80 @@ curl -X POST http://localhost:5000/api/warehouse-documents/wz \
   }'
 ```
 
+### Utworzenie dokumentu PW (Przychod wewnetrzny)
+
+```bash
+curl -X POST http://localhost:5000/api/warehouse-documents/pw \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "warehouseSymbol": "MG",
+    "issueDate": "2024-05-06T00:00:00",
+    "notes": "Import z systemu zewnetrznego",
+    "items": [
+      {
+        "productSymbol": "TOWAR001",
+        "quantity": 4.0,
+        "unit": "szt.",
+        "priceNet": 16.05
+      },
+      {
+        "productEan": "5901234123457",
+        "quantity": 10.0,
+        "priceNet": 25.00
+      }
+    ]
+  }'
+```
+
+### Utworzenie dokumentu RW (Rozchod wewnetrzny)
+
+```bash
+curl -X POST http://localhost:5000/api/warehouse-documents/rw \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "warehouseSymbol": "MG",
+    "issueDate": "2024-05-06T11:08:08",
+    "notes": "Zuzycie wewnetrzne - produkcja",
+    "items": [
+      {
+        "productSymbol": "MATERIAL001",
+        "quantity": 4.0,
+        "unit": "szt.",
+        "priceNet": 13.90
+      },
+      {
+        "productId": 456,
+        "quantity": 2.5,
+        "priceNet": 19.95
+      }
+    ]
+  }'
+```
+
+**Uwaga:** Dla dokumentow RW ceny moga byc ignorowane - system automatycznie wycenia rozchod wg metody FIFO/LIFO/sredniej wazonej skonfigurowanej w systemie.
+
+### Utworzenie dokumentu MM (Przesuniecie miedzymagazynowe)
+
+```bash
+curl -X POST http://localhost:5000/api/warehouse-documents/mm \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "warehouseSymbol": "MAG1",
+    "targetWarehouseSymbol": "MAG2",
+    "issueDate": "2024-05-06T00:00:00",
+    "notes": "Przesuniecie towaru",
+    "items": [
+      {
+        "productSymbol": "TOWAR001",
+        "quantity": 5.0
+      }
+    ]
+  }'
+```
+
 ### Utworzenie oferty (Gestor)
 
 ```bash
