@@ -1,5 +1,40 @@
 # Nexo Sfera API - Plan Kompletnego REST API
 
+## Wzorzec Async dla Entity Framework 6
+
+> **WAZNE:** Wszystkie operacje tworzenia dokumentow uzywaja wzorca async z `ExecuteWithLockAsync`:
+
+```csharp
+public async Task<ActionResult<ApiResponse<T>>> CreateDocument([FromBody] CreateRequest request)
+{
+    var result = await _sferaService.ExecuteWithLockAsync<(bool Success, T? Data, string Message, List<string> Errors)>(() =>
+    {
+        // 1. Ustaw magazyn na Dokument.Magazyn (nie Dane.Magazyn!)
+        dokument.Dokument.Magazyn = magazyn;
+
+        // 2. Zarezerwuj numer PRZED dodaniem pozycji
+        dokument.ZarezerwujNumer();
+
+        // 3. Dodaj pozycje przez ID produktu
+        foreach (var item in request.Items)
+        {
+            var pozycja = dokument.Pozycje.Dodaj(towarId);
+            pozycja.Ilosc = item.Quantity;
+        }
+
+        // 4. Zapisz dokument
+        dokument.Zapisz();
+    });
+}
+```
+
+Ten wzorzec zapewnia poprawne dzialanie Entity Framework 6 na .NET 8 dzieki:
+- `WindowsFormsSynchronizationContext` - wymagany dla EF6
+- STA Thread - operacje SDK wykonywane w watku STA
+- Thread-safety przez `ExecuteWithLockAsync`
+
+---
+
 ## Status Obecny
 
 ### Istniejące Controllery (18)
@@ -11,18 +46,18 @@
 | DiagnosticsController | `/api/diagnostics` | SDK discovery | ✅ OK |
 | DictionaryController | `/api/dictionary` | Słowniki (VAT, waluty, jednostki) | ✅ OK |
 | DiscountsController | `/api/discounts` | Rabaty + atrybuty + grupy | ✅ OK |
-| DocumentsController | `/api/documents` | Faktury, korekty, paragony | ✅ OK |
+| DocumentsController | `/api/documents` | Faktury, korekty, paragony, zamowienia | ✅ OK + Async |
 | EmployeesController | `/api/employees` | Pracownicy (basic) | ⚠️ Basic |
 | FinanceReportsController | `/api/finance` | Raporty kasowe/bankowe | ✅ OK |
 | HealthController | `/api/health` | Health checks | ✅ OK |
 | InventoryController | `/api/inventory` | Stany magazynowe | ✅ OK |
 | KsefController | `/api/ksef` | E-faktury KSeF | ✅ OK |
-| OffersController | `/api/offers` | Oferty | ✅ OK |
+| OffersController | `/api/offers` | Oferty (Gestor) - tworzenie, akceptacja, zamykanie | ✅ OK + Async |
 | OrdersController | `/api/orders` | Zamówienia do dostawców | ⚠️ Partial |
-| PaymentsController | `/api/payments` | Operacje kasowe/bankowe | ✅ OK |
+| PaymentsController | `/api/payments` | Operacje kasowe/bankowe (KP, KW, BP, BW) | ✅ OK + Async |
 | ProductsController | `/api/products` | Asortyment CRUD | ✅ OK |
 | SystemController | `/api/system` | Info o firmie/operatorze | ✅ OK |
-| WarehouseDocumentsController | `/api/warehouse-documents` | WZ/PZ/RW/PW/MM | ✅ OK |
+| WarehouseDocumentsController | `/api/warehouse-documents` | WZ/PZ/RW/PW/MM | ✅ OK + Async |
 | WarehousesController | `/api/warehouses` | Magazyny | ✅ OK |
 
 ---
