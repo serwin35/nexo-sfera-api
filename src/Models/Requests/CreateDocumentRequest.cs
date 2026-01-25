@@ -43,6 +43,9 @@ public class CreateDocumentItemRequest
     [MaxLength(50)]
     public string? ProductSymbol { get; set; }
 
+    [MaxLength(20)]
+    public string? ProductEan { get; set; }
+
     [MaxLength(200)]
     public string? Name { get; set; }
 
