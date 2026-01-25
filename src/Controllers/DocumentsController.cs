@@ -690,9 +690,18 @@ public class DocumentsController : ControllerBase
                     _logger.LogInformation("Items added to FS, calling Zapisz()...");
 
                     var saveResult = faktura.Zapisz();
-                    _logger.LogInformation("FS Zapisz() returned: {Result}", (object)(saveResult?.ToString() ?? "(null)"));
+                    bool isSaved = false;
+                    try
+                    {
+                        isSaved = (bool)saveResult;
+                    }
+                    catch
+                    {
+                        isSaved = saveResult != null && saveResult.ToString().ToLower() == "true";
+                    }
+                    _logger.LogInformation("FS Zapisz() returned: {Result}, isSaved={IsSaved}", (object)(saveResult?.ToString() ?? "(null)"), isSaved);
 
-                    if ((bool)saveResult)
+                    if (isSaved)
                     {
                         string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
                         int docId = (int)faktura.Dokument.Id;
