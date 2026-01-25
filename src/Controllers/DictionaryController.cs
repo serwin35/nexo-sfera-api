@@ -875,8 +875,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var formyManager = sfera.FormyPlatnosci();
+            var formyManager = _sferaService.GetManager("FormyPlatnosci");
+            if (formyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<PaymentMethodDto>>.Error("Failed to get FormyPlatnosci manager"));
+            }
             var allFormy = ((IEnumerable<dynamic>)formyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
