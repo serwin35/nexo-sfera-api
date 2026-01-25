@@ -1530,7 +1530,7 @@ public class WarehouseDocumentsController : ControllerBase
                     if (countProp != null)
                     {
                         var count = countProp.GetValue(invalidData);
-                        _logger.LogInformation("InvalidData count: {Count}", count);
+                        _logger.LogInformation("InvalidData count: {Count}", count ?? (object)"null");
                     }
 
                     // Log all properties of InvalidData for debugging
@@ -1562,7 +1562,7 @@ public class WarehouseDocumentsController : ControllerBase
                             ?? DynamicPropertyHelper.GetProperty(encjaZBledami, "Nazwa");
                         if (entityName != null)
                         {
-                            _logger.LogInformation("Entity name: {Name}", entityName);
+                            _logger.LogInformation("Entity name: {Name}", (object)(entityName?.ToString() ?? "null"));
                         }
                     }
                     catch (Exception ex)
