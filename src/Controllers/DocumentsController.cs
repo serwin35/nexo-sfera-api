@@ -1551,7 +1551,8 @@ public class DocumentsController : ControllerBase
             if (formaPlatnosci != null)
             {
                 dokumentDane.FormaPlatnosci = formaPlatnosci;
-                _logger.LogInformation("Set payment method: {Symbol}", DynamicPropertyHelper.GetString(formaPlatnosci, "Symbol"));
+                string? symbol = DynamicPropertyHelper.GetString(formaPlatnosci, "Symbol");
+                _logger.LogInformation("Set payment method: {Symbol}", symbol);
             }
             else
             {
