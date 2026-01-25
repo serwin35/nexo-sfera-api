@@ -831,9 +831,17 @@ public class WarehouseDocumentsController : ControllerBase
                 {
                     pozycja.Ilosc = item.Quantity;
 
+                    // Try to set price - warehouse documents may use different property names
                     if (item.PriceNet.HasValue)
                     {
-                        pozycja.CenaNetto = item.PriceNet.Value;
+                        // Try various property names used by different document types
+                        if (!DynamicPropertyHelper.TrySetProperty(pozycja, "Cena", item.PriceNet.Value))
+                        {
+                            if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value))
+                            {
+                                DynamicPropertyHelper.TrySetProperty(pozycja, "WartoscJednostkowa", item.PriceNet.Value);
+                            }
+                        }
                     }
                 }
             }
