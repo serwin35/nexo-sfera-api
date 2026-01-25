@@ -687,7 +687,7 @@ public class DocumentsController : ControllerBase
                     // Add items using product ID
                     _logger.LogInformation("Adding {Count} items to sales invoice...", request.Items?.Count ?? 0);
                     AddItemsToDocumentById(faktura, request.Items);
-                    _logger.LogInformation("Items added to FS, calling Przelicz() then Zapisz()...");
+                    _logger.LogInformation("Items added to FS, validating and saving...");
 
                     // Try to recalculate the document before saving
                     try
@@ -699,6 +699,36 @@ public class DocumentsController : ControllerBase
                     {
                         _logger.LogDebug("Przelicz() failed or not available: {Msg}", przeliczEx.Message);
                     }
+
+                    // Check if document can be saved
+                    try
+                    {
+                        var canSave = faktura.CzyMoznaZapisac();
+                        _logger.LogInformation("CzyMoznaZapisac() returned: {Result}", canSave?.ToString() ?? "(null)");
+
+                        // If it returns something with errors, try to extract them
+                        if (canSave != null && canSave != true)
+                        {
+                            try
+                            {
+                                string canSaveStr = canSave.ToString();
+                                _logger.LogWarning("CzyMoznaZapisac details: {Details}", canSaveStr);
+                            }
+                            catch { }
+                        }
+                    }
+                    catch (Exception canSaveEx)
+                    {
+                        _logger.LogDebug("CzyMoznaZapisac() failed: {Msg}", canSaveEx.Message);
+                    }
+
+                    // Try to get state before saving
+                    try
+                    {
+                        var stan = faktura.Stan;
+                        _logger.LogDebug("Document state before save: {State}", stan?.ToString() ?? "(null)");
+                    }
+                    catch { }
 
                     var saveResult = faktura.Zapisz();
                     bool isSaved = false;
