@@ -43,8 +43,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var operacjeManager = sfera.OperacjeKasowe();
+            var operacjeManager = _sferaService.GetManager("OperacjeKasowe");
+            if (operacjeManager == null) return StatusCode(500, ApiResponse<object>.Error("OperacjeKasowe manager not available"));
 
             var allOperations = ((IEnumerable<dynamic>)operacjeManager.Dane.Wszystkie()).ToList();
 
@@ -146,8 +146,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var operacjeManager = sfera.OperacjeKasowe();
+            var operacjeManager = _sferaService.GetManager("OperacjeKasowe");
+            if (operacjeManager == null) return StatusCode(500, ApiResponse<object>.Error("OperacjeKasowe manager not available"));
 
             var allOperations = ((IEnumerable<dynamic>)operacjeManager.Dane.Wszystkie()).ToList();
             var operacja = allOperations.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
@@ -326,8 +326,8 @@ public class PaymentsController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var operacjeManager = sfera.OperacjeBankowe();
+            var operacjeManager = _sferaService.GetManager("OperacjeBankowe");
+            if (operacjeManager == null) return StatusCode(500, ApiResponse<object>.Error("OperacjeBankowe manager not available"));
 
             var allOperations = ((IEnumerable<dynamic>)operacjeManager.Dane.Wszystkie()).ToList();
 
