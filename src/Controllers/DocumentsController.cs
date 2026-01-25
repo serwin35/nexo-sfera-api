@@ -1637,8 +1637,8 @@ public class DocumentsController : ControllerBase
                             (nazwa != null && nazwa.Contains(searchSymbol, StringComparison.OrdinalIgnoreCase)))
                         {
                             formaPlatnosci = f;
-                            var fId = DynamicPropertyHelper.GetId(f);
-                            _logger.LogDebug("Found payment method by partial match: [{Id}] {Symbol} ({Nazwa})", fId, symbol, nazwa);
+                            int? fId = DynamicPropertyHelper.GetId(f);
+                            _logger.LogDebug("Found payment method by partial match: [{Id}] {Symbol} ({Nazwa})", (object)(fId?.ToString() ?? "?"), (object)(symbol ?? ""), (object)(nazwa ?? ""));
                             break;
                         }
                     }
@@ -1649,14 +1649,14 @@ public class DocumentsController : ControllerBase
                 {
                     foreach (var f in formyManager.Dane.Wszystkie())
                     {
-                        var symbol = DynamicPropertyHelper.GetString(f, "Symbol");
-                        var nazwa = DynamicPropertyHelper.GetString(f, "Nazwa");
+                        string? symbol = DynamicPropertyHelper.GetString(f, "Symbol");
+                        string? nazwa = DynamicPropertyHelper.GetString(f, "Nazwa");
                         if ((symbol != null && symbol.Contains(paymentMethodSymbol, StringComparison.OrdinalIgnoreCase)) ||
                             (nazwa != null && nazwa.Contains(paymentMethodSymbol, StringComparison.OrdinalIgnoreCase)))
                         {
                             formaPlatnosci = f;
-                            var fId = DynamicPropertyHelper.GetId(f);
-                            _logger.LogDebug("Found payment method by original value partial match: [{Id}] {Symbol} ({Nazwa})", fId, symbol, nazwa);
+                            int? fId = DynamicPropertyHelper.GetId(f);
+                            _logger.LogDebug("Found payment method by original value partial match: [{Id}] {Symbol} ({Nazwa})", (object)(fId?.ToString() ?? "?"), (object)(symbol ?? ""), (object)(nazwa ?? ""));
                             break;
                         }
                     }
