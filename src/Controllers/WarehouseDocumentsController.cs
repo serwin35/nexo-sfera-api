@@ -1,3 +1,4 @@
+using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
@@ -456,15 +457,30 @@ public class WarehouseDocumentsController : ControllerBase
                     // Set dates - RW may use different property names
                     if (request.IssueDate.HasValue)
                     {
-                        if (!DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWystawienia", request.IssueDate.Value))
+                        _logger.LogInformation("Setting RW IssueDate to: {Date}", request.IssueDate.Value);
+
+                        // Log available properties for debugging
+                        var daneType = ((object)rw.Dane).GetType();
+                        var dateProps = daneType.GetProperties()
+                            .Where(p => p.Name.Contains("Data") || p.Name.Contains("Date"))
+                            .Select(p => p.Name)
+                            .ToList();
+                        _logger.LogInformation("RW.Dane date properties: {Props}", string.Join(", ", dateProps));
+
+                        bool dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWystawienia", request.IssueDate.Value);
+                        _logger.LogInformation("TrySetProperty DataWystawienia: {Result}", dateSet);
+
+                        if (!dateSet)
                         {
-                            DynamicPropertyHelper.TrySetProperty(rw.Dane, "Data", request.IssueDate.Value);
+                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "Data", request.IssueDate.Value);
+                            _logger.LogInformation("TrySetProperty Data: {Result}", dateSet);
                         }
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
-                        DynamicPropertyHelper.TrySetProperty(rw.Dane, "Uwagi", request.Notes);
+                        bool notesSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "Uwagi", request.Notes);
+                        _logger.LogInformation("TrySetProperty Uwagi: {Result}", notesSet);
                     }
 
                     // Add items using product ID
@@ -564,15 +580,30 @@ public class WarehouseDocumentsController : ControllerBase
                     // Set dates - PW may use different property names
                     if (request.IssueDate.HasValue)
                     {
-                        if (!DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWystawienia", request.IssueDate.Value))
+                        _logger.LogInformation("Setting PW IssueDate to: {Date}", request.IssueDate.Value);
+
+                        // Log available properties for debugging
+                        var daneType = ((object)pw.Dane).GetType();
+                        var dateProps = daneType.GetProperties()
+                            .Where(p => p.Name.Contains("Data") || p.Name.Contains("Date"))
+                            .Select(p => p.Name)
+                            .ToList();
+                        _logger.LogInformation("PW.Dane date properties: {Props}", string.Join(", ", dateProps));
+
+                        bool dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWystawienia", request.IssueDate.Value);
+                        _logger.LogInformation("TrySetProperty DataWystawienia: {Result}", dateSet);
+
+                        if (!dateSet)
                         {
-                            DynamicPropertyHelper.TrySetProperty(pw.Dane, "Data", request.IssueDate.Value);
+                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "Data", request.IssueDate.Value);
+                            _logger.LogInformation("TrySetProperty Data: {Result}", dateSet);
                         }
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
-                        DynamicPropertyHelper.TrySetProperty(pw.Dane, "Uwagi", request.Notes);
+                        bool notesSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "Uwagi", request.Notes);
+                        _logger.LogInformation("TrySetProperty Uwagi: {Result}", notesSet);
                     }
 
                     // Add items using product ID
@@ -853,12 +884,27 @@ public class WarehouseDocumentsController : ControllerBase
                     // Try to set price - warehouse documents may use different property names
                     if (item.PriceNet.HasValue)
                     {
+                        // Log available price properties for debugging
+                        var pozType = ((object)pozycja).GetType();
+                        var priceProps = pozType.GetProperties()
+                            .Where(p => p.Name.Contains("Cena") || p.Name.Contains("Wartosc") || p.Name.Contains("Price"))
+                            .Select(p => $"{p.Name}({p.PropertyType.Name})")
+                            .ToList();
+                        _logger.LogInformation("Position price properties: {Props}", string.Join(", ", priceProps));
+
                         // Try various property names used by different document types
-                        if (!DynamicPropertyHelper.TrySetProperty(pozycja, "Cena", item.PriceNet.Value))
+                        bool priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "Cena", item.PriceNet.Value);
+                        _logger.LogInformation("TrySetProperty Cena={Price}: {Result}", item.PriceNet.Value, priceSet);
+
+                        if (!priceSet)
                         {
-                            if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value))
+                            priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value);
+                            _logger.LogInformation("TrySetProperty CenaJednostkowa: {Result}", priceSet);
+
+                            if (!priceSet)
                             {
-                                DynamicPropertyHelper.TrySetProperty(pozycja, "WartoscJednostkowa", item.PriceNet.Value);
+                                priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "WartoscJednostkowa", item.PriceNet.Value);
+                                _logger.LogInformation("TrySetProperty WartoscJednostkowa: {Result}", priceSet);
                             }
                         }
                     }
