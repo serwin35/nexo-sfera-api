@@ -1753,19 +1753,60 @@ public class DocumentsController : ControllerBase
                 {
                     pozycja.Ilosc = item.Quantity;
 
-                    // Set price - PriceNet for calculation from net, PriceGross for calculation from gross
+                    // Set price - try multiple property names as they vary by document type
                     if (item.PriceNet.HasValue)
                     {
-                        pozycja.CenaNetto = item.PriceNet.Value;
+                        // Try nested Cena object first (like warehouse documents)
+                        bool priceSet = false;
+                        try
+                        {
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(cenaObj, "NettoPrzedRabatem", item.PriceNet.Value))
+                                    priceSet = true;
+                                else if (DynamicPropertyHelper.TrySetProperty(cenaObj, "Netto", item.PriceNet.Value))
+                                    priceSet = true;
+                            }
+                        }
+                        catch { }
+
+                        // Try direct properties if nested didn't work
+                        if (!priceSet)
+                        {
+                            if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value))
+                                if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaNetto", item.PriceNet.Value))
+                                    DynamicPropertyHelper.TrySetProperty(pozycja, "CenaNettoPoRabacie", item.PriceNet.Value);
+                        }
                     }
                     else if (item.PriceGross.HasValue)
                     {
-                        pozycja.CenaBrutto = item.PriceGross.Value;
+                        // Try nested Cena object first
+                        bool priceSet = false;
+                        try
+                        {
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(cenaObj, "BruttoPrzedRabatem", item.PriceGross.Value))
+                                    priceSet = true;
+                                else if (DynamicPropertyHelper.TrySetProperty(cenaObj, "Brutto", item.PriceGross.Value))
+                                    priceSet = true;
+                            }
+                        }
+                        catch { }
+
+                        // Try direct properties if nested didn't work
+                        if (!priceSet)
+                        {
+                            if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaBrutto", item.PriceGross.Value))
+                                DynamicPropertyHelper.TrySetProperty(pozycja, "CenaBruttoPoRabacie", item.PriceGross.Value);
+                        }
                     }
 
                     if (item.DiscountPercent.HasValue)
                     {
-                        pozycja.RabatProcent = item.DiscountPercent.Value;
+                        DynamicPropertyHelper.TrySetProperty(pozycja, "RabatProcent", item.DiscountPercent.Value);
                     }
                 }
             }
@@ -1824,18 +1865,56 @@ public class DocumentsController : ControllerBase
                 {
                     pozycja.Ilosc = item.Quantity;
 
+                    // Set price - try multiple property names as they vary by document type
                     if (item.PriceNet.HasValue)
                     {
-                        pozycja.CenaNetto = item.PriceNet.Value;
+                        bool priceSet = false;
+                        try
+                        {
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(cenaObj, "NettoPrzedRabatem", item.PriceNet.Value))
+                                    priceSet = true;
+                                else if (DynamicPropertyHelper.TrySetProperty(cenaObj, "Netto", item.PriceNet.Value))
+                                    priceSet = true;
+                            }
+                        }
+                        catch { }
+
+                        if (!priceSet)
+                        {
+                            if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value))
+                                if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaNetto", item.PriceNet.Value))
+                                    DynamicPropertyHelper.TrySetProperty(pozycja, "CenaNettoPoRabacie", item.PriceNet.Value);
+                        }
                     }
                     else if (item.PriceGross.HasValue)
                     {
-                        pozycja.CenaBrutto = item.PriceGross.Value;
+                        bool priceSet = false;
+                        try
+                        {
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(cenaObj, "BruttoPrzedRabatem", item.PriceGross.Value))
+                                    priceSet = true;
+                                else if (DynamicPropertyHelper.TrySetProperty(cenaObj, "Brutto", item.PriceGross.Value))
+                                    priceSet = true;
+                            }
+                        }
+                        catch { }
+
+                        if (!priceSet)
+                        {
+                            if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaBrutto", item.PriceGross.Value))
+                                DynamicPropertyHelper.TrySetProperty(pozycja, "CenaBruttoPoRabacie", item.PriceGross.Value);
+                        }
                     }
 
                     if (item.DiscountPercent.HasValue)
                     {
-                        pozycja.RabatProcent = item.DiscountPercent.Value;
+                        DynamicPropertyHelper.TrySetProperty(pozycja, "RabatProcent", item.DiscountPercent.Value);
                     }
                 }
             }
