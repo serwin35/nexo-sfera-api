@@ -1226,7 +1226,7 @@ public class WarehouseDocumentsController : ControllerBase
         }
 
         _logger.LogInformation("AddWarehouseDocumentItemsById completed: {Added} added, {Skipped} skipped, {Total} total requested",
-            addedCount, skippedCount, items?.Count ?? 0);
+            (object)addedCount, (object)skippedCount, (object)(items?.Count ?? 0));
     }
 
     private static dynamic? FindAsortyment(dynamic asortymentyManager, int? productId, string? productSymbol, string? productEan)
