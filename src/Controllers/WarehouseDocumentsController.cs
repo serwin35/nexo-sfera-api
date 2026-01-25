@@ -1529,8 +1529,9 @@ public class WarehouseDocumentsController : ControllerBase
                     var countProp = invalidDataType.GetProperty("Count");
                     if (countProp != null)
                     {
-                        var count = countProp.GetValue(invalidData);
-                        _logger.LogInformation("InvalidData count: {Count}", count ?? (object)"null");
+                        object? countValue = countProp.GetValue(invalidData);
+                        string countStr = countValue?.ToString() ?? "null";
+                        _logger.LogInformation("InvalidData count: {Count}", (object)countStr);
                     }
 
                     // Log all properties of InvalidData for debugging
