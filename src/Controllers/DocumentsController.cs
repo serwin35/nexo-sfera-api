@@ -687,7 +687,18 @@ public class DocumentsController : ControllerBase
                     // Add items using product ID
                     _logger.LogInformation("Adding {Count} items to sales invoice...", request.Items?.Count ?? 0);
                     AddItemsToDocumentById(faktura, request.Items);
-                    _logger.LogInformation("Items added to FS, calling Zapisz()...");
+                    _logger.LogInformation("Items added to FS, calling Przelicz() then Zapisz()...");
+
+                    // Try to recalculate the document before saving
+                    try
+                    {
+                        faktura.Przelicz();
+                        _logger.LogDebug("Przelicz() called successfully");
+                    }
+                    catch (Exception przeliczEx)
+                    {
+                        _logger.LogDebug("Przelicz() failed or not available: {Msg}", przeliczEx.Message);
+                    }
 
                     var saveResult = faktura.Zapisz();
                     bool isSaved = false;
