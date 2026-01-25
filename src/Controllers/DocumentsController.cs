@@ -524,81 +524,107 @@ public class DocumentsController : ControllerBase
     /// <summary>
     /// Create a new sales invoice (Faktura sprzedazy)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("sales-invoice")]
-    public ActionResult<ApiResponse<DocumentDto>> CreateSalesInvoice([FromBody] CreateDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateSalesInvoice([FromBody] CreateDocumentRequest request)
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
-            if (dokumentySprzedazy == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
-            }
-
-            using (var faktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
-            {
-                dynamic dane = faktura.Dane;
-
-                // Set customer
-                SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
-
-                // Set warehouse
-                if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentySprzedazy == null)
                 {
-                    var magazyny = _sferaService.GetManager("Magazyny");
-                    if (magazyny != null)
+                    return (false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
+                }
+
+                using (var faktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
+                {
+                    dynamic dane = faktura.Dane;
+
+                    // Set customer
+                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
+                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        dynamic? magazyn = null;
-                        foreach (var m in magazyny.Dane.Wszystkie())
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
                         {
-                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            dynamic? magazyn = null;
+                            foreach (var m in magazyny.Dane.Wszystkie())
                             {
-                                magazyn = m;
-                                break;
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                            }
+                            if (magazyn != null)
+                            {
+                                faktura.Dokument.Magazyn = magazyn;
                             }
                         }
-                        if (magazyn != null)
-                        {
-                            dane.Magazyn = magazyn;
-                        }
+                    }
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    faktura.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved sales invoice number: {Number}", faktura.PodajPodgladNumeru());
+
+                    // Set dates
+                    if (request.IssueDate.HasValue)
+                    {
+                        dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (request.SaleDate.HasValue)
+                    {
+                        dane.DataSprzedazy = request.SaleDate.Value;
+                    }
+
+                    // Set notes
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items using product ID
+                    AddItemsToDocumentById(faktura, request.Items);
+
+                    if ((bool)faktura.Zapisz())
+                    {
+                        string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created sales invoice {Number}, Id={Id}", docNumber, faktura.Dokument.Id);
+
+                        return (true, MapSalesDocumentToDto(dane), "Sales invoice created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(faktura);
+                        return (false, null, "Failed to create sales invoice", errors);
                     }
                 }
+            });
 
-                // Set dates
-                if (request.IssueDate.HasValue)
-                {
-                    dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (request.SaleDate.HasValue)
-                {
-                    dane.DataSprzedazy = request.SaleDate.Value;
-                }
-
-                // Set notes
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                AddItemsToDocument(faktura, request.Items);
-
-                if ((bool)faktura.Zapisz())
-                {
-                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                    _logger.LogInformation("Created sales invoice {Number}", fullNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetDocument),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "Sales invoice created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(faktura);
-                    return BadRequest(ApiResponse<DocumentDto>.Error("Failed to create sales invoice", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetDocument), new { id = result.Data?.Id }, ApiResponse<DocumentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<DocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -611,73 +637,99 @@ public class DocumentsController : ControllerBase
     /// <summary>
     /// Create a new customer order (Zamowienie od klienta)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("customer-order")]
-    public ActionResult<ApiResponse<DocumentDto>> CreateCustomerOrder([FromBody] CreateDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateCustomerOrder([FromBody] CreateDocumentRequest request)
     {
         try
         {
-            var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowieniaManager == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
-
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
-
-            using (var zamowienie = konfiguracja != null ? zamowieniaManager.Utworz(konfiguracja) : zamowieniaManager.Utworz())
-            {
-                dynamic dane = zamowienie.Dane;
-
-                // Set customer
-                SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
-
-                // Set warehouse
-                if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowieniaManager == null)
                 {
-                    var magazyny = _sferaService.GetManager("Magazyny");
-                    if (magazyny != null)
+                    return (false, null, "Failed to get ZamowieniaOdKlientow manager", new List<string>());
+                }
+
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
+
+                using (var zamowienie = konfiguracja != null ? zamowieniaManager.Utworz(konfiguracja) : zamowieniaManager.Utworz())
+                {
+                    dynamic dane = zamowienie.Dane;
+
+                    // Set customer
+                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
+                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        dynamic? magazyn = null;
-                        foreach (var m in magazyny.Dane.Wszystkie())
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
                         {
-                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            dynamic? magazyn = null;
+                            foreach (var m in magazyny.Dane.Wszystkie())
                             {
-                                magazyn = m;
-                                break;
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                            }
+                            if (magazyn != null)
+                            {
+                                zamowienie.Dokument.Magazyn = magazyn;
                             }
                         }
-                        if (magazyn != null)
-                        {
-                            dane.Magazyn = magazyn;
-                        }
+                    }
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    zamowienie.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved customer order number: {Number}", zamowienie.PodajPodgladNumeru());
+
+                    // Set notes
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items using product ID
+                    AddItemsToDocumentById(zamowienie, request.Items);
+
+                    if ((bool)zamowienie.Zapisz())
+                    {
+                        string docNumber = zamowienie.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created customer order {Number}, Id={Id}", docNumber, zamowienie.Dokument.Id);
+
+                        return (true, MapOrderToDto(dane), "Customer order created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(zamowienie);
+                        return (false, null, "Failed to create customer order", errors);
                     }
                 }
+            });
 
-                // Set notes
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                AddItemsToDocument(zamowienie, request.Items);
-
-                if ((bool)zamowienie.Zapisz())
-                {
-                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                    _logger.LogInformation("Created customer order {Number}", fullNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetDocument),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<DocumentDto>.Ok(MapOrderToDto(dane), "Customer order created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(zamowienie);
-                    return BadRequest(ApiResponse<DocumentDto>.Error("Failed to create customer order", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetDocument), new { id = result.Data?.Id }, ApiResponse<DocumentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<DocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -690,76 +742,102 @@ public class DocumentsController : ControllerBase
     /// <summary>
     /// Create a purchase invoice (Faktura zakupu)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("purchase-invoice")]
-    public ActionResult<ApiResponse<DocumentDto>> CreatePurchaseInvoice([FromBody] CreateDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> CreatePurchaseInvoice([FromBody] CreateDocumentRequest request)
     {
         try
         {
-            var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
-            if (dokumentyZakupu == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyZakupu manager"));
-            }
-
-            using (var faktura = dokumentyZakupu.UtworzFaktureZakupu())
-            {
-                dynamic dane = faktura.Dane;
-
-                // Set supplier
-                SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
-
-                // Set warehouse
-                if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
+                if (dokumentyZakupu == null)
                 {
-                    var magazyny = _sferaService.GetManager("Magazyny");
-                    if (magazyny != null)
+                    return (false, null, "Failed to get DokumentyZakupu manager", new List<string>());
+                }
+
+                using (var faktura = dokumentyZakupu.UtworzFaktureZakupu())
+                {
+                    dynamic dane = faktura.Dane;
+
+                    // Set supplier
+                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
+                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        dynamic? magazyn = null;
-                        foreach (var m in magazyny.Dane.Wszystkie())
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
                         {
-                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            dynamic? magazyn = null;
+                            foreach (var m in magazyny.Dane.Wszystkie())
                             {
-                                magazyn = m;
-                                break;
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                            }
+                            if (magazyn != null)
+                            {
+                                faktura.Dokument.Magazyn = magazyn;
                             }
                         }
-                        if (magazyn != null)
-                        {
-                            dane.Magazyn = magazyn;
-                        }
+                    }
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    faktura.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved purchase invoice number: {Number}", faktura.PodajPodgladNumeru());
+
+                    // Set dates
+                    if (request.IssueDate.HasValue)
+                    {
+                        dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    // Set notes
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items using product ID
+                    AddItemsToDocumentById(faktura, request.Items);
+
+                    if ((bool)faktura.Zapisz())
+                    {
+                        string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created purchase invoice {Number}, Id={Id}", docNumber, faktura.Dokument.Id);
+
+                        return (true, MapPurchaseDocumentToDto(dane), "Purchase invoice created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(faktura);
+                        return (false, null, "Failed to create purchase invoice", errors);
                     }
                 }
+            });
 
-                // Set dates
-                if (request.IssueDate.HasValue)
-                {
-                    dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                // Set notes
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    dane.Uwagi = request.Notes;
-                }
-
-                // Add items (use JednostkaZakupu if available)
-                AddItemsToDocument(faktura, request.Items, usePurchaseUnit: true);
-
-                if ((bool)faktura.Zapisz())
-                {
-                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                    _logger.LogInformation("Created purchase invoice {Number}", fullNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetDocument),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<DocumentDto>.Ok(MapPurchaseDocumentToDto(dane), "Purchase invoice created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(faktura);
-                    return BadRequest(ApiResponse<DocumentDto>.Error("Failed to create purchase invoice", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetDocument), new { id = result.Data?.Id }, ApiResponse<DocumentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<DocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -955,81 +1033,107 @@ public class DocumentsController : ControllerBase
     /// <summary>
     /// Create a receipt (Paragon)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("receipt")]
-    public ActionResult<ApiResponse<DocumentDto>> CreateReceipt([FromBody] CreateReceiptRequest request)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateReceipt([FromBody] CreateReceiptRequest request)
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
-            if (dokumentySprzedazy == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
-            }
-
-            dynamic paragon = request.Type switch
-            {
-                ReceiptType.Named => dokumentySprzedazy.UtworzParagonImienny(),
-                ReceiptType.Fiscal => dokumentySprzedazy.UtworzParagonFiskalny(),
-                _ => dokumentySprzedazy.UtworzParagon()
-            };
-
-            dynamic dane = paragon.Dane;
-
-            // Set customer for named receipts
-            if (request.Type == ReceiptType.Named)
-            {
-                SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
-            }
-
-            // Set warehouse
-            if (!string.IsNullOrEmpty(request.WarehouseSymbol))
-            {
-                var magazyny = _sferaService.GetManager("Magazyny");
-                if (magazyny != null)
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentySprzedazy == null)
                 {
-                    dynamic? magazyn = null;
-                    foreach (var m in magazyny.Dane.Wszystkie())
+                    return (false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
+                }
+
+                dynamic paragon = request.Type switch
+                {
+                    ReceiptType.Named => dokumentySprzedazy.UtworzParagonImienny(),
+                    ReceiptType.Fiscal => dokumentySprzedazy.UtworzParagonFiskalny(),
+                    _ => dokumentySprzedazy.UtworzParagon()
+                };
+
+                dynamic dane = paragon.Dane;
+
+                // Set customer for named receipts
+                if (request.Type == ReceiptType.Named)
+                {
+                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+                }
+
+                // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
+                if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                {
+                    var magazyny = _sferaService.GetManager("Magazyny");
+                    if (magazyny != null)
                     {
-                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        dynamic? magazyn = null;
+                        foreach (var m in magazyny.Dane.Wszystkie())
                         {
-                            magazyn = m;
-                            break;
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
+                        if (magazyn != null)
+                        {
+                            paragon.Dokument.Magazyn = magazyn;
                         }
                     }
-                    if (magazyn != null)
-                    {
-                        dane.Magazyn = magazyn;
-                    }
                 }
-            }
 
-            if (request.IssueDate.HasValue)
+                // CRITICAL: Reserve number BEFORE adding items
+                paragon.ZarezerwujNumer();
+                _logger.LogInformation("Reserved receipt number: {Number}", paragon.PodajPodgladNumeru());
+
+                if (request.IssueDate.HasValue)
+                {
+                    dane.DataWystawienia = request.IssueDate.Value;
+                }
+
+                if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    dane.Uwagi = request.Notes;
+                }
+
+                // Add items using product ID
+                AddReceiptItemsById(paragon, request.Items);
+
+                if ((bool)paragon.Zapisz())
+                {
+                    string docNumber = paragon.PodajPodgladNumeru()?.ToString() ?? "";
+                    _logger.LogInformation("Created receipt {Number}, Id={Id}", docNumber, paragon.Dokument.Id);
+
+                    return (true, MapSalesDocumentToDto(dane), "Receipt created successfully", new List<string>());
+                }
+                else
+                {
+                    var errors = GetBusinessObjectErrors(paragon);
+                    return (false, null, "Failed to create receipt", errors);
+                }
+            });
+
+            if (result.Success)
             {
-                dane.DataWystawienia = request.IssueDate.Value;
+                return CreatedAtAction(nameof(GetDocument), new { id = result.Data?.Id }, ApiResponse<DocumentDto>.Ok(result.Data!, result.Message));
             }
-
-            if (!string.IsNullOrEmpty(request.Notes))
+            else if (result.Errors.Any())
             {
-                dane.Uwagi = request.Notes;
-            }
-
-            // Add items
-            AddReceiptItems(paragon, request.Items);
-
-            if ((bool)paragon.Zapisz())
-            {
-                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                _logger.LogInformation("Created receipt {Number}", fullNumber);
-
-                return CreatedAtAction(
-                    nameof(GetDocument),
-                    new { id = DynamicPropertyHelper.GetId(dane) },
-                    ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "Receipt created successfully"));
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
             }
             else
             {
-                var errors = GetBusinessObjectErrors(paragon);
-                return BadRequest(ApiResponse<DocumentDto>.Error("Failed to create receipt", errors));
+                return StatusCode(500, ApiResponse<DocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -1443,6 +1547,138 @@ public class DocumentsController : ControllerBase
                 if (item.DiscountPercent.HasValue && pozycja != null)
                 {
                     pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Add items to document using product ID (required for EF6 compatibility)
+    /// CRITICAL: This pattern works correctly with WindowsFormsSynchronizationContext
+    /// </summary>
+    private void AddItemsToDocumentById(dynamic dokument, List<CreateDocumentItemRequest> items)
+    {
+        if (items == null || !items.Any()) return;
+
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        if (asortymentyManager == null) return;
+
+        foreach (var item in items)
+        {
+            dynamic? asortyment = null;
+
+            if (item.ProductId.HasValue)
+            {
+                foreach (var a in asortymentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(item.ProductSymbol))
+            {
+                foreach (var a in asortymentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+            }
+
+            if (asortyment != null)
+            {
+                int towarId = DynamicPropertyHelper.GetId(asortyment);
+                // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
+                var pozycja = dokument.Pozycje.Dodaj(towarId);
+
+                if (pozycja != null)
+                {
+                    pozycja.Ilosc = item.Quantity;
+
+                    if (item.PriceNet.HasValue)
+                    {
+                        pozycja.CenaNetto = item.PriceNet.Value;
+                    }
+
+                    if (item.DiscountPercent.HasValue)
+                    {
+                        pozycja.RabatProcent = item.DiscountPercent.Value;
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(item.Name))
+            {
+                _logger.LogWarning("Product not found for item: {Name}", item.Name);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Add items to receipt using product ID (required for EF6 compatibility)
+    /// CRITICAL: This pattern works correctly with WindowsFormsSynchronizationContext
+    /// </summary>
+    private void AddReceiptItemsById(dynamic paragon, List<CreateDocumentItemRequest> items)
+    {
+        if (items == null || !items.Any()) return;
+
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        if (asortymentyManager == null) return;
+
+        foreach (var item in items)
+        {
+            dynamic? asortyment = null;
+
+            if (item.ProductId.HasValue)
+            {
+                foreach (var a in asortymentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(item.ProductSymbol))
+            {
+                foreach (var a in asortymentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+            }
+
+            if (asortyment != null)
+            {
+                int towarId = DynamicPropertyHelper.GetId(asortyment);
+                // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
+                var pozycja = paragon.Pozycje.Dodaj(towarId);
+
+                if (pozycja != null)
+                {
+                    pozycja.Ilosc = item.Quantity;
+
+                    if (item.PriceNet.HasValue)
+                    {
+                        pozycja.CenaNetto = item.PriceNet.Value;
+                    }
+                    else if (item.PriceGross.HasValue)
+                    {
+                        pozycja.CenaBrutto = item.PriceGross.Value;
+                    }
+
+                    if (item.DiscountPercent.HasValue)
+                    {
+                        pozycja.RabatProcent = item.DiscountPercent.Value;
+                    }
                 }
             }
         }
