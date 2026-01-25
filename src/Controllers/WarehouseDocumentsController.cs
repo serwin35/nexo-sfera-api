@@ -1518,11 +1518,62 @@ public class WarehouseDocumentsController : ControllerBase
             if (invalidData != null)
             {
                 _logger.LogInformation("Found InvalidData property");
+
+                // Log InvalidData type and count
+                try
+                {
+                    var invalidDataType = ((object)invalidData).GetType();
+                    _logger.LogInformation("InvalidData type: {Type}", (object)invalidDataType.FullName);
+
+                    // Try to get count
+                    var countProp = invalidDataType.GetProperty("Count");
+                    if (countProp != null)
+                    {
+                        var count = countProp.GetValue(invalidData);
+                        _logger.LogInformation("InvalidData count: {Count}", count);
+                    }
+
+                    // Log all properties of InvalidData for debugging
+                    var props = invalidDataType.GetProperties().Select(p => p.Name).ToList();
+                    _logger.LogInformation("InvalidData properties: {Props}", (object)string.Join(", ", props));
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogInformation("Could not inspect InvalidData: {Error}", (object)ex.Message);
+                }
+
+                int entityIndex = 0;
                 foreach (var encjaZBledami in invalidData)
                 {
+                    entityIndex++;
+                    _logger.LogInformation("Processing InvalidData entity #{Index}", (object)entityIndex);
+
+                    // Log entity type and properties for debugging
+                    try
+                    {
+                        var entityType = ((object)encjaZBledami).GetType();
+                        _logger.LogInformation("Entity type: {Type}", (object)entityType.Name);
+                        var entityProps = entityType.GetProperties().Select(p => p.Name).ToList();
+                        _logger.LogInformation("Entity properties: {Props}", (object)string.Join(", ", entityProps));
+
+                        // Try to get entity name/description
+                        var entityName = DynamicPropertyHelper.GetProperty(encjaZBledami, "EntityName")
+                            ?? DynamicPropertyHelper.GetProperty(encjaZBledami, "Name")
+                            ?? DynamicPropertyHelper.GetProperty(encjaZBledami, "Nazwa");
+                        if (entityName != null)
+                        {
+                            _logger.LogInformation("Entity name: {Name}", entityName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogInformation("Could not inspect entity: {Error}", (object)ex.Message);
+                    }
+
                     var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
                     if (entityErrors != null)
                     {
+                        _logger.LogInformation("Found Errors collection on entity");
                         foreach (var blad in entityErrors)
                         {
                             string errStr = (string)(blad?.ToString() ?? "Unknown error");
@@ -1530,10 +1581,15 @@ public class WarehouseDocumentsController : ControllerBase
                             errors.Add(errStr);
                         }
                     }
+                    else
+                    {
+                        _logger.LogInformation("No Errors collection on entity");
+                    }
 
                     var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
                     if (memberErrors != null)
                     {
+                        _logger.LogInformation("Found MemberErrors collection on entity");
                         foreach (var bladNaPolach in memberErrors)
                         {
                             try
@@ -1551,6 +1607,15 @@ public class WarehouseDocumentsController : ControllerBase
                             }
                         }
                     }
+                    else
+                    {
+                        _logger.LogInformation("No MemberErrors collection on entity");
+                    }
+                }
+
+                if (entityIndex == 0)
+                {
+                    _logger.LogInformation("InvalidData collection is empty (no entities)");
                 }
             }
 
@@ -1590,6 +1655,58 @@ public class WarehouseDocumentsController : ControllerBase
             }
             catch { }
 
+            // Try to check Dokument and Dane for errors
+            try
+            {
+                var dokument = DynamicPropertyHelper.GetProperty(obiekt, "Dokument");
+                if (dokument != null)
+                {
+                    var dokInvalidData = DynamicPropertyHelper.GetProperty(dokument, "InvalidData");
+                    if (dokInvalidData != null)
+                    {
+                        _logger.LogInformation("Found InvalidData on Dokument");
+                        foreach (var err in dokInvalidData)
+                        {
+                            string errStr = (string)(err?.ToString() ?? "Unknown document error");
+                            if (!errors.Contains(errStr))
+                            {
+                                _logger.LogWarning("Dokument.InvalidData: {Error}", (object)errStr);
+                                errors.Add(errStr);
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
+            // Try to check Pozycje for errors
+            try
+            {
+                var pozycje = DynamicPropertyHelper.GetProperty(obiekt, "Pozycje");
+                if (pozycje != null)
+                {
+                    int pozIndex = 0;
+                    foreach (var poz in pozycje)
+                    {
+                        pozIndex++;
+                        var pozInvalidData = DynamicPropertyHelper.GetProperty(poz, "InvalidData");
+                        if (pozInvalidData != null)
+                        {
+                            foreach (var err in pozInvalidData)
+                            {
+                                string errStr = $"Pozycja #{pozIndex}: {err?.ToString() ?? "Unknown error"}";
+                                if (!errors.Contains(errStr))
+                                {
+                                    _logger.LogWarning("Pozycja.InvalidData: {Error}", (object)errStr);
+                                    errors.Add(errStr);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch { }
+
             // Log available properties for debugging if no errors found
             if (errors.Count == 0)
             {
@@ -1600,7 +1717,11 @@ public class WarehouseDocumentsController : ControllerBase
                         .Where(p => p.Name.Contains("Error") || p.Name.Contains("Blad") || p.Name.Contains("Invalid") || p.Name.Contains("Valid"))
                         .Select(p => p.Name)
                         .ToList();
-                    _logger.LogInformation("Available error-related properties: {Props}", string.Join(", ", props));
+                    _logger.LogInformation("Available error-related properties: {Props}", (object)string.Join(", ", props));
+
+                    // Also log ALL properties for deeper debugging
+                    var allProps = objType.GetProperties().Select(p => p.Name).ToList();
+                    _logger.LogInformation("All BO properties: {Props}", (object)string.Join(", ", allProps));
                 }
                 catch { }
             }
