@@ -602,17 +602,7 @@ public class SferaService : ISferaService, IDisposable
             _logger.LogInformation("Switching operator from {Current} to {New}",
                 (object?)_currentNexoLogin ?? "unknown", (object)nexoLogin);
 
-            // Wyloguj current operator first
-            try
-            {
-                _sfera.WylogujOperatora();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error logging out previous operator, continuing with login attempt");
-            }
-
-            // Login new operator
+            // Login new operator (ZalogujOperatora overwrites previous login - no explicit logout needed)
             if (!_sfera.ZalogujOperatora(nexoLogin, nexoPassword ?? ""))
             {
                 _logger.LogError("Failed to login operator: {Login}. Attempting to restore previous operator.", (object)nexoLogin);
