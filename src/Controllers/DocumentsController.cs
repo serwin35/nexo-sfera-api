@@ -613,6 +613,15 @@ public class DocumentsController : ControllerBase
                         dane.DataSprzedazy = request.SaleDate.Value;
                     }
 
+                    // Set due date
+                    if (request.DueDate.HasValue)
+                    {
+                        dane.TerminPlatnosci = request.DueDate.Value;
+                    }
+
+                    // Set payment method
+                    SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
+
                     // Set notes
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
@@ -1150,6 +1159,9 @@ public class DocumentsController : ControllerBase
                     dane.Uwagi = request.Notes;
                 }
 
+                // Set payment method
+                SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
+
                 // Add items using product ID
                 AddReceiptItemsById(paragon, request.Items);
 
@@ -1481,6 +1493,78 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Sets payment method on a document by symbol or ID.
+    /// </summary>
+    private void SetPaymentMethodOnDocument(dynamic dokumentDane, string? paymentMethodSymbol, int? paymentMethodId)
+    {
+        if (string.IsNullOrEmpty(paymentMethodSymbol) && !paymentMethodId.HasValue) return;
+
+        try
+        {
+            dynamic sfera = _sferaService.GetSfera();
+            var formyManager = sfera.FormyPlatnosci();
+            if (formyManager == null) return;
+
+            dynamic? formaPlatnosci = null;
+
+            if (paymentMethodId.HasValue)
+            {
+                foreach (var f in formyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(f) == paymentMethodId.Value)
+                    {
+                        formaPlatnosci = f;
+                        break;
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(paymentMethodSymbol))
+            {
+                // Try exact match first
+                foreach (var f in formyManager.Dane.Wszystkie())
+                {
+                    var symbol = DynamicPropertyHelper.GetString(f, "Symbol");
+                    if (string.Equals(symbol, paymentMethodSymbol, StringComparison.OrdinalIgnoreCase))
+                    {
+                        formaPlatnosci = f;
+                        break;
+                    }
+                }
+
+                // Try partial match if no exact match
+                if (formaPlatnosci == null)
+                {
+                    foreach (var f in formyManager.Dane.Wszystkie())
+                    {
+                        var symbol = DynamicPropertyHelper.GetString(f, "Symbol");
+                        var nazwa = DynamicPropertyHelper.GetString(f, "Nazwa");
+                        if ((symbol != null && symbol.Contains(paymentMethodSymbol, StringComparison.OrdinalIgnoreCase)) ||
+                            (nazwa != null && nazwa.Contains(paymentMethodSymbol, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            formaPlatnosci = f;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (formaPlatnosci != null)
+            {
+                dokumentDane.FormaPlatnosci = formaPlatnosci;
+                _logger.LogInformation("Set payment method: {Symbol}", DynamicPropertyHelper.GetString(formaPlatnosci, "Symbol"));
+            }
+            else
+            {
+                _logger.LogWarning("Payment method not found: Symbol={Symbol}, Id={Id}", paymentMethodSymbol, paymentMethodId);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error setting payment method");
+        }
+    }
+
     private void AddItemsToDocument(dynamic dokument, List<CreateDocumentItemRequest> items, bool usePurchaseUnit = false)
     {
         if (items == null || !items.Any()) return;
@@ -1645,9 +1729,14 @@ public class DocumentsController : ControllerBase
                 {
                     pozycja.Ilosc = item.Quantity;
 
+                    // Set price - PriceNet for calculation from net, PriceGross for calculation from gross
                     if (item.PriceNet.HasValue)
                     {
                         pozycja.CenaNetto = item.PriceNet.Value;
+                    }
+                    else if (item.PriceGross.HasValue)
+                    {
+                        pozycja.CenaBrutto = item.PriceGross.Value;
                     }
 
                     if (item.DiscountPercent.HasValue)
