@@ -19,7 +19,6 @@ using InsERT.Moria.Raporty;
 using InsERT.Moria.Wydruki;
 using InsERT.Moria.HandelElektroniczny;
 using InsERT.Moria.Naklejki;
-using InsERT.Moria.EFaktura;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 using System.Collections.Concurrent;
@@ -363,9 +362,9 @@ public class SferaService : ISferaService, IDisposable
                 "SzablonyNaklejek" => _sfera.SzablonyNaklejek(),
                 // InsERT.Moria.Dokumenty.Logistyka - Logistics document configurations
                 "Konfiguracje" => _sfera.Konfiguracje(),
-                // InsERT.Moria.EFaktura - E-invoice (KSeF)
-                "FabrykaGeneratorowEFaktury" => _sfera.FabrykaGeneratorowEFaktury(),
-                "KoordynatorWysylaniaEFaktur" => _sfera.KoordynatorWysylaniaEFaktur(),
+                // E-invoice (KSeF) - use reflection to call extension methods
+                "FabrykaGeneratorowEFaktury" => GetEInvoiceManager("FabrykaGeneratorowEFaktury"),
+                "KoordynatorWysylaniaEFaktur" => GetEInvoiceManager("KoordynatorWysylaniaEFaktur"),
                 // Methods that don't have extension methods - need different approach
                 "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
                 "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),
@@ -422,6 +421,61 @@ public class SferaService : ISferaService, IDisposable
         }
 
         _logger.LogWarning("FormyPlatnosci manager not available in this SDK version");
+        return null;
+    }
+
+    /// <summary>
+    /// Gets e-invoice managers (FabrykaGeneratorowEFaktury, KoordynatorWysylaniaEFaktur) via reflection.
+    /// These are extension methods that may be in different namespaces across SDK versions.
+    /// </summary>
+    private dynamic? GetEInvoiceManager(string methodName)
+    {
+        if (_sfera == null) return null;
+
+        // Try to find and call the extension method via reflection
+        // Extension methods are static methods on extension classes
+        var extensionAssemblies = new[]
+        {
+            "InsERT.Moria.Sfera",
+            "InsERT.Moria.Dokumenty",
+            "InsERT.Moria.EFaktura",
+            "InsERT.Moria"
+        };
+
+        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            if (asm.FullName == null) continue;
+
+            foreach (var assemblyPrefix in extensionAssemblies)
+            {
+                if (!asm.FullName.Contains(assemblyPrefix)) continue;
+
+                try
+                {
+                    // Look for static extension classes
+                    foreach (var type in asm.GetTypes())
+                    {
+                        if (!type.IsClass || !type.IsAbstract || !type.IsSealed) continue; // Static classes
+
+                        var method = type.GetMethod(methodName,
+                            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public,
+                            null, new[] { typeof(InsERT.Moria.Sfera.Uchwyt) }, null);
+
+                        if (method != null)
+                        {
+                            _logger.LogInformation("Found e-invoice method {Method} in {Type}", methodName, type.FullName);
+                            return method.Invoke(null, new object[] { _sfera });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Error searching for {Method} in assembly {Assembly}", methodName, asm.FullName);
+                }
+            }
+        }
+
+        _logger.LogWarning("E-invoice method {Method} not found in SDK", methodName);
         return null;
     }
 
