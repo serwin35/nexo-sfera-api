@@ -602,15 +602,18 @@ public class DocumentsController : ControllerBase
                     faktura.ZarezerwujNumer();
                     _logger.LogInformation("Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
-                    // Set dates
+                    // Set dates - try multiple property names as they vary by document type
                     if (request.IssueDate.HasValue)
                     {
-                        dane.DataWystawienia = request.IssueDate.Value;
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        }
                     }
 
                     if (request.SaleDate.HasValue)
                     {
-                        dane.DataSprzedazy = request.SaleDate.Value;
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.SaleDate.Value);
                     }
 
                     // Set due date
@@ -831,10 +834,13 @@ public class DocumentsController : ControllerBase
                     faktura.ZarezerwujNumer();
                     _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
-                    // Set dates
+                    // Set dates - try multiple property names as they vary by document type
                     if (request.IssueDate.HasValue)
                     {
-                        dane.DataWystawienia = request.IssueDate.Value;
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        }
                     }
 
                     // Set notes
@@ -946,7 +952,10 @@ public class DocumentsController : ControllerBase
 
             if (request.IssueDate.HasValue)
             {
-                dane.DataWystawienia = request.IssueDate.Value;
+                if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                {
+                    DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                }
             }
 
             // Add correction items
@@ -1036,7 +1045,10 @@ public class DocumentsController : ControllerBase
 
             if (request.IssueDate.HasValue)
             {
-                dane.DataWystawienia = request.IssueDate.Value;
+                if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                {
+                    DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                }
             }
 
             // Add correction items
@@ -1151,7 +1163,10 @@ public class DocumentsController : ControllerBase
 
                 if (request.IssueDate.HasValue)
                 {
-                    dane.DataWystawienia = request.IssueDate.Value;
+                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(request.Notes))
@@ -1327,7 +1342,10 @@ public class DocumentsController : ControllerBase
 
                 if (request.IssueDate.HasValue)
                 {
-                    dane.DataWystawienia = request.IssueDate.Value;
+                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                    }
                 }
 
                 if (request.SaleDate.HasValue)
@@ -1413,7 +1431,10 @@ public class DocumentsController : ControllerBase
 
                 if (request.IssueDate.HasValue)
                 {
-                    dane.DataWystawienia = request.IssueDate.Value;
+                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                    }
                 }
 
                 if (request.SaleDate.HasValue)
