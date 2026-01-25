@@ -36,4 +36,19 @@ public interface ISferaService
     /// Returns null if not connected.
     /// </summary>
     string? GetConnectionString();
+
+    /// <summary>
+    /// Switches to a different operator if credentials differ from current login.
+    /// This enables per-request operator context based on API key credentials.
+    /// Must be called on the SDK STA thread (inside ExecuteWithLockAsync).
+    /// </summary>
+    /// <param name="nexoLogin">The Nexo operator login (from API key claims)</param>
+    /// <param name="nexoPassword">The Nexo operator password (from API key claims)</param>
+    /// <returns>True if switch was successful or not needed, false if switch failed</returns>
+    bool SwitchOperatorIfNeeded(string? nexoLogin, string? nexoPassword);
+
+    /// <summary>
+    /// Gets the currently logged-in operator login.
+    /// </summary>
+    string? GetCurrentOperatorLogin();
 }
