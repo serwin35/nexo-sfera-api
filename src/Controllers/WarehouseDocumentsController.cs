@@ -1216,8 +1216,8 @@ public class WarehouseDocumentsController : ControllerBase
                     else
                     {
                         // Log when item has no price - this might cause validation errors on RW documents
-                        var symbolInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
-                        _logger.LogWarning("Position {Symbol} has no price (PriceNet is null) - may cause validation error", symbolInfo);
+                        string symbolInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
+                        _logger.LogWarning("Position {Symbol} has no price (PriceNet is null) - may cause validation error", (object)symbolInfo);
                     }
 
                     addedCount++;
