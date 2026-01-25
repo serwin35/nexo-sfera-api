@@ -684,9 +684,31 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // Add items using product ID
-                    _logger.LogInformation("Adding {Count} items to sales invoice...", request.Items?.Count ?? 0);
-                    AddItemsToDocumentById(faktura, request.Items);
+                    // Add items to sales invoice - use specialized method for better diagnostics
+                    _logger.LogInformation("[FS-v2] Adding {Count} items to sales invoice...", request.Items?.Count ?? 0);
+
+                    // Log type info about Pozycje
+                    try
+                    {
+                        var pozycjeType = ((object)faktura.Pozycje).GetType();
+                        _logger.LogInformation("[FS-v2] faktura.Pozycje type: {Type}", pozycjeType.FullName);
+
+                        // List methods on Pozycje
+                        var methods = pozycjeType.GetMethods()
+                            .Where(m => m.Name.Contains("Dodaj") || m.Name.Contains("Add"))
+                            .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")
+                            .ToList();
+                        if (methods.Any())
+                        {
+                            _logger.LogInformation("[FS-v2] Pozycje add methods: {Methods}", string.Join("; ", methods));
+                        }
+                    }
+                    catch (Exception typeEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not get Pozycje type info: {Msg}", typeEx.Message);
+                    }
+
+                    AddSalesInvoiceItems(faktura, request.Items);
                     _logger.LogInformation("[FS-v2] Items added to FS, validating and saving...");
 
                     // Try to recalculate the document before saving
@@ -695,18 +717,53 @@ public class DocumentsController : ControllerBase
                         faktura.Przelicz();
                         _logger.LogInformation("[FS-v2] Przelicz() called successfully");
 
-                        // Log document totals after Przelicz
+                        // Log document totals after Przelicz - try multiple property names
                         try
                         {
-                            var wartosc = DynamicPropertyHelper.GetProperty(dane, "WartoscBrutto");
-                            var wartoscNetto = DynamicPropertyHelper.GetProperty(dane, "WartoscNetto");
-                            _logger.LogInformation("[FS-v2] After Przelicz - WartoscBrutto: {Brutto}, WartoscNetto: {Netto}",
-                                (object)(wartosc?.ToString() ?? "(null)"),
-                                (object)(wartoscNetto?.ToString() ?? "(null)"));
+                            // List all value-related properties on dane
+                            var daneType = ((object)dane).GetType();
+                            var valueProps = daneType.GetProperties()
+                                .Where(p => p.Name.Contains("Wartosc") || p.Name.Contains("Kwota") || p.Name.Contains("Suma") || p.Name.Contains("Value") || p.Name.Contains("Total"))
+                                .Select(p => p.Name)
+                                .ToList();
+                            _logger.LogInformation("[FS-v2] dane value properties: {Props}", string.Join(", ", valueProps));
+
+                            // Try reading values
+                            string? wartoscStr = null;
+                            foreach (var propName in new[] { "WartoscBrutto", "WartoscNetto", "Wartosc", "KwotaBrutto", "KwotaNetto", "SumaBrutto", "SumaNetto" })
+                            {
+                                var val = DynamicPropertyHelper.GetProperty(dane, propName);
+                                if (val != null)
+                                {
+                                    _logger.LogInformation("[FS-v2] dane.{Prop} = {Value}", propName, (object)(val?.ToString() ?? "(null)"));
+                                    if (wartoscStr == null) wartoscStr = val?.ToString();
+                                }
+                            }
+
+                            if (string.IsNullOrEmpty(wartoscStr))
+                            {
+                                _logger.LogWarning("[FS-v2] No document value found after Przelicz - this may indicate items weren't added properly");
+                            }
                         }
                         catch (Exception valEx)
                         {
                             _logger.LogDebug("[FS-v2] Could not read document values: {Msg}", valEx.Message);
+                        }
+
+                        // Also log number of items via Dane.Pozycje if available
+                        try
+                        {
+                            var danePozycje = dane.Pozycje;
+                            if (danePozycje != null)
+                            {
+                                int count = 0;
+                                foreach (var p in danePozycje) count++;
+                                _logger.LogInformation("[FS-v2] dane.Pozycje count: {Count}", count);
+                            }
+                        }
+                        catch (Exception posEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not count dane.Pozycje: {Msg}", posEx.Message);
                         }
                     }
                     catch (Exception przeliczEx)
@@ -785,15 +842,37 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not check customer: {Msg}", custEx.Message);
                     }
 
-                    // Check items count
+                    // Check items count - try both dane.Pozycje and faktura.Pozycje
                     try
                     {
                         int itemCount = 0;
-                        foreach (var poz in faktura.Pozycje)
+                        // Try dane.Pozycje first (more reliable for sales documents)
+                        try
                         {
-                            itemCount++;
+                            foreach (var poz in dane.Pozycje)
+                            {
+                                itemCount++;
+                            }
+                            _logger.LogInformation("[FS-v2] dane.Pozycje has {Count} items", itemCount);
                         }
-                        _logger.LogInformation("[FS-v2] Document has {Count} items in Pozycje", itemCount);
+                        catch (Exception daneEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not enumerate dane.Pozycje: {Msg}", daneEx.Message);
+
+                            // Fallback to faktura.Pozycje
+                            try
+                            {
+                                foreach (var poz in faktura.Pozycje)
+                                {
+                                    itemCount++;
+                                }
+                                _logger.LogInformation("[FS-v2] faktura.Pozycje has {Count} items", itemCount);
+                            }
+                            catch (Exception fakturaEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Could not enumerate faktura.Pozycje: {Msg}", fakturaEx.Message);
+                            }
+                        }
                     }
                     catch (Exception itemEx)
                     {
@@ -886,10 +965,10 @@ public class DocumentsController : ControllerBase
                             }
                             catch (Exception ex) { _logger.LogDebug("[FS-v2] Bledy failed: {Msg}", ex.Message); }
 
-                            // Method 4: Try Pozycje errors
+                            // Method 4: Try Pozycje errors (use dane.Pozycje for sales documents)
                             try
                             {
-                                var pozycje = faktura.Pozycje;
+                                var pozycje = dane.Pozycje;
                                 if (pozycje != null)
                                 {
                                     foreach (var poz in pozycje)
@@ -907,7 +986,7 @@ public class DocumentsController : ControllerBase
                                     }
                                 }
                             }
-                            catch (Exception ex) { _logger.LogDebug("[FS-v2] Pozycje.InvalidData failed: {Msg}", ex.Message); }
+                            catch (Exception ex) { _logger.LogDebug("[FS-v2] dane.Pozycje.InvalidData failed: {Msg}", ex.Message); }
 
                             // Method 5: WalidujDane (similar to WarehouseDocumentsController)
                             try
@@ -2244,6 +2323,210 @@ public class DocumentsController : ControllerBase
         if (addedCount == 0)
         {
             _logger.LogError("AddItemsToDocumentById: NO ITEMS WERE ADDED! Document will likely fail to save.");
+        }
+    }
+
+    /// <summary>
+    /// Add items to sales invoice (FS) using full asortyment object pattern
+    /// This method provides better compatibility with DokumentSprzedazyBO
+    /// </summary>
+    private void AddSalesInvoiceItems(dynamic faktura, List<CreateDocumentItemRequest>? items)
+    {
+        if (items == null || !items.Any())
+        {
+            _logger.LogWarning("[FS-v2] AddSalesInvoiceItems: No items to add");
+            return;
+        }
+
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        if (asortymentyManager == null)
+        {
+            _logger.LogError("[FS-v2] AddSalesInvoiceItems: Asortymenty manager is null!");
+            return;
+        }
+
+        int addedCount = 0;
+        int skippedCount = 0;
+
+        foreach (var item in items)
+        {
+            dynamic? asortyment = null;
+            string searchKey = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
+
+            // Find product by ID or Symbol
+            if (item.ProductId.HasValue)
+            {
+                foreach (var a in asortymentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+            }
+            else if (!string.IsNullOrEmpty(item.ProductSymbol))
+            {
+                foreach (var a in asortymentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+            }
+
+            if (asortyment == null)
+            {
+                _logger.LogWarning("[FS-v2] AddSalesInvoiceItems: Product not found: {SearchKey}", searchKey);
+                skippedCount++;
+                continue;
+            }
+
+            try
+            {
+                // Get product info for logging
+                int towarId = DynamicPropertyHelper.GetId(asortyment);
+                string towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
+                var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+
+                _logger.LogInformation("[FS-v2] Adding item: Id={Id}, Symbol={Symbol}, Qty={Qty}, Unit={Unit}",
+                    towarId, (object)towarSymbol, item.Quantity, (object)(jednostka?.ToString() ?? "(null)"));
+
+                // Try different Dodaj patterns
+                dynamic? pozycja = null;
+
+                // Pattern 1: Dodaj(asortyment, ilosc, jednostka) - full pattern like warehouse documents
+                try
+                {
+                    if (jednostka != null)
+                    {
+                        pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+                        if (pozycja != null)
+                        {
+                            _logger.LogDebug("[FS-v2] Dodaj(asortyment, qty, jednostka) succeeded");
+                        }
+                    }
+                }
+                catch (Exception ex1)
+                {
+                    _logger.LogDebug("[FS-v2] Dodaj(asortyment, qty, jednostka) failed: {Msg}", ex1.Message);
+                }
+
+                // Pattern 2: Dodaj(towarId) then set Ilosc - current pattern
+                if (pozycja == null)
+                {
+                    try
+                    {
+                        pozycja = faktura.Pozycje.Dodaj(towarId);
+                        if (pozycja != null)
+                        {
+                            pozycja.Ilosc = item.Quantity;
+                            _logger.LogDebug("[FS-v2] Dodaj(towarId) + Ilosc assignment succeeded");
+                        }
+                    }
+                    catch (Exception ex2)
+                    {
+                        _logger.LogDebug("[FS-v2] Dodaj(towarId) failed: {Msg}", ex2.Message);
+                    }
+                }
+
+                // Pattern 3: Dodaj(asortyment) then set Ilosc
+                if (pozycja == null)
+                {
+                    try
+                    {
+                        pozycja = faktura.Pozycje.Dodaj(asortyment);
+                        if (pozycja != null)
+                        {
+                            pozycja.Ilosc = item.Quantity;
+                            _logger.LogDebug("[FS-v2] Dodaj(asortyment) + Ilosc assignment succeeded");
+                        }
+                    }
+                    catch (Exception ex3)
+                    {
+                        _logger.LogDebug("[FS-v2] Dodaj(asortyment) failed: {Msg}", ex3.Message);
+                    }
+                }
+
+                if (pozycja != null)
+                {
+                    // Log pozycja properties
+                    try
+                    {
+                        var pozType = ((object)pozycja).GetType();
+                        _logger.LogDebug("[FS-v2] pozycja type: {Type}", pozType.FullName);
+
+                        // Check if Ilosc was set
+                        var ilosc = pozycja.Ilosc;
+                        _logger.LogDebug("[FS-v2] pozycja.Ilosc = {Ilosc}", (object)(ilosc?.ToString() ?? "(null)"));
+                    }
+                    catch (Exception propEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read pozycja properties: {Msg}", propEx.Message);
+                    }
+
+                    // Set price if provided
+                    if (item.PriceNet.HasValue)
+                    {
+                        bool priceSet = false;
+
+                        // Try nested Cena object
+                        try
+                        {
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(cenaObj, "NettoPrzedRabatem", item.PriceNet.Value))
+                                {
+                                    priceSet = true;
+                                    _logger.LogDebug("[FS-v2] Set Cena.NettoPrzedRabatem = {Price}", item.PriceNet.Value);
+                                }
+                                else if (DynamicPropertyHelper.TrySetProperty(cenaObj, "Netto", item.PriceNet.Value))
+                                {
+                                    priceSet = true;
+                                    _logger.LogDebug("[FS-v2] Set Cena.Netto = {Price}", item.PriceNet.Value);
+                                }
+                            }
+                        }
+                        catch { }
+
+                        if (!priceSet)
+                        {
+                            if (DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value))
+                            {
+                                _logger.LogDebug("[FS-v2] Set CenaJednostkowa = {Price}", item.PriceNet.Value);
+                            }
+                            else if (DynamicPropertyHelper.TrySetProperty(pozycja, "CenaNetto", item.PriceNet.Value))
+                            {
+                                _logger.LogDebug("[FS-v2] Set CenaNetto = {Price}", item.PriceNet.Value);
+                            }
+                        }
+                    }
+
+                    addedCount++;
+                    _logger.LogInformation("[FS-v2] Added item successfully: {Symbol}, Qty={Qty}", (object)towarSymbol, item.Quantity);
+                }
+                else
+                {
+                    _logger.LogWarning("[FS-v2] All Dodaj patterns failed for: {SearchKey}", searchKey);
+                    skippedCount++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "[FS-v2] Exception adding item {SearchKey}", searchKey);
+                skippedCount++;
+            }
+        }
+
+        _logger.LogInformation("[FS-v2] AddSalesInvoiceItems completed: {Added} added, {Skipped} skipped out of {Total} items",
+            addedCount, skippedCount, items.Count);
+
+        if (addedCount == 0)
+        {
+            _logger.LogError("[FS-v2] NO ITEMS WERE ADDED! Document will likely fail to save.");
         }
     }
 
