@@ -382,7 +382,7 @@ public class OffersController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     oferta.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved offer number: {Number}", oferta.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved offer number: {Number}", (string?)oferta.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set validity dates
                     if (request.ValidFrom.HasValue)
@@ -449,7 +449,8 @@ public class OffersController : ControllerBase
                     if (oferta.Zapisz())
                     {
                         string docNumber = oferta.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created offer {Number}, Id={Id}", docNumber, oferta.Dane.Id);
+                        int docId = (int)oferta.Dane.Id;
+                        _logger.LogInformation("Created offer {Number}, Id={Id}", docNumber, docId);
 
                         var dto = MapOffer(oferta.Dane, true);
                         return (true, dto, "Offer created successfully", new List<string>());
