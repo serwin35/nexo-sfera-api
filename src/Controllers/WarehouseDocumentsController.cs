@@ -1,4 +1,5 @@
 using System.Linq;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
@@ -30,6 +31,38 @@ public class WarehouseDocumentsController : ControllerBase
         _sferaService = sferaService;
         _logger = logger;
         _stockHelper = stockHelper;
+    }
+
+    /// <summary>
+    /// Gets the Nexo operator credentials from the current user's claims (set by API key authentication).
+    /// Returns null if no per-key credentials are configured.
+    /// </summary>
+    private (string? Login, string? Password) GetOperatorCredentialsFromClaims()
+    {
+        var nexoLogin = User.FindFirst("NexoLogin")?.Value;
+        var nexoPassword = User.FindFirst("NexoPassword")?.Value;
+        return (nexoLogin, nexoPassword);
+    }
+
+    /// <summary>
+    /// Switches to the operator specified in API key claims (if any).
+    /// Must be called inside ExecuteWithLockAsync on the SDK STA thread.
+    /// </summary>
+    private bool SwitchToRequestOperator((string? Login, string? Password) credentials)
+    {
+        if (string.IsNullOrEmpty(credentials.Login))
+        {
+            // No per-key credentials, use default operator
+            return true;
+        }
+
+        if (!_sferaService.SwitchOperatorIfNeeded(credentials.Login, credentials.Password))
+        {
+            _logger.LogError("Failed to switch to operator {Login} for this request", (object)credentials.Login);
+            return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -168,6 +201,9 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Get operator credentials from API key claims BEFORE entering SDK thread
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+
             // Validate stock availability for outgoing document
             if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
             {
@@ -189,6 +225,12 @@ public class WarehouseDocumentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if any)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
+                }
+
                 var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
                 if (wydania == null)
                 {
@@ -237,7 +279,23 @@ public class WarehouseDocumentsController : ControllerBase
                         wz.Dane.Uwagi = request.Notes;
                     }
 
-                    // Add items using product ID
+                    // CRITICAL: Validate ALL products exist before adding any items
+                    if (request.Items != null && request.Items.Any())
+                    {
+                        var missingProducts = ValidateProductsExist(request.Items);
+                        if (missingProducts.Any())
+                        {
+                            _logger.LogWarning("WZ creation failed - {Count} product(s) not found: {Products}",
+                                (object)missingProducts.Count, (object)string.Join(", ", missingProducts));
+                            var errorList = new List<string>
+                            {
+                                $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
+                            };
+                            return (false, null, "Products not found - document not created", errorList);
+                        }
+                    }
+
+                    // Add items using product ID (all validated to exist)
                     AddWarehouseDocumentItemsById(wz, request.Items);
 
                     if ((bool)wz.Zapisz())
@@ -292,9 +350,18 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Get operator credentials from API key claims BEFORE entering SDK thread
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if any)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
+                }
+
                 var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
                 if (przyjecia == null)
                 {
@@ -357,7 +424,23 @@ public class WarehouseDocumentsController : ControllerBase
                         pz.Dane.Uwagi = request.Notes;
                     }
 
-                    // Add items using product ID
+                    // CRITICAL: Validate ALL products exist before adding any items
+                    if (request.Items != null && request.Items.Any())
+                    {
+                        var missingProducts = ValidateProductsExist(request.Items);
+                        if (missingProducts.Any())
+                        {
+                            _logger.LogWarning("PZ creation failed - {Count} product(s) not found: {Products}",
+                                (object)missingProducts.Count, (object)string.Join(", ", missingProducts));
+                            var errorList = new List<string>
+                            {
+                                $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
+                            };
+                            return (false, null, "Products not found - document not created", errorList);
+                        }
+                    }
+
+                    // Add items using product ID (all validated to exist)
                     AddWarehouseDocumentItemsById(pz, request.Items);
 
                     if ((bool)pz.Zapisz())
@@ -412,6 +495,9 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Get operator credentials from API key claims BEFORE entering SDK thread
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+
             // Validate stock availability for outgoing document
             // NOTE: Stock validation only works for current-date documents.
             // For historical documents, the SDK validates during Zapisz() using historical stock levels.
@@ -441,6 +527,12 @@ public class WarehouseDocumentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if any)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
+                }
+
                 var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
                 if (rozchody == null)
                 {
@@ -539,7 +631,23 @@ public class WarehouseDocumentsController : ControllerBase
                         _logger.LogInformation("TrySetProperty Uwagi: {Result}", notesSet);
                     }
 
-                    // Add items using product ID
+                    // CRITICAL: Validate ALL products exist before adding any items
+                    if (request.Items != null && request.Items.Any())
+                    {
+                        var missingProducts = ValidateProductsExist(request.Items);
+                        if (missingProducts.Any())
+                        {
+                            _logger.LogWarning("RW creation failed - {Count} product(s) not found: {Products}",
+                                (object)missingProducts.Count, (object)string.Join(", ", missingProducts));
+                            var errorList = new List<string>
+                            {
+                                $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
+                            };
+                            return (false, null, "Products not found - document not created", errorList);
+                        }
+                    }
+
+                    // Add items using product ID (all validated to exist)
                     AddWarehouseDocumentItemsById(rw, request.Items);
 
                     _logger.LogInformation("RW: Calling Zapisz() with {Count} positions", request.Items?.Count ?? 0);
@@ -636,9 +744,18 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Get operator credentials from API key claims BEFORE entering SDK thread
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if any)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
+                }
+
                 var przychody = _sferaService.GetManager("PrzychodyWewnetrzne");
                 if (przychody == null)
                 {
@@ -737,7 +854,23 @@ public class WarehouseDocumentsController : ControllerBase
                         _logger.LogInformation("TrySetProperty Uwagi: {Result}", notesSet);
                     }
 
-                    // Add items using product ID
+                    // CRITICAL: Validate ALL products exist before adding any items
+                    if (request.Items != null && request.Items.Any())
+                    {
+                        var missingProducts = ValidateProductsExist(request.Items);
+                        if (missingProducts.Any())
+                        {
+                            _logger.LogWarning("PW creation failed - {Count} product(s) not found: {Products}",
+                                (object)missingProducts.Count, (object)string.Join(", ", missingProducts));
+                            var errorList = new List<string>
+                            {
+                                $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
+                            };
+                            return (false, null, "Products not found - document not created", errorList);
+                        }
+                    }
+
+                    // Add items using product ID (all validated to exist)
                     AddWarehouseDocumentItemsById(pw, request.Items);
 
                     if ((bool)pw.Zapisz())
@@ -793,6 +926,9 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Get operator credentials from API key claims BEFORE entering SDK thread
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+
             if (string.IsNullOrEmpty(request.TargetWarehouseSymbol))
             {
                 return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Target warehouse symbol is required for MM"));
@@ -819,6 +955,12 @@ public class WarehouseDocumentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if any)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
+                }
+
                 var wydania = _sferaService.GetManager("WydaniaMiedzymagazynowe");
                 var konfiguracje = _sferaService.GetManager("Konfiguracje");
                 if (wydania == null || konfiguracje == null)
@@ -880,7 +1022,23 @@ public class WarehouseDocumentsController : ControllerBase
                         DynamicPropertyHelper.TrySetProperty(mm.Dane, "Uwagi", request.Notes);
                     }
 
-                    // Add items using product ID
+                    // CRITICAL: Validate ALL products exist before adding any items
+                    if (request.Items != null && request.Items.Any())
+                    {
+                        var missingProducts = ValidateProductsExist(request.Items);
+                        if (missingProducts.Any())
+                        {
+                            _logger.LogWarning("MM creation failed - {Count} product(s) not found: {Products}",
+                                (object)missingProducts.Count, (object)string.Join(", ", missingProducts));
+                            var errorList = new List<string>
+                            {
+                                $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
+                            };
+                            return (false, null, "Products not found - document not created", errorList);
+                        }
+                    }
+
+                    // Add items using product ID (all validated to exist)
                     AddWarehouseDocumentItemsById(mm, request.Items);
 
                     if ((bool)mm.Zapisz())
@@ -1120,6 +1278,36 @@ public class WarehouseDocumentsController : ControllerBase
     /// Add items to warehouse document using product ID (required for EF6 compatibility)
     /// CRITICAL: This pattern works correctly with WindowsFormsSynchronizationContext
     /// </summary>
+    /// <summary>
+    /// Validates that all products in the request exist before document creation.
+    /// Returns a list of missing product identifiers.
+    /// </summary>
+    private List<string> ValidateProductsExist(List<CreateWarehouseDocumentItemRequest> items)
+    {
+        var missingProducts = new List<string>();
+
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        if (asortymentyManager == null)
+        {
+            _logger.LogError("Asortymenty manager is null - cannot validate products!");
+            missingProducts.Add("Unable to access products catalog");
+            return missingProducts;
+        }
+
+        foreach (var item in items)
+        {
+            var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+
+            if (asortyment == null)
+            {
+                string searchInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
+                missingProducts.Add(searchInfo);
+            }
+        }
+
+        return missingProducts;
+    }
+
     private void AddWarehouseDocumentItemsById(dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
     {
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
@@ -1130,18 +1318,17 @@ public class WarehouseDocumentsController : ControllerBase
         }
 
         int addedCount = 0;
-        int skippedCount = 0;
 
         foreach (var item in items)
         {
             var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
 
+            // Products should already be validated by ValidateProductsExist, but handle just in case
             if (asortyment == null)
             {
                 string searchInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
-                _logger.LogWarning("Product NOT FOUND: {Search} - position will be skipped!", (object)searchInfo);
-                skippedCount++;
-                continue;
+                _logger.LogError("Product NOT FOUND during add: {Search} - this should have been caught by validation!", (object)searchInfo);
+                throw new InvalidOperationException($"Product not found: {searchInfo}. Validation should have caught this.");
             }
 
             {
@@ -1255,8 +1442,8 @@ public class WarehouseDocumentsController : ControllerBase
             }
         }
 
-        _logger.LogInformation("AddWarehouseDocumentItemsById completed: {Added} added, {Skipped} skipped, {Total} total requested",
-            (object)addedCount, (object)skippedCount, (object)(items?.Count ?? 0));
+        _logger.LogInformation("AddWarehouseDocumentItemsById completed: {Added} added, {Total} total requested",
+            (object)addedCount, (object)(items?.Count ?? 0));
     }
 
     private static dynamic? FindAsortyment(dynamic asortymentyManager, int? productId, string? productSymbol, string? productEan)
