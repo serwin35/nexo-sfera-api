@@ -634,18 +634,30 @@ public class DocumentsController : ControllerBase
                         }
                         if (DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
                         {
-                            _logger.LogInformation("Set Dane.DataWydaniaWystawienia successfully");
+                            _logger.LogInformation("[FS-v2] Set Dane.DataWydaniaWystawienia successfully");
                             dateSet = true;
                         }
-                        if (!dateSet && DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value))
+                        if (DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value))
                         {
-                            _logger.LogInformation("Set Dane.DataWystawienia successfully");
+                            _logger.LogInformation("[FS-v2] Set Dane.DataWystawienia successfully");
                             dateSet = true;
+                        }
+
+                        // Also try DataWprowadzenia - this often controls document numbering
+                        if (DynamicPropertyHelper.TrySetProperty(dane, "DataWprowadzenia", request.IssueDate.Value))
+                        {
+                            _logger.LogInformation("[FS-v2] Set Dane.DataWprowadzenia successfully");
+                        }
+
+                        // Try DataSprzedazy too (sale date = issue date if not specified)
+                        if (DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.IssueDate.Value))
+                        {
+                            _logger.LogInformation("[FS-v2] Set Dane.DataSprzedazy successfully");
                         }
 
                         if (!dateSet)
                         {
-                            _logger.LogWarning("Could not set issue date - no matching property found on Dokument or Dane");
+                            _logger.LogWarning("[FS-v2] Could not set issue date - no matching property found on Dokument or Dane");
                         }
                     }
 
@@ -654,9 +666,28 @@ public class DocumentsController : ControllerBase
                         DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.SaleDate.Value);
                     }
 
+                    // Log all date-related properties before reserving number
+                    try
+                    {
+                        var daneType = ((object)dane).GetType();
+                        var dateProps = daneType.GetProperties()
+                            .Where(p => p.Name.Contains("Data") || p.Name.Contains("Date"))
+                            .Select(p => {
+                                try
+                                {
+                                    var val = p.GetValue(dane);
+                                    return $"{p.Name}={val}";
+                                }
+                                catch { return $"{p.Name}=?"; }
+                            })
+                            .ToList();
+                        _logger.LogInformation("[FS-v2] Date properties before ZarezerwujNumer: {Props}", string.Join(", ", dateProps));
+                    }
+                    catch { }
+
                     // Reserve number AFTER setting date (number depends on date!)
                     faktura.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
+                    _logger.LogInformation("[FS-v2] Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
                     // Set due date - property name may vary by document type
                     if (request.DueDate.HasValue)
@@ -764,6 +795,38 @@ public class DocumentsController : ControllerBase
                         catch (Exception posEx)
                         {
                             _logger.LogDebug("[FS-v2] Could not count dane.Pozycje: {Msg}", posEx.Message);
+                        }
+
+                        // Read Wartosc object properties (it's a complex type)
+                        try
+                        {
+                            var wartoscObj = dane.Wartosc;
+                            if (wartoscObj != null)
+                            {
+                                var wartoscType = ((object)wartoscObj).GetType();
+                                var wartoscProps = wartoscType.GetProperties()
+                                    .Select(p => {
+                                        try { return $"{p.Name}={p.GetValue(wartoscObj)}"; }
+                                        catch { return $"{p.Name}=?"; }
+                                    })
+                                    .ToList();
+                                _logger.LogInformation("[FS-v2] Wartosc object: {Props}", string.Join(", ", wartoscProps.Take(10)));
+                            }
+                        }
+                        catch (Exception wartoscEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not read Wartosc: {Msg}", wartoscEx.Message);
+                        }
+
+                        // Check KwotaDoZaplaty
+                        try
+                        {
+                            var kwota = dane.KwotaDoZaplaty;
+                            _logger.LogInformation("[FS-v2] KwotaDoZaplaty = {Kwota}", (object)(kwota?.ToString() ?? "(null)"));
+                        }
+                        catch (Exception kwotaEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not read KwotaDoZaplaty: {Msg}", kwotaEx.Message);
                         }
                     }
                     catch (Exception przeliczEx)
@@ -877,6 +940,29 @@ public class DocumentsController : ControllerBase
                     catch (Exception itemEx)
                     {
                         _logger.LogDebug("[FS-v2] Could not count items: {Msg}", itemEx.Message);
+                    }
+
+                    // Try to add default payments (this may be required for sales invoices)
+                    try
+                    {
+                        // Try DodajPlatnosciDomyslne first
+                        faktura.Pozycje.DodajPlatnosciDomyslne();
+                        _logger.LogInformation("[FS-v2] Called DodajPlatnosciDomyslne() successfully");
+                    }
+                    catch (Exception payEx)
+                    {
+                        _logger.LogDebug("[FS-v2] DodajPlatnosciDomyslne() failed: {Msg}", payEx.Message);
+
+                        // Try alternative payment methods
+                        try
+                        {
+                            faktura.Pozycje.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
+                            _logger.LogInformation("[FS-v2] Called DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
+                        }
+                        catch (Exception payEx2)
+                        {
+                            _logger.LogDebug("[FS-v2] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", payEx2.Message);
+                        }
                     }
 
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
