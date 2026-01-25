@@ -36,8 +36,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var stawkiManager = sfera.StawkiVat();
+            var stawkiManager = _sferaService.GetManager("StawkiVat");
+            if (stawkiManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<VatRateDto>>.Error("Failed to get StawkiVat manager"));
+            }
             var allStawki = ((IEnumerable<dynamic>)stawkiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -87,8 +90,8 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var stawkiManager = sfera.StawkiVat();
+            var stawkiManager = _sferaService.GetManager("StawkiVat");
+            if (stawkiManager == null) return StatusCode(500, ApiResponse<VatRateDto>.Error("Failed to get StawkiVat manager"));
             var allStawki = ((IEnumerable<dynamic>)stawkiManager.Dane.Wszystkie()).ToList();
             var stawka = allStawki.FirstOrDefault(s =>
                 DynamicPropertyHelper.GetString(s, "Symbol") == symbol);
@@ -143,8 +146,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var jednostkiManager = sfera.JednostkiMiar();
+            var jednostkiManager = _sferaService.GetManager("JednostkiMiar");
+            if (jednostkiManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<UnitOfMeasureDto>>.Error("Failed to get JednostkiMiar manager"));
+            }
             var allJednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -193,8 +199,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var jednostkiManager = sfera.JednostkiMiar();
+            var jednostkiManager = _sferaService.GetManager("JednostkiMiar");
+            if (jednostkiManager == null)
+            {
+                return StatusCode(500, ApiResponse<UnitOfMeasureDto>.Error("Failed to get JednostkiMiar manager"));
+            }
             var allJednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
             var jednostka = allJednostki.FirstOrDefault(j =>
                 DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
@@ -237,8 +246,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var grupyManager = sfera.GrupyAsortymentu();
+            var grupyManager = _sferaService.GetManager("GrupyAsortymentu");
+            if (grupyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<ProductGroupDto>>.Error("Failed to get GrupyAsortymentu manager"));
+            }
             var allGrupy = ((IEnumerable<dynamic>)grupyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -326,8 +338,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var grupyManager = sfera.GrupyAsortymentu();
+            var grupyManager = _sferaService.GetManager("GrupyAsortymentu");
+            if (grupyManager == null)
+            {
+                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
+            }
             var allGrupy = ((IEnumerable<dynamic>)grupyManager.Dane.Wszystkie()).ToList();
             var grupa = allGrupy.FirstOrDefault(g =>
                 DynamicPropertyHelper.GetString(g, "Symbol") == symbol);
@@ -374,8 +389,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var poziomyManager = sfera.PoziomyCen();
+            var poziomyManager = _sferaService.GetManager("PoziomyCen");
+            if (poziomyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<PriceLevelDto>>.Error("Failed to get PoziomyCen manager"));
+            }
             var allPoziomy = ((IEnumerable<dynamic>)poziomyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -426,8 +444,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var poziomyManager = sfera.PoziomyCen();
+            var poziomyManager = _sferaService.GetManager("PoziomyCen");
+            if (poziomyManager == null)
+            {
+                return StatusCode(500, ApiResponse<PriceLevelDto>.Error("Failed to get PoziomyCen manager"));
+            }
             var allPoziomy = ((IEnumerable<dynamic>)poziomyManager.Dane.Wszystkie()).ToList();
             var poziom = allPoziomy.FirstOrDefault(p =>
                 DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
@@ -470,8 +491,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var cennikiManager = sfera.Cenniki();
+            var cennikiManager = _sferaService.GetManager("Cenniki");
+            if (cennikiManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<PriceListDto>>.Error("Failed to get Cenniki manager"));
+            }
             var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -527,8 +551,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var cennikiManager = sfera.Cenniki();
+            var cennikiManager = _sferaService.GetManager("Cenniki");
+            if (cennikiManager == null)
+            {
+                return StatusCode(500, ApiResponse<PriceListDto>.Error("Failed to get Cenniki manager"));
+            }
             var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
             var cennik = allCenniki.FirstOrDefault(c =>
                 DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
@@ -578,8 +605,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var cennikiManager = sfera.Cenniki();
+            var cennikiManager = _sferaService.GetManager("Cenniki");
+            if (cennikiManager == null)
+            {
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Cenniki manager"));
+            }
             var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
             var cennik = allCenniki.FirstOrDefault(c =>
                 DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
@@ -676,8 +706,11 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var walutyManager = sfera.Waluty();
+            var walutyManager = _sferaService.GetManager("Waluty");
+            if (walutyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<CurrencyDto>>.Error("Failed to get Waluty manager"));
+            }
             var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
 
             if (activeOnly == true)
@@ -733,8 +766,11 @@ public class DictionaryController : ControllerBase
         try
         {
             // Access exchange rates through Waluty manager and then Kursy collection on currency
-            dynamic sfera = _sferaService.GetSfera();
-            var walutyManager = sfera.Waluty();
+            var walutyManager = _sferaService.GetManager("Waluty");
+            if (walutyManager == null)
+            {
+                return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Failed to get Waluty manager"));
+            }
             var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
 
             var waluta = allWaluty.FirstOrDefault(w =>
@@ -806,8 +842,11 @@ public class DictionaryController : ControllerBase
             var targetDate = date ?? DateTime.Today;
 
             // Access exchange rates through Waluty manager
-            dynamic sfera = _sferaService.GetSfera();
-            var walutyManager = sfera.Waluty();
+            var walutyManager = _sferaService.GetManager("Waluty");
+            if (walutyManager == null)
+            {
+                return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Failed to get Waluty manager"));
+            }
             var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
 
             var waluta = allWaluty.FirstOrDefault(w =>
