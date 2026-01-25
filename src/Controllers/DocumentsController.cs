@@ -1829,14 +1829,26 @@ public class DocumentsController : ControllerBase
     /// </summary>
     private void AddItemsToDocumentById(dynamic dokument, List<CreateDocumentItemRequest> items)
     {
-        if (items == null || !items.Any()) return;
+        if (items == null || !items.Any())
+        {
+            _logger.LogWarning("AddItemsToDocumentById: No items to add");
+            return;
+        }
 
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
-        if (asortymentyManager == null) return;
+        if (asortymentyManager == null)
+        {
+            _logger.LogError("AddItemsToDocumentById: Asortymenty manager is null!");
+            return;
+        }
+
+        int addedCount = 0;
+        int skippedCount = 0;
 
         foreach (var item in items)
         {
             dynamic? asortyment = null;
+            string searchKey = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
 
             if (item.ProductId.HasValue)
             {
@@ -1859,6 +1871,13 @@ public class DocumentsController : ControllerBase
                         break;
                     }
                 }
+            }
+
+            if (asortyment == null)
+            {
+                _logger.LogWarning("AddItemsToDocumentById: Product not found: {SearchKey}", searchKey);
+                skippedCount++;
+                continue;
             }
 
             if (asortyment != null)
