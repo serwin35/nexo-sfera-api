@@ -602,9 +602,26 @@ public class DocumentsController : ControllerBase
                     if (request.IssueDate.HasValue)
                     {
                         _logger.LogInformation("Setting FS IssueDate to: {Date}", request.IssueDate.Value);
-                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                        // Try multiple property names - different document types use different names
+                        bool dateSet = false;
+                        if (DynamicPropertyHelper.TrySetProperty(dane, "DataDokumentu", request.IssueDate.Value))
                         {
-                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                            _logger.LogInformation("Set DataDokumentu successfully");
+                            dateSet = true;
+                        }
+                        if (DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                        {
+                            _logger.LogInformation("Set DataWydaniaWystawienia successfully");
+                            dateSet = true;
+                        }
+                        if (!dateSet && DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value))
+                        {
+                            _logger.LogInformation("Set DataWystawienia successfully");
+                            dateSet = true;
+                        }
+                        if (!dateSet)
+                        {
+                            _logger.LogWarning("Could not set issue date - no matching property found");
                         }
                     }
 
