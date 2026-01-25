@@ -453,14 +453,18 @@ public class WarehouseDocumentsController : ControllerBase
                     rw.ZarezerwujNumer();
                     _logger.LogInformation("Reserved RW number: {Number}", (string?)rw.PodajPodgladNumeru()?.ToString() ?? "");
 
+                    // Set dates - RW may use different property names
                     if (request.IssueDate.HasValue)
                     {
-                        rw.Dane.DataWystawienia = request.IssueDate.Value;
+                        if (!DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(rw.Dane, "Data", request.IssueDate.Value);
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
-                        rw.Dane.Uwagi = request.Notes;
+                        DynamicPropertyHelper.TrySetProperty(rw.Dane, "Uwagi", request.Notes);
                     }
 
                     // Add items using product ID
@@ -557,14 +561,18 @@ public class WarehouseDocumentsController : ControllerBase
                     pw.ZarezerwujNumer();
                     _logger.LogInformation("Reserved PW number: {Number}", (string?)pw.PodajPodgladNumeru()?.ToString() ?? "");
 
+                    // Set dates - PW may use different property names
                     if (request.IssueDate.HasValue)
                     {
-                        pw.Dane.DataWystawienia = request.IssueDate.Value;
+                        if (!DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(pw.Dane, "Data", request.IssueDate.Value);
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
-                        pw.Dane.Uwagi = request.Notes;
+                        DynamicPropertyHelper.TrySetProperty(pw.Dane, "Uwagi", request.Notes);
                     }
 
                     // Add items using product ID
@@ -696,14 +704,18 @@ public class WarehouseDocumentsController : ControllerBase
                     mm.ZarezerwujNumer();
                     _logger.LogInformation("Reserved MM number: {Number}", (string?)mm.PodajPodgladNumeru()?.ToString() ?? "");
 
+                    // Set dates - MM may use different property names
                     if (request.IssueDate.HasValue)
                     {
-                        mm.Dane.DataWystawienia = request.IssueDate.Value;
+                        if (!DynamicPropertyHelper.TrySetProperty(mm.Dane, "DataWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(mm.Dane, "Data", request.IssueDate.Value);
+                        }
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
-                        mm.Dane.Uwagi = request.Notes;
+                        DynamicPropertyHelper.TrySetProperty(mm.Dane, "Uwagi", request.Notes);
                     }
 
                     // Add items using product ID
