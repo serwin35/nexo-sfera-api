@@ -536,8 +536,8 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                         else
                         {
-                            var errors = GetBusinessObjectErrors(rw);
-                            _logger.LogWarning("RW Zapisz() failed. InvalidData errors: {Errors}", string.Join("; ", errors));
+                            List<string> errors = GetBusinessObjectErrors(rw);
+                            _logger.LogWarning("RW Zapisz() failed. InvalidData errors: {Errors}", (object)string.Join("; ", errors));
 
                             // Try to get more error details from different sources
                             try
@@ -547,8 +547,8 @@ public class WarehouseDocumentsController : ControllerBase
                                 {
                                     foreach (var err in validationErrors)
                                     {
-                                        var errStr = err?.ToString() ?? "Unknown validation error";
-                                        _logger.LogWarning("RW validation error: {Error}", errStr);
+                                        string errStr = (string)(err?.ToString() ?? "Unknown validation error");
+                                        _logger.LogWarning("RW validation error: {Error}", (object)errStr);
                                         if (!errors.Contains(errStr))
                                             errors.Add(errStr);
                                     }
@@ -556,7 +556,7 @@ public class WarehouseDocumentsController : ControllerBase
                             }
                             catch (Exception vex)
                             {
-                                _logger.LogInformation("Could not call WalidujDane: {Error}", vex.Message);
+                                _logger.LogInformation("Could not call WalidujDane: {Error}", (object)vex.Message);
                             }
 
                             return (false, null, "Failed to create RW", errors);
@@ -1108,17 +1108,17 @@ public class WarehouseDocumentsController : ControllerBase
 
             if (asortyment == null)
             {
-                var searchInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
-                _logger.LogWarning("Product NOT FOUND: {Search} - position will be skipped!", searchInfo);
+                string searchInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
+                _logger.LogWarning("Product NOT FOUND: {Search} - position will be skipped!", (object)searchInfo);
                 skippedCount++;
                 continue;
             }
 
             {
                 int towarId = DynamicPropertyHelper.GetId(asortyment);
-                var towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
+                string towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
                 // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
-                _logger.LogInformation("Adding position: TowarId={TowarId}, Symbol={Symbol}, Qty={Qty}", towarId, towarSymbol, item.Quantity);
+                _logger.LogInformation("Adding position: TowarId={TowarId}, Symbol={Symbol}, Qty={Qty}", (object)towarId, (object)towarSymbol, (object)item.Quantity);
                 var pozycja = dokument.Pozycje.Dodaj(towarId);
 
                 if (pozycja != null)
@@ -1525,8 +1525,8 @@ public class WarehouseDocumentsController : ControllerBase
                     {
                         foreach (var blad in entityErrors)
                         {
-                            var errStr = blad?.ToString() ?? "Unknown error";
-                            _logger.LogWarning("InvalidData.Errors: {Error}", errStr);
+                            string errStr = (string)(blad?.ToString() ?? "Unknown error");
+                            _logger.LogWarning("InvalidData.Errors: {Error}", (object)errStr);
                             errors.Add(errStr);
                         }
                     }
@@ -1539,14 +1539,14 @@ public class WarehouseDocumentsController : ControllerBase
                             try
                             {
                                 var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
-                                var errStr = $"{key}: {bladNaPolach}";
-                                _logger.LogWarning("InvalidData.MemberErrors: {Error}", errStr);
+                                string errStr = $"{key}: {bladNaPolach}";
+                                _logger.LogWarning("InvalidData.MemberErrors: {Error}", (object)errStr);
                                 errors.Add(errStr);
                             }
                             catch
                             {
-                                var errStr = bladNaPolach?.ToString() ?? "Unknown error";
-                                _logger.LogWarning("InvalidData.MemberErrors: {Error}", errStr);
+                                string errStr = (string)(bladNaPolach?.ToString() ?? "Unknown error");
+                                _logger.LogWarning("InvalidData.MemberErrors: {Error}", (object)errStr);
                                 errors.Add(errStr);
                             }
                         }
@@ -1563,8 +1563,8 @@ public class WarehouseDocumentsController : ControllerBase
                     _logger.LogInformation("Found Bledy property");
                     foreach (var blad in bledy)
                     {
-                        var errStr = blad?.ToString() ?? "Unknown error";
-                        _logger.LogWarning("Bledy: {Error}", errStr);
+                        string errStr = (string)(blad?.ToString() ?? "Unknown error");
+                        _logger.LogWarning("Bledy: {Error}", (object)errStr);
                         if (!errors.Contains(errStr))
                             errors.Add(errStr);
                     }
@@ -1581,8 +1581,8 @@ public class WarehouseDocumentsController : ControllerBase
                     _logger.LogInformation("Found Errors property");
                     foreach (var err in errorsCol)
                     {
-                        var errStr = err?.ToString() ?? "Unknown error";
-                        _logger.LogWarning("Errors: {Error}", errStr);
+                        string errStr = (string)(err?.ToString() ?? "Unknown error");
+                        _logger.LogWarning("Errors: {Error}", (object)errStr);
                         if (!errors.Contains(errStr))
                             errors.Add(errStr);
                     }
