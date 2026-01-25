@@ -98,6 +98,7 @@ Swagger UI: `http://localhost:5000/swagger`
 - `POST /api/warehouse-documents/rw` - Utworz rozchod wewnetrzny (RW)
 - `POST /api/warehouse-documents/pw` - Utworz przychod wewnetrzny (PW)
 - `POST /api/warehouse-documents/mm` - Utworz przesuniecie miedzymagazynowe (MM)
+- `POST /api/warehouse-documents/{id}/associate` - Powiaz dokumenty (np. RW z PW)
 
 ### Platnosci (Payments)
 - `GET /api/payments/cash` - Lista operacji kasowych
@@ -333,6 +334,32 @@ curl -X POST http://localhost:5000/api/warehouse-documents/mm \
       }
     ]
   }'
+```
+
+### Powiazanie dokumentow magazynowych (skojarzenie RW z PW)
+
+```bash
+# Najpierw utworz dokumenty PW i RW, a nastepnie polacz je przez ID
+curl -X POST http://localhost:5000/api/warehouse-documents/109622/associate \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-api-key" \
+  -d '{
+    "targetDocumentId": 109623,
+    "relationType": "related"
+  }'
+```
+
+Odpowiedz:
+```json
+{
+  "success": true,
+  "data": {
+    "sourceDocumentId": 109622,
+    "targetDocumentId": 109623,
+    "relationType": "related"
+  },
+  "message": "Documents RW MG/2026/01/1 and PW MG/2026/01/1 associated successfully"
+}
 ```
 
 ### Utworzenie oferty (Gestor)
