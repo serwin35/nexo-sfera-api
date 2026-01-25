@@ -149,70 +149,96 @@ public class WarehouseDocumentsController : ControllerBase
     /// <summary>
     /// Create external release (WZ - Wydanie zewnętrzne)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("wz")]
-    public ActionResult<ApiResponse<WarehouseDocumentDto>> CreateWZ([FromBody] CreateWarehouseDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreateWZ([FromBody] CreateWarehouseDocumentRequest request)
     {
         try
         {
-            var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
-            if (wydania == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get WydaniaZewnetrzne manager"));
-            }
-
-            // SDK pattern: use UtworzWydanieZewnetrzne() without configuration parameter
-            using (var wz = wydania.UtworzWydanieZewnetrzne())
-            {
-                // Set contractor
-                SetContractor(wz.Dane, request.ContractorId, request.ContractorNIP);
-
-                // Set warehouse
-                var magazynyManager = _sferaService.GetManager("Magazyny");
-                if (magazynyManager != null)
+                var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
+                if (wydania == null)
                 {
-                    dynamic? magazyn = null;
-                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    return (false, null, "Failed to get WydaniaZewnetrzne manager", new List<string>());
+                }
+
+                using (var wz = wydania.UtworzWydanieZewnetrzne())
+                {
+                    // Set contractor
+                    SetContractor(wz.Dane, request.ContractorId, request.ContractorNIP);
+
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
+                    var magazynyManager = _sferaService.GetManager("Magazyny");
+                    if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        dynamic? magazyn = null;
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
                         {
-                            magazyn = m;
-                            break;
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
+                        if (magazyn != null)
+                        {
+                            // Set on Dokument for proper numbering (e.g., "WZ MG/2026/01/1")
+                            wz.Dokument.Magazyn = magazyn;
                         }
                     }
-                    if (magazyn != null)
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    wz.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved WZ number: {Number}", wz.PodajPodgladNumeru());
+
+                    if (request.IssueDate.HasValue)
                     {
-                        wz.Dane.Magazyn = magazyn;
+                        wz.Dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        wz.Dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items using product ID
+                    AddWarehouseDocumentItemsById(wz, request.Items);
+
+                    if ((bool)wz.Zapisz())
+                    {
+                        string docNumber = wz.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created WZ {Number}, Id={Id}", docNumber, wz.Dokument.Id);
+
+                        return (true, MapWZToDto(wz.Dane), "WZ created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(wz);
+                        return (false, null, "Failed to create WZ", errors);
                     }
                 }
+            });
 
-                if (request.IssueDate.HasValue)
-                {
-                    wz.Dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    wz.Dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                AddWarehouseDocumentItems(wz, request.Items);
-
-                if ((bool)wz.Zapisz())
-                {
-                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(wz.Dane, "NumerWewnetrzny");
-                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                    _logger.LogInformation("Created WZ {Number}", docNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetWarehouseDocuments),
-                        ApiResponse<WarehouseDocumentDto>.Ok(MapWZToDto(wz.Dane), "WZ created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(wz);
-                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Failed to create WZ", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -225,75 +251,101 @@ public class WarehouseDocumentsController : ControllerBase
     /// <summary>
     /// Create external receipt (PZ - Przyjęcie zewnętrzne)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("pz")]
-    public ActionResult<ApiResponse<WarehouseDocumentDto>> CreatePZ([FromBody] CreateWarehouseDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreatePZ([FromBody] CreateWarehouseDocumentRequest request)
     {
         try
         {
-            var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-            if (przyjecia == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get PrzyjeciaZewnetrzne manager"));
-            }
-
-            // SDK pattern: use UtworzPrzyjecieZewnetrzne() without configuration parameter
-            using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
-            {
-                // Set contractor (supplier)
-                SetContractor(pz.Dane, request.ContractorId, request.ContractorNIP);
-
-                // Set warehouse
-                var magazynyManager = _sferaService.GetManager("Magazyny");
-                if (magazynyManager != null)
+                var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
+                if (przyjecia == null)
                 {
-                    dynamic? magazyn = null;
-                    foreach (var m in magazynyManager.Dane.Wszystkie())
+                    return (false, null, "Failed to get PrzyjeciaZewnetrzne manager", new List<string>());
+                }
+
+                using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
+                {
+                    // Set contractor (supplier)
+                    SetContractor(pz.Dane, request.ContractorId, request.ContractorNIP);
+
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
+                    var magazynyManager = _sferaService.GetManager("Magazyny");
+                    if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                        dynamic? magazyn = null;
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
                         {
-                            magazyn = m;
-                            break;
+                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            {
+                                magazyn = m;
+                                break;
+                            }
+                        }
+                        if (magazyn != null)
+                        {
+                            // Set on Dokument for proper numbering (e.g., "PZ MG/2026/01/1")
+                            pz.Dokument.Magazyn = magazyn;
                         }
                     }
-                    if (magazyn != null)
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    pz.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved PZ number: {Number}", pz.PodajPodgladNumeru());
+
+                    if (request.IssueDate.HasValue)
                     {
-                        pz.Dane.Magazyn = magazyn;
+                        pz.Dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.RelatedDocumentNumber))
+                    {
+                        pz.Dane.NumerObcy = request.RelatedDocumentNumber;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        pz.Dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items using product ID
+                    AddWarehouseDocumentItemsById(pz, request.Items);
+
+                    if ((bool)pz.Zapisz())
+                    {
+                        string docNumber = pz.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created PZ {Number}, Id={Id}", docNumber, pz.Dokument.Id);
+
+                        return (true, MapPZToDto(pz.Dane), "PZ created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(pz);
+                        return (false, null, "Failed to create PZ", errors);
                     }
                 }
+            });
 
-                if (request.IssueDate.HasValue)
-                {
-                    pz.Dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (!string.IsNullOrEmpty(request.RelatedDocumentNumber))
-                {
-                    pz.Dane.NumerObcy = request.RelatedDocumentNumber;
-                }
-
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    pz.Dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                AddWarehouseDocumentItems(pz, request.Items);
-
-                if ((bool)pz.Zapisz())
-                {
-                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pz.Dane, "NumerWewnetrzny");
-                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                    _logger.LogInformation("Created PZ {Number}", docNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetWarehouseDocuments),
-                        ApiResponse<WarehouseDocumentDto>.Ok(MapPZToDto(pz.Dane), "PZ created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(pz);
-                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Failed to create PZ", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -306,6 +358,14 @@ public class WarehouseDocumentsController : ControllerBase
     /// <summary>
     /// Create internal consumption (RW - Rozchód wewnętrzny)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("rw")]
     public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreateRW([FromBody] CreateWarehouseDocumentRequest request)
     {
@@ -320,17 +380,15 @@ public class WarehouseDocumentsController : ControllerBase
                     return (false, null, "Failed to get RozchodyWewnetrzne manager", new List<string>());
                 }
 
-                // Get default configuration - based on working example from GitHub
-                // https://github.com/mariuszbyahoo/InsERTSubiektNexoAsortymenty
+                // Get default configuration
                 var konfiguracje = _sferaService.GetManager("Konfiguracje");
                 dynamic? konfig = konfiguracje?.DaneDomyslne?.RozchodWewnetrzny;
 
-                // Use Utworz(konfig) with configuration like in working examples
                 using (var rw = konfig != null ? rozchody.Utworz(konfig) : rozchody.Utworz())
                 {
-                    // Set warehouse
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
                     var magazynyManager = _sferaService.GetManager("Magazyny");
-                    if (magazynyManager != null)
+                    if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
                         dynamic? magazyn = null;
                         foreach (var m in magazynyManager.Dane.Wszystkie())
@@ -343,9 +401,14 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                         if (magazyn != null)
                         {
-                            rw.Dane.Magazyn = magazyn;
+                            // Set on Dokument for proper numbering (e.g., "RW MG/2026/01/1")
+                            rw.Dokument.Magazyn = magazyn;
                         }
                     }
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    rw.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved RW number: {Number}", rw.PodajPodgladNumeru());
 
                     if (request.IssueDate.HasValue)
                     {
@@ -357,16 +420,15 @@ public class WarehouseDocumentsController : ControllerBase
                         rw.Dane.Uwagi = request.Notes;
                     }
 
-                    // Add items
-                    AddWarehouseDocumentItems(rw, request.Items);
+                    // Add items using product ID
+                    AddWarehouseDocumentItemsById(rw, request.Items);
 
                     if ((bool)rw.Zapisz())
                     {
-                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(rw.Dane, "NumerWewnetrzny");
-                        string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                        _logger.LogInformation("Created RW {Number}", docNumber);
+                        string docNumber = rw.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created RW {Number}, Id={Id}", docNumber, rw.Dokument.Id);
 
-                        return (true, MapWZToDto(rw.Dane), "RW created successfully", new List<string>());
+                        return (true, MapRWToDto(rw), "RW created successfully", new List<string>());
                     }
                     else
                     {
@@ -399,6 +461,14 @@ public class WarehouseDocumentsController : ControllerBase
     /// <summary>
     /// Create internal receipt (PW - Przychód wewnętrzny)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set warehouse on Dokument.Magazyn
+    /// 2. Call ZarezerwujNumer() to reserve document number
+    /// 3. Add items using Pozycje.Dodaj(towarId)
+    /// 4. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("pw")]
     public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreatePW([FromBody] CreateWarehouseDocumentRequest request)
     {
@@ -413,16 +483,15 @@ public class WarehouseDocumentsController : ControllerBase
                     return (false, null, "Failed to get PrzychodyWewnetrzne manager", new List<string>());
                 }
 
-                // Get default configuration - based on working example from GitHub
+                // Get default configuration
                 var konfiguracje = _sferaService.GetManager("Konfiguracje");
                 dynamic? konfig = konfiguracje?.DaneDomyslne?.PrzychodWewnetrzny;
 
-                // Use Utworz(konfig) with configuration like in working examples
                 using (var pw = konfig != null ? przychody.Utworz(konfig) : przychody.Utworz())
                 {
-                    // Set warehouse
+                    // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
                     var magazynyManager = _sferaService.GetManager("Magazyny");
-                    if (magazynyManager != null)
+                    if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
                         dynamic? magazyn = null;
                         foreach (var m in magazynyManager.Dane.Wszystkie())
@@ -435,9 +504,14 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                         if (magazyn != null)
                         {
-                            pw.Dane.Magazyn = magazyn;
+                            // Set on Dokument for proper numbering (e.g., "PW MG/2026/01/1")
+                            pw.Dokument.Magazyn = magazyn;
                         }
                     }
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    pw.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved PW number: {Number}", pw.PodajPodgladNumeru());
 
                     if (request.IssueDate.HasValue)
                     {
@@ -449,16 +523,15 @@ public class WarehouseDocumentsController : ControllerBase
                         pw.Dane.Uwagi = request.Notes;
                     }
 
-                    // Add items
-                    AddWarehouseDocumentItems(pw, request.Items);
+                    // Add items using product ID
+                    AddWarehouseDocumentItemsById(pw, request.Items);
 
                     if ((bool)pw.Zapisz())
                     {
-                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(pw.Dane, "NumerWewnetrzny");
-                        string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                        _logger.LogInformation("Created PW {Number}", docNumber);
+                        string docNumber = pw.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created PW {Number}, Id={Id}", docNumber, pw.Dokument.Id);
 
-                        return (true, MapPZToDto(pw.Dane), "PW created successfully", new List<string>());
+                        return (true, MapPWToDto(pw), "PW created successfully", new List<string>());
                     }
                     else
                     {
@@ -491,8 +564,17 @@ public class WarehouseDocumentsController : ControllerBase
     /// <summary>
     /// Create inter-warehouse transfer (MM - Przesunięcie międzymagazynowe)
     /// </summary>
+    /// <remarks>
+    /// IMPORTANT: This endpoint requires WindowsFormsSynchronizationContext on the SDK thread.
+    /// The document creation pattern is:
+    /// 1. Set source warehouse on Dokument.Magazyn
+    /// 2. Set target warehouse on Dokument.MagazynDocelowy
+    /// 3. Call ZarezerwujNumer() to reserve document number
+    /// 4. Add items using Pozycje.Dodaj(towarId)
+    /// 5. Call Zapisz() to save
+    /// </remarks>
     [HttpPost("mm")]
-    public ActionResult<ApiResponse<WarehouseDocumentDto>> CreateMM([FromBody] CreateWarehouseDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreateMM([FromBody] CreateWarehouseDocumentRequest request)
     {
         try
         {
@@ -501,89 +583,95 @@ public class WarehouseDocumentsController : ControllerBase
                 return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Target warehouse symbol is required for MM"));
             }
 
-            var wydania = _sferaService.GetManager("WydaniaMiedzymagazynowe");
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            if (wydania == null || konfiguracje == null)
+            // Use thread-safe execution - EF6 is NOT thread-safe
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Failed to get required managers"));
+                var wydania = _sferaService.GetManager("WydaniaMiedzymagazynowe");
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                if (wydania == null || konfiguracje == null)
+                {
+                    return (false, null, "Failed to get required managers", new List<string>());
+                }
+
+                var konfiguracja = konfiguracje.DaneDomyslne.PrzesuniecieMiedzymagazynowe;
+
+                using (var mm = wydania.Utworz(konfiguracja))
+                {
+                    // CRITICAL: Set warehouses on Dokument (not Dane!) - required for document numbering
+                    var magazynyManager = _sferaService.GetManager("Magazyny");
+                    if (magazynyManager != null)
+                    {
+                        dynamic? magazynZrodlowy = null;
+                        dynamic? magazynDocelowy = null;
+                        foreach (var m in magazynyManager.Dane.Wszystkie())
+                        {
+                            var symbol = DynamicPropertyHelper.GetString(m, "Symbol");
+                            if (symbol == request.WarehouseSymbol)
+                            {
+                                magazynZrodlowy = m;
+                            }
+                            if (symbol == request.TargetWarehouseSymbol)
+                            {
+                                magazynDocelowy = m;
+                            }
+                            if (magazynZrodlowy != null && magazynDocelowy != null)
+                                break;
+                        }
+
+                        if (magazynZrodlowy != null)
+                        {
+                            // Set on Dokument for proper numbering
+                            mm.Dokument.Magazyn = magazynZrodlowy;
+                        }
+                        if (magazynDocelowy != null)
+                        {
+                            mm.Dokument.MagazynDocelowy = magazynDocelowy;
+                        }
+                    }
+
+                    // CRITICAL: Reserve number BEFORE adding items
+                    mm.ZarezerwujNumer();
+                    _logger.LogInformation("Reserved MM number: {Number}", mm.PodajPodgladNumeru());
+
+                    if (request.IssueDate.HasValue)
+                    {
+                        mm.Dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        mm.Dane.Uwagi = request.Notes;
+                    }
+
+                    // Add items using product ID
+                    AddWarehouseDocumentItemsById(mm, request.Items);
+
+                    if ((bool)mm.Zapisz())
+                    {
+                        string docNumber = mm.PodajPodgladNumeru()?.ToString() ?? "";
+                        _logger.LogInformation("Created MM {Number}, Id={Id}", docNumber, mm.Dokument.Id);
+
+                        return (true, MapMMToDto(mm.Dane), "MM created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(mm);
+                        return (false, null, "Failed to create MM", errors);
+                    }
+                }
+            });
+
+            if (result.Success)
+            {
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
             }
-
-            var konfiguracja = konfiguracje.DaneDomyslne.PrzesuniecieMiedzymagazynowe;
-
-            using (var mm = wydania.Utworz(konfiguracja))
+            else if (result.Errors.Any())
             {
-                var magazynyManager = _sferaService.GetManager("Magazyny");
-                if (magazynyManager != null)
-                {
-                    // Set source warehouse
-                    dynamic? magazynZrodlowy = null;
-                    dynamic? magazynDocelowy = null;
-                    foreach (var m in magazynyManager.Dane.Wszystkie())
-                    {
-                        var symbol = DynamicPropertyHelper.GetString(m, "Symbol");
-                        if (symbol == request.WarehouseSymbol)
-                        {
-                            magazynZrodlowy = m;
-                        }
-                        if (symbol == request.TargetWarehouseSymbol)
-                        {
-                            magazynDocelowy = m;
-                        }
-                        if (magazynZrodlowy != null && magazynDocelowy != null)
-                            break;
-                    }
-
-                    if (magazynZrodlowy != null)
-                    {
-                        mm.Dane.Magazyn = magazynZrodlowy;
-                    }
-                    if (magazynDocelowy != null)
-                    {
-                        mm.Dane.MagazynDocelowy = magazynDocelowy;
-                    }
-                }
-
-                if (request.IssueDate.HasValue)
-                {
-                    mm.Dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    mm.Dane.Uwagi = request.Notes;
-                }
-
-                // Add items
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager != null)
-                {
-                    foreach (var item in request.Items)
-                    {
-                        var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
-
-                        if (asortyment != null)
-                        {
-                            var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
-                            mm.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
-                        }
-                    }
-                }
-
-                if ((bool)mm.Zapisz())
-                {
-                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(mm.Dane, "NumerWewnetrzny");
-                    string docNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : "";
-                    _logger.LogInformation("Created MM {Number}", docNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetWarehouseDocuments),
-                        ApiResponse<WarehouseDocumentDto>.Ok(MapMMToDto(mm.Dane), "MM created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(mm);
-                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Failed to create MM", errors));
-                }
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -650,6 +738,39 @@ public class WarehouseDocumentsController : ControllerBase
                 if (item.PriceNet.HasValue && pozycja != null)
                 {
                     pozycja.Dane.CenaNetto = item.PriceNet.Value;
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Add items to warehouse document using product ID (required for EF6 compatibility)
+    /// CRITICAL: This pattern works correctly with WindowsFormsSynchronizationContext
+    /// </summary>
+    private void AddWarehouseDocumentItemsById(dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
+    {
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        if (asortymentyManager == null)
+            return;
+
+        foreach (var item in items)
+        {
+            var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+
+            if (asortyment != null)
+            {
+                int towarId = DynamicPropertyHelper.GetId(asortyment);
+                // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
+                var pozycja = dokument.Pozycje.Dodaj(towarId);
+
+                if (pozycja != null)
+                {
+                    pozycja.Ilosc = item.Quantity;
+
+                    if (item.PriceNet.HasValue)
+                    {
+                        pozycja.CenaNetto = item.PriceNet.Value;
+                    }
                 }
             }
         }
@@ -820,6 +941,116 @@ public class WarehouseDocumentsController : ControllerBase
                 Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt."
             });
         }
+
+        return dto;
+    }
+
+    /// <summary>
+    /// Map RW business object to DTO
+    /// Works with both rw.Dane and rw.Dokument (uses dynamic to access properties)
+    /// </summary>
+    private static WarehouseDocumentDto MapRWToDto(dynamic rw)
+    {
+        // RW uses Dokument for document data and Dane for warehouse-related data
+        var dokument = DynamicPropertyHelper.GetProperty(rw, "Dokument");
+        var dane = DynamicPropertyHelper.GetProperty(rw, "Dane");
+        var magazyn = dokument != null ? DynamicPropertyHelper.GetProperty(dokument, "Magazyn") : null;
+
+        string fullNumber = "";
+        try
+        {
+            fullNumber = rw.PodajPodgladNumeru()?.ToString() ?? "";
+        }
+        catch
+        {
+            // Fallback if PodajPodgladNumeru() is not available
+        }
+
+        var dto = new WarehouseDocumentDto
+        {
+            Id = dokument != null ? DynamicPropertyHelper.GetId(dokument) : 0,
+            Number = fullNumber,
+            FullNumber = fullNumber,
+            Type = WarehouseDocumentType.RW,
+            IssueDate = dane != null ? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia") : DateTime.Now,
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+            Notes = dane != null ? DynamicPropertyHelper.GetString(dane, "Uwagi") : null,
+            CreatedAt = DateTime.Now,
+            Items = new List<WarehouseDocumentItemDto>()
+        };
+
+        try
+        {
+            var pozycje = rw.Pozycje;
+            int lineNum = 1;
+            foreach (var poz in pozycje)
+            {
+                dto.TotalQuantity += (decimal)(poz.Ilosc ?? 0);
+                dto.Items.Add(new WarehouseDocumentItemDto
+                {
+                    LineNumber = lineNum++,
+                    Name = poz.Nazwa?.ToString(),
+                    Quantity = (decimal)(poz.Ilosc ?? 0),
+                    Unit = "szt."
+                });
+            }
+        }
+        catch
+        {
+            // Ignore errors when reading positions
+        }
+
+        return dto;
+    }
+
+    /// <summary>
+    /// Map PW business object to DTO
+    /// </summary>
+    private static WarehouseDocumentDto MapPWToDto(dynamic pw)
+    {
+        var dokument = DynamicPropertyHelper.GetProperty(pw, "Dokument");
+        var dane = DynamicPropertyHelper.GetProperty(pw, "Dane");
+        var magazyn = dokument != null ? DynamicPropertyHelper.GetProperty(dokument, "Magazyn") : null;
+
+        string fullNumber = "";
+        try
+        {
+            fullNumber = pw.PodajPodgladNumeru()?.ToString() ?? "";
+        }
+        catch { }
+
+        var dto = new WarehouseDocumentDto
+        {
+            Id = dokument != null ? DynamicPropertyHelper.GetId(dokument) : 0,
+            Number = fullNumber,
+            FullNumber = fullNumber,
+            Type = WarehouseDocumentType.PW,
+            IssueDate = dane != null ? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia") : DateTime.Now,
+            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+            Notes = dane != null ? DynamicPropertyHelper.GetString(dane, "Uwagi") : null,
+            CreatedAt = DateTime.Now,
+            Items = new List<WarehouseDocumentItemDto>()
+        };
+
+        try
+        {
+            var pozycje = pw.Pozycje;
+            int lineNum = 1;
+            foreach (var poz in pozycje)
+            {
+                dto.TotalQuantity += (decimal)(poz.Ilosc ?? 0);
+                dto.Items.Add(new WarehouseDocumentItemDto
+                {
+                    LineNumber = lineNum++,
+                    Name = poz.Nazwa?.ToString(),
+                    Quantity = (decimal)(poz.Ilosc ?? 0),
+                    Unit = "szt."
+                });
+            }
+        }
+        catch { }
 
         return dto;
     }
