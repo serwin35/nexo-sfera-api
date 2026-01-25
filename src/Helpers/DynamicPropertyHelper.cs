@@ -407,4 +407,45 @@ public static class DynamicPropertyHelper
             return null;
         }
     }
+
+    /// <summary>
+    /// Tries to set a property value on a dynamic object.
+    /// Returns true if successful, false otherwise.
+    /// </summary>
+    public static bool TrySetProperty(dynamic obj, string propertyName, object value)
+    {
+        if (obj == null) return false;
+        try
+        {
+            var type = obj.GetType();
+            var prop = type.GetProperty(propertyName);
+            if (prop != null && prop.CanWrite)
+            {
+                prop.SetValue(obj, Convert.ChangeType(value, prop.PropertyType));
+                return true;
+            }
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if a property exists on a dynamic object.
+    /// </summary>
+    public static bool HasProperty(dynamic obj, string propertyName)
+    {
+        if (obj == null) return false;
+        try
+        {
+            var type = obj.GetType();
+            return type.GetProperty(propertyName) != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }
