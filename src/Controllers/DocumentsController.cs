@@ -702,8 +702,40 @@ public class DocumentsController : ControllerBase
                     }
                     else
                     {
+                        _logger.LogWarning("FS Zapisz() failed, extracting errors...");
                         var errors = GetBusinessObjectErrors(faktura);
-                        return (false, null, "Failed to create sales invoice", errors);
+                        _logger.LogWarning("FS errors count: {Count}", errors?.Count ?? 0);
+                        if (errors != null && errors.Any())
+                        {
+                            foreach (var err in errors)
+                            {
+                                _logger.LogWarning("FS error: {Error}", err);
+                            }
+                        }
+                        else
+                        {
+                            // Try to get more info from WalidujDane
+                            try
+                            {
+                                var validationErrors = faktura.WalidujDane();
+                                if (validationErrors != null)
+                                {
+                                    foreach (var ve in validationErrors)
+                                    {
+                                        string errMsg = ve?.ToString() ?? "unknown validation error";
+                                        _logger.LogWarning("FS validation error: {Error}", errMsg);
+                                        errors ??= new List<string>();
+                                        if (!errors.Contains(errMsg))
+                                            errors.Add(errMsg);
+                                    }
+                                }
+                            }
+                            catch (Exception vex)
+                            {
+                                _logger.LogDebug("WalidujDane failed: {Msg}", vex.Message);
+                            }
+                        }
+                        return (false, null, "Failed to create sales invoice", errors ?? new List<string>());
                     }
                 }
             });
