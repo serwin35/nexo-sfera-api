@@ -687,49 +687,120 @@ public class DocumentsController : ControllerBase
                     // Add items using product ID
                     _logger.LogInformation("Adding {Count} items to sales invoice...", request.Items?.Count ?? 0);
                     AddItemsToDocumentById(faktura, request.Items);
-                    _logger.LogInformation("Items added to FS, validating and saving...");
+                    _logger.LogInformation("[FS-v2] Items added to FS, validating and saving...");
 
                     // Try to recalculate the document before saving
                     try
                     {
                         faktura.Przelicz();
-                        _logger.LogDebug("Przelicz() called successfully");
+                        _logger.LogInformation("[FS-v2] Przelicz() called successfully");
+
+                        // Log document totals after Przelicz
+                        try
+                        {
+                            var wartosc = DynamicPropertyHelper.GetProperty(dane, "WartoscBrutto");
+                            var wartoscNetto = DynamicPropertyHelper.GetProperty(dane, "WartoscNetto");
+                            _logger.LogInformation("[FS-v2] After Przelicz - WartoscBrutto: {Brutto}, WartoscNetto: {Netto}",
+                                (object)(wartosc?.ToString() ?? "(null)"),
+                                (object)(wartoscNetto?.ToString() ?? "(null)"));
+                        }
+                        catch (Exception valEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not read document values: {Msg}", valEx.Message);
+                        }
                     }
                     catch (Exception przeliczEx)
                     {
-                        _logger.LogDebug("Przelicz() failed or not available: {Msg}", przeliczEx.Message);
+                        _logger.LogWarning("[FS-v2] Przelicz() failed: {Msg}", przeliczEx.Message);
+                    }
+
+                    // Validate data BEFORE trying to save
+                    try
+                    {
+                        var validationErrors = faktura.WalidujDane();
+                        if (validationErrors != null)
+                        {
+                            int validationCount = 0;
+                            foreach (var err in validationErrors)
+                            {
+                                validationCount++;
+                                _logger.LogWarning("[FS-v2] WalidujDane error: {Error}", (object)(err?.ToString() ?? "Unknown"));
+                            }
+                            _logger.LogInformation("[FS-v2] WalidujDane returned {Count} errors", validationCount);
+                        }
+                        else
+                        {
+                            _logger.LogInformation("[FS-v2] WalidujDane returned null (no errors)");
+                        }
+                    }
+                    catch (Exception valEx)
+                    {
+                        _logger.LogInformation("[FS-v2] WalidujDane() not available: {Msg}", valEx.Message);
                     }
 
                     // Check if document can be saved
                     try
                     {
                         var canSave = faktura.CzyMoznaZapisac();
-                        _logger.LogInformation("CzyMoznaZapisac() returned: {Result}", canSave?.ToString() ?? "(null)");
+                        _logger.LogInformation("[FS-v2] CzyMoznaZapisac() returned: {Result}", (object)(canSave?.ToString() ?? "(null)"));
 
                         // If it returns something with errors, try to extract them
-                        if (canSave != null && canSave != true)
+                        if (canSave != null && !((bool)canSave))
                         {
-                            try
-                            {
-                                string canSaveStr = canSave.ToString();
-                                _logger.LogWarning("CzyMoznaZapisac details: {Details}", canSaveStr);
-                            }
-                            catch { }
+                            _logger.LogWarning("[FS-v2] CzyMoznaZapisac returned false - document cannot be saved");
                         }
                     }
                     catch (Exception canSaveEx)
                     {
-                        _logger.LogDebug("CzyMoznaZapisac() failed: {Msg}", canSaveEx.Message);
+                        _logger.LogInformation("[FS-v2] CzyMoznaZapisac() not available: {Msg}", canSaveEx.Message);
                     }
 
                     // Try to get state before saving
                     try
                     {
                         var stan = faktura.Stan;
-                        _logger.LogDebug("Document state before save: {State}", stan?.ToString() ?? "(null)");
+                        _logger.LogInformation("[FS-v2] Document state before save: {State}", (object)(stan?.ToString() ?? "(null)"));
                     }
-                    catch { }
+                    catch (Exception stanEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not get Stan: {Msg}", stanEx.Message);
+                    }
 
+                    // Check customer is actually set
+                    try
+                    {
+                        var podmiot = dane.Podmiot;
+                        if (podmiot != null)
+                        {
+                            int podmiotId = DynamicPropertyHelper.GetId(podmiot);
+                            _logger.LogInformation("[FS-v2] Document has customer set: Id={Id}", podmiotId);
+                        }
+                        else
+                        {
+                            _logger.LogWarning("[FS-v2] Document has NO customer set!");
+                        }
+                    }
+                    catch (Exception custEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not check customer: {Msg}", custEx.Message);
+                    }
+
+                    // Check items count
+                    try
+                    {
+                        int itemCount = 0;
+                        foreach (var poz in faktura.Pozycje)
+                        {
+                            itemCount++;
+                        }
+                        _logger.LogInformation("[FS-v2] Document has {Count} items in Pozycje", itemCount);
+                    }
+                    catch (Exception itemEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not count items: {Msg}", itemEx.Message);
+                    }
+
+                    _logger.LogInformation("[FS-v2] Calling Zapisz()...");
                     var saveResult = faktura.Zapisz();
                     bool isSaved = false;
                     try
@@ -740,26 +811,26 @@ public class DocumentsController : ControllerBase
                     {
                         isSaved = saveResult != null && saveResult.ToString().ToLower() == "true";
                     }
-                    _logger.LogInformation("FS Zapisz() returned: {Result}, isSaved={IsSaved}", (object)(saveResult?.ToString() ?? "(null)"), isSaved);
+                    _logger.LogInformation("[FS-v2] Zapisz() returned: {Result}, isSaved={IsSaved}", (object)(saveResult?.ToString() ?? "(null)"), isSaved);
 
                     if (isSaved)
                     {
                         string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
                         int docId = (int)faktura.Dokument.Id;
-                        _logger.LogInformation("Created sales invoice {Number}, Id={Id}", docNumber, docId);
+                        _logger.LogInformation("[FS-v2] Created sales invoice {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapSalesDocumentToDto(dane), "Sales invoice created successfully", new List<string>());
                     }
                     else
                     {
-                        _logger.LogWarning("FS Zapisz() failed, extracting errors...");
+                        _logger.LogWarning("[FS-v2] Zapisz() failed, extracting errors...");
                         List<string> errors = GetBusinessObjectErrors(faktura);
-                        _logger.LogWarning("FS errors count: {Count}", errors?.Count ?? 0);
+                        _logger.LogWarning("[FS-v2] GetBusinessObjectErrors returned {Count} errors", errors?.Count ?? 0);
                         if (errors != null && errors.Count > 0)
                         {
                             foreach (string err in errors)
                             {
-                                _logger.LogWarning("FS error: {Error}", err);
+                                _logger.LogWarning("[FS-v2] BusinessObject error: {Error}", err);
                             }
                         }
                         else
@@ -776,12 +847,12 @@ public class DocumentsController : ControllerBase
                                     foreach (var ei in docInvalidData)
                                     {
                                         string errMsg = ei?.ToString() ?? "Dokument validation error";
-                                        _logger.LogWarning("FS Dokument.InvalidData: {Error}", errMsg);
+                                        _logger.LogWarning("[FS-v2] Dokument.InvalidData: {Error}", errMsg);
                                         if (!errors.Contains(errMsg)) errors.Add(errMsg);
                                     }
                                 }
                             }
-                            catch (Exception ex) { _logger.LogDebug("Dokument.InvalidData failed: {Msg}", ex.Message); }
+                            catch (Exception ex) { _logger.LogDebug("[FS-v2] Dokument.InvalidData failed: {Msg}", ex.Message); }
 
                             // Method 2: Dane.InvalidData
                             try
@@ -792,12 +863,12 @@ public class DocumentsController : ControllerBase
                                     foreach (var ei in daneInvalidData)
                                     {
                                         string errMsg = ei?.ToString() ?? "Dane validation error";
-                                        _logger.LogWarning("FS Dane.InvalidData: {Error}", errMsg);
+                                        _logger.LogWarning("[FS-v2] Dane.InvalidData: {Error}", errMsg);
                                         if (!errors.Contains(errMsg)) errors.Add(errMsg);
                                     }
                                 }
                             }
-                            catch (Exception ex) { _logger.LogDebug("Dane.InvalidData failed: {Msg}", ex.Message); }
+                            catch (Exception ex) { _logger.LogDebug("[FS-v2] Dane.InvalidData failed: {Msg}", ex.Message); }
 
                             // Method 3: Bledy property
                             try
@@ -808,12 +879,12 @@ public class DocumentsController : ControllerBase
                                     foreach (var b in bledy)
                                     {
                                         string errMsg = b?.ToString() ?? "Bledy error";
-                                        _logger.LogWarning("FS Bledy: {Error}", errMsg);
+                                        _logger.LogWarning("[FS-v2] Bledy: {Error}", errMsg);
                                         if (!errors.Contains(errMsg)) errors.Add(errMsg);
                                     }
                                 }
                             }
-                            catch (Exception ex) { _logger.LogDebug("Bledy failed: {Msg}", ex.Message); }
+                            catch (Exception ex) { _logger.LogDebug("[FS-v2] Bledy failed: {Msg}", ex.Message); }
 
                             // Method 4: Try Pozycje errors
                             try
@@ -829,18 +900,38 @@ public class DocumentsController : ControllerBase
                                             foreach (var pi in pozInvalid)
                                             {
                                                 string errMsg = pi?.ToString() ?? "Position validation error";
-                                                _logger.LogWarning("FS Pozycja.InvalidData: {Error}", errMsg);
+                                                _logger.LogWarning("[FS-v2] Pozycja.InvalidData: {Error}", errMsg);
                                                 if (!errors.Contains(errMsg)) errors.Add(errMsg);
                                             }
                                         }
                                     }
                                 }
                             }
-                            catch (Exception ex) { _logger.LogDebug("Pozycje.InvalidData failed: {Msg}", ex.Message); }
+                            catch (Exception ex) { _logger.LogDebug("[FS-v2] Pozycje.InvalidData failed: {Msg}", ex.Message); }
+
+                            // Method 5: WalidujDane (similar to WarehouseDocumentsController)
+                            try
+                            {
+                                var validationErrors = faktura.WalidujDane();
+                                if (validationErrors != null)
+                                {
+                                    foreach (var err in validationErrors)
+                                    {
+                                        string errStr = (string)(err?.ToString() ?? "Unknown validation error");
+                                        _logger.LogWarning("[FS-v2] WalidujDane error (post-save): {Error}", (object)errStr);
+                                        if (!errors.Contains(errStr))
+                                            errors.Add(errStr);
+                                    }
+                                }
+                            }
+                            catch (Exception vex)
+                            {
+                                _logger.LogDebug("[FS-v2] WalidujDane (post-save) failed: {Msg}", vex.Message);
+                            }
 
                             if (errors.Count == 0)
                             {
-                                _logger.LogWarning("FS: No errors found but Zapisz() returned false. Document may have validation issues not exposed via standard properties.");
+                                _logger.LogWarning("[FS-v2] No errors found but Zapisz() returned false. Document may have validation issues not exposed via standard properties.");
                                 errors.Add("Document save failed - no specific error message available from SDK");
                             }
                         }
