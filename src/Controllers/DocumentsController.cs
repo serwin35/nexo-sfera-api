@@ -690,7 +690,7 @@ public class DocumentsController : ControllerBase
                     _logger.LogInformation("Items added to FS, calling Zapisz()...");
 
                     var saveResult = faktura.Zapisz();
-                    _logger.LogInformation("FS Zapisz() returned: {Result}", saveResult?.ToString() ?? "(null)");
+                    _logger.LogInformation("FS Zapisz() returned: {Result}", (object)(saveResult?.ToString() ?? "(null)"));
 
                     if ((bool)saveResult)
                     {
