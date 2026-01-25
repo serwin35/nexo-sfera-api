@@ -398,7 +398,11 @@ public class WarehouseDocumentsController : ControllerBase
         try
         {
             // Validate stock availability for outgoing document
-            if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
+            // NOTE: Stock validation only works for current-date documents.
+            // For historical documents, the SDK validates during Zapisz() using historical stock levels.
+            bool isHistoricalDocument = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-7);
+
+            if (!isHistoricalDocument && request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
             {
                 var stockValidation = _stockHelper.ValidateStock(
                     request.Items,
@@ -413,6 +417,10 @@ public class WarehouseDocumentsController : ControllerBase
                     _logger.LogWarning("RW creation failed - insufficient stock: {Errors}", string.Join("; ", stockValidation.Errors));
                     return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Insufficient stock for RW", stockValidation.Errors));
                 }
+            }
+            else if (isHistoricalDocument)
+            {
+                _logger.LogInformation("RW with historical date {Date} - skipping current stock validation, SDK will validate historical stock", request.IssueDate);
             }
 
             // Use thread-safe execution - EF6 is NOT thread-safe
@@ -559,7 +567,14 @@ public class WarehouseDocumentsController : ControllerBase
                                 _logger.LogInformation("Could not call WalidujDane: {Error}", (object)vex.Message);
                             }
 
-                            return (false, null, "Failed to create RW", errors);
+                            // Add context for historical documents
+                            string message = "Failed to create RW";
+                            if (isHistoricalDocument)
+                            {
+                                message = $"Failed to create RW for historical date {request.IssueDate:yyyy-MM-dd}. Products may not have had sufficient stock on that date.";
+                            }
+
+                            return (false, null, message, errors);
                         }
                     }
                     catch (Exception saveEx)
@@ -1544,27 +1559,110 @@ public class WarehouseDocumentsController : ControllerBase
                 }
 
                 int entityIndex = 0;
+                var invalidProducts = new List<string>(); // Track which products are invalid
                 foreach (var encjaZBledami in invalidData)
                 {
                     entityIndex++;
                     _logger.LogInformation("Processing InvalidData entity #{Index}", (object)entityIndex);
 
-                    // Log entity type and properties for debugging
+                    // Log entity type for debugging
                     try
                     {
                         var entityType = ((object)encjaZBledami).GetType();
                         _logger.LogInformation("Entity type: {Type}", (object)entityType.Name);
-                        var entityProps = entityType.GetProperties().Select(p => p.Name).ToList();
-                        _logger.LogInformation("Entity properties: {Props}", (object)string.Join(", ", entityProps));
 
-                        // Try to get entity name/description
-                        var entityName = DynamicPropertyHelper.GetProperty(encjaZBledami, "EntityName")
-                            ?? DynamicPropertyHelper.GetProperty(encjaZBledami, "Name")
-                            ?? DynamicPropertyHelper.GetProperty(encjaZBledami, "Nazwa");
-                        if (entityName != null)
+                        // FIRST: Try to identify the product and quantity of the invalid position
+                        string productSymbol = "unknown";
+                        string productId = "?";
+                        string quantity = "?";
+
+                        try
                         {
-                            _logger.LogInformation("Entity name: {Name}", (object)(entityName?.ToString() ?? "null"));
+                            var asortyment = DynamicPropertyHelper.GetProperty(encjaZBledami, "AsortymentWybrany")
+                                ?? DynamicPropertyHelper.GetProperty(encjaZBledami, "AsortymentAktualny");
+                            if (asortyment != null)
+                            {
+                                productSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? "unknown";
+                                productId = DynamicPropertyHelper.GetId(asortyment).ToString();
+                            }
+
+                            var ilosc = DynamicPropertyHelper.GetDecimal(encjaZBledami, "Ilosc");
+                            quantity = ilosc.ToString("0.##");
                         }
+                        catch { }
+
+                        _logger.LogWarning("INVALID POSITION: Product={Symbol} (Id={Id}), Qty={Qty}",
+                            (object)productSymbol, (object)productId, (object)quantity);
+
+                        // Track the invalid product
+                        if (productSymbol != "unknown")
+                            invalidProducts.Add($"{productSymbol} (qty: {quantity})");
+
+                        // Check IDataErrorInfo.Error property (standard .NET validation)
+                        try
+                        {
+                            var errorProp = entityType.GetProperty("Error");
+                            if (errorProp != null)
+                            {
+                                var errorVal = errorProp.GetValue(encjaZBledami);
+                                if (errorVal != null && !string.IsNullOrWhiteSpace(errorVal.ToString()))
+                                {
+                                    string errMsg = $"{productSymbol}: {errorVal}";
+                                    _logger.LogWarning("IDataErrorInfo.Error: {Error}", (object)errorVal.ToString());
+                                    if (!errors.Contains(errMsg))
+                                        errors.Add(errMsg);
+                                }
+                            }
+                        }
+                        catch { }
+
+                        // Check IDataErrorInfo indexer for specific properties
+                        try
+                        {
+                            var indexer = entityType.GetProperty("Item", typeof(string), new[] { typeof(string) });
+                            if (indexer != null)
+                            {
+                                var propsToCheck = new[] { "Ilosc", "Cena", "CenaEwidencyjna", "Asortyment", "Magazyn", "Stan", "Braki" };
+                                foreach (var propToCheck in propsToCheck)
+                                {
+                                    try
+                                    {
+                                        var err = indexer.GetValue(encjaZBledami, new object[] { propToCheck });
+                                        if (err != null && !string.IsNullOrWhiteSpace(err.ToString()))
+                                        {
+                                            string errMsg = $"{productSymbol}.{propToCheck}: {err}";
+                                            _logger.LogWarning("Position[{Prop}]: {Error}", (object)propToCheck, (object)err.ToString());
+                                            if (!errors.Contains(errMsg))
+                                                errors.Add(errMsg);
+                                        }
+                                    }
+                                    catch { }
+                                }
+                            }
+                        }
+                        catch { }
+
+                        // Check for Braki (shortages) on the position
+                        try
+                        {
+                            var braki = DynamicPropertyHelper.GetProperty(encjaZBledami, "Braki");
+                            if (braki != null)
+                            {
+                                _logger.LogWarning("Position has Braki (shortages): {Braki}", (object)(braki.ToString() ?? "yes"));
+                            }
+                        }
+                        catch { }
+
+                        // Check Rozbieznosc (discrepancy)
+                        try
+                        {
+                            var rozbieznosc = DynamicPropertyHelper.GetProperty(encjaZBledami, "Rozbieznosc");
+                            if (rozbieznosc != null)
+                            {
+                                _logger.LogWarning("Position has Rozbieznosc: {Rozbieznosc}", (object)(rozbieznosc.ToString() ?? "yes"));
+                            }
+                        }
+                        catch { }
                     }
                     catch (Exception ex)
                     {
@@ -1617,6 +1715,14 @@ public class WarehouseDocumentsController : ControllerBase
                 if (entityIndex == 0)
                 {
                     _logger.LogInformation("InvalidData collection is empty (no entities)");
+                }
+                else if (errors.Count == 0)
+                {
+                    // InvalidData has entities but no error messages extracted - add helpful message with product list
+                    string productsInfo = invalidProducts.Count > 0
+                        ? string.Join(", ", invalidProducts)
+                        : $"{entityIndex} position(s)";
+                    errors.Add($"Validation failed for: {productsInfo}. For RW (internal issue) documents, check if products have sufficient stock available in warehouse.");
                 }
             }
 
@@ -1708,6 +1814,24 @@ public class WarehouseDocumentsController : ControllerBase
             }
             catch { }
 
+            // Try Braki (shortages) property - visible in BO properties list
+            try
+            {
+                var braki = DynamicPropertyHelper.GetProperty(obiekt, "Braki");
+                if (braki != null)
+                {
+                    _logger.LogInformation("Found Braki property");
+                    foreach (var brak in braki)
+                    {
+                        string brakStr = brak?.ToString() ?? "Unknown shortage";
+                        _logger.LogWarning("Braki: {Brak}", (object)brakStr);
+                        if (!errors.Contains(brakStr))
+                            errors.Add(brakStr);
+                    }
+                }
+            }
+            catch { }
+
             // Log available properties for debugging if no errors found
             if (errors.Count == 0)
             {
@@ -1715,7 +1839,7 @@ public class WarehouseDocumentsController : ControllerBase
                 {
                     var objType = ((object)obiekt).GetType();
                     var props = objType.GetProperties()
-                        .Where(p => p.Name.Contains("Error") || p.Name.Contains("Blad") || p.Name.Contains("Invalid") || p.Name.Contains("Valid"))
+                        .Where(p => p.Name.Contains("Error") || p.Name.Contains("Blad") || p.Name.Contains("Invalid") || p.Name.Contains("Valid") || p.Name.Contains("Brak"))
                         .Select(p => p.Name)
                         .ToList();
                     _logger.LogInformation("Available error-related properties: {Props}", (object)string.Join(", ", props));
