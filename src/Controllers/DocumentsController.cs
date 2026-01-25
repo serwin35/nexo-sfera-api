@@ -1502,8 +1502,7 @@ public class DocumentsController : ControllerBase
 
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var formyManager = sfera.FormyPlatnosci();
+            var formyManager = _sferaService.GetManager("FormyPlatnosci");
             if (formyManager == null) return;
 
             dynamic? formaPlatnosci = null;
