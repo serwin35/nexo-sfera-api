@@ -470,12 +470,12 @@ public class WarehouseDocumentsController : ControllerBase
 
                         _logger.LogInformation("RW date properties: {Props}", string.Join(", ", daneProps.Concat(dokProps)));
 
-                        // The correct property name is DataWydaniaWystawienia (not DataWystawienia)
-                        bool dateSet = false;
+                        // Set both issue date AND entry date (for numbering)
+                        // DataWydaniaWystawienia = display/issue date
+                        // DataWprowadzenia = entry date (may affect numbering)
                         try
                         {
                             rw.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
-                            dateSet = true;
                             _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Success");
                         }
                         catch (Exception ex)
@@ -483,31 +483,26 @@ public class WarehouseDocumentsController : ControllerBase
                             _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                         }
 
-                        // Fallback to TrySetProperty
-                        if (!dateSet)
+                        // Also set DataWprowadzenia (entry date) - this may affect document numbering
+                        try
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWydaniaWystawienia", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataWydaniaWystawienia: {Result}", dateSet);
+                            rw.Dane.DataWprowadzenia = request.IssueDate.Value;
+                            _logger.LogInformation("Direct assignment Dane.DataWprowadzenia: Success");
                         }
-                        if (!dateSet)
+                        catch (Exception ex)
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWprowadzenia", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataWprowadzenia: {Result}", dateSet);
+                            _logger.LogInformation("Direct assignment Dane.DataWprowadzenia: Failed - {Error}", ex.Message);
                         }
 
                         // Try on Dokument as well
-                        if (!dateSet)
+                        try
                         {
-                            try
-                            {
-                                rw.Dokument.DataWydaniaWystawienia = request.IssueDate.Value;
-                                dateSet = true;
-                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Success");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
-                            }
+                            rw.Dokument.DataWydaniaWystawienia = request.IssueDate.Value;
+                            _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Success");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                         }
                     }
 
@@ -631,12 +626,12 @@ public class WarehouseDocumentsController : ControllerBase
 
                         _logger.LogInformation("PW date properties: {Props}", string.Join(", ", daneProps.Concat(dokProps)));
 
-                        // The correct property name is DataWydaniaWystawienia (not DataWystawienia)
-                        bool dateSet = false;
+                        // Set both issue date AND entry date (for numbering)
+                        // DataWydaniaWystawienia = display/issue date
+                        // DataWprowadzenia = entry date (may affect numbering)
                         try
                         {
                             pw.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
-                            dateSet = true;
                             _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Success");
                         }
                         catch (Exception ex)
@@ -644,31 +639,26 @@ public class WarehouseDocumentsController : ControllerBase
                             _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                         }
 
-                        // Fallback to TrySetProperty
-                        if (!dateSet)
+                        // Also set DataWprowadzenia (entry date) - this may affect document numbering
+                        try
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWydaniaWystawienia", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataWydaniaWystawienia: {Result}", dateSet);
+                            pw.Dane.DataWprowadzenia = request.IssueDate.Value;
+                            _logger.LogInformation("Direct assignment Dane.DataWprowadzenia: Success");
                         }
-                        if (!dateSet)
+                        catch (Exception ex)
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWprowadzenia", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataWprowadzenia: {Result}", dateSet);
+                            _logger.LogInformation("Direct assignment Dane.DataWprowadzenia: Failed - {Error}", ex.Message);
                         }
 
                         // Try on Dokument as well
-                        if (!dateSet)
+                        try
                         {
-                            try
-                            {
-                                pw.Dokument.DataWydaniaWystawienia = request.IssueDate.Value;
-                                dateSet = true;
-                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Success");
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
-                            }
+                            pw.Dokument.DataWydaniaWystawienia = request.IssueDate.Value;
+                            _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Success");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                         }
                     }
 
