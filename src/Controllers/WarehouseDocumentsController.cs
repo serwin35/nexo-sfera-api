@@ -19,11 +19,16 @@ public class WarehouseDocumentsController : ControllerBase
 {
     private readonly ISferaService _sferaService;
     private readonly ILogger<WarehouseDocumentsController> _logger;
+    private readonly StockValidationHelper _stockHelper;
 
-    public WarehouseDocumentsController(ISferaService sferaService, ILogger<WarehouseDocumentsController> logger)
+    public WarehouseDocumentsController(
+        ISferaService sferaService,
+        ILogger<WarehouseDocumentsController> logger,
+        StockValidationHelper stockHelper)
     {
         _sferaService = sferaService;
         _logger = logger;
+        _stockHelper = stockHelper;
     }
 
     /// <summary>
@@ -162,6 +167,24 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Validate stock availability for outgoing document
+            if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
+            {
+                var stockValidation = _stockHelper.ValidateStock(
+                    request.Items,
+                    request.WarehouseSymbol,
+                    item => item.ProductId,
+                    item => item.ProductSymbol,
+                    item => item.ProductEan,
+                    item => item.Quantity);
+
+                if (!stockValidation.AllItemsAvailable)
+                {
+                    _logger.LogWarning("WZ creation failed - insufficient stock: {Errors}", string.Join("; ", stockValidation.Errors));
+                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Insufficient stock for WZ", stockValidation.Errors));
+                }
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -198,7 +221,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     wz.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved WZ number: {Number}", wz.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved WZ number: {Number}", (string?)wz.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (request.IssueDate.HasValue)
                     {
@@ -216,7 +239,8 @@ public class WarehouseDocumentsController : ControllerBase
                     if ((bool)wz.Zapisz())
                     {
                         string docNumber = wz.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created WZ {Number}, Id={Id}", docNumber, wz.Dokument.Id);
+                        int docId = (int)wz.Dokument.Id;
+                        _logger.LogInformation("Created WZ {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapWZToDto(wz.Dane), "WZ created successfully", new List<string>());
                     }
@@ -300,7 +324,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     pz.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved PZ number: {Number}", pz.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved PZ number: {Number}", (string?)pz.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (request.IssueDate.HasValue)
                     {
@@ -323,7 +347,8 @@ public class WarehouseDocumentsController : ControllerBase
                     if ((bool)pz.Zapisz())
                     {
                         string docNumber = pz.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created PZ {Number}, Id={Id}", docNumber, pz.Dokument.Id);
+                        int docId = (int)pz.Dokument.Id;
+                        _logger.LogInformation("Created PZ {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapPZToDto(pz.Dane), "PZ created successfully", new List<string>());
                     }
@@ -371,6 +396,24 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
+            // Validate stock availability for outgoing document
+            if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
+            {
+                var stockValidation = _stockHelper.ValidateStock(
+                    request.Items,
+                    request.WarehouseSymbol,
+                    item => item.ProductId,
+                    item => item.ProductSymbol,
+                    item => item.ProductEan,
+                    item => item.Quantity);
+
+                if (!stockValidation.AllItemsAvailable)
+                {
+                    _logger.LogWarning("RW creation failed - insufficient stock: {Errors}", string.Join("; ", stockValidation.Errors));
+                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Insufficient stock for RW", stockValidation.Errors));
+                }
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -408,7 +451,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     rw.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved RW number: {Number}", rw.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved RW number: {Number}", (string?)rw.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (request.IssueDate.HasValue)
                     {
@@ -426,7 +469,8 @@ public class WarehouseDocumentsController : ControllerBase
                     if ((bool)rw.Zapisz())
                     {
                         string docNumber = rw.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created RW {Number}, Id={Id}", docNumber, rw.Dokument.Id);
+                        int docId = (int)rw.Dokument.Id;
+                        _logger.LogInformation("Created RW {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapRWToDto(rw), "RW created successfully", new List<string>());
                     }
@@ -511,7 +555,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     pw.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved PW number: {Number}", pw.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved PW number: {Number}", (string?)pw.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (request.IssueDate.HasValue)
                     {
@@ -529,7 +573,8 @@ public class WarehouseDocumentsController : ControllerBase
                     if ((bool)pw.Zapisz())
                     {
                         string docNumber = pw.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created PW {Number}, Id={Id}", docNumber, pw.Dokument.Id);
+                        int docId = (int)pw.Dokument.Id;
+                        _logger.LogInformation("Created PW {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapPWToDto(pw), "PW created successfully", new List<string>());
                     }
@@ -583,6 +628,24 @@ public class WarehouseDocumentsController : ControllerBase
                 return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Target warehouse symbol is required for MM"));
             }
 
+            // Validate stock availability in SOURCE warehouse for outgoing transfer
+            if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
+            {
+                var stockValidation = _stockHelper.ValidateStock(
+                    request.Items,
+                    request.WarehouseSymbol, // Source warehouse
+                    item => item.ProductId,
+                    item => item.ProductSymbol,
+                    item => item.ProductEan,
+                    item => item.Quantity);
+
+                if (!stockValidation.AllItemsAvailable)
+                {
+                    _logger.LogWarning("MM creation failed - insufficient stock in source warehouse: {Errors}", string.Join("; ", stockValidation.Errors));
+                    return BadRequest(ApiResponse<WarehouseDocumentDto>.Error($"Insufficient stock in source warehouse '{request.WarehouseSymbol}' for MM", stockValidation.Errors));
+                }
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -631,7 +694,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     // CRITICAL: Reserve number BEFORE adding items
                     mm.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved MM number: {Number}", mm.PodajPodgladNumeru());
+                    _logger.LogInformation("Reserved MM number: {Number}", (string?)mm.PodajPodgladNumeru()?.ToString() ?? "");
 
                     if (request.IssueDate.HasValue)
                     {
@@ -649,7 +712,8 @@ public class WarehouseDocumentsController : ControllerBase
                     if ((bool)mm.Zapisz())
                     {
                         string docNumber = mm.PodajPodgladNumeru()?.ToString() ?? "";
-                        _logger.LogInformation("Created MM {Number}, Id={Id}", docNumber, mm.Dokument.Id);
+                        int docId = (int)mm.Dokument.Id;
+                        _logger.LogInformation("Created MM {Number}, Id={Id}", docNumber, docId);
 
                         return (true, MapMMToDto(mm.Dane), "MM created successfully", new List<string>());
                     }
@@ -737,7 +801,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                 if (item.PriceNet.HasValue && pozycja != null)
                 {
-                    pozycja.Dane.CenaNetto = item.PriceNet.Value;
+                    pozycja.CenaNetto = item.PriceNet.Value;
                 }
             }
         }
