@@ -723,25 +723,84 @@ public class DocumentsController : ControllerBase
                         }
                         else
                         {
-                            // Try to get more info from WalidujDane
+                            errors ??= new List<string>();
+
+                            // Try various error extraction methods
+                            // Method 1: Dokument.InvalidData
                             try
                             {
-                                var validationErrors = faktura.WalidujDane();
-                                if (validationErrors != null)
+                                var docInvalidData = DynamicPropertyHelper.GetProperty(faktura.Dokument, "InvalidData");
+                                if (docInvalidData != null)
                                 {
-                                    errors ??= new List<string>();
-                                    foreach (var ve in validationErrors)
+                                    foreach (var ei in docInvalidData)
                                     {
-                                        string errMsg = ve?.ToString() ?? "unknown validation error";
-                                        _logger.LogWarning("FS validation error: {Error}", errMsg);
-                                        if (!errors.Contains(errMsg))
-                                            errors.Add(errMsg);
+                                        string errMsg = ei?.ToString() ?? "Dokument validation error";
+                                        _logger.LogWarning("FS Dokument.InvalidData: {Error}", errMsg);
+                                        if (!errors.Contains(errMsg)) errors.Add(errMsg);
                                     }
                                 }
                             }
-                            catch (Exception vex)
+                            catch (Exception ex) { _logger.LogDebug("Dokument.InvalidData failed: {Msg}", ex.Message); }
+
+                            // Method 2: Dane.InvalidData
+                            try
                             {
-                                _logger.LogDebug("WalidujDane failed: {Msg}", vex.Message);
+                                var daneInvalidData = DynamicPropertyHelper.GetProperty(dane, "InvalidData");
+                                if (daneInvalidData != null)
+                                {
+                                    foreach (var ei in daneInvalidData)
+                                    {
+                                        string errMsg = ei?.ToString() ?? "Dane validation error";
+                                        _logger.LogWarning("FS Dane.InvalidData: {Error}", errMsg);
+                                        if (!errors.Contains(errMsg)) errors.Add(errMsg);
+                                    }
+                                }
+                            }
+                            catch (Exception ex) { _logger.LogDebug("Dane.InvalidData failed: {Msg}", ex.Message); }
+
+                            // Method 3: Bledy property
+                            try
+                            {
+                                var bledy = DynamicPropertyHelper.GetProperty(faktura, "Bledy");
+                                if (bledy != null)
+                                {
+                                    foreach (var b in bledy)
+                                    {
+                                        string errMsg = b?.ToString() ?? "Bledy error";
+                                        _logger.LogWarning("FS Bledy: {Error}", errMsg);
+                                        if (!errors.Contains(errMsg)) errors.Add(errMsg);
+                                    }
+                                }
+                            }
+                            catch (Exception ex) { _logger.LogDebug("Bledy failed: {Msg}", ex.Message); }
+
+                            // Method 4: Try Pozycje errors
+                            try
+                            {
+                                var pozycje = faktura.Pozycje;
+                                if (pozycje != null)
+                                {
+                                    foreach (var poz in pozycje)
+                                    {
+                                        var pozInvalid = DynamicPropertyHelper.GetProperty(poz, "InvalidData");
+                                        if (pozInvalid != null)
+                                        {
+                                            foreach (var pi in pozInvalid)
+                                            {
+                                                string errMsg = pi?.ToString() ?? "Position validation error";
+                                                _logger.LogWarning("FS Pozycja.InvalidData: {Error}", errMsg);
+                                                if (!errors.Contains(errMsg)) errors.Add(errMsg);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ex) { _logger.LogDebug("Pozycje.InvalidData failed: {Msg}", ex.Message); }
+
+                            if (errors.Count == 0)
+                            {
+                                _logger.LogWarning("FS: No errors found but Zapisz() returned false. Document may have validation issues not exposed via standard properties.");
+                                errors.Add("Document save failed - no specific error message available from SDK");
                             }
                         }
                         return (false, null, "Failed to create sales invoice", errors ?? new List<string>());
