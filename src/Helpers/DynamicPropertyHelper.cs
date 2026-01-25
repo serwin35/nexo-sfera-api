@@ -421,7 +421,39 @@ public static class DynamicPropertyHelper
             var prop = type.GetProperty(propertyName);
             if (prop != null && prop.CanWrite)
             {
-                prop.SetValue(obj, Convert.ChangeType(value, prop.PropertyType));
+                object? convertedValue = value;
+                var targetType = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+
+                // Handle specific type conversions
+                if (value != null)
+                {
+                    if (targetType == typeof(DateTime) && value is DateTime dt)
+                    {
+                        convertedValue = dt;
+                    }
+                    else if (targetType == typeof(decimal) && value is decimal dec)
+                    {
+                        convertedValue = dec;
+                    }
+                    else if (targetType == typeof(decimal))
+                    {
+                        convertedValue = Convert.ToDecimal(value);
+                    }
+                    else if (targetType == typeof(int))
+                    {
+                        convertedValue = Convert.ToInt32(value);
+                    }
+                    else if (targetType == typeof(string))
+                    {
+                        convertedValue = value.ToString();
+                    }
+                    else
+                    {
+                        convertedValue = Convert.ChangeType(value, targetType);
+                    }
+                }
+
+                prop.SetValue(obj, convertedValue);
                 return true;
             }
             return false;
