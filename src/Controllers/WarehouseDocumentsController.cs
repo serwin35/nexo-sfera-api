@@ -470,34 +470,29 @@ public class WarehouseDocumentsController : ControllerBase
 
                         _logger.LogInformation("RW date properties: {Props}", string.Join(", ", daneProps.Concat(dokProps)));
 
-                        // Try direct dynamic access first (works for most SDK types)
+                        // The correct property name is DataWydaniaWystawienia (not DataWystawienia)
                         bool dateSet = false;
                         try
                         {
-                            rw.Dane.DataWystawienia = request.IssueDate.Value;
+                            rw.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
                             dateSet = true;
-                            _logger.LogInformation("Direct assignment Dane.DataWystawienia: Success");
+                            _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Success");
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            _logger.LogInformation("Direct assignment Dane.DataWystawienia: Failed");
+                            _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                         }
 
-                        // Fallback to TrySetProperty with various names
+                        // Fallback to TrySetProperty
                         if (!dateSet)
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataDokumentu", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataDokumentu: {Result}", dateSet);
+                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWydaniaWystawienia", request.IssueDate.Value);
+                            _logger.LogInformation("TrySetProperty Dane.DataWydaniaWystawienia: {Result}", dateSet);
                         }
                         if (!dateSet)
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataRozchodu", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataRozchodu: {Result}", dateSet);
-                        }
-                        if (!dateSet)
-                        {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "Data", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.Data: {Result}", dateSet);
+                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWprowadzenia", request.IssueDate.Value);
+                            _logger.LogInformation("TrySetProperty Dane.DataWprowadzenia: {Result}", dateSet);
                         }
 
                         // Try on Dokument as well
@@ -505,19 +500,14 @@ public class WarehouseDocumentsController : ControllerBase
                         {
                             try
                             {
-                                rw.Dokument.DataWystawienia = request.IssueDate.Value;
+                                rw.Dokument.DataWydaniaWystawienia = request.IssueDate.Value;
                                 dateSet = true;
-                                _logger.LogInformation("Direct assignment Dokument.DataWystawienia: Success");
+                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Success");
                             }
-                            catch
+                            catch (Exception ex)
                             {
-                                _logger.LogInformation("Direct assignment Dokument.DataWystawienia: Failed");
+                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                             }
-                        }
-                        if (!dateSet)
-                        {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(rw.Dokument, "DataDokumentu", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dokument.DataDokumentu: {Result}", dateSet);
                         }
                     }
 
@@ -641,34 +631,29 @@ public class WarehouseDocumentsController : ControllerBase
 
                         _logger.LogInformation("PW date properties: {Props}", string.Join(", ", daneProps.Concat(dokProps)));
 
-                        // Try direct dynamic access first (works for most SDK types)
+                        // The correct property name is DataWydaniaWystawienia (not DataWystawienia)
                         bool dateSet = false;
                         try
                         {
-                            pw.Dane.DataWystawienia = request.IssueDate.Value;
+                            pw.Dane.DataWydaniaWystawienia = request.IssueDate.Value;
                             dateSet = true;
-                            _logger.LogInformation("Direct assignment Dane.DataWystawienia: Success");
+                            _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Success");
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            _logger.LogInformation("Direct assignment Dane.DataWystawienia: Failed");
+                            _logger.LogInformation("Direct assignment Dane.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                         }
 
-                        // Fallback to TrySetProperty with various names
+                        // Fallback to TrySetProperty
                         if (!dateSet)
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataDokumentu", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataDokumentu: {Result}", dateSet);
+                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWydaniaWystawienia", request.IssueDate.Value);
+                            _logger.LogInformation("TrySetProperty Dane.DataWydaniaWystawienia: {Result}", dateSet);
                         }
                         if (!dateSet)
                         {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataPrzychodu", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.DataPrzychodu: {Result}", dateSet);
-                        }
-                        if (!dateSet)
-                        {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "Data", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dane.Data: {Result}", dateSet);
+                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dane, "DataWprowadzenia", request.IssueDate.Value);
+                            _logger.LogInformation("TrySetProperty Dane.DataWprowadzenia: {Result}", dateSet);
                         }
 
                         // Try on Dokument as well
@@ -676,19 +661,14 @@ public class WarehouseDocumentsController : ControllerBase
                         {
                             try
                             {
-                                pw.Dokument.DataWystawienia = request.IssueDate.Value;
+                                pw.Dokument.DataWydaniaWystawienia = request.IssueDate.Value;
                                 dateSet = true;
-                                _logger.LogInformation("Direct assignment Dokument.DataWystawienia: Success");
+                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Success");
                             }
-                            catch
+                            catch (Exception ex)
                             {
-                                _logger.LogInformation("Direct assignment Dokument.DataWystawienia: Failed");
+                                _logger.LogInformation("Direct assignment Dokument.DataWydaniaWystawienia: Failed - {Error}", ex.Message);
                             }
-                        }
-                        if (!dateSet)
-                        {
-                            dateSet = DynamicPropertyHelper.TrySetProperty(pw.Dokument, "DataDokumentu", request.IssueDate.Value);
-                            _logger.LogInformation("TrySetProperty Dokument.DataDokumentu: {Result}", dateSet);
                         }
                     }
 
@@ -977,7 +957,7 @@ public class WarehouseDocumentsController : ControllerBase
                 {
                     pozycja.Ilosc = item.Quantity;
 
-                    // Try to set price - warehouse documents may use different property names
+                    // Try to set price - warehouse documents use complex Cena type
                     // NOTE: Internal documents (PW/RW) may ignore manual pricing and use inventory valuation instead
                     if (item.PriceNet.HasValue)
                     {
@@ -989,53 +969,70 @@ public class WarehouseDocumentsController : ControllerBase
                             .ToList();
                         _logger.LogInformation("Position price properties: {Props}", string.Join(", ", priceProps));
 
-                        // Try direct dynamic assignment first (may work better than reflection)
+                        // Cena is a complex type - explore its structure
                         bool priceSet = false;
                         try
                         {
-                            pozycja.CenaNetto = item.PriceNet.Value;
-                            priceSet = true;
-                            _logger.LogInformation("Direct assignment CenaNetto={Price}: Success", item.PriceNet.Value);
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                var cenaType = ((object)cenaObj).GetType();
+                                var cenaProps = cenaType.GetProperties()
+                                    .Select(p => $"{p.Name}({p.PropertyType.Name})")
+                                    .ToList();
+                                _logger.LogInformation("Cena object properties: {Props}", string.Join(", ", cenaProps));
+
+                                // Try to set Netto on the Cena object
+                                try
+                                {
+                                    cenaObj.Netto = item.PriceNet.Value;
+                                    priceSet = true;
+                                    _logger.LogInformation("Direct assignment Cena.Netto={Price}: Success", item.PriceNet.Value);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogInformation("Direct assignment Cena.Netto: Failed - {Error}", ex.Message);
+                                }
+
+                                if (!priceSet)
+                                {
+                                    try
+                                    {
+                                        cenaObj.Wartosc = item.PriceNet.Value;
+                                        priceSet = true;
+                                        _logger.LogInformation("Direct assignment Cena.Wartosc: Success");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        _logger.LogInformation("Direct assignment Cena.Wartosc: Failed - {Error}", ex.Message);
+                                    }
+                                }
+
+                                if (!priceSet)
+                                {
+                                    priceSet = DynamicPropertyHelper.TrySetProperty(cenaObj, "Netto", item.PriceNet.Value);
+                                    _logger.LogInformation("TrySetProperty Cena.Netto: {Result}", priceSet);
+                                }
+                            }
                         }
-                        catch
+                        catch (Exception ex)
                         {
-                            _logger.LogInformation("Direct assignment CenaNetto: Failed");
+                            _logger.LogInformation("Could not access Cena object: {Error}", ex.Message);
                         }
 
+                        // Try CenaEwidencyjna (record/accounting price) for internal documents
                         if (!priceSet)
                         {
                             try
                             {
-                                pozycja.Cena = item.PriceNet.Value;
+                                pozycja.CenaEwidencyjna = item.PriceNet.Value;
                                 priceSet = true;
-                                _logger.LogInformation("Direct assignment Cena: Success");
+                                _logger.LogInformation("Direct assignment CenaEwidencyjna={Price}: Success", item.PriceNet.Value);
                             }
-                            catch
+                            catch (Exception ex)
                             {
-                                _logger.LogInformation("Direct assignment Cena: Failed");
+                                _logger.LogInformation("Direct assignment CenaEwidencyjna: Failed - {Error}", ex.Message);
                             }
-                        }
-
-                        // Fallback to TrySetProperty with various names
-                        if (!priceSet)
-                        {
-                            priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value);
-                            _logger.LogInformation("TrySetProperty CenaJednostkowa: {Result}", priceSet);
-                        }
-                        if (!priceSet)
-                        {
-                            priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowaNetto", item.PriceNet.Value);
-                            _logger.LogInformation("TrySetProperty CenaJednostkowaNetto: {Result}", priceSet);
-                        }
-                        if (!priceSet)
-                        {
-                            priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "WartoscJednostkowa", item.PriceNet.Value);
-                            _logger.LogInformation("TrySetProperty WartoscJednostkowa: {Result}", priceSet);
-                        }
-                        if (!priceSet)
-                        {
-                            priceSet = DynamicPropertyHelper.TrySetProperty(pozycja, "WartoscNetto", item.PriceNet.Value);
-                            _logger.LogInformation("TrySetProperty WartoscNetto: {Result}", priceSet);
                         }
 
                         // If no price property worked, it's likely an internal document using inventory valuation
