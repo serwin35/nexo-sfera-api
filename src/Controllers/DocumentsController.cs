@@ -602,26 +602,50 @@ public class DocumentsController : ControllerBase
                     if (request.IssueDate.HasValue)
                     {
                         _logger.LogInformation("Setting FS IssueDate to: {Date}", request.IssueDate.Value);
-                        // Try multiple property names - different document types use different names
+                        // Try multiple property names and objects - different document types use different names
                         bool dateSet = false;
+
+                        // Try on Dokument object first (this often controls numbering)
+                        try
+                        {
+                            if (DynamicPropertyHelper.TrySetProperty(faktura.Dokument, "DataDokumentu", request.IssueDate.Value))
+                            {
+                                _logger.LogInformation("Set Dokument.DataDokumentu successfully");
+                                dateSet = true;
+                            }
+                        }
+                        catch (Exception ex) { _logger.LogDebug("Dokument.DataDokumentu failed: {Msg}", ex.Message); }
+
+                        try
+                        {
+                            if (DynamicPropertyHelper.TrySetProperty(faktura.Dokument, "DataWystawienia", request.IssueDate.Value))
+                            {
+                                _logger.LogInformation("Set Dokument.DataWystawienia successfully");
+                                dateSet = true;
+                            }
+                        }
+                        catch (Exception ex) { _logger.LogDebug("Dokument.DataWystawienia failed: {Msg}", ex.Message); }
+
+                        // Try on Dane object
                         if (DynamicPropertyHelper.TrySetProperty(dane, "DataDokumentu", request.IssueDate.Value))
                         {
-                            _logger.LogInformation("Set DataDokumentu successfully");
+                            _logger.LogInformation("Set Dane.DataDokumentu successfully");
                             dateSet = true;
                         }
                         if (DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
                         {
-                            _logger.LogInformation("Set DataWydaniaWystawienia successfully");
+                            _logger.LogInformation("Set Dane.DataWydaniaWystawienia successfully");
                             dateSet = true;
                         }
                         if (!dateSet && DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value))
                         {
-                            _logger.LogInformation("Set DataWystawienia successfully");
+                            _logger.LogInformation("Set Dane.DataWystawienia successfully");
                             dateSet = true;
                         }
+
                         if (!dateSet)
                         {
-                            _logger.LogWarning("Could not set issue date - no matching property found");
+                            _logger.LogWarning("Could not set issue date - no matching property found on Dokument or Dane");
                         }
                     }
 
@@ -649,7 +673,15 @@ public class DocumentsController : ControllerBase
                     // Set notes
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
-                        dane.Uwagi = request.Notes;
+                        try
+                        {
+                            dane.Uwagi = request.Notes;
+                            _logger.LogDebug("Notes set successfully");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to set notes: {Message}", ex.Message);
+                        }
                     }
 
                     // Add items using product ID
