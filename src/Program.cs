@@ -4,6 +4,7 @@ using NexoSferaApi.Configuration;
 using NexoSferaApi.Services;
 using NexoSferaApi.Middleware;
 using NexoSferaApi.Authentication;
+using NexoSferaApi.Helpers;
 
 // Initialize Entity Framework 6 for .NET 8 compatibility
 // Must be called before any EF6/Sfera operations
@@ -122,6 +123,9 @@ builder.Services.AddAuthorization();
 
 // Register Sfera service as singleton (connection is expensive)
 builder.Services.AddSingleton<ISferaService, SferaService>();
+
+// Register helpers
+builder.Services.AddSingleton<StockValidationHelper>();
 
 // Add CORS if needed
 builder.Services.AddCors(options =>
