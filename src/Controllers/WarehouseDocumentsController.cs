@@ -801,7 +801,14 @@ public class WarehouseDocumentsController : ControllerBase
 
                 if (item.PriceNet.HasValue && pozycja != null)
                 {
-                    pozycja.CenaNetto = item.PriceNet.Value;
+                    // Try various property names used by different document types
+                    if (!DynamicPropertyHelper.TrySetProperty(pozycja, "Cena", item.PriceNet.Value))
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowa", item.PriceNet.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(pozycja, "WartoscJednostkowa", item.PriceNet.Value);
+                        }
+                    }
                 }
             }
         }
