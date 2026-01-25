@@ -43,22 +43,52 @@ public class ApiKeySettings
 }
 
 /// <summary>
-/// Single API key entry
+/// Konfiguracja klucza API z opcjonalnymi danymi dostępowymi do Nexo
 /// </summary>
 public class ApiKeyEntry
 {
     /// <summary>
-    /// The API key value
+    /// Klucz API (token Bearer)
     /// </summary>
     public string Key { get; set; } = string.Empty;
 
     /// <summary>
-    /// Name/description for this key
+    /// Nazwa/opis klucza (np. "Sklep Online", "Magazyn")
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Whether this key is active
+    /// Czy klucz jest aktywny
     /// </summary>
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Opcjonalny login Nexo dla tego klucza (nadpisuje domyślny z Sfera config)
+    /// </summary>
+    public string? NexoLogin { get; set; }
+
+    /// <summary>
+    /// Opcjonalne hasło Nexo dla tego klucza
+    /// </summary>
+    public string? NexoPassword { get; set; }
+
+    /// <summary>
+    /// Opcjonalna baza danych dla tego klucza (multi-tenant)
+    /// </summary>
+    public string? Database { get; set; }
+
+    /// <summary>
+    /// Opcjonalny domyślny magazyn dla tego klucza
+    /// </summary>
+    public string? DefaultWarehouse { get; set; }
+
+    /// <summary>
+    /// Opcjonalny oddział dla tego klucza
+    /// </summary>
+    public string? DefaultBranch { get; set; }
+
+    /// <summary>
+    /// Opis firmy/kontekstu (np. "Firma ABC Sp. z o.o.")
+    /// </summary>
+    public string? CompanyDescription { get; set; }
 }
