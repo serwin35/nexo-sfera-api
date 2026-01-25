@@ -32,7 +32,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("vat-rates")]
     [ProducesResponseType(typeof(ApiResponse<List<VatRateDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<VatRateDto>>> GetVatRates([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<VatRateDto>>> GetVatRates([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -142,7 +142,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("units")]
     [ProducesResponseType(typeof(ApiResponse<List<UnitOfMeasureDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<UnitOfMeasureDto>>> GetUnits([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<UnitOfMeasureDto>>> GetUnits([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -241,7 +241,7 @@ public class DictionaryController : ControllerBase
     [HttpGet("product-groups")]
     [ProducesResponseType(typeof(ApiResponse<List<ProductGroupDto>>), StatusCodes.Status200OK)]
     public ActionResult<ApiResponse<List<ProductGroupDto>>> GetProductGroups(
-        [FromQuery] bool? activeOnly = true,
+        [FromQuery] bool? activeOnly = false,
         [FromQuery] bool? hierarchical = false)
     {
         try
@@ -281,7 +281,7 @@ public class DictionaryController : ControllerBase
                     ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
                     ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
                     IsActive = DynamicPropertyHelper.GetBool(g, "Aktywna"),
-                    ProductCount = asortymenty.Count()
+                    ProductCount = asortymenty.Count
                 });
             }
 
@@ -364,7 +364,7 @@ public class DictionaryController : ControllerBase
                 ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
                 ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
                 IsActive = DynamicPropertyHelper.GetBool(grupa, "Aktywna"),
-                ProductCount = asortymenty.Count()
+                ProductCount = asortymenty.Count
             };
 
             return Ok(ApiResponse<ProductGroupDto>.Ok(dto));
@@ -385,7 +385,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("price-levels")]
     [ProducesResponseType(typeof(ApiResponse<List<PriceLevelDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PriceLevelDto>>> GetPriceLevels([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<PriceLevelDto>>> GetPriceLevels([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -487,7 +487,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("price-lists")]
     [ProducesResponseType(typeof(ApiResponse<List<PriceListDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PriceListDto>>> GetPriceLists([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<PriceListDto>>> GetPriceLists([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -527,7 +527,7 @@ public class DictionaryController : ControllerBase
                     ValidTo = DynamicPropertyHelper.GetDateTime(c, "DataDo"),
                     IsActive = DynamicPropertyHelper.GetBool(c, "Aktywny"),
                     CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
-                    ItemCount = pozycje.Count()
+                    ItemCount = pozycje.Count
                 });
             }
             dtos = dtos.OrderBy(c => c.Symbol).ToList();
@@ -578,7 +578,7 @@ public class DictionaryController : ControllerBase
                 ValidTo = DynamicPropertyHelper.GetDateTime(cennik, "DataDo"),
                 IsActive = DynamicPropertyHelper.GetBool(cennik, "Aktywny"),
                 CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
-                ItemCount = pozycje.Count()
+                ItemCount = pozycje.Count
             };
 
             return Ok(ApiResponse<PriceListDto>.Ok(dto));
@@ -702,7 +702,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("currencies")]
     [ProducesResponseType(typeof(ApiResponse<List<CurrencyDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<CurrencyDto>>> GetCurrencies([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<CurrencyDto>>> GetCurrencies([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -910,7 +910,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("payment-methods")]
     [ProducesResponseType(typeof(ApiResponse<List<PaymentMethodDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PaymentMethodDto>>> GetPaymentMethods([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<PaymentMethodDto>>> GetPaymentMethods([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -981,7 +981,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("cash-operation-types")]
     [ProducesResponseType(typeof(ApiResponse<List<OperationTypeDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetCashOperationTypes([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetCashOperationTypes([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -1051,7 +1051,7 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("bank-operation-types")]
     [ProducesResponseType(typeof(ApiResponse<List<OperationTypeDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetBankOperationTypes([FromQuery] bool? activeOnly = true)
+    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetBankOperationTypes([FromQuery] bool? activeOnly = false)
     {
         try
         {
@@ -1123,7 +1123,7 @@ public class DictionaryController : ControllerBase
     [HttpGet("countries")]
     [ProducesResponseType(typeof(ApiResponse<List<CountryDto>>), StatusCodes.Status200OK)]
     public ActionResult<ApiResponse<List<CountryDto>>> GetCountries(
-        [FromQuery] bool? activeOnly = true,
+        [FromQuery] bool? activeOnly = false,
         [FromQuery] bool? euOnly = null)
     {
         try
