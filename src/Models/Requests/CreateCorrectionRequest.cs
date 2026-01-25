@@ -146,10 +146,15 @@ public class CreateReceiptRequest
     public string? Notes { get; set; }
 
     /// <summary>
-    /// Payment method (gotowka, karta, przelew)
+    /// Payment method symbol (e.g., GOTOWKA, PRZELEW, KARTA, PAYNOW)
     /// </summary>
     [MaxLength(50)]
     public string? PaymentMethod { get; set; }
+
+    /// <summary>
+    /// Payment method ID (alternative to PaymentMethod symbol)
+    /// </summary>
+    public int? PaymentMethodId { get; set; }
 
     /// <summary>
     /// Receipt items
