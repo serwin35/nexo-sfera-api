@@ -1545,7 +1545,7 @@ public class DocumentsController : ControllerBase
 
                             // Try to get all available statuses for FS documents (TypyDokumentow contains FS = 576 or similar)
                             var currentStatusId = dane.StatusDokumentuId;
-                            _logger.LogInformation("[FS-v2] Current StatusDokumentuId: {Id}", currentStatusId);
+                            _logger.LogInformation("[FS-v2] Current StatusDokumentuId: {Id}", (object)(currentStatusId?.ToString() ?? "(null)"));
 
                             // Try StatusDokumentuId = 1 (often "Do realizacji" - To be fulfilled) which may not create auto docs
                             // or StatusDokumentuId = 0/default
@@ -1592,7 +1592,7 @@ public class DocumentsController : ControllerBase
                                 }
                             }
 
-                            _logger.LogInformation("[FS-v2] Final StatusDokumentuId: {Id}", dane.StatusDokumentuId);
+                            _logger.LogInformation("[FS-v2] Final StatusDokumentuId: {Id}", (object)(dane.StatusDokumentuId?.ToString() ?? "(null)"));
                         }
                         catch (Exception histEx)
                         {
