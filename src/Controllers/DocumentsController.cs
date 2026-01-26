@@ -622,6 +622,35 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not check Oddzial: {Msg}", oddEx.Message);
                     }
 
+                    // NEW: Try to disable validation for historical documents (imports)
+                    bool isHistorical = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
+                    if (isHistorical)
+                    {
+                        _logger.LogInformation("[FS-v2] Document is historical (IssueDate={Date}), attempting to disable validation", request.IssueDate.Value);
+
+                        // Try setting ValidationDisabled property
+                        try
+                        {
+                            faktura.ValidationDisabled = true;
+                            _logger.LogInformation("[FS-v2] Set faktura.ValidationDisabled = true");
+                        }
+                        catch (Exception vdEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not set ValidationDisabled: {Msg}", vdEx.Message);
+                        }
+
+                        // Also try WylaczWalidacje method
+                        try
+                        {
+                            faktura.WylaczWalidacje();
+                            _logger.LogInformation("[FS-v2] Called faktura.WylaczWalidacje()");
+                        }
+                        catch (Exception wwEx)
+                        {
+                            _logger.LogDebug("[FS-v2] WylaczWalidacje() not available: {Msg}", wwEx.Message);
+                        }
+                    }
+
                     // CRITICAL: Set dates BEFORE reserving number (number format includes year/month)
                     if (request.IssueDate.HasValue)
                     {
