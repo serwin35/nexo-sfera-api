@@ -55,6 +55,13 @@ public class CreateWarehouseDocumentRequest
     public string? RelatedDocumentNumber { get; set; }
 
     /// <summary>
+    /// External document date (e.g., supplier invoice date for PZ with VAT).
+    /// CRITICAL for PZ documents with financial aspect - this date is used for VAT settlement period.
+    /// If not provided, defaults to IssueDate.
+    /// </summary>
+    public DateTime? ExternalDocumentDate { get; set; }
+
+    /// <summary>
     /// Notes
     /// </summary>
     [MaxLength(2000)]
