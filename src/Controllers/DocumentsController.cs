@@ -1740,6 +1740,24 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not subscribe to ChangesSavedCompleted: {Msg}", evtEx.Message);
                     }
 
+                    // NEW: Allow user to specify StatusId for any document
+                    if (request.StatusId.HasValue && !request.IssueDate.HasValue || (request.IssueDate.HasValue && request.IssueDate.Value.Date >= DateTime.Today.AddDays(-30)))
+                    {
+                        // Non-historical document with explicit StatusId
+                        if (request.StatusId.HasValue)
+                        {
+                            try
+                            {
+                                _logger.LogInformation("[FS-v2] Setting StatusDokumentuId to user-specified value: {StatusId}", (object)request.StatusId.Value);
+                                dane.StatusDokumentuId = request.StatusId.Value;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning("[FS-v2] Could not set StatusDokumentuId: {Msg}", ex.Message);
+                            }
+                        }
+                    }
+
                     // NEW: For historical documents, try to change status or find a workaround
                     bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                     if (isHistoricalDoc)
@@ -1750,6 +1768,22 @@ public class DocumentsController : ControllerBase
 
                             var currentStatusId = dane.StatusDokumentuId;
                             _logger.LogInformation("[FS-v2] Current StatusDokumentuId: {Id}", (object)(currentStatusId?.ToString() ?? "(null)"));
+
+                            // CRITICAL FIX: Use StatusId from request or default to 4 ("Bez rezerwacji") for historical documents
+                            // Status 4 has TworzDokumentyAutomatyczne=False, so it won't try to create automatic WZ documents
+                            int targetStatusId = request.StatusId ?? 4; // Default to "Bez rezerwacji"
+                            _logger.LogInformation("[FS-v2] Setting StatusDokumentuId to {TargetStatus} (request.StatusId={RequestStatus}, default=4 'Bez rezerwacji')",
+                                (object)targetStatusId, (object)(request.StatusId?.ToString() ?? "(null)"));
+
+                            try
+                            {
+                                dane.StatusDokumentuId = targetStatusId;
+                                _logger.LogInformation("[FS-v2] StatusDokumentuId set to: {Id}", (object)targetStatusId);
+                            }
+                            catch (Exception statusSetEx)
+                            {
+                                _logger.LogWarning("[FS-v2] Could not set StatusDokumentuId directly: {Msg}", statusSetEx.Message);
+                            }
 
                             // Look for methods on faktura to change status
                             var fakturaType = ((object)faktura).GetType();
