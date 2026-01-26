@@ -533,6 +533,38 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                     }
 
+                    // CRITICAL for VAT: Set external document date (DataDokumentuZewnetrznego)
+                    // This date is used for VAT settlement period and is required for PZ with financial aspect
+                    var externalDocDate = request.ExternalDocumentDate ?? request.IssueDate ?? DateTime.Now;
+                    try
+                    {
+                        // Try setting DataDokumentuZewnetrznego (primary property name)
+                        pz.Dane.DataDokumentuZewnetrznego = externalDocDate;
+                        _logger.LogInformation("Set DataDokumentuZewnetrznego: {Date}", externalDocDate);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug("Could not set DataDokumentuZewnetrznego: {Error}", ex.Message);
+                        // Try alternative property names
+                        try
+                        {
+                            pz.Dane.DataZewnetrzna = externalDocDate;
+                            _logger.LogInformation("Set DataZewnetrzna (alternative): {Date}", externalDocDate);
+                        }
+                        catch
+                        {
+                            try
+                            {
+                                pz.Dane.DataOtrzymania = externalDocDate;
+                                _logger.LogInformation("Set DataOtrzymania (alternative): {Date}", externalDocDate);
+                            }
+                            catch
+                            {
+                                _logger.LogWarning("Could not set external document date on PZ");
+                            }
+                        }
+                    }
+
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
                         pz.Dane.Uwagi = request.Notes;
