@@ -1039,6 +1039,179 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Analyze the TransakcjaVAT column order mismatch between database and SDK model.
+    /// This is the root cause of the "IdWInstancji could not be set to Byte[]" error.
+    /// Also provides SQL script to fix the column order if needed.
+    /// </summary>
+    [HttpGet("transakcja-vat-column-mismatch")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> AnalyzeTransakcjaVatColumnMismatch()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            // Get SDK model property order for critical columns
+            var transakcjaVatType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a =>
+                {
+                    try { return a.GetTypes(); }
+                    catch { return Array.Empty<Type>(); }
+                })
+                .FirstOrDefault(t => t.Name == "TransakcjaVAT" && t.Namespace?.Contains("ModelDanych") == true);
+
+            if (transakcjaVatType == null)
+            {
+                results["Error"] = "TransakcjaVAT type not found in loaded assemblies";
+                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+            }
+
+            // Get properties that are mapped to database columns (exclude navigation properties and computed)
+            var dbMappedProperties = transakcjaVatType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Where(p => !p.PropertyType.IsGenericType ||
+                           p.PropertyType.GetGenericTypeDefinition() != typeof(ICollection<>))
+                .Where(p => p.Name != "EntityState" && p.Name != "EntityKey" && p.Name != "HasPersistentId" && p.Name != "IsInRecycleBin")
+                .Select((p, index) => new { Property = p, Index = index })
+                .ToList();
+
+            // Find critical columns in SDK model
+            var sdkWystepowanie = dbMappedProperties.FirstOrDefault(p => p.Property.Name == "WystepowanieFakturKsef");
+            var sdkIdWInstancji = dbMappedProperties.FirstOrDefault(p => p.Property.Name == "IdWInstancji");
+            var sdkTimeStamp = dbMappedProperties.FirstOrDefault(p => p.Property.Name == "TimeStamp");
+
+            results["SDK_Model_Order"] = new Dictionary<string, object?>
+            {
+                ["WystepowanieFakturKsef_Index"] = sdkWystepowanie?.Index,
+                ["IdWInstancji_Index"] = sdkIdWInstancji?.Index,
+                ["TimeStamp_Index"] = sdkTimeStamp?.Index,
+                ["Note"] = "Index is the property declaration order in the SDK DLL"
+            };
+
+            // Get database column order
+            var connectionString = _sferaService.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                results["Error"] = "Connection string not available";
+                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+            }
+
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            const string query = @"
+                SELECT ORDINAL_POSITION - 1 as ZeroBasedOrdinal, COLUMN_NAME, DATA_TYPE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = 'ModelDanychContainer' AND TABLE_NAME = 'TransakcjeVAT'
+                  AND COLUMN_NAME IN ('WystepowanieFakturKsef', 'IdWInstancji', 'TimeStamp')
+                ORDER BY ORDINAL_POSITION";
+
+            var dbColumns = new Dictionary<string, int>();
+            await using (var cmd = new SqlCommand(query, connection))
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    var ordinal = reader.GetInt32(0);
+                    var columnName = reader.GetString(1);
+                    dbColumns[columnName] = ordinal;
+                }
+            }
+
+            results["Database_Column_Order"] = new Dictionary<string, object?>
+            {
+                ["WystepowanieFakturKsef_Ordinal"] = dbColumns.GetValueOrDefault("WystepowanieFakturKsef", -1),
+                ["IdWInstancji_Ordinal"] = dbColumns.GetValueOrDefault("IdWInstancji", -1),
+                ["TimeStamp_Ordinal"] = dbColumns.GetValueOrDefault("TimeStamp", -1),
+                ["Note"] = "Ordinal is the 0-based column position in the database table"
+            };
+
+            // Analyze mismatch
+            var mismatchAnalysis = new List<string>();
+            var hasMismatch = false;
+
+            // The SDK property order shows: WystepowanieFakturKsef(27), IdWInstancji(28), TimeStamp(29)
+            // If database has: IdWInstancji(27), TimeStamp(28), WystepowanieFakturKsef(32)
+            // Then when EF6 reads ordinal 28 expecting IdWInstancji, it gets TimeStamp instead!
+
+            if (dbColumns.TryGetValue("WystepowanieFakturKsef", out var dbWyst) &&
+                dbColumns.TryGetValue("IdWInstancji", out var dbIdW) &&
+                dbColumns.TryGetValue("TimeStamp", out var dbTs))
+            {
+                // Check if WystepowanieFakturKsef comes BEFORE IdWInstancji and TimeStamp in database
+                if (dbWyst > dbIdW || dbWyst > dbTs)
+                {
+                    hasMismatch = true;
+                    mismatchAnalysis.Add($"CRITICAL MISMATCH: Database has WystepowanieFakturKsef at ordinal {dbWyst}, " +
+                        $"but SDK expects it BEFORE IdWInstancji({dbIdW}) and TimeStamp({dbTs})");
+                    mismatchAnalysis.Add($"When EF6 reads ordinal {dbIdW + 1} expecting IdWInstancji, it gets TimeStamp (Byte[]) instead!");
+                    mismatchAnalysis.Add("This causes: 'The IdWInstancji property on TransakcjaVAT could not be set to a Byte[] value'");
+                }
+
+                // Check if IdWInstancji comes before TimeStamp
+                if (dbIdW > dbTs)
+                {
+                    hasMismatch = true;
+                    mismatchAnalysis.Add($"Database has IdWInstancji({dbIdW}) AFTER TimeStamp({dbTs}) - possible ordinal confusion");
+                }
+            }
+
+            if (!hasMismatch)
+            {
+                mismatchAnalysis.Add("No obvious column order mismatch detected for critical columns");
+            }
+
+            results["Mismatch_Analysis"] = mismatchAnalysis;
+            results["Has_Critical_Mismatch"] = hasMismatch;
+
+            // Provide SQL fix suggestion
+            if (hasMismatch)
+            {
+                results["SOLUTION"] = new Dictionary<string, object?>
+                {
+                    ["Description"] = "The WystepowanieFakturKsef column was added at the end of the table during database migration, " +
+                        "but the SDK expects it in a different position. SQL Server does not support column reordering directly.",
+                    ["Option1"] = "Contact InsERT support about database schema compatibility with SDK v59",
+                    ["Option2"] = "Recreate the TransakcjeVAT table with correct column order (RISKY - requires data migration)",
+                    ["Option3_SQL_Workaround"] = @"
+-- EXPERIMENTAL: Create a view with reordered columns that EF6 could use
+-- This might work if SDK uses views instead of direct table access
+-- DO NOT RUN WITHOUT BACKUP AND TESTING!
+
+/*
+CREATE VIEW [ModelDanychContainer].[TransakcjeVAT_FixedOrder] AS
+SELECT
+    [Id], [PanstwoKonsumpcji_Id], [Nazwa], [Dotyczy], [OstrzezenieBrakNIP],
+    [OstrzezenieBrakNIPUE], [MiesiacNaliczenia], [TworzZapisPowiazany], [Symbol],
+    [PowiazanyTypNIP], [CzyZmodyfikowano], [RodzajZakupu], [RodzajOdliczeniaZakupu],
+    [Aktywna], [CelZakupu], [PokazOknoZapisuPodczasAktualizacji],
+    [DataWystawieniaZapisuSkojarzonego], [DataSprzedazyOtrzymaniaZapisuSkojarzonego],
+    [DataZakonczeniaDostawyZapisuSkojarzonego], [RodzajDatyMiesiacaNaliczenia],
+    [GrupyTowarowIUslugJPK], [ProceduryJPK], [TypDokumentuJPK], [DotyczyEwidencjiVATOSS],
+    [DomyslnieWidocznePolskieStawkiVAT], [StatusKsiegowyZapisuSkojarzonego],
+    [OstrzezenieBrakSME],
+    -- Reordered: WystepowanieFakturKsef moved BEFORE IdWInstancji and TimeStamp
+    [WystepowanieFakturKsef],
+    [IdWInstancji],
+    [TimeStamp],
+    [TransakcjaPowiazana_Id], [RejestrTransakcjiPowiazanej_Id], [Instancja_Id]
+FROM [ModelDanychContainer].[TransakcjeVAT]
+*/
+"
+                };
+            }
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error analyzing TransakcjaVAT column mismatch");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error analyzing column mismatch",
+                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+        }
+    }
+
+    /// <summary>
     /// Get comprehensive SDK structure - all assemblies, types, managers, and schemas
     /// This is the main diagnostic endpoint for understanding Sfera integration capabilities
     /// </summary>
