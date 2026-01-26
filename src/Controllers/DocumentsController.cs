@@ -1085,6 +1085,38 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
+                    // NEW: Try calling Bilansuj() to balance the document before save
+                    // This might be required for the document to be valid for saving
+                    try
+                    {
+                        _logger.LogInformation("[FS-v2] Calling Bilansuj() to balance the document...");
+                        faktura.Bilansuj();
+                        _logger.LogInformation("[FS-v2] Bilansuj() completed successfully");
+
+                        // Check for balance-related properties after Bilansuj()
+                        try
+                        {
+                            var fakturaType = ((object)faktura).GetType();
+                            var balanceProps = fakturaType.GetProperties()
+                                .Where(p => p.Name.Contains("Bilans") || p.Name.Contains("Balance") || p.Name.Contains("Zbilans") || p.Name.Contains("Saldo"))
+                                .ToList();
+                            foreach (var prop in balanceProps)
+                            {
+                                try
+                                {
+                                    var val = prop.GetValue(faktura);
+                                    _logger.LogInformation("[FS-v2] After Bilansuj - {PropName} = {Value}", (object)prop.Name, (object)(val?.ToString() ?? "(null)"));
+                                }
+                                catch { }
+                            }
+                        }
+                        catch { }
+                    }
+                    catch (Exception bilansujEx)
+                    {
+                        _logger.LogWarning("[FS-v2] Bilansuj() failed: {Msg}", bilansujEx.Message);
+                    }
+
                     // List all available methods on faktura that might help with validation/errors
                     try
                     {
