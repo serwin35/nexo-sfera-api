@@ -239,8 +239,8 @@ public class WarehouseDocumentsController : ControllerBase
 
                 using (var wz = wydania.UtworzWydanieZewnetrzne())
                 {
-                    // Set contractor
-                    SetContractor(wz.Dane, request.ContractorId, request.ContractorNIP);
+                    // SDK Pattern: Set contractor (Odbiorca) using PodmiotyDokumentu
+                    SetWZContractor(wz, request.ContractorSymbol, request.ContractorNIP, request.ContractorId);
 
                     // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
                     var magazynyManager = _sferaService.GetManager("Magazyny");
@@ -295,8 +295,12 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                     }
 
-                    // Add items using product ID (all validated to exist)
+                    // Add items using SDK pattern (symbol first, then fallback)
                     AddWarehouseDocumentItemsById(wz, request.Items);
+
+                    // SDK Pattern: Przelicz() before Zapisz()
+                    wz.Przelicz();
+                    _logger.LogInformation("WZ recalculated before save");
 
                     if ((bool)wz.Zapisz())
                     {
@@ -484,8 +488,8 @@ public class WarehouseDocumentsController : ControllerBase
                         _logger.LogDebug("Could not set PosiadaAspektFinansowy on Dokument: {Error}", ex.Message);
                     }
 
-                    // Set contractor (supplier)
-                    SetContractor(pz.Dane, request.ContractorId, request.ContractorNIP);
+                    // SDK Pattern: Set contractor (Dostawca) using PodmiotyDokumentu
+                    SetPZContractor(pz, request.ContractorSymbol, request.ContractorNIP, request.ContractorId);
 
                     // CRITICAL: Set warehouse on Dokument (not Dane!) - required for document numbering
                     var magazynyManager = _sferaService.GetManager("Magazyny");
@@ -586,8 +590,12 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                     }
 
-                    // Add items using product ID (all validated to exist)
+                    // Add items using SDK pattern (symbol first, then fallback)
                     AddWarehouseDocumentItemsById(pz, request.Items);
+
+                    // SDK Pattern: Przelicz() before Zapisz()
+                    pz.Przelicz();
+                    _logger.LogInformation("PZ recalculated before save");
 
                     if ((bool)pz.Zapisz())
                     {
@@ -1390,6 +1398,184 @@ public class WarehouseDocumentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// SDK Pattern: Set WZ contractor (Odbiorca) using PodmiotyDokumentu.UstawOdbiorceWedlugSymbolu/NIP
+    /// </summary>
+    private void SetWZContractor(dynamic wz, string? contractorSymbol, string? contractorNIP, int? contractorId)
+    {
+        bool success = false;
+
+        // Pattern 1: UstawOdbiorceWedlugSymbolu (SDK preferred)
+        if (!string.IsNullOrEmpty(contractorSymbol))
+        {
+            try
+            {
+                wz.PodmiotyDokumentu.UstawOdbiorceWedlugSymbolu(contractorSymbol);
+                _logger.LogInformation("[WZ] Set contractor via PodmiotyDokumentu.UstawOdbiorceWedlugSymbolu({Symbol})", contractorSymbol);
+                success = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("[WZ] UstawOdbiorceWedlugSymbolu failed: {Msg}", ex.Message);
+            }
+        }
+
+        // Pattern 2: UstawOdbiorceWedlugNIP
+        if (!success && !string.IsNullOrEmpty(contractorNIP))
+        {
+            try
+            {
+                wz.PodmiotyDokumentu.UstawOdbiorceWedlugNIP(contractorNIP);
+                _logger.LogInformation("[WZ] Set contractor via PodmiotyDokumentu.UstawOdbiorceWedlugNIP({NIP})", contractorNIP);
+                success = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("[WZ] UstawOdbiorceWedlugNIP failed: {Msg}", ex.Message);
+            }
+        }
+
+        // Pattern 3: Lookup by ID, get symbol, then use UstawOdbiorceWedlugSymbolu
+        if (!success && contractorId.HasValue)
+        {
+            var podmiotyManager = _sferaService.GetManager("Podmioty");
+            if (podmiotyManager != null)
+            {
+                foreach (var p in podmiotyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(p) == contractorId.Value)
+                    {
+                        string? symbol = DynamicPropertyHelper.GetString(p, "Symbol")
+                                      ?? DynamicPropertyHelper.GetString(p, "Sygnatura.PelnaSygnatura");
+                        if (!string.IsNullOrEmpty(symbol))
+                        {
+                            try
+                            {
+                                wz.PodmiotyDokumentu.UstawOdbiorceWedlugSymbolu(symbol);
+                                _logger.LogInformation("[WZ] Set contractor via lookup+UstawOdbiorceWedlugSymbolu({Symbol})", symbol);
+                                success = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogDebug("[WZ] UstawOdbiorceWedlugSymbolu (from ID) failed: {Msg}", ex.Message);
+                            }
+                        }
+
+                        // Fallback to direct Dane.Podmiot assignment
+                        if (!success)
+                        {
+                            try
+                            {
+                                wz.Dane.Podmiot = p;
+                                _logger.LogInformation("[WZ] Set contractor via direct Dane.Podmiot (fallback)");
+                                success = true;
+                            }
+                            catch (Exception ex2)
+                            {
+                                _logger.LogWarning("[WZ] Direct Dane.Podmiot assignment also failed: {Msg}", ex2.Message);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!success && (contractorId.HasValue || !string.IsNullOrEmpty(contractorNIP) || !string.IsNullOrEmpty(contractorSymbol)))
+        {
+            _logger.LogWarning("[WZ] Failed to set contractor - all patterns failed");
+        }
+    }
+
+    /// <summary>
+    /// SDK Pattern: Set PZ contractor (Dostawca) using PodmiotyDokumentu.UstawDostawceWedlugSymbolu/NIP
+    /// </summary>
+    private void SetPZContractor(dynamic pz, string? contractorSymbol, string? contractorNIP, int? contractorId)
+    {
+        bool success = false;
+
+        // Pattern 1: UstawDostawceWedlugSymbolu (SDK preferred)
+        if (!string.IsNullOrEmpty(contractorSymbol))
+        {
+            try
+            {
+                pz.PodmiotyDokumentu.UstawDostawceWedlugSymbolu(contractorSymbol);
+                _logger.LogInformation("[PZ] Set contractor via PodmiotyDokumentu.UstawDostawceWedlugSymbolu({Symbol})", contractorSymbol);
+                success = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("[PZ] UstawDostawceWedlugSymbolu failed: {Msg}", ex.Message);
+            }
+        }
+
+        // Pattern 2: UstawDostawceWedlugNIP
+        if (!success && !string.IsNullOrEmpty(contractorNIP))
+        {
+            try
+            {
+                pz.PodmiotyDokumentu.UstawDostawceWedlugNIP(contractorNIP);
+                _logger.LogInformation("[PZ] Set contractor via PodmiotyDokumentu.UstawDostawceWedlugNIP({NIP})", contractorNIP);
+                success = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug("[PZ] UstawDostawceWedlugNIP failed: {Msg}", ex.Message);
+            }
+        }
+
+        // Pattern 3: Lookup by ID, get symbol, then use UstawDostawceWedlugSymbolu
+        if (!success && contractorId.HasValue)
+        {
+            var podmiotyManager = _sferaService.GetManager("Podmioty");
+            if (podmiotyManager != null)
+            {
+                foreach (var p in podmiotyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(p) == contractorId.Value)
+                    {
+                        string? symbol = DynamicPropertyHelper.GetString(p, "Symbol")
+                                      ?? DynamicPropertyHelper.GetString(p, "Sygnatura.PelnaSygnatura");
+                        if (!string.IsNullOrEmpty(symbol))
+                        {
+                            try
+                            {
+                                pz.PodmiotyDokumentu.UstawDostawceWedlugSymbolu(symbol);
+                                _logger.LogInformation("[PZ] Set contractor via lookup+UstawDostawceWedlugSymbolu({Symbol})", symbol);
+                                success = true;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogDebug("[PZ] UstawDostawceWedlugSymbolu (from ID) failed: {Msg}", ex.Message);
+                            }
+                        }
+
+                        // Fallback to direct Dane.Podmiot assignment
+                        if (!success)
+                        {
+                            try
+                            {
+                                pz.Dane.Podmiot = p;
+                                _logger.LogInformation("[PZ] Set contractor via direct Dane.Podmiot (fallback)");
+                                success = true;
+                            }
+                            catch (Exception ex2)
+                            {
+                                _logger.LogWarning("[PZ] Direct Dane.Podmiot assignment also failed: {Msg}", ex2.Message);
+                            }
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!success && (contractorId.HasValue || !string.IsNullOrEmpty(contractorNIP) || !string.IsNullOrEmpty(contractorSymbol)))
+        {
+            _logger.LogWarning("[PZ] Failed to set contractor - all patterns failed");
+        }
+    }
+
     private void AddWarehouseDocumentItems(dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
     {
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
@@ -1454,8 +1640,14 @@ public class WarehouseDocumentsController : ControllerBase
         return missingProducts;
     }
 
-    private void AddWarehouseDocumentItemsById(dynamic dokument, List<CreateWarehouseDocumentItemRequest> items)
+    private void AddWarehouseDocumentItemsById(dynamic dokument, List<CreateWarehouseDocumentItemRequest>? items)
     {
+        if (items == null || !items.Any())
+        {
+            _logger.LogWarning("[WH-SDK] No items to add");
+            return;
+        }
+
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
         if (asortymentyManager == null)
         {
@@ -1464,132 +1656,171 @@ public class WarehouseDocumentsController : ControllerBase
         }
 
         int addedCount = 0;
+        int skippedCount = 0;
 
         foreach (var item in items)
         {
-            var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+            string searchKey = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
+            _logger.LogInformation("[WH-SDK] Adding item: Symbol={Symbol}, ProductId={Id}, Qty={Qty}",
+                (object)(item.ProductSymbol ?? "(null)"), (object)(item.ProductId?.ToString() ?? "(null)"), item.Quantity);
 
-            // Products should already be validated by ValidateProductsExist, but handle just in case
-            if (asortyment == null)
+            dynamic? pozycja = null;
+
+            // Pattern 0 (SDK Pattern): Dodaj(symbol) - simplest SDK pattern from examples
+            if (!string.IsNullOrEmpty(item.ProductSymbol))
             {
-                string searchInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? item.ProductEan ?? "unknown";
-                _logger.LogError("Product NOT FOUND during add: {Search} - this should have been caught by validation!", (object)searchInfo);
-                throw new InvalidOperationException($"Product not found: {searchInfo}. Validation should have caught this.");
+                try
+                {
+                    pozycja = dokument.Pozycje.Dodaj(item.ProductSymbol);
+                    if (pozycja != null)
+                    {
+                        pozycja.Ilosc = item.Quantity;
+                        _logger.LogDebug("[WH-SDK] Dodaj(symbol) + Ilosc succeeded for {Symbol}", (object)item.ProductSymbol);
+                    }
+                }
+                catch (Exception ex0)
+                {
+                    _logger.LogDebug("[WH-SDK] Dodaj(symbol) failed: {Msg}", ex0.Message);
+                }
             }
 
+            // Pattern 1: Lookup asortyment and use Dodaj(towarId)
+            if (pozycja == null)
             {
+                var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+
+                if (asortyment == null)
+                {
+                    _logger.LogError("[WH-SDK] Product NOT FOUND: {Search} - this should have been caught by validation!", (object)searchKey);
+                    skippedCount++;
+                    continue;
+                }
+
                 int towarId = DynamicPropertyHelper.GetId(asortyment);
                 string towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
-                // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
-                _logger.LogInformation("Adding position: TowarId={TowarId}, Symbol={Symbol}, Qty={Qty}", (object)towarId, (object)towarSymbol, (object)item.Quantity);
-                var pozycja = dokument.Pozycje.Dodaj(towarId);
 
-                if (pozycja != null)
+                _logger.LogDebug("[WH-SDK] Found product: Id={Id}, Symbol={Symbol}", towarId, (object)towarSymbol);
+
+                try
                 {
-                    pozycja.Ilosc = item.Quantity;
-
-                    // Try to set price - warehouse documents use complex Cena type
-                    // NOTE: Internal documents (PW/RW) may ignore manual pricing and use inventory valuation instead
-                    if (item.PriceNet.HasValue)
+                    pozycja = dokument.Pozycje.Dodaj(towarId);
+                    if (pozycja != null)
                     {
-                        // Log available price properties for debugging
-                        var pozType = ((object)pozycja).GetType();
-                        var priceProps = pozType.GetProperties()
-                            .Where(p => p.Name.Contains("Cena") || p.Name.Contains("Wartosc") || p.Name.Contains("Price"))
-                            .Select(p => $"{p.Name}({p.PropertyType.Name})")
-                            .ToList();
-                        _logger.LogInformation("Position price properties: {Props}", string.Join(", ", priceProps));
+                        pozycja.Ilosc = item.Quantity;
+                        _logger.LogDebug("[WH-SDK] Dodaj(towarId) + Ilosc succeeded for {Symbol}", (object)towarSymbol);
+                    }
+                }
+                catch (Exception ex1)
+                {
+                    _logger.LogDebug("[WH-SDK] Dodaj(towarId) failed: {Msg}", ex1.Message);
+                }
+            }
 
-                        // Try multiple approaches to set price
-                        bool priceSet = false;
+            if (pozycja == null)
+            {
+                _logger.LogWarning("[WH-SDK] All Dodaj patterns failed for: {SearchKey}", searchKey);
+                skippedCount++;
+                continue;
+            }
 
-                        // 1. Try Cena.NettoPrzedRabatem (Net before discount)
+            // Position added successfully - now set additional properties (price)
+            // NOTE: Ilosc is already set in the Dodaj patterns above
+
+            // Try to set price - warehouse documents use complex Cena type
+            // NOTE: Internal documents (PW/RW) may ignore manual pricing and use inventory valuation instead
+            if (item.PriceNet.HasValue)
+            {
+                // Log available price properties for debugging
+                var pozType = ((object)pozycja).GetType();
+                var priceProps = pozType.GetProperties()
+                    .Where(p => p.Name.Contains("Cena") || p.Name.Contains("Wartosc") || p.Name.Contains("Price"))
+                    .Select(p => $"{p.Name}({p.PropertyType.Name})")
+                    .ToList();
+                _logger.LogDebug("[WH-SDK] Position price properties: {Props}", string.Join(", ", priceProps));
+
+                // Try multiple approaches to set price
+                bool priceSet = false;
+
+                // 1. Try Cena.NettoPrzedRabatem (Net before discount)
+                try
+                {
+                    var cenaObj = pozycja.Cena;
+                    if (cenaObj != null)
+                    {
                         try
                         {
-                            var cenaObj = pozycja.Cena;
-                            if (cenaObj != null)
-                            {
-                                try
-                                {
-                                    cenaObj.NettoPrzedRabatem = item.PriceNet.Value;
-                                    priceSet = true;
-                                    _logger.LogInformation("Direct assignment Cena.NettoPrzedRabatem={Price}: Success", item.PriceNet.Value);
-                                }
-                                catch (Exception ex)
-                                {
-                                    _logger.LogInformation("Direct assignment Cena.NettoPrzedRabatem: Failed - {Error}", ex.Message);
-                                }
-
-                                if (!priceSet)
-                                {
-                                    try
-                                    {
-                                        cenaObj.NettoPoRabacie = item.PriceNet.Value;
-                                        priceSet = true;
-                                        _logger.LogInformation("Direct assignment Cena.NettoPoRabacie: Success");
-                                    }
-                                    catch (Exception ex)
-                                    {
-                                        _logger.LogInformation("Direct assignment Cena.NettoPoRabacie: Failed - {Error}", ex.Message);
-                                    }
-                                }
-                            }
+                            cenaObj.NettoPrzedRabatem = item.PriceNet.Value;
+                            priceSet = true;
+                            _logger.LogDebug("[WH-SDK] Set Cena.NettoPrzedRabatem={Price}", item.PriceNet.Value);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogInformation("Could not access Cena object: {Error}", ex.Message);
+                            _logger.LogDebug("[WH-SDK] Cena.NettoPrzedRabatem failed: {Error}", ex.Message);
                         }
 
-                        // 2. Try CenaEwidencyjna (record/accounting price)
                         if (!priceSet)
                         {
                             try
                             {
-                                pozycja.CenaEwidencyjna = item.PriceNet.Value;
+                                cenaObj.NettoPoRabacie = item.PriceNet.Value;
                                 priceSet = true;
-                                _logger.LogInformation("Direct assignment CenaEwidencyjna={Price}: Success", item.PriceNet.Value);
+                                _logger.LogDebug("[WH-SDK] Set Cena.NettoPoRabacie={Price}", item.PriceNet.Value);
                             }
                             catch (Exception ex)
                             {
-                                _logger.LogInformation("Direct assignment CenaEwidencyjna: Failed - {Error}", ex.Message);
+                                _logger.LogDebug("[WH-SDK] Cena.NettoPoRabacie failed: {Error}", ex.Message);
                             }
-                        }
-
-                        // 3. Try CenaZCennika (price from price list)
-                        if (!priceSet)
-                        {
-                            try
-                            {
-                                pozycja.CenaZCennika = item.PriceNet.Value;
-                                priceSet = true;
-                                _logger.LogInformation("Direct assignment CenaZCennika={Price}: Success", item.PriceNet.Value);
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogInformation("Direct assignment CenaZCennika: Failed - {Error}", ex.Message);
-                            }
-                        }
-
-                        // If no price property worked, it's likely an internal document using inventory valuation
-                        if (!priceSet)
-                        {
-                            _logger.LogWarning("Could not set price on position - document may use inventory valuation");
                         }
                     }
-                    else
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("[WH-SDK] Could not access Cena object: {Error}", ex.Message);
+                }
+
+                // 2. Try CenaEwidencyjna (record/accounting price)
+                if (!priceSet)
+                {
+                    try
                     {
-                        // Log when item has no price - this might cause validation errors on RW documents
-                        string symbolInfo = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
-                        _logger.LogWarning("Position {Symbol} has no price (PriceNet is null) - may cause validation error", (object)symbolInfo);
+                        pozycja.CenaEwidencyjna = item.PriceNet.Value;
+                        priceSet = true;
+                        _logger.LogDebug("[WH-SDK] Set CenaEwidencyjna={Price}", item.PriceNet.Value);
                     }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug("[WH-SDK] CenaEwidencyjna failed: {Error}", ex.Message);
+                    }
+                }
 
-                    addedCount++;
+                // 3. Try CenaZCennika (price from price list)
+                if (!priceSet)
+                {
+                    try
+                    {
+                        pozycja.CenaZCennika = item.PriceNet.Value;
+                        priceSet = true;
+                        _logger.LogDebug("[WH-SDK] Set CenaZCennika={Price}", item.PriceNet.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug("[WH-SDK] CenaZCennika failed: {Error}", ex.Message);
+                    }
+                }
+
+                // If no price property worked, it's likely an internal document using inventory valuation
+                if (!priceSet)
+                {
+                    _logger.LogDebug("[WH-SDK] Could not set price on position - document may use inventory valuation");
                 }
             }
+
+            addedCount++;
+            _logger.LogInformation("[WH-SDK] Added item successfully: {SearchKey}, Qty={Qty}", (object)searchKey, item.Quantity);
         }
 
-        _logger.LogInformation("AddWarehouseDocumentItemsById completed: {Added} added, {Total} total requested",
-            (object)addedCount, (object)(items?.Count ?? 0));
+        _logger.LogInformation("[WH-SDK] AddWarehouseDocumentItemsById completed: {Added} added, {Skipped} skipped out of {Total} items",
+            addedCount, skippedCount, items.Count);
     }
 
     private static dynamic? FindAsortyment(dynamic asortymentyManager, int? productId, string? productSymbol, string? productEan)
