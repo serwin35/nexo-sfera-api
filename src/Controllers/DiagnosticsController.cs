@@ -886,6 +886,147 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Examine the SDK's EF6 model metadata for TransakcjaVAT entity.
+    /// This shows what columns/properties EF6 expects and can help diagnose ordinal mismatches.
+    /// Uses reflection to examine the compiled EF6 model inside the SDK DLLs.
+    /// </summary>
+    [HttpGet("examine-ef6-model")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<Dictionary<string, object?>>> ExamineEf6Model()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            // Find TransakcjaVAT type in loaded assemblies
+            var transakcjaVatType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a =>
+                {
+                    try { return a.GetTypes(); }
+                    catch { return Array.Empty<Type>(); }
+                })
+                .FirstOrDefault(t => t.Name == "TransakcjaVAT" && t.Namespace?.Contains("ModelDanych") == true);
+
+            if (transakcjaVatType == null)
+            {
+                results["Error"] = "TransakcjaVAT type not found in loaded assemblies";
+
+                // List assemblies that might contain it
+                var modelAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                    .Where(a => a.GetName().Name?.Contains("ModelDanych") == true)
+                    .Select(a => a.FullName)
+                    .ToList();
+                results["ModelDanychAssemblies"] = modelAssemblies;
+
+                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+            }
+
+            results["TypeFound"] = transakcjaVatType.FullName;
+            results["Assembly"] = transakcjaVatType.Assembly.FullName;
+
+            // Get all properties with their types
+            var properties = transakcjaVatType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                .Select((p, index) => new Dictionary<string, object?>
+                {
+                    ["Index"] = index,
+                    ["Name"] = p.Name,
+                    ["PropertyType"] = p.PropertyType.Name,
+                    ["FullType"] = p.PropertyType.FullName,
+                    ["CanRead"] = p.CanRead,
+                    ["CanWrite"] = p.CanWrite
+                })
+                .ToList();
+
+            results["Properties"] = properties;
+            results["PropertyCount"] = properties.Count;
+
+            // Find IdWInstancji and TimeStamp properties
+            var idWInstancji = properties.FirstOrDefault(p => p["Name"]?.ToString() == "IdWInstancji");
+            var timeStamp = properties.FirstOrDefault(p => p["Name"]?.ToString() == "TimeStamp");
+            var wystepowanie = properties.FirstOrDefault(p => p["Name"]?.ToString() == "WystepowanieFakturKsef");
+
+            results["IdWInstancji_Property"] = idWInstancji;
+            results["TimeStamp_Property"] = timeStamp;
+            results["WystepowanieFakturKsef_Property"] = wystepowanie;
+
+            // Check for EF6 metadata attributes
+            var customAttributes = transakcjaVatType.CustomAttributes
+                .Select(a => new Dictionary<string, object?>
+                {
+                    ["AttributeType"] = a.AttributeType.Name,
+                    ["FullType"] = a.AttributeType.FullName
+                })
+                .ToList();
+
+            results["CustomAttributes"] = customAttributes;
+
+            // Try to get EF6's ObjectContext or DbContext if available
+            try
+            {
+                var ef6CoreAssembly = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => a.GetName().Name == "InsERT.Mox.EntityFramework.Core");
+
+                if (ef6CoreAssembly != null)
+                {
+                    results["EF6CoreAssembly"] = ef6CoreAssembly.FullName;
+
+                    // List types that might be DbContext or ObjectContext
+                    var contextTypes = ef6CoreAssembly.GetTypes()
+                        .Where(t => t.Name.Contains("Context") || t.Name.Contains("Model"))
+                        .Select(t => t.FullName)
+                        .Take(20)
+                        .ToList();
+                    results["ContextTypes"] = contextTypes;
+                }
+            }
+            catch (Exception ex)
+            {
+                results["EF6CoreError"] = ex.Message;
+            }
+
+            // Check if there's a ModelDanychContainer type (EF6 ObjectContext)
+            var containerType = AppDomain.CurrentDomain.GetAssemblies()
+                .SelectMany(a =>
+                {
+                    try { return a.GetTypes(); }
+                    catch { return Array.Empty<Type>(); }
+                })
+                .FirstOrDefault(t => t.Name == "ModelDanychContainer");
+
+            if (containerType != null)
+            {
+                results["ModelDanychContainer"] = containerType.FullName;
+                results["ContainerAssembly"] = containerType.Assembly.GetName().Name;
+
+                // Get DbSet/ObjectSet properties to see entity sets
+                var entitySets = containerType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(p => p.PropertyType.IsGenericType &&
+                               (p.PropertyType.Name.Contains("ObjectSet") ||
+                                p.PropertyType.Name.Contains("DbSet")))
+                    .Select(p => new Dictionary<string, object?>
+                    {
+                        ["Name"] = p.Name,
+                        ["PropertyType"] = p.PropertyType.Name,
+                        ["EntityType"] = p.PropertyType.GenericTypeArguments.FirstOrDefault()?.Name
+                    })
+                    .Take(30)
+                    .ToList();
+
+                results["EntitySets"] = entitySets;
+            }
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error examining EF6 model");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error examining EF6 model",
+                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+        }
+    }
+
+    /// <summary>
     /// Get comprehensive SDK structure - all assemblies, types, managers, and schemas
     /// This is the main diagnostic endpoint for understanding Sfera integration capabilities
     /// </summary>
