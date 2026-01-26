@@ -1118,67 +1118,59 @@ public class DocumentsController : ControllerBase
                             _logger.LogDebug("[FS-v2] Bilansuj() no args failed: {Msg}", ex.InnerException?.Message ?? ex.Message);
                         }
 
-                        // Try with a single PozycjaDokumentu argument (balance specific position)
+                        // Bilansuj takes PlatnoscDokumentu - try to get payments and call it
                         if (!bilansujCalled)
                         {
                             try
                             {
-                                var bilansujMethods2 = fakturaType.GetMethods().Where(m => m.Name == "Bilansuj").ToList();
-                                foreach (var method in bilansujMethods2)
-                                {
-                                    var parameters = method.GetParameters();
-                                    _logger.LogDebug("[FS-v2] Trying Bilansuj overload with {Count} params: {Params}",
-                                        parameters.Length,
-                                        string.Join(", ", parameters.Select(p => p.ParameterType.FullName)));
+                                // First, find the payments collection on dane
+                                var daneType = ((object)dane).GetType();
+                                var platnosciProp = daneType.GetProperty("Platnosci") ?? daneType.GetProperty("PlatnosciDokumentu");
 
-                                    // If it takes a single PozycjaDokumentu, try with the first position
-                                    if (parameters.Length == 1 && parameters[0].ParameterType.Name.Contains("Pozycja"))
+                                if (platnosciProp != null)
+                                {
+                                    var platnosci = platnosciProp.GetValue(dane);
+                                    _logger.LogInformation("[FS-v2] Found Platnosci collection, type: {Type}", (object)(platnosci?.GetType().FullName ?? "(null)"));
+
+                                    if (platnosci != null)
                                     {
-                                        try
+                                        int platnoscCount = 0;
+                                        foreach (var platnosc in (System.Collections.IEnumerable)platnosci)
                                         {
-                                            var pozycje = dane.Pozycje;
-                                            if (pozycje != null)
+                                            platnoscCount++;
+                                            _logger.LogInformation("[FS-v2] Calling Bilansuj(platnosc) for payment {Num}...", platnoscCount);
+                                            try
                                             {
-                                                foreach (var poz in pozycje)
+                                                var bilansujMethod = fakturaType.GetMethods()
+                                                    .FirstOrDefault(m => m.Name == "Bilansuj" && m.GetParameters().Length == 1);
+                                                if (bilansujMethod != null)
                                                 {
-                                                    _logger.LogInformation("[FS-v2] Calling Bilansuj(pozycja) for each position...");
-                                                    method.Invoke(faktura, new object[] { poz });
+                                                    bilansujMethod.Invoke(faktura, new object[] { platnosc });
+                                                    _logger.LogInformation("[FS-v2] Bilansuj(platnosc) succeeded for payment {Num}", platnoscCount);
+                                                    bilansujCalled = true;
                                                 }
-                                                _logger.LogInformation("[FS-v2] Bilansuj(pozycja) completed for all positions");
-                                                bilansujCalled = true;
                                             }
-                                        }
-                                        catch (Exception posEx)
-                                        {
-                                            _logger.LogDebug("[FS-v2] Bilansuj(pozycja) failed: {Msg}", posEx.InnerException?.Message ?? posEx.Message);
-                                        }
-                                        break;
-                                    }
-                                    // If it takes IEnumerable of positions
-                                    else if (parameters.Length == 1 && parameters[0].ParameterType.Name.Contains("IEnumerable"))
-                                    {
-                                        try
-                                        {
-                                            var pozycje = dane.Pozycje;
-                                            if (pozycje != null)
+                                            catch (Exception bpEx)
                                             {
-                                                _logger.LogInformation("[FS-v2] Calling Bilansuj(IEnumerable pozycje)...");
-                                                method.Invoke(faktura, new object[] { pozycje });
-                                                _logger.LogInformation("[FS-v2] Bilansuj(IEnumerable) succeeded");
-                                                bilansujCalled = true;
+                                                _logger.LogDebug("[FS-v2] Bilansuj(platnosc) failed: {Msg}", bpEx.InnerException?.Message ?? bpEx.Message);
                                             }
                                         }
-                                        catch (Exception enumEx)
-                                        {
-                                            _logger.LogDebug("[FS-v2] Bilansuj(IEnumerable) failed: {Msg}", enumEx.InnerException?.Message ?? enumEx.Message);
-                                        }
-                                        break;
+                                        _logger.LogInformation("[FS-v2] Processed {Count} payments with Bilansuj", platnoscCount);
                                     }
+                                }
+                                else
+                                {
+                                    // List all properties on dane that might be payments
+                                    var paymentProps = daneType.GetProperties()
+                                        .Where(p => p.Name.Contains("Platn") || p.Name.Contains("Payment"))
+                                        .Select(p => p.Name)
+                                        .ToList();
+                                    _logger.LogInformation("[FS-v2] No Platnosci property found. Payment-related props: {Props}", string.Join(", ", paymentProps));
                                 }
                             }
                             catch (Exception reflEx)
                             {
-                                _logger.LogDebug("[FS-v2] Bilansuj reflection failed: {Msg}", reflEx.Message);
+                                _logger.LogDebug("[FS-v2] Bilansuj/payments reflection failed: {Msg}", reflEx.Message);
                             }
                         }
 
@@ -1417,6 +1409,26 @@ public class DocumentsController : ControllerBase
                                 })
                                 .ToList();
                             _logger.LogInformation("[FS-v2] Current StatusDokumentu properties: {Props}", string.Join(", ", statusProps.Take(15)));
+
+                            // Check if TworzDokumentyAutomatyczne is causing the problem
+                            var tworzAutoProperty = statusType.GetProperty("TworzDokumentyAutomatyczne");
+                            if (tworzAutoProperty != null)
+                            {
+                                var tworzAuto = tworzAutoProperty.GetValue(currentStatus);
+                                if (tworzAuto != null && (bool)tworzAuto == true)
+                                {
+                                    _logger.LogWarning("[FS-v2] STATUS HAS TworzDokumentyAutomatyczne=True - this may be causing save failure for historical documents!");
+                                    _logger.LogWarning("[FS-v2] The SDK is trying to create automatic WZ documents which may fail for past dates.");
+                                }
+                            }
+
+                            // Check SkutekMagazynowyWydania
+                            var skutekProp = statusType.GetProperty("SkutekMagazynowyWydania");
+                            if (skutekProp != null)
+                            {
+                                var skutek = skutekProp.GetValue(currentStatus);
+                                _logger.LogInformation("[FS-v2] Status SkutekMagazynowyWydania={Skutek}", (object)(skutek?.ToString() ?? "(null)"));
+                            }
                         }
                     }
                     catch (Exception csEx)
@@ -1521,6 +1533,71 @@ public class DocumentsController : ControllerBase
                     catch (Exception evtEx)
                     {
                         _logger.LogDebug("[FS-v2] Could not subscribe to ChangesSavedCompleted: {Msg}", evtEx.Message);
+                    }
+
+                    // NEW: For historical documents, try changing status to avoid automatic document creation
+                    bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
+                    if (isHistoricalDoc)
+                    {
+                        try
+                        {
+                            _logger.LogInformation("[FS-v2] Historical document - checking if we can avoid auto-doc creation...");
+
+                            // Try to get all available statuses for FS documents (TypyDokumentow contains FS = 576 or similar)
+                            var currentStatusId = dane.StatusDokumentuId;
+                            _logger.LogInformation("[FS-v2] Current StatusDokumentuId: {Id}", currentStatusId);
+
+                            // Try StatusDokumentuId = 1 (often "Do realizacji" - To be fulfilled) which may not create auto docs
+                            // or StatusDokumentuId = 0/default
+                            // Common statuses: 1=Do realizacji, 15=Wydany towar, etc.
+
+                            // First, list all StatusDokumentuId values we can try
+                            var statusIdsToTry = new int[] { 1, 14, 13, 12, 11, 10, 5, 4, 3, 2 };
+
+                            foreach (var tryStatusId in statusIdsToTry)
+                            {
+                                if (tryStatusId == currentStatusId) continue;
+
+                                try
+                                {
+                                    _logger.LogDebug("[FS-v2] Trying to set StatusDokumentuId to {Id}...", tryStatusId);
+                                    dane.StatusDokumentuId = tryStatusId;
+
+                                    // Check if the new status has TworzDokumentyAutomatyczne=False
+                                    var newStatus = dane.StatusDokumentu;
+                                    if (newStatus != null)
+                                    {
+                                        var newStatusType = ((object)newStatus).GetType();
+                                        var tworzAutoProp = newStatusType.GetProperty("TworzDokumentyAutomatyczne");
+                                        var tworzAuto = tworzAutoProp?.GetValue(newStatus);
+                                        var statusName = newStatusType.GetProperty("Nazwa")?.GetValue(newStatus)?.ToString();
+
+                                        _logger.LogInformation("[FS-v2] Status {Id} '{Name}' has TworzDokumentyAutomatyczne={Auto}",
+                                            tryStatusId, (object)(statusName ?? "?"), (object)(tworzAuto?.ToString() ?? "?"));
+
+                                        if (tworzAuto != null && (bool)tworzAuto == false)
+                                        {
+                                            _logger.LogInformation("[FS-v2] Found status without auto-doc creation: {Id} '{Name}'", tryStatusId, (object)(statusName ?? "?"));
+                                            break; // Keep this status
+                                        }
+                                    }
+
+                                    // Reset to original if this status also has auto-doc creation
+                                    dane.StatusDokumentuId = currentStatusId;
+                                }
+                                catch (Exception statusEx)
+                                {
+                                    _logger.LogDebug("[FS-v2] Could not try StatusDokumentuId={Id}: {Msg}", tryStatusId, statusEx.Message);
+                                    try { dane.StatusDokumentuId = currentStatusId; } catch { }
+                                }
+                            }
+
+                            _logger.LogInformation("[FS-v2] Final StatusDokumentuId: {Id}", dane.StatusDokumentuId);
+                        }
+                        catch (Exception histEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Historical status change failed: {Msg}", histEx.Message);
+                        }
                     }
 
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
