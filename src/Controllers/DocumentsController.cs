@@ -569,6 +569,22 @@ public class DocumentsController : ControllerBase
                     return (false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
                 }
 
+                // NEW: List all creation methods to find alternatives
+                try
+                {
+                    var managerType = ((object)dokumentySprzedazy).GetType();
+                    var creationMethods = managerType.GetMethods()
+                        .Where(m => m.Name.StartsWith("Utworz") || m.Name.StartsWith("Create") || m.Name.Contains("Faktur"))
+                        .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")
+                        .Distinct()
+                        .ToList();
+                    _logger.LogInformation("[FS-v2] DokumentySprzedazy creation methods: {Methods}", string.Join("; ", creationMethods));
+                }
+                catch (Exception cmEx)
+                {
+                    _logger.LogDebug("[FS-v2] Could not list creation methods: {Msg}", cmEx.Message);
+                }
+
                 using (var faktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
                 {
                     dynamic dane = faktura.Dane;
@@ -1079,6 +1095,16 @@ public class DocumentsController : ControllerBase
                             .Distinct()
                             .ToList();
                         _logger.LogInformation("[FS-v2] faktura error/validation methods: {Methods}", string.Join(", ", errorMethods));
+
+                        // NEW: List ALL public methods on faktura (first 50)
+                        var allMethods = fakturaType.GetMethods()
+                            .Where(m => !m.Name.StartsWith("get_") && !m.Name.StartsWith("set_") && !m.Name.StartsWith("add_") && !m.Name.StartsWith("remove_"))
+                            .Select(m => m.Name)
+                            .Distinct()
+                            .OrderBy(m => m)
+                            .Take(50)
+                            .ToList();
+                        _logger.LogInformation("[FS-v2] ALL faktura methods: {Methods}", string.Join(", ", allMethods));
 
                         // List properties that might contain errors
                         var errorProps = fakturaType.GetProperties()
