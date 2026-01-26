@@ -1058,6 +1058,25 @@ public class DocumentsController : ControllerBase
                             .Select(p => p.Name)
                             .ToList();
                         _logger.LogInformation("[FS-v2] faktura error/status properties: {Props}", string.Join(", ", errorProps));
+
+                        // NEW: List ALL methods containing "Zapis" to find alternative save methods
+                        var allSaveMethods = fakturaType.GetMethods()
+                            .Where(m => m.Name.Contains("Zapis") || m.Name.Contains("Save") || m.Name.Contains("Commit") || m.Name.Contains("Persist"))
+                            .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")
+                            .Distinct()
+                            .ToList();
+                        _logger.LogInformation("[FS-v2] All save-related methods: {Methods}", string.Join("; ", allSaveMethods));
+
+                        // NEW: List methods related to periods/dates (might help with closed period issue)
+                        var periodMethods = fakturaType.GetMethods()
+                            .Where(m => m.Name.Contains("Okres") || m.Name.Contains("Period") || m.Name.Contains("Zamkn") || m.Name.Contains("Close") || m.Name.Contains("Data"))
+                            .Select(m => m.Name)
+                            .Distinct()
+                            .ToList();
+                        if (periodMethods.Any())
+                        {
+                            _logger.LogInformation("[FS-v2] Period/date related methods: {Methods}", string.Join(", ", periodMethods));
+                        }
                     }
                     catch (Exception typeEx)
                     {
@@ -1157,17 +1176,144 @@ public class DocumentsController : ControllerBase
                     }
 
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
-                    var saveResult = faktura.Zapisz();
-                    bool isSaved = false;
+
+                    // Wrap Zapisz in try-catch to capture any exception
+                    object? saveResult = null;
+                    Exception? saveException = null;
                     try
                     {
-                        isSaved = (bool)saveResult;
+                        saveResult = faktura.Zapisz();
                     }
-                    catch
+                    catch (Exception ex)
                     {
-                        isSaved = saveResult != null && saveResult.ToString().ToLower() == "true";
+                        saveException = ex;
+                        _logger.LogError(ex, "[FS-v2] Zapisz() threw exception: {Msg}", ex.Message);
+
+                        // Check for inner exceptions
+                        var inner = ex.InnerException;
+                        while (inner != null)
+                        {
+                            _logger.LogError("[FS-v2] Inner exception: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
+                            inner = inner.InnerException;
+                        }
                     }
-                    _logger.LogInformation("[FS-v2] Zapisz() returned: {Result}, isSaved={IsSaved}", (object)(saveResult?.ToString() ?? "(null)"), isSaved);
+
+                    bool isSaved = false;
+                    if (saveException == null)
+                    {
+                        try
+                        {
+                            isSaved = (bool)saveResult!;
+                        }
+                        catch
+                        {
+                            isSaved = saveResult != null && saveResult.ToString()!.ToLower() == "true";
+                        }
+                        _logger.LogInformation("[FS-v2] Zapisz() returned: {Result}, isSaved={IsSaved}", (object)(saveResult?.ToString() ?? "(null)"), isSaved);
+                    }
+
+                    // NEW: Check InvalidData AFTER save attempt (errors might be populated by Zapisz)
+                    try
+                    {
+                        var invalidDataAfter = faktura.InvalidData;
+                        if (invalidDataAfter != null)
+                        {
+                            int afterCount = 0;
+                            foreach (var item in invalidDataAfter)
+                            {
+                                afterCount++;
+                                // Try to get more details from ITypedDataErrorInfo
+                                try
+                                {
+                                    var itemType = ((object)item).GetType();
+                                    var errorProp = itemType.GetProperty("ErrorMessage") ?? itemType.GetProperty("Message") ?? itemType.GetProperty("Error");
+                                    var propProp = itemType.GetProperty("PropertyName") ?? itemType.GetProperty("Property");
+                                    string errorMsg = errorProp?.GetValue(item)?.ToString() ?? item?.ToString() ?? "(null)";
+                                    string propName = propProp?.GetValue(item)?.ToString() ?? "(unknown)";
+                                    _logger.LogWarning("[FS-v2] InvalidData AFTER save [{Idx}]: Property={Prop}, Error={Error}", afterCount, (object)propName, (object)errorMsg);
+                                }
+                                catch
+                                {
+                                    _logger.LogWarning("[FS-v2] InvalidData AFTER save [{Idx}]: {Item}", afterCount, (object)(item?.ToString() ?? "(null)"));
+                                }
+                            }
+                            if (afterCount > 0)
+                            {
+                                _logger.LogWarning("[FS-v2] InvalidData has {Count} items AFTER Zapisz() - these may explain the failure", afterCount);
+                            }
+                        }
+                    }
+                    catch (Exception idAfterEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read InvalidData after save: {Msg}", idAfterEx.Message);
+                    }
+
+                    // NEW: Check MoznaZapisac AFTER save attempt
+                    try
+                    {
+                        var moznaZapisacAfter = faktura.MoznaZapisac;
+                        _logger.LogInformation("[FS-v2] MoznaZapisac AFTER Zapisz(): {Value}", (object)(moznaZapisacAfter?.ToString() ?? "(null)"));
+                    }
+                    catch { }
+
+                    // If Zapisz() failed, try alternative save methods
+                    if (!isSaved && saveException == null)
+                    {
+                        _logger.LogWarning("[FS-v2] Zapisz() returned false, trying alternative save methods...");
+
+                        // Try ZapiszBezWalidacji if available
+                        try
+                        {
+                            var altResult = faktura.ZapiszBezWalidacji();
+                            _logger.LogInformation("[FS-v2] ZapiszBezWalidacji() returned: {Result}", (object)(altResult?.ToString() ?? "(null)"));
+                            if (altResult != null && (bool)altResult)
+                            {
+                                isSaved = true;
+                            }
+                        }
+                        catch (Exception altEx)
+                        {
+                            _logger.LogDebug("[FS-v2] ZapiszBezWalidacji() not available: {Msg}", altEx.Message);
+                        }
+
+                        // Try Zatwierdz + Zapisz if still not saved
+                        if (!isSaved)
+                        {
+                            try
+                            {
+                                faktura.Zatwierdz();
+                                _logger.LogInformation("[FS-v2] Zatwierdz() called, trying Zapisz() again...");
+                                var retryResult = faktura.Zapisz();
+                                _logger.LogInformation("[FS-v2] Zapisz() after Zatwierdz() returned: {Result}", (object)(retryResult?.ToString() ?? "(null)"));
+                                if (retryResult != null && (bool)retryResult)
+                                {
+                                    isSaved = true;
+                                }
+                            }
+                            catch (Exception zatwEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Zatwierdz() approach failed: {Msg}", zatwEx.Message);
+                            }
+                        }
+
+                        // Try ZapiszZatwierdzone if available
+                        if (!isSaved)
+                        {
+                            try
+                            {
+                                var zzResult = faktura.ZapiszZatwierdzone();
+                                _logger.LogInformation("[FS-v2] ZapiszZatwierdzone() returned: {Result}", (object)(zzResult?.ToString() ?? "(null)"));
+                                if (zzResult != null && (bool)zzResult)
+                                {
+                                    isSaved = true;
+                                }
+                            }
+                            catch (Exception zzEx)
+                            {
+                                _logger.LogDebug("[FS-v2] ZapiszZatwierdzone() not available: {Msg}", zzEx.Message);
+                            }
+                        }
+                    }
 
                     if (isSaved)
                     {
