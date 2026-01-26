@@ -1480,7 +1480,9 @@ public class DiagnosticsController : ControllerBase
                 try
                 {
                     Guid configId = pzConfig.Id;
-                    using (var configEdit = konfiguracje.Znajdz(c => c.Id == configId))
+                    // Cast to avoid CS1977 - lambda cannot be used with dynamic
+                    Func<dynamic, bool> predicate = c => c.Id == configId;
+                    using (var configEdit = konfiguracje.Znajdz(predicate))
                     {
                         stepResults["Step1_FindConfig"] = "SUCCESS";
                         stepResults["ConfigEditType"] = configEdit?.GetType().FullName;
