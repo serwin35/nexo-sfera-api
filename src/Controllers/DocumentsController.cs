@@ -585,6 +585,145 @@ public class DocumentsController : ControllerBase
                     _logger.LogDebug("[FS-v2] Could not list creation methods: {Msg}", cmEx.Message);
                 }
 
+                // NEW: For historical documents, explore Konfiguracje and ParametryTworzeniaDokumentu
+                bool isHistoricalImport = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
+                if (isHistoricalImport)
+                {
+                    _logger.LogInformation("[FS-v2] Historical import detected - exploring alternative creation methods...");
+
+                    try
+                    {
+                        // Try to get Konfiguracje manager
+                        var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                        if (konfiguracje != null)
+                        {
+                            var konfigType = ((object)konfiguracje).GetType();
+                            _logger.LogInformation("[FS-v2] Konfiguracje manager type: {Type}", (object)konfigType.FullName);
+
+                            // List configuration methods
+                            var konfMethods = konfigType.GetMethods()
+                                .Where(m => !m.Name.StartsWith("get_") && !m.Name.StartsWith("set_") && !m.Name.StartsWith("add_") && !m.Name.StartsWith("remove_"))
+                                .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))})")
+                                .Distinct()
+                                .Take(30)
+                                .ToList();
+                            _logger.LogInformation("[FS-v2] Konfiguracje methods: {Methods}", string.Join("; ", konfMethods));
+
+                            // Try to find FS configurations
+                            try
+                            {
+                                var konfigDane = konfiguracje.Dane;
+                                if (konfigDane != null)
+                                {
+                                    var daneType = ((object)konfigDane).GetType();
+                                    var daneProps = daneType.GetProperties().Select(p => p.Name).ToList();
+                                    _logger.LogInformation("[FS-v2] Konfiguracje.Dane properties: {Props}", string.Join(", ", daneProps));
+
+                                    // Try to list FS configurations
+                                    try
+                                    {
+                                        foreach (var konfig in konfigDane.Wszystkie())
+                                        {
+                                            string? symbol = DynamicPropertyHelper.GetString(konfig, "Symbol");
+                                            string? nazwa = DynamicPropertyHelper.GetString(konfig, "Nazwa");
+                                            int? typDok = DynamicPropertyHelper.GetInt(konfig, "TypDokumentu");
+                                            bool? tworzyAuto = DynamicPropertyHelper.GetBool(konfig, "TworzDokumentyAutomatyczne");
+                                            int? statusId = DynamicPropertyHelper.GetInt(konfig, "StatusDokumentuId") ?? DynamicPropertyHelper.GetInt(konfig, "DomyslnyStatusDokumentuId");
+
+                                            // Filter to FS-like configurations (TypDokumentu might be for sales invoices)
+                                            if (symbol != null && (symbol.Contains("FS") || (nazwa != null && nazwa.Contains("Faktura"))))
+                                            {
+                                                _logger.LogInformation("[FS-v2] Config: Symbol={Symbol}, Nazwa={Nazwa}, TypDok={Typ}, StatusId={Status}, TworzyAuto={Auto}",
+                                                    (object)(symbol ?? "?"), (object)(nazwa ?? "?"), (object)(typDok?.ToString() ?? "?"),
+                                                    (object)(statusId?.ToString() ?? "?"), (object)(tworzyAuto?.ToString() ?? "?"));
+                                            }
+                                        }
+                                    }
+                                    catch (Exception allEx)
+                                    {
+                                        _logger.LogDebug("[FS-v2] Could not enumerate configurations: {Msg}", allEx.Message);
+                                    }
+                                }
+                            }
+                            catch (Exception daneEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Could not access Konfiguracje.Dane: {Msg}", daneEx.Message);
+                            }
+                        }
+                    }
+                    catch (Exception konfEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not explore Konfiguracje: {Msg}", konfEx.Message);
+                    }
+
+                    // Explore ParametryTworzeniaDokumentu class
+                    try
+                    {
+                        var managerType = ((object)dokumentySprzedazy).GetType();
+                        var utworzMethod = managerType.GetMethods()
+                            .FirstOrDefault(m => m.Name == "Utworz" && m.GetParameters().Length == 2);
+                        if (utworzMethod != null)
+                        {
+                            var paramTypes = utworzMethod.GetParameters();
+                            _logger.LogInformation("[FS-v2] Utworz(Konfiguracja, ParametryTworzeniaDokumentu) signature: {P1}, {P2}",
+                                (object)paramTypes[0].ParameterType.FullName, (object)paramTypes[1].ParameterType.FullName);
+
+                            // Explore ParametryTworzeniaDokumentu
+                            var parametryType = paramTypes[1].ParameterType;
+                            var parametryProps = parametryType.GetProperties().Select(p => $"{p.Name}: {p.PropertyType.Name}").ToList();
+                            _logger.LogInformation("[FS-v2] ParametryTworzeniaDokumentu properties: {Props}", string.Join("; ", parametryProps));
+
+                            // Check for static factory methods or constructors
+                            var parametryCtors = parametryType.GetConstructors().Select(c => $"ctor({string.Join(", ", c.GetParameters().Select(p => p.ParameterType.Name))})").ToList();
+                            var parametryStaticMethods = parametryType.GetMethods(System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public)
+                                .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")
+                                .ToList();
+                            _logger.LogInformation("[FS-v2] ParametryTworzeniaDokumentu constructors: {Ctors}", string.Join("; ", parametryCtors));
+                            _logger.LogInformation("[FS-v2] ParametryTworzeniaDokumentu static methods: {Methods}", string.Join("; ", parametryStaticMethods));
+                        }
+                    }
+                    catch (Exception paramEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not explore ParametryTworzeniaDokumentu: {Msg}", paramEx.Message);
+                    }
+
+                    // NEW: List available document statuses by exploring the status entity
+                    try
+                    {
+                        // Try to access status collection via a temporary document
+                        using (var tempFaktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
+                        {
+                            var statusEntity = tempFaktura.Dane.StatusDokumentu;
+                            if (statusEntity != null)
+                            {
+                                var statusType = ((object)statusEntity).GetType();
+
+                                // Try to get the EntitySet/ObjectContext to query all statuses
+                                try
+                                {
+                                    var entitySetProp = statusType.GetProperty("EntitySet") ?? statusType.GetProperty("EntitySetName");
+                                    if (entitySetProp != null)
+                                    {
+                                        var entitySetName = entitySetProp.GetValue(statusEntity)?.ToString();
+                                        _logger.LogInformation("[FS-v2] Status EntitySet: {EntitySet}", (object)(entitySetName ?? "?"));
+                                    }
+                                }
+                                catch { }
+
+                                // List status properties to find useful ones
+                                var statusProps = statusType.GetProperties().Select(p => p.Name).Take(20).ToList();
+                                _logger.LogInformation("[FS-v2] StatusDokumentu type properties: {Props}", string.Join(", ", statusProps));
+                            }
+
+                            tempFaktura.Cancel();
+                        }
+                    }
+                    catch (Exception statusEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not explore status entities: {Msg}", statusEx.Message);
+                    }
+                }
+
                 using (var faktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
                 {
                     dynamic dane = faktura.Dane;
@@ -1565,13 +1704,99 @@ public class DocumentsController : ControllerBase
                                     var statusType = ((object)currentStatus).GetType();
                                     _logger.LogInformation("[FS-v2] Current status type: {Type}", (object)statusType.FullName);
 
-                                    // List all statuses that could work for FS (TypyDokumentow = 576)
-                                    // Try to query the ObjectContext for all StatusDokumentu entities
-                                    var objectContextProp = statusType.GetProperty("ObjectContext");
-                                    if (objectContextProp != null)
+                                    // Get the ObjectContext from faktura's DataDomain to query all statuses
+                                    try
                                     {
-                                        var oc = objectContextProp.GetValue(currentStatus);
-                                        _logger.LogDebug("[FS-v2] Status has ObjectContext: {Type}", (object)(oc?.GetType().FullName ?? "(null)"));
+                                        var dataDomain = faktura.DataDomain;
+                                        if (dataDomain != null)
+                                        {
+                                            // Try to find ObjectContext on DataDomain
+                                            var ddType = ((object)dataDomain).GetType();
+                                            var ocProp = ddType.GetProperty("ObjectContext") ?? ddType.GetProperty("Context");
+                                            if (ocProp != null)
+                                            {
+                                                var objectContext = ocProp.GetValue(dataDomain);
+                                                if (objectContext != null)
+                                                {
+                                                    _logger.LogInformation("[FS-v2] Got ObjectContext: {Type}", (object)objectContext.GetType().FullName);
+
+                                                    // Try to query StatusyDokumentow from ObjectContext
+                                                    var ocType = objectContext.GetType();
+                                                    var createObjSetMethod = ocType.GetMethod("CreateObjectSet", new Type[] { });
+                                                    if (createObjSetMethod == null)
+                                                    {
+                                                        // Try generic version
+                                                        createObjSetMethod = ocType.GetMethods()
+                                                            .FirstOrDefault(m => m.Name == "CreateObjectSet" && m.IsGenericMethod);
+                                                    }
+
+                                                    // Alternative: try to get StatusyDokumentow directly from context
+                                                    var statusyProp = ocType.GetProperty("StatusyDokumentow");
+                                                    if (statusyProp != null)
+                                                    {
+                                                        var statusy = statusyProp.GetValue(objectContext);
+                                                        if (statusy != null)
+                                                        {
+                                                            _logger.LogInformation("[FS-v2] Found StatusyDokumentow on ObjectContext");
+                                                            int statusCount = 0;
+                                                            dynamic? simpleStatus = null;
+                                                            foreach (var status in (System.Collections.IEnumerable)statusy)
+                                                            {
+                                                                statusCount++;
+                                                                int? id = DynamicPropertyHelper.GetInt(status, "Id");
+                                                                string? nazwa = DynamicPropertyHelper.GetString(status, "Nazwa");
+                                                                string? mnemonik = DynamicPropertyHelper.GetString(status, "Mnemonik");
+                                                                bool? tworzyAuto = DynamicPropertyHelper.GetBool(status, "TworzDokumentyAutomatyczne");
+                                                                int? typyDok = DynamicPropertyHelper.GetInt(status, "TypyDokumentow");
+
+                                                                _logger.LogInformation("[FS-v2] Status: Id={Id}, Nazwa={Nazwa}, Mnem={Mnem}, TypyDok={Typy}, TworzAuto={Auto}",
+                                                                    (object)(id?.ToString() ?? "?"), (object)(nazwa ?? "?"), (object)(mnemonik ?? "?"),
+                                                                    (object)(typyDok?.ToString() ?? "?"), (object)(tworzyAuto?.ToString() ?? "?"));
+
+                                                                // Look for a status without TworzDokumentyAutomatyczne that's valid for FS
+                                                                // FS has TypyDokumentow bit 576 (need to check if status supports it)
+                                                                if (tworzyAuto != true && typyDok.HasValue && (typyDok.Value & 576) != 0)
+                                                                {
+                                                                    simpleStatus = status;
+                                                                    _logger.LogInformation("[FS-v2] Found candidate status without TworzDokumentyAutomatyczne: Id={Id}, Nazwa={Nazwa}",
+                                                                        (object)(id?.ToString() ?? "?"), (object)(nazwa ?? "?"));
+                                                                }
+                                                            }
+                                                            _logger.LogInformation("[FS-v2] Listed {Count} statuses", statusCount);
+
+                                                            // Try to set the simple status
+                                                            if (simpleStatus != null)
+                                                            {
+                                                                try
+                                                                {
+                                                                    _logger.LogInformation("[FS-v2] Attempting to set dane.StatusDokumentu to candidate status...");
+                                                                    dane.StatusDokumentu = simpleStatus;
+                                                                    _logger.LogInformation("[FS-v2] dane.StatusDokumentu set successfully!");
+
+                                                                    // Verify the change
+                                                                    var newStatusId = dane.StatusDokumentuId;
+                                                                    _logger.LogInformation("[FS-v2] New StatusDokumentuId: {Id}", (object)(newStatusId?.ToString() ?? "(null)"));
+                                                                }
+                                                                catch (Exception setEx)
+                                                                {
+                                                                    _logger.LogWarning("[FS-v2] Could not set StatusDokumentu: {Msg}", setEx.Message);
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        // List available properties on ObjectContext
+                                                        var ocProps = ocType.GetProperties().Where(p => p.Name.Contains("Status")).Select(p => p.Name).ToList();
+                                                        _logger.LogInformation("[FS-v2] ObjectContext status-related properties: {Props}", string.Join(", ", ocProps));
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ddEx)
+                                    {
+                                        _logger.LogDebug("[FS-v2] Could not access DataDomain/ObjectContext: {Msg}", ddEx.Message);
                                     }
                                 }
                             }
