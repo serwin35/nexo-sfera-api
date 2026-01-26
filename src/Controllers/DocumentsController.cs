@@ -1608,7 +1608,7 @@ public class DocumentsController : ControllerBase
                             try
                             {
                                 var wylaczAutoDocsProps = fakturaType.GetProperties()
-                                    .Where(p => p.Name.Contains("Automaty") || p.Name.Contains("Wylacz") || p.Name.Contains("Tworzenie") || p.Name.Contains("TworzDok"))
+                                    .Where(p => p.Name.Contains("Automaty") || p.Name.Contains("Wylacz") || p.Name.Contains("Tworzenie") || p.Name.Contains("TworzDok") || p.Name.Contains("Pomin"))
                                     .Select(p => p.Name)
                                     .ToList();
                                 if (wylaczAutoDocsProps.Any())
@@ -1616,7 +1616,36 @@ public class DocumentsController : ControllerBase
                                     _logger.LogInformation("[FS-v2] Found auto-doc related properties: {Props}", string.Join(", ", wylaczAutoDocsProps));
                                 }
 
-                                // Try WylaczAutomatyczneWydaniaDoWZ or similar
+                                // Try PominAutomatyczny first (discovered in logs) - this should skip automatic document creation
+                                var pominProp = fakturaType.GetProperty("PominAutomatyczny");
+                                if (pominProp != null && pominProp.CanWrite)
+                                {
+                                    _logger.LogInformation("[FS-v2] Setting PominAutomatyczny = true to skip automatic document creation");
+                                    pominProp.SetValue(faktura, true);
+                                    _logger.LogInformation("[FS-v2] PominAutomatyczny set successfully");
+                                }
+                                else
+                                {
+                                    _logger.LogInformation("[FS-v2] PominAutomatyczny property not found or not writable");
+                                }
+
+                                // Also try WylaczKontroleRealizacji (skip realization control)
+                                var kontrolaProp = fakturaType.GetProperty("WylaczKontroleRealizacji");
+                                if (kontrolaProp != null && kontrolaProp.CanWrite)
+                                {
+                                    _logger.LogInformation("[FS-v2] Setting WylaczKontroleRealizacji = true");
+                                    kontrolaProp.SetValue(faktura, true);
+                                }
+
+                                // Try WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa (disable stock reservation blocking)
+                                var rezerwacjeProp = fakturaType.GetProperty("WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa");
+                                if (rezerwacjeProp != null && rezerwacjeProp.CanWrite)
+                                {
+                                    _logger.LogInformation("[FS-v2] Setting WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa = true");
+                                    rezerwacjeProp.SetValue(faktura, true);
+                                }
+
+                                // Try other auto-doc disabling properties as fallback
                                 var wylaczProp = fakturaType.GetProperty("WylaczAutomatyczneWydanie")
                                     ?? fakturaType.GetProperty("WylaczAutomatyczneTworzenieWZ")
                                     ?? fakturaType.GetProperty("WylaczTworzenieDokumentowAutomatycznych")
