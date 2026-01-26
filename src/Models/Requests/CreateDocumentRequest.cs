@@ -78,6 +78,12 @@ public class CreateDocumentItemRequest
 
     [MaxLength(5)]
     public string? VatRate { get; set; }
+
+    /// <summary>
+    /// Warehouse symbol for this item (optional - defaults to document warehouse)
+    /// </summary>
+    [MaxLength(20)]
+    public string? WarehouseSymbol { get; set; }
 }
 
 public class DocumentQueryRequest
