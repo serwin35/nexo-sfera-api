@@ -54,14 +54,16 @@ public static class EF6Initializer
                 log.AppendLine("System.Data.SqlClient provider already registered");
             }
 
-            // Also register Microsoft.Data.SqlClient for compatibility with newer code
-            // But register it AFTER System.Data.SqlClient
+            // CRITICAL FIX: Register System.Data.SqlClient factory ALSO under Microsoft.Data.SqlClient name!
+            // This intercepts any SDK code looking for Microsoft.Data.SqlClient and redirects it to
+            // System.Data.SqlClient, which has correct BIT column -> Boolean/Int type mapping.
+            // Microsoft.Data.SqlClient has a bug where BIT columns return as Byte[] instead of Boolean/Int.
             try
             {
                 System.Data.Common.DbProviderFactories.RegisterFactory(
                     "Microsoft.Data.SqlClient",
-                    Microsoft.Data.SqlClient.SqlClientFactory.Instance);
-                log.AppendLine("Registered Microsoft.Data.SqlClient provider factory (secondary)");
+                    System.Data.SqlClient.SqlClientFactory.Instance);  // Use System.Data.SqlClient factory!
+                log.AppendLine("Registered System.Data.SqlClient factory under Microsoft.Data.SqlClient name (BIT mapping fix)");
             }
             catch (System.ArgumentException)
             {
