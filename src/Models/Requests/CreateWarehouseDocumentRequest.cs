@@ -26,6 +26,12 @@ public class CreateWarehouseDocumentRequest
     public string? ContractorNIP { get; set; }
 
     /// <summary>
+    /// Customer/Supplier Symbol (alternative to ContractorId/NIP) - SDK preferred method
+    /// </summary>
+    [MaxLength(50)]
+    public string? ContractorSymbol { get; set; }
+
+    /// <summary>
     /// Source warehouse symbol (required)
     /// </summary>
     [Required]
