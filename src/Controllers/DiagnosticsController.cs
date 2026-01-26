@@ -232,11 +232,11 @@ public class DiagnosticsController : ControllerBase
                     }
                 }
 
-                // 4. Check for any uniqueidentifier or binary columns that could cause issues
-                const string binaryQuery = @"
+                // 6. Check for any uniqueidentifier or binary columns that could cause issues
+                var binaryQuery = $@"
                     SELECT COLUMN_NAME, DATA_TYPE
                     FROM INFORMATION_SCHEMA.COLUMNS
-                    WHERE TABLE_NAME = 'TransakcjaVAT'
+                    WHERE TABLE_SCHEMA = '{targetSchema}' AND TABLE_NAME = '{targetTable}'
                     AND DATA_TYPE IN ('binary', 'varbinary', 'uniqueidentifier', 'timestamp', 'rowversion')";
 
                 var binaryColumns = new List<string>();
@@ -251,13 +251,13 @@ public class DiagnosticsController : ControllerBase
                 results["BinaryTypeColumns"] = binaryColumns;
             }
 
-            // 5. Compare with System.Data.SqlClient provider
+            // 7. Compare with System.Data.SqlClient provider
             try
             {
                 await using var sysConnection = new System.Data.SqlClient.SqlConnection(connectionString);
                 await sysConnection.OpenAsync();
 
-                const string sysDataQuery = @"SELECT TOP 1 IdWInstancji FROM TransakcjaVAT";
+                var sysDataQuery = $@"SELECT TOP 1 IdWInstancji FROM [{targetSchema}].[{targetTable}]";
                 await using var sysCmd = new System.Data.SqlClient.SqlCommand(sysDataQuery, sysConnection);
                 await using var sysReader = await sysCmd.ExecuteReaderAsync();
 
