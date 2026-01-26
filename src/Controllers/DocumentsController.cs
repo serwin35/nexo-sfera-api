@@ -1721,7 +1721,7 @@ public class DocumentsController : ControllerBase
                                                     _logger.LogInformation("[FS-v2] Got ObjectContext: {Type}", (object)objectContext.GetType().FullName);
 
                                                     // Try to query StatusyDokumentow from ObjectContext
-                                                    var ocType = objectContext.GetType();
+                                                    var ocType = (Type)objectContext.GetType();
                                                     var createObjSetMethod = ocType.GetMethod("CreateObjectSet", new Type[] { });
                                                     if (createObjSetMethod == null)
                                                     {
