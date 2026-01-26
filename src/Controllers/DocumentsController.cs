@@ -626,7 +626,7 @@ public class DocumentsController : ControllerBase
                     bool isHistorical = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                     if (isHistorical)
                     {
-                        _logger.LogInformation("[FS-v2] Document is historical (IssueDate={Date}), attempting to disable validation", request.IssueDate.Value);
+                        _logger.LogInformation("[FS-v2] Document is historical (IssueDate={Date}), attempting to disable validation and stock blocking", request.IssueDate.Value);
 
                         // Try setting ValidationDisabled property
                         try
@@ -639,6 +639,17 @@ public class DocumentsController : ControllerBase
                             _logger.LogDebug("[FS-v2] Could not set ValidationDisabled: {Msg}", vdEx.Message);
                         }
 
+                        // CRITICAL: Try to disable stock blocking by quantity reservations
+                        try
+                        {
+                            faktura.WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa = true;
+                            _logger.LogInformation("[FS-v2] Set WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa = true");
+                        }
+                        catch (Exception wbEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not set WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa: {Msg}", wbEx.Message);
+                        }
+
                         // Also try WylaczWalidacje method
                         try
                         {
@@ -649,6 +660,23 @@ public class DocumentsController : ControllerBase
                         {
                             _logger.LogDebug("[FS-v2] WylaczWalidacje() not available: {Msg}", wwEx.Message);
                         }
+                    }
+
+                    // ALWAYS: Try to disable stock blocking (important for any sales invoice)
+                    try
+                    {
+                        var currentVal = faktura.WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa;
+                        _logger.LogInformation("[FS-v2] Current WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa = {Value}", (object)(currentVal?.ToString() ?? "(null)"));
+
+                        if (currentVal == null || !(bool)currentVal)
+                        {
+                            faktura.WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa = true;
+                            _logger.LogInformation("[FS-v2] Set WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa = true (always)");
+                        }
+                    }
+                    catch (Exception wbsEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not check/set WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa: {Msg}", wbsEx.Message);
                     }
 
                     // CRITICAL: Set dates BEFORE reserving number (number format includes year/month)
