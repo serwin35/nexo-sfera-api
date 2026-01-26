@@ -672,12 +672,36 @@ public class SferaService : ISferaService, IDisposable
     /// Gets the database connection string built from SferaSettings.
     /// Used for diagnostic ADO.NET queries.
     /// </summary>
-    public string? GetConnectionString()
+    /// <param name="forLegacySqlClient">If true, builds connection string compatible with System.Data.SqlClient (no TrustServerCertificate)</param>
+    public string? GetConnectionString(bool forLegacySqlClient = false)
     {
         if (!IsConnected) return null;
 
         try
         {
+            if (forLegacySqlClient)
+            {
+                // System.Data.SqlClient doesn't support TrustServerCertificate
+                var legacyBuilder = new System.Data.SqlClient.SqlConnectionStringBuilder
+                {
+                    DataSource = _settings.Server,
+                    InitialCatalog = _settings.Database
+                };
+
+                if (_settings.UseWindowsAuth)
+                {
+                    legacyBuilder.IntegratedSecurity = true;
+                }
+                else
+                {
+                    legacyBuilder.UserID = _settings.SqlLogin;
+                    legacyBuilder.Password = _settings.SqlPassword;
+                    legacyBuilder.IntegratedSecurity = false;
+                }
+
+                return legacyBuilder.ConnectionString;
+            }
+
             var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
             {
                 DataSource = _settings.Server,
