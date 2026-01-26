@@ -1647,28 +1647,39 @@ WHERE Symbol = 'PZ'",
                     return methodsInfo;
                 }
 
-                methodsInfo["ManagerType"] = przyjecia.GetType().FullName;
+                // Cast to object to get proper Type (avoiding dynamic dispatch issues)
+                Type managerType = ((object)przyjecia).GetType();
+                methodsInfo["ManagerType"] = managerType.FullName;
 
                 // Get all methods on the manager
-                var managerType = przyjecia.GetType();
-                var methods = managerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(m => !m.IsSpecialName && m.DeclaringType != typeof(object))
-                    .OrderBy(m => m.Name)
-                    .ToList();
+                MethodInfo[] allMethods = managerType.GetMethods(BindingFlags.Public | BindingFlags.Instance);
+                var methods = new List<MethodInfo>();
+                foreach (var m in allMethods)
+                {
+                    if (!m.IsSpecialName && m.DeclaringType != typeof(object))
+                    {
+                        methods.Add(m);
+                    }
+                }
+                methods.Sort((a, b) => string.Compare(a.Name, b.Name, StringComparison.Ordinal));
 
                 var methodsList = new List<Dictionary<string, object?>>();
                 foreach (var method in methods)
                 {
-                    var parameters = method.GetParameters();
-                    var paramsList = parameters.Select(p => new Dictionary<string, object?>
+                    ParameterInfo[] parameters = method.GetParameters();
+                    var paramsList = new List<Dictionary<string, object?>>();
+                    foreach (var p in parameters)
                     {
-                        ["Name"] = p.Name,
-                        ["Type"] = p.ParameterType.Name,
-                        ["FullType"] = p.ParameterType.FullName,
-                        ["IsOptional"] = p.IsOptional,
-                        ["HasDefaultValue"] = p.HasDefaultValue,
-                        ["DefaultValue"] = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
-                    }).ToList();
+                        paramsList.Add(new Dictionary<string, object?>
+                        {
+                            ["Name"] = p.Name,
+                            ["Type"] = p.ParameterType.Name,
+                            ["FullType"] = p.ParameterType.FullName,
+                            ["IsOptional"] = p.IsOptional,
+                            ["HasDefaultValue"] = p.HasDefaultValue,
+                            ["DefaultValue"] = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                        });
+                    }
 
                     methodsList.Add(new Dictionary<string, object?>
                     {
@@ -1682,34 +1693,59 @@ WHERE Symbol = 'PZ'",
                 methodsInfo["Methods"] = methodsList;
 
                 // Specifically look for Utworz* methods
-                var creationMethods = methodsList
-                    .Where(m => m["Name"]?.ToString()?.StartsWith("Utworz") == true)
-                    .ToList();
+                var creationMethods = new List<Dictionary<string, object?>>();
+                foreach (var m in methodsList)
+                {
+                    if (m["Name"]?.ToString()?.StartsWith("Utworz") == true)
+                    {
+                        creationMethods.Add(m);
+                    }
+                }
                 methodsInfo["CreationMethods"] = creationMethods;
 
                 // Also check interfaces implemented by this manager
-                var interfaces = managerType.GetInterfaces();
-                var interfacesList = interfaces.Select(i => new Dictionary<string, object?>
+                Type[] interfaces = managerType.GetInterfaces();
+                var interfacesList = new List<Dictionary<string, object?>>();
+                foreach (var i in interfaces)
                 {
-                    ["Name"] = i.Name,
-                    ["FullName"] = i.FullName
-                }).ToList();
+                    interfacesList.Add(new Dictionary<string, object?>
+                    {
+                        ["Name"] = i.Name,
+                        ["FullName"] = i.FullName
+                    });
+                }
                 methodsInfo["Interfaces"] = interfacesList;
 
                 // Check if there's an IPrzyjeciaZewnetrzne interface with specific methods
-                var iPrzyjeciaZewnetrzne = interfaces.FirstOrDefault(i =>
-                    i.Name == "IPrzyjeciaZewnetrzne" || i.Name.Contains("PrzyjeciaZewnetrzne"));
+                Type? iPrzyjeciaZewnetrzne = null;
+                foreach (var i in interfaces)
+                {
+                    if (i.Name == "IPrzyjeciaZewnetrzne" || i.Name.Contains("PrzyjeciaZewnetrzne"))
+                    {
+                        iPrzyjeciaZewnetrzne = i;
+                        break;
+                    }
+                }
                 if (iPrzyjeciaZewnetrzne != null)
                 {
                     methodsInfo["MainInterface"] = iPrzyjeciaZewnetrzne.FullName;
 
-                    var interfaceMethods = iPrzyjeciaZewnetrzne.GetMethods();
-                    var interfaceMethodsList = interfaceMethods.Select(m => new Dictionary<string, object?>
+                    MethodInfo[] interfaceMethods = iPrzyjeciaZewnetrzne.GetMethods();
+                    var interfaceMethodsList = new List<Dictionary<string, object?>>();
+                    foreach (var m in interfaceMethods)
                     {
-                        ["Name"] = m.Name,
-                        ["ReturnType"] = m.ReturnType.Name,
-                        ["Parameters"] = m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
-                    }).ToList();
+                        var paramStrings = new List<string>();
+                        foreach (var p in m.GetParameters())
+                        {
+                            paramStrings.Add($"{p.ParameterType.Name} {p.Name}");
+                        }
+                        interfaceMethodsList.Add(new Dictionary<string, object?>
+                        {
+                            ["Name"] = m.Name,
+                            ["ReturnType"] = m.ReturnType.Name,
+                            ["Parameters"] = paramStrings
+                        });
+                    }
                     methodsInfo["InterfaceMethods"] = interfaceMethodsList;
                 }
 
