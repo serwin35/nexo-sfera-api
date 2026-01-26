@@ -1195,6 +1195,166 @@ public class DiagnosticsController : ControllerBase
     }
 
     #endregion
+
+    /// <summary>
+    /// Test PZ (Przyjęcie Zewnętrzne) document creation to diagnose TransakcjaVAT EF6 errors
+    /// This endpoint attempts document creation without saving to identify where errors occur
+    /// </summary>
+    [HttpGet("test-pz-creation")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreation()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            var testResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
+            {
+                var stepResults = new Dictionary<string, object?>();
+
+                // Step 1: Get PrzyjeciaZewnetrzne manager
+                stepResults["Step1_GetManager"] = "Starting...";
+                try
+                {
+                    var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
+                    stepResults["Step1_GetManager"] = przyjecia != null ? "SUCCESS" : "NULL_MANAGER";
+                    stepResults["ManagerType"] = przyjecia?.GetType().FullName;
+
+                    if (przyjecia == null)
+                    {
+                        stepResults["Error"] = "Could not get PrzyjeciaZewnetrzne manager";
+                        return stepResults;
+                    }
+
+                    // Step 2: Get PZ configuration
+                    stepResults["Step2_GetConfig"] = "Starting...";
+                    try
+                    {
+                        var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                        if (konfiguracje?.DaneDomyslne != null)
+                        {
+                            var pzConfig = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
+                            stepResults["Step2_GetConfig"] = pzConfig != null ? "SUCCESS" : "NULL_CONFIG";
+                            stepResults["ConfigSymbol"] = pzConfig?.Symbol?.ToString();
+                            stepResults["ConfigId"] = pzConfig?.Id?.ToString();
+
+                            // Check if config has financial aspect
+                            try
+                            {
+                                stepResults["ConfigPosiadaAspektFinansowy"] = pzConfig?.PosiadaAspektFinansowy?.ToString();
+                            }
+                            catch { stepResults["ConfigPosiadaAspektFinansowy"] = "CANNOT_READ"; }
+                        }
+                    }
+                    catch (Exception configEx)
+                    {
+                        stepResults["Step2_GetConfig"] = "ERROR: " + configEx.Message;
+                    }
+
+                    // Step 3: Try to create PZ using Utworz(Konfiguracja)
+                    stepResults["Step3_CreateWithConfig"] = "Starting...";
+                    try
+                    {
+                        var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                        var pzConfig = konfiguracje?.DaneDomyslne?.PrzyjecieZewnetrzne;
+                        if (pzConfig != null)
+                        {
+                            using (var pz = przyjecia.Utworz(pzConfig))
+                            {
+                                stepResults["Step3_CreateWithConfig"] = "SUCCESS";
+                                stepResults["DocumentType"] = pz?.GetType().FullName;
+
+                                // Step 4: Try to set PosiadaAspektFinansowy
+                                stepResults["Step4_SetAspektFinansowy"] = "Starting...";
+                                try
+                                {
+                                    pz.Dane.PosiadaAspektFinansowy = false;
+                                    stepResults["Step4_SetAspektFinansowy"] = "SUCCESS";
+                                }
+                                catch (Exception setEx)
+                                {
+                                    stepResults["Step4_SetAspektFinansowy"] = "ERROR: " + setEx.Message;
+                                }
+
+                                // Step 5: Try to reserve number (this might trigger VAT loading)
+                                stepResults["Step5_ReserveNumber"] = "Starting...";
+                                try
+                                {
+                                    pz.ZarezerwujNumer();
+                                    var numberPreview = pz.PodajPodgladNumeru()?.ToString();
+                                    stepResults["Step5_ReserveNumber"] = "SUCCESS";
+                                    stepResults["ReservedNumber"] = numberPreview;
+                                }
+                                catch (Exception numEx)
+                                {
+                                    stepResults["Step5_ReserveNumber"] = "ERROR: " + numEx.Message;
+                                    if (numEx.ToString().Contains("TransakcjaVAT"))
+                                    {
+                                        stepResults["TransakcjaVAT_Error"] = true;
+                                        stepResults["TransakcjaVAT_FullError"] = numEx.ToString().Substring(0, Math.Min(2000, numEx.ToString().Length));
+                                    }
+                                }
+
+                                // Don't save - just testing creation
+                                stepResults["TestComplete"] = true;
+                            }
+                        }
+                        else
+                        {
+                            stepResults["Step3_CreateWithConfig"] = "SKIPPED - no config";
+                        }
+                    }
+                    catch (Exception createEx)
+                    {
+                        stepResults["Step3_CreateWithConfig"] = "ERROR: " + createEx.Message;
+                        if (createEx.ToString().Contains("TransakcjaVAT") || createEx.ToString().Contains("IdWInstancji"))
+                        {
+                            stepResults["TransakcjaVAT_Error"] = true;
+                            stepResults["TransakcjaVAT_FullError"] = createEx.ToString().Substring(0, Math.Min(2000, createEx.ToString().Length));
+                        }
+
+                        // Step 3b: Fallback to UtworzPrzyjecieZewnetrzne
+                        stepResults["Step3b_FallbackCreate"] = "Starting...";
+                        try
+                        {
+                            using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
+                            {
+                                stepResults["Step3b_FallbackCreate"] = "SUCCESS";
+                                stepResults["FallbackDocumentType"] = pz?.GetType().FullName;
+                            }
+                        }
+                        catch (Exception fallbackEx)
+                        {
+                            stepResults["Step3b_FallbackCreate"] = "ERROR: " + fallbackEx.Message;
+                            if (fallbackEx.ToString().Contains("TransakcjaVAT"))
+                            {
+                                stepResults["FallbackTransakcjaVAT_Error"] = true;
+                            }
+                        }
+                    }
+                }
+                catch (Exception managerEx)
+                {
+                    stepResults["Step1_GetManager"] = "ERROR: " + managerEx.Message;
+                }
+
+                return stepResults;
+            });
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(testResult));
+        }
+        catch (Exception ex)
+        {
+            results["OuterError"] = ex.Message;
+            results["OuterStackTrace"] = ex.StackTrace?.Substring(0, Math.Min(1000, ex.StackTrace?.Length ?? 0));
+            if (ex.ToString().Contains("TransakcjaVAT"))
+            {
+                results["TransakcjaVAT_Error"] = true;
+            }
+            _logger.LogError(ex, "Error in TestPzCreation diagnostic");
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+    }
 }
 
 #region Response DTOs
