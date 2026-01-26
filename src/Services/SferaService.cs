@@ -368,6 +368,7 @@ public class SferaService : ISferaService, IDisposable
                 "SzablonyNaklejek" => _sfera.SzablonyNaklejek(),
                 // InsERT.Moria.Dokumenty.Logistyka - Logistics document configurations
                 "Konfiguracje" => _sfera.Konfiguracje(),
+                "StatusyDokumentow" => _sfera.StatusyDokumentow(),
                 // E-invoice (KSeF) - use reflection to call extension methods
                 "FabrykaGeneratorowEFaktury" => GetEInvoiceManager("FabrykaGeneratorowEFaktury"),
                 "KoordynatorWysylaniaEFaktur" => GetEInvoiceManager("KoordynatorWysylaniaEFaktur"),
