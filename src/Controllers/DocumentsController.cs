@@ -2563,6 +2563,22 @@ public class DocumentsController : ControllerBase
             return;
         }
 
+        // Get warehouse from document for setting on positions
+        dynamic? dokumentMagazyn = null;
+        try
+        {
+            dokumentMagazyn = faktura.Dokument.Magazyn;
+            if (dokumentMagazyn != null)
+            {
+                string? magSymbol = DynamicPropertyHelper.GetString(dokumentMagazyn, "Symbol");
+                _logger.LogInformation("[FS-v2] Will use warehouse for positions: {Symbol}", (object)(magSymbol ?? "(unknown)"));
+            }
+        }
+        catch (Exception magEx)
+        {
+            _logger.LogDebug("[FS-v2] Could not get document warehouse: {Msg}", magEx.Message);
+        }
+
         int addedCount = 0;
         int skippedCount = 0;
 
@@ -2683,6 +2699,36 @@ public class DocumentsController : ControllerBase
                     catch (Exception propEx)
                     {
                         _logger.LogDebug("[FS-v2] Could not read pozycja properties: {Msg}", propEx.Message);
+                    }
+
+                    // Set warehouse on position (critical for stock management!)
+                    if (dokumentMagazyn != null)
+                    {
+                        try
+                        {
+                            // Try direct property
+                            if (DynamicPropertyHelper.TrySetProperty(pozycja, "Magazyn", dokumentMagazyn))
+                            {
+                                _logger.LogDebug("[FS-v2] Set pozycja.Magazyn successfully");
+                            }
+                            else
+                            {
+                                // Try Dane.Magazyn
+                                try
+                                {
+                                    pozycja.Dane.Magazyn = dokumentMagazyn;
+                                    _logger.LogDebug("[FS-v2] Set pozycja.Dane.Magazyn successfully");
+                                }
+                                catch (Exception daneEx)
+                                {
+                                    _logger.LogDebug("[FS-v2] Could not set Dane.Magazyn: {Msg}", daneEx.Message);
+                                }
+                            }
+                        }
+                        catch (Exception magPozEx)
+                        {
+                            _logger.LogDebug("[FS-v2] Could not set warehouse on position: {Msg}", magPozEx.Message);
+                        }
                     }
 
                     // Set price if provided
