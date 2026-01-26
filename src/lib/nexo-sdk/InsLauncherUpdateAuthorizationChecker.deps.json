@@ -7,10 +7,10 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "InsLauncherUpdateAuthorizationChecker/58.0.0.8944": {
+      "InsLauncherUpdateAuthorizationChecker/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Moria.Narzedzia": "58.0.0.8944",
-          "InsERT.Moria.UzytkownikSzef": "58.0.0.8944",
+          "InsERT.Moria.Narzedzia": "59.0.0.9026",
+          "InsERT.Moria.UzytkownikSzef": "59.0.0.9026",
           "InsERT.Moria.Narzedzia.Reference": "1.0.0.0",
           "InsERT.Moria.UzytkownikSzef.Reference": "1.0.0.0",
           "InsERT.Mox.Helpers": "1.0.0.0",
@@ -184,18 +184,18 @@
           }
         }
       },
-      "InsERT.Common.Product/3.0.8": {
+      "InsERT.Common.Product/3.0.17": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.Common.Product.dll": {
-            "assemblyVersion": "3.0.8.0",
-            "fileVersion": "3.0.8.0"
+            "assemblyVersion": "3.0.17.0",
+            "fileVersion": "3.0.17.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.Abstractions/1.0.89": {
+      "InsERT.Hermes.SyncClients.Abstractions/1.0.117": {
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
@@ -203,8 +203,8 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.Abstractions.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
@@ -276,35 +276,35 @@
           }
         }
       },
-      "InsERT.WebServices.Client.CustomerSubmissions/2.2.17-beta": {
+      "InsERT.WebServices.Client.CustomerSubmissions/2.3.4": {
         "dependencies": {
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.CustomerSubmissions.dll": {
-            "assemblyVersion": "2.2.17.0",
-            "fileVersion": "2.2.17.0"
+            "assemblyVersion": "2.3.4.0",
+            "fileVersion": "2.3.4.0"
           }
         }
       },
-      "InsERT.WebServices.Client.Documents/1.3.0-preview.17": {
+      "InsERT.WebServices.Client.Documents/1.3.1": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3",
           "Polly": "8.5.2"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.Documents.dll": {
-            "assemblyVersion": "1.3.0.0",
-            "fileVersion": "1.3.0.0"
+            "assemblyVersion": "1.3.1.0",
+            "fileVersion": "1.3.1.0"
           }
         }
       },
       "InsERT.WebServices.Client.Documents.KITokenAuth/1.0.0": {
         "dependencies": {
-          "InsERT.WebServices.Client.Documents": "1.3.0-preview.17"
+          "InsERT.WebServices.Client.Documents": "1.3.1"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.Documents.KITokenAuth.dll": {
@@ -321,16 +321,17 @@
           }
         }
       },
-      "InsERT.WebServices.Client.InsMonitor/1.0.24": {
+      "InsERT.WebServices.Client.InsMonitor/1.0.30": {
         "dependencies": {
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Client.Push.Receive": "2.1.3",
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.InsMonitor.dll": {
-            "assemblyVersion": "1.0.24.0",
-            "fileVersion": "1.0.24.0"
+            "assemblyVersion": "1.0.30.0",
+            "fileVersion": "1.0.30.0"
           }
         }
       },
@@ -351,7 +352,7 @@
           }
         }
       },
-      "InsERT.WebServices.Client.Licenses/3.1.28": {
+      "InsERT.WebServices.Client.Licenses/3.1.30": {
         "dependencies": {
           "InsERT.WebServices.Client.Auth.Abstractions": "4.0.1",
           "InsERT.WebServices.Client.Ki": "3.0.12",
@@ -361,8 +362,8 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.Licenses.dll": {
-            "assemblyVersion": "3.1.28.0",
-            "fileVersion": "3.1.28.0"
+            "assemblyVersion": "3.1.30.0",
+            "fileVersion": "3.1.30.0"
           }
         }
       },
@@ -387,7 +388,7 @@
       },
       "InsERT.WebServices.Client.Push.Receive/2.1.3": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Client.Push.Filter": "2.0.1",
           "Microsoft.CSharp": "4.7.0",
           "Microsoft.Extensions.Logging": "8.0.1",
@@ -1671,19 +1672,19 @@
           }
         }
       },
-      "InsERT.Moria.Narzedzia/58.0.0.8944": {
+      "InsERT.Moria.Narzedzia/59.0.0.9026": {
         "dependencies": {
           "AngleSharp": "1.3.0",
           "BouncyCastle.Cryptography": "2.3.1",
           "ChilkatDnCore": "11.2.0",
           "CsQuery.Signed": "1.3.4-signed",
           "HtmlAgilityPack": "1.11.46",
-          "InsERT.Moria.API": "58.0.0.8944",
-          "InsERT.Moria.API.Private": "58.0.0.8944",
-          "InsERT.Moria.API.UI": "58.0.0.8944",
-          "InsERT.Moria.API.Uprawnienia": "58.0.0.8944",
-          "InsERT.Moria.DaneDomyslne": "58.0.0.8944",
-          "InsERT.Moria.ModelDanych": "58.0.0.8944",
+          "InsERT.Moria.API": "59.0.0.9026",
+          "InsERT.Moria.API.Private": "59.0.0.9026",
+          "InsERT.Moria.API.UI": "59.0.0.9026",
+          "InsERT.Moria.API.Uprawnienia": "59.0.0.9026",
+          "InsERT.Moria.DaneDomyslne": "59.0.0.9026",
+          "InsERT.Moria.ModelDanych": "59.0.0.9026",
           "InsERT.Mox.FileHelpers": "8.0.2",
           "InsERT.Mox.itextsharp": "4.1.12",
           "InsERT.WebServices.Client.Parameters": "3.2.2",
@@ -1871,9 +1872,9 @@
           }
         }
       },
-      "InsERT.Moria.UzytkownikSzef/58.0.0.8944": {
+      "InsERT.Moria.UzytkownikSzef/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Moria.ModelDanych": "58.0.0.8944",
+          "InsERT.Moria.ModelDanych": "59.0.0.9026",
           "Microsoft.Data.SqlClient": "5.2.2"
         },
         "runtime": {
@@ -1908,7 +1909,7 @@
         "runtime": {
           "InsERT.Mox.Launcher.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "58.0.0.8944"
+            "fileVersion": "59.0.0.9026"
           }
         }
       },
@@ -1996,7 +1997,7 @@
         "runtime": {
           "InsERT.Moria.DaneDomyslne.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "58.0.0.8944"
+            "fileVersion": "59.0.0.9026"
           }
         }
       },
@@ -2558,7 +2559,7 @@
     }
   },
   "libraries": {
-    "InsLauncherUpdateAuthorizationChecker/58.0.0.8944": {
+    "InsLauncherUpdateAuthorizationChecker/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -2666,19 +2667,19 @@
       "path": "htmlagilitypack/1.11.46",
       "hashPath": "htmlagilitypack.1.11.46.nupkg.sha512"
     },
-    "InsERT.Common.Product/3.0.8": {
+    "InsERT.Common.Product/3.0.17": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-qByai4niVf4sZMCqMQ4jyGe7d+UqNe5bMKXHj/G2t/gOK8S9pZMRUUBVXlS/MdC7fj9S1cTb7Fb0y+uEgUyK5g==",
-      "path": "insert.common.product/3.0.8",
-      "hashPath": "insert.common.product.3.0.8.nupkg.sha512"
+      "sha512": "sha512-vY+FGM79/Ae3G+z+vgIjUBuu5lAhUxGnNMpevh6FKpOSU57Pj4r4/0PDWI0KxK6nmx1KrHKwgCEUL4+PMX6hsg==",
+      "path": "insert.common.product/3.0.17",
+      "hashPath": "insert.common.product.3.0.17.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.Abstractions/1.0.89": {
+    "InsERT.Hermes.SyncClients.Abstractions/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-8KIk3Q4JgdbElmPTy+HGddlsTQVHkp7v2wPeX1RUheOd+Aks+/a1paokhgeCHxe3+hDyW20Cl4+gQkX867TkKg==",
-      "path": "insert.hermes.syncclients.abstractions/1.0.89",
-      "hashPath": "insert.hermes.syncclients.abstractions.1.0.89.nupkg.sha512"
+      "sha512": "sha512-5O8PfglmBToxMxGYMdeNHyrPmA05OYR2ifhKDUXuH6yHufpwyMFz32Ph5DjS4HU+quBhNOIBtLl2ol512lIFRA==",
+      "path": "insert.hermes.syncclients.abstractions/1.0.117",
+      "hashPath": "insert.hermes.syncclients.abstractions.1.0.117.nupkg.sha512"
     },
     "InsERT.Mox.EntityFramework.Core/6.6.8": {
       "type": "package",
@@ -2722,19 +2723,19 @@
       "path": "insert.webservices.client.auth.abstractions/4.0.1",
       "hashPath": "insert.webservices.client.auth.abstractions.4.0.1.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.CustomerSubmissions/2.2.17-beta": {
+    "InsERT.WebServices.Client.CustomerSubmissions/2.3.4": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-PiIfzcilTqyC/CD4tyBKERYm0QnVTcg9HT2WpMtGzfnf6h0nm53cZzv7NPMb2P3EZpcYyNrsJSrAWn9lyr00Rw==",
-      "path": "insert.webservices.client.customersubmissions/2.2.17-beta",
-      "hashPath": "insert.webservices.client.customersubmissions.2.2.17-beta.nupkg.sha512"
+      "sha512": "sha512-YBDfEP+aIMNBDRejgmJYfKGGj/tGhed+P89PsxNNWs77MPrIXr/sRKITQ8KyqvH4Y/CgTdJzSQ+osoDkx2k7kA==",
+      "path": "insert.webservices.client.customersubmissions/2.3.4",
+      "hashPath": "insert.webservices.client.customersubmissions.2.3.4.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.Documents/1.3.0-preview.17": {
+    "InsERT.WebServices.Client.Documents/1.3.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-c72+VEQUxxQ4eQVlCIZlB4Pmx0SUu/io+kk9Vftnn+71+s2Mws8m+PK3UlBRYA2+etrvTDOonO42lwAoKmLj6w==",
-      "path": "insert.webservices.client.documents/1.3.0-preview.17",
-      "hashPath": "insert.webservices.client.documents.1.3.0-preview.17.nupkg.sha512"
+      "sha512": "sha512-v1WcvHF1RidRExgUo6pPlCYNCuiUTXA2Lb1aZgQQ3mbddjBCdjt2KYwTjOaKYMV9768Id+4ueKVNLE/KK9BmTg==",
+      "path": "insert.webservices.client.documents/1.3.1",
+      "hashPath": "insert.webservices.client.documents.1.3.1.nupkg.sha512"
     },
     "InsERT.WebServices.Client.Documents.KITokenAuth/1.0.0": {
       "type": "package",
@@ -2750,12 +2751,12 @@
       "path": "insert.webservices.client.exceptions/2.0.2",
       "hashPath": "insert.webservices.client.exceptions.2.0.2.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.InsMonitor/1.0.24": {
+    "InsERT.WebServices.Client.InsMonitor/1.0.30": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-F4Q5EnGHtHBw08yuySB87GakHUY6/tzthfFccyz6NMXTWP8+BhzqkgmeK/6+GrigCigw3qj2kmrKFIMWuw973A==",
-      "path": "insert.webservices.client.insmonitor/1.0.24",
-      "hashPath": "insert.webservices.client.insmonitor.1.0.24.nupkg.sha512"
+      "sha512": "sha512-JTNR9P5wtCBAHN+hLrBjuac+lJYSXvw9Ec/ys1/Aftimh+FPuH+D4vxf+bLD9sZTK5h7i0mr9CWT2uayT45WIw==",
+      "path": "insert.webservices.client.insmonitor/1.0.30",
+      "hashPath": "insert.webservices.client.insmonitor.1.0.30.nupkg.sha512"
     },
     "InsERT.WebServices.Client.Ki/3.0.12": {
       "type": "package",
@@ -2764,12 +2765,12 @@
       "path": "insert.webservices.client.ki/3.0.12",
       "hashPath": "insert.webservices.client.ki.3.0.12.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.Licenses/3.1.28": {
+    "InsERT.WebServices.Client.Licenses/3.1.30": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-KcrJzqj6wH4WgnpZQR6skcTy6lOBiigI7CghDubcg5rXSjb6h3j0EmlZmZCAkzTOMOiCChxKPjHs8KseZixi+g==",
-      "path": "insert.webservices.client.licenses/3.1.28",
-      "hashPath": "insert.webservices.client.licenses.3.1.28.nupkg.sha512"
+      "sha512": "sha512-Sw11NJevWU6cce/8EoAbmIimqQk33S27E0eLfZoqqxn1ZOF2uHg6SiwjlV/d7RSpu77K3y4eg5a19RvhmcKe+A==",
+      "path": "insert.webservices.client.licenses/3.1.30",
+      "hashPath": "insert.webservices.client.licenses.3.1.30.nupkg.sha512"
     },
     "InsERT.WebServices.Client.Parameters/3.2.2": {
       "type": "package",
@@ -3695,12 +3696,12 @@
       "path": "telerik.windows.zip/2022.2.613",
       "hashPath": "telerik.windows.zip.2022.2.613.nupkg.sha512"
     },
-    "InsERT.Moria.Narzedzia/58.0.0.8944": {
+    "InsERT.Moria.Narzedzia/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.UzytkownikSzef/58.0.0.8944": {
+    "InsERT.Moria.UzytkownikSzef/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

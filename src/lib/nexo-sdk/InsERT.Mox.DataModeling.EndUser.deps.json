@@ -7,13 +7,13 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "InsERT.Mox.DataModeling.EndUser/58.0.0.8944": {
+      "InsERT.Mox.DataModeling.EndUser/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Mox.Core": "58.0.0.8944",
-          "InsERT.Mox.DataModeling": "58.0.0.8944",
-          "InsERT.Mox.DataModeling.EndUser.Core": "58.0.0.8944",
-          "InsERT.Mox.DatabaseManagement": "58.0.0.8944",
-          "InsERT.Mox.Launcher": "58.0.0.8944",
+          "InsERT.Mox.Core": "59.0.0.9026",
+          "InsERT.Mox.DataModeling": "59.0.0.9026",
+          "InsERT.Mox.DataModeling.EndUser.Core": "59.0.0.9026",
+          "InsERT.Mox.DatabaseManagement": "59.0.0.9026",
+          "InsERT.Mox.Launcher": "59.0.0.9026",
           "InsERT.Mox.Core.Reference": "1.0.0.0",
           "InsERT.Mox.DatabaseManagement.Reference": "1.0.0.0",
           "InsERT.Mox.DataModeling.Reference": "1.0.0.0",
@@ -72,14 +72,14 @@
           }
         }
       },
-      "InsERT.Common.Product/3.0.8": {
+      "InsERT.Common.Product/3.0.17": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.Common.Product.dll": {
-            "assemblyVersion": "3.0.8.0",
-            "fileVersion": "3.0.8.0"
+            "assemblyVersion": "3.0.17.0",
+            "fileVersion": "3.0.17.0"
           }
         }
       },
@@ -137,7 +137,7 @@
       },
       "InsERT.WebServices.Client.ESubscription/1.0.12-beta": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Extensions.Http": "1.0.2",
           "Newtonsoft.Json": "13.0.3"
         },
@@ -1457,7 +1457,7 @@
           }
         }
       },
-      "InsERT.Mox.Core/58.0.0.8944": {
+      "InsERT.Mox.Core/59.0.0.9026": {
         "dependencies": {
           "InsERT.Mox.EntityFramework.Core": "6.6.8",
           "InsERT.WebServices.Client.Parameters": "3.2.2",
@@ -1468,11 +1468,11 @@
           "InsERT.Mox.Core.dll": {}
         }
       },
-      "InsERT.Mox.DatabaseManagement/58.0.0.8944": {
+      "InsERT.Mox.DatabaseManagement/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Mox.Core": "58.0.0.8944",
-          "InsERT.Mox.EntityFrameworkSupport": "58.0.0.8944",
-          "InsERT.Mox.SqlServerSupport": "58.0.0.8944",
+          "InsERT.Mox.Core": "59.0.0.9026",
+          "InsERT.Mox.EntityFrameworkSupport": "59.0.0.9026",
+          "InsERT.Mox.SqlServerSupport": "59.0.0.9026",
           "Microsoft.SqlServer.TransactSql.ScriptDom": "170.28.0",
           "SharpZipLib": "1.4.2"
         },
@@ -1480,29 +1480,29 @@
           "InsERT.Mox.DatabaseManagement.dll": {}
         }
       },
-      "InsERT.Mox.DataModeling/58.0.0.8944": {
+      "InsERT.Mox.DataModeling/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Mox.DataExtensions": "58.0.0.8944",
+          "InsERT.Mox.DataExtensions": "59.0.0.9026",
           "Microsoft.SqlServer.TransactSql.ScriptDom": "170.28.0"
         },
         "runtime": {
           "InsERT.Mox.DataModeling.dll": {}
         }
       },
-      "InsERT.Mox.DataModeling.EndUser.Core/58.0.0.8944": {
+      "InsERT.Mox.DataModeling.EndUser.Core/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Mox.CSharp": "58.0.0.8944",
-          "InsERT.Mox.Core": "58.0.0.8944",
-          "InsERT.Mox.DataModeling": "58.0.0.8944",
-          "InsERT.Mox.DatabaseManagement": "58.0.0.8944",
-          "InsERT.Mox.Helpers": "58.0.0.8944",
-          "InsERT.Mox.Launcher": "58.0.0.8944"
+          "InsERT.Mox.CSharp": "59.0.0.9026",
+          "InsERT.Mox.Core": "59.0.0.9026",
+          "InsERT.Mox.DataModeling": "59.0.0.9026",
+          "InsERT.Mox.DatabaseManagement": "59.0.0.9026",
+          "InsERT.Mox.Helpers": "59.0.0.9026",
+          "InsERT.Mox.Launcher": "59.0.0.9026"
         },
         "runtime": {
           "InsERT.Mox.DataModeling.EndUser.Core.dll": {}
         }
       },
-      "InsERT.Mox.Launcher/58.0.0.8944": {
+      "InsERT.Mox.Launcher/59.0.0.9026": {
         "dependencies": {
           "InsERT.Mox.TaskEditor": "100.0.2",
           "InsERT.WebServices.Client.ESubscription": "1.0.12-beta",
@@ -1553,7 +1553,7 @@
         "runtime": {
           "InsERT.Mox.Launcher.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "58.0.0.8944"
+            "fileVersion": "59.0.0.9026"
           }
         }
       },
@@ -1608,7 +1608,7 @@
     }
   },
   "libraries": {
-    "InsERT.Mox.DataModeling.EndUser/58.0.0.8944": {
+    "InsERT.Mox.DataModeling.EndUser/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -1632,12 +1632,12 @@
       "path": "azure.identity/1.11.4",
       "hashPath": "azure.identity.1.11.4.nupkg.sha512"
     },
-    "InsERT.Common.Product/3.0.8": {
+    "InsERT.Common.Product/3.0.17": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-qByai4niVf4sZMCqMQ4jyGe7d+UqNe5bMKXHj/G2t/gOK8S9pZMRUUBVXlS/MdC7fj9S1cTb7Fb0y+uEgUyK5g==",
-      "path": "insert.common.product/3.0.8",
-      "hashPath": "insert.common.product.3.0.8.nupkg.sha512"
+      "sha512": "sha512-vY+FGM79/Ae3G+z+vgIjUBuu5lAhUxGnNMpevh6FKpOSU57Pj4r4/0PDWI0KxK6nmx1KrHKwgCEUL4+PMX6hsg==",
+      "path": "insert.common.product/3.0.17",
+      "hashPath": "insert.common.product.3.0.17.nupkg.sha512"
     },
     "InsERT.Mox.EntityFramework.Core/6.6.8": {
       "type": "package",
@@ -2612,27 +2612,27 @@
       "path": "taskscheduler/2.8.16",
       "hashPath": "taskscheduler.2.8.16.nupkg.sha512"
     },
-    "InsERT.Mox.Core/58.0.0.8944": {
+    "InsERT.Mox.Core/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Mox.DatabaseManagement/58.0.0.8944": {
+    "InsERT.Mox.DatabaseManagement/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Mox.DataModeling/58.0.0.8944": {
+    "InsERT.Mox.DataModeling/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Mox.DataModeling.EndUser.Core/58.0.0.8944": {
+    "InsERT.Mox.DataModeling.EndUser.Core/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Mox.Launcher/58.0.0.8944": {
+    "InsERT.Mox.Launcher/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

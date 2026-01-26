@@ -7,10 +7,10 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "InsERT.Moria.SerwerKasowyHost/58.0.0.8944": {
+      "InsERT.Moria.SerwerKasowyHost/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Moria.API.Private": "58.0.0.8944",
-          "InsERT.Moria.SerwerKasowyService": "58.0.0.8944",
+          "InsERT.Moria.API.Private": "59.0.0.9026",
+          "InsERT.Moria.SerwerKasowyService": "59.0.0.9026",
           "Newtonsoft.Json": "13.0.3",
           "InsERT.Moria.API.Private.Reference": "1.0.0.0",
           "InsERT.Moria.SerwerKasowyService.Reference": "1.0.0.0",
@@ -567,14 +567,14 @@
           }
         }
       },
-      "InsERT.Common.Product/3.0.8": {
+      "InsERT.Common.Product/3.0.17": {
         "dependencies": {
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.Common.Product.dll": {
-            "assemblyVersion": "3.0.8.0",
-            "fileVersion": "3.0.8.0"
+            "assemblyVersion": "3.0.17.0",
+            "fileVersion": "3.0.17.0"
           }
         }
       },
@@ -614,15 +614,16 @@
           }
         }
       },
-      "InsERT.Hermes.SyncClients/1.0.89": {
+      "InsERT.Hermes.SyncClients/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
-          "InsERT.Hermes.SyncClients.Employees": "1.0.89",
-          "InsERT.Hermes.SyncClients.Extensions": "1.0.89",
-          "InsERT.Hermes.SyncClients.Leaves": "1.0.89",
-          "InsERT.Hermes.SyncClients.OrganizationalStructure": "1.0.89",
-          "InsERT.Hermes.SyncClients.RemoteWorks": "1.0.89",
-          "InsERT.Hermes.SyncClients.Remunerations": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
+          "InsERT.Hermes.SyncClients.Employees": "1.0.117",
+          "InsERT.Hermes.SyncClients.Extensions": "1.0.117",
+          "InsERT.Hermes.SyncClients.Leaves": "1.0.117",
+          "InsERT.Hermes.SyncClients.OrganizationalStructure": "1.0.117",
+          "InsERT.Hermes.SyncClients.RemoteWorks": "1.0.117",
+          "InsERT.Hermes.SyncClients.Remunerations": "1.0.117",
+          "InsERT.Hermes.SyncClients.TaxDocuments": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -630,12 +631,12 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.Abstractions/1.0.89": {
+      "InsERT.Hermes.SyncClients.Abstractions/1.0.117": {
         "dependencies": {
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
@@ -643,14 +644,14 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.Abstractions.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.Employees/1.0.89": {
+      "InsERT.Hermes.SyncClients.Employees/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -658,14 +659,14 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.Employees.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.Extensions/1.0.89": {
+      "InsERT.Hermes.SyncClients.Extensions/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -673,14 +674,14 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.Extensions.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.Leaves/1.0.89": {
+      "InsERT.Hermes.SyncClients.Leaves/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -688,14 +689,14 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.Leaves.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.OrganizationalStructure/1.0.89": {
+      "InsERT.Hermes.SyncClients.OrganizationalStructure/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -703,15 +704,15 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.OrganizationalStructure.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.RemoteWorks/1.0.89": {
+      "InsERT.Hermes.SyncClients.RemoteWorks/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
-          "InsERT.Hermes.SyncClients.Extensions": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
+          "InsERT.Hermes.SyncClients.Extensions": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -719,14 +720,14 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.RemoteWorks.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
-      "InsERT.Hermes.SyncClients.Remunerations/1.0.89": {
+      "InsERT.Hermes.SyncClients.Remunerations/1.0.117": {
         "dependencies": {
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Options": "8.0.2",
@@ -734,8 +735,24 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.Hermes.SyncClients.Remunerations.dll": {
-            "assemblyVersion": "1.0.89.0",
-            "fileVersion": "1.0.89.0"
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
+          }
+        }
+      },
+      "InsERT.Hermes.SyncClients.TaxDocuments/1.0.117": {
+        "dependencies": {
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
+          "InsERT.Hermes.SyncClients.Extensions": "1.0.117",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "8.0.2",
+          "Microsoft.Extensions.Http": "8.0.1",
+          "Microsoft.Extensions.Options": "8.0.2",
+          "Newtonsoft.Json": "13.0.3"
+        },
+        "runtime": {
+          "lib/net8.0/InsERT.Hermes.SyncClients.TaxDocuments.dll": {
+            "assemblyVersion": "1.0.117.0",
+            "fileVersion": "1.0.117.0"
           }
         }
       },
@@ -826,7 +843,7 @@
       },
       "InsERT.WebServices.Client.ChangeLog/2.0.22": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Client.Exceptions": "2.0.2",
           "Microsoft.Extensions.Http": "8.0.1",
           "Microsoft.Extensions.Logging": "8.0.1",
@@ -839,15 +856,15 @@
           }
         }
       },
-      "InsERT.WebServices.Client.CustomerSubmissions/2.2.17-beta": {
+      "InsERT.WebServices.Client.CustomerSubmissions/2.3.4": {
         "dependencies": {
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.CustomerSubmissions.dll": {
-            "assemblyVersion": "2.2.17.0",
-            "fileVersion": "2.2.17.0"
+            "assemblyVersion": "2.3.4.0",
+            "fileVersion": "2.3.4.0"
           }
         }
       },
@@ -863,23 +880,23 @@
           }
         }
       },
-      "InsERT.WebServices.Client.Documents/1.3.0-preview.17": {
+      "InsERT.WebServices.Client.Documents/1.3.1": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3",
           "Polly": "8.5.2"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.Documents.dll": {
-            "assemblyVersion": "1.3.0.0",
-            "fileVersion": "1.3.0.0"
+            "assemblyVersion": "1.3.1.0",
+            "fileVersion": "1.3.1.0"
           }
         }
       },
       "InsERT.WebServices.Client.Documents.KITokenAuth/1.0.0": {
         "dependencies": {
-          "InsERT.WebServices.Client.Documents": "1.3.0-preview.17"
+          "InsERT.WebServices.Client.Documents": "1.3.1"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.Documents.KITokenAuth.dll": {
@@ -890,7 +907,7 @@
       },
       "InsERT.WebServices.Client.ESubscription/1.0.12-beta": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Extensions.Http": "1.0.2",
           "Newtonsoft.Json": "13.0.3"
         },
@@ -944,16 +961,17 @@
           }
         }
       },
-      "InsERT.WebServices.Client.InsMonitor/1.0.24": {
+      "InsERT.WebServices.Client.InsMonitor/1.0.30": {
         "dependencies": {
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Client.Push.Receive": "2.1.3",
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.InsMonitor.dll": {
-            "assemblyVersion": "1.0.24.0",
-            "fileVersion": "1.0.24.0"
+            "assemblyVersion": "1.0.30.0",
+            "fileVersion": "1.0.30.0"
           }
         }
       },
@@ -974,9 +992,9 @@
           }
         }
       },
-      "InsERT.WebServices.Client.KSeF2.Core/3.0.0-preview.111": {
+      "InsERT.WebServices.Client.KSeF2.Core/3.0.0": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3"
         },
@@ -987,31 +1005,10 @@
           }
         }
       },
-      "InsERT.WebServices.Client.KSeF2.CredentialsManage/3.0.0-preview.111": {
+      "InsERT.WebServices.Client.KSeF2.InvoiceWrite/3.0.0": {
         "dependencies": {
-          "InsERT.WebServices.Client.KSeF2.CredentialsRead": "3.0.0-preview.111"
-        },
-        "runtime": {
-          "lib/net6.0/InsERT.WebServices.Client.KSeF2.CredentialsManage.dll": {
-            "assemblyVersion": "3.0.0.0",
-            "fileVersion": "3.0.0.0"
-          }
-        }
-      },
-      "InsERT.WebServices.Client.KSeF2.CredentialsRead/3.0.0-preview.111": {
-        "dependencies": {
-          "InsERT.WebServices.Client.KSeF2.Core": "3.0.0-preview.111"
-        },
-        "runtime": {
-          "lib/net6.0/InsERT.WebServices.Client.KSeF2.CredentialsRead.dll": {
-            "assemblyVersion": "3.0.0.0",
-            "fileVersion": "3.0.0.0"
-          }
-        }
-      },
-      "InsERT.WebServices.Client.KSeF2.InvoiceWrite/3.0.0-preview.111": {
-        "dependencies": {
-          "InsERT.WebServices.Client.KSeF2.Core": "3.0.0-preview.111"
+          "InsERT.WebServices.Client.KSeF2.Core": "3.0.0",
+          "Polly": "8.5.2"
         },
         "runtime": {
           "lib/net6.0/InsERT.WebServices.Client.KSeF2.InvoiceWrite.dll": {
@@ -1022,7 +1019,7 @@
       },
       "InsERT.WebServices.Client.KSeFService/2.1.0": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "Microsoft.Extensions.Http": "8.0.1",
           "Newtonsoft.Json": "13.0.3"
         },
@@ -1033,7 +1030,7 @@
           }
         }
       },
-      "InsERT.WebServices.Client.Licenses/3.1.28": {
+      "InsERT.WebServices.Client.Licenses/3.1.30": {
         "dependencies": {
           "InsERT.WebServices.Client.Auth.Abstractions": "4.0.1",
           "InsERT.WebServices.Client.Ki": "3.0.12",
@@ -1043,8 +1040,8 @@
         },
         "runtime": {
           "lib/net8.0/InsERT.WebServices.Client.Licenses.dll": {
-            "assemblyVersion": "3.1.28.0",
-            "fileVersion": "3.1.28.0"
+            "assemblyVersion": "3.1.30.0",
+            "fileVersion": "3.1.30.0"
           }
         }
       },
@@ -1069,7 +1066,7 @@
       },
       "InsERT.WebServices.Client.Push.Receive/2.1.3": {
         "dependencies": {
-          "InsERT.Common.Product": "3.0.8",
+          "InsERT.Common.Product": "3.0.17",
           "InsERT.WebServices.Client.Push.Filter": "2.0.1",
           "Microsoft.CSharp": "4.7.0",
           "Microsoft.Extensions.Logging": "8.0.1",
@@ -3502,22 +3499,22 @@
           }
         }
       },
-      "InsERT.Moria.API.Private/58.0.0.8944": {
+      "InsERT.Moria.API.Private/59.0.0.9026": {
         "dependencies": {
           "BouncyCastle.Cryptography": "2.3.1",
           "Google.Apis.Calendar.v3": "1.68.0.3430",
           "HtmlAgilityPack": "1.11.46",
-          "InsERT.Hermes.SyncClients.Abstractions": "1.0.89",
-          "InsERT.Moria.API": "58.0.0.8944",
-          "InsERT.Moria.API.Uprawnienia": "58.0.0.8944",
-          "InsERT.Moria.DaneDomyslne": "58.0.0.8944",
-          "InsERT.Moria.ModelDanych": "58.0.0.8944",
+          "InsERT.Hermes.SyncClients.Abstractions": "1.0.117",
+          "InsERT.Moria.API": "59.0.0.9026",
+          "InsERT.Moria.API.Uprawnienia": "59.0.0.9026",
+          "InsERT.Moria.DaneDomyslne": "59.0.0.9026",
+          "InsERT.Moria.ModelDanych": "59.0.0.9026",
           "InsERT.Mox.EntityFramework.Ms.SqlServer": "6.6.8",
-          "InsERT.WebServices.Client.CustomerSubmissions": "2.2.17-beta",
-          "InsERT.WebServices.Client.Documents": "1.3.0-preview.17",
+          "InsERT.WebServices.Client.CustomerSubmissions": "2.3.4",
+          "InsERT.WebServices.Client.Documents": "1.3.1",
           "InsERT.WebServices.Client.Documents.KITokenAuth": "1.0.0",
-          "InsERT.WebServices.Client.InsMonitor": "1.0.24",
-          "InsERT.WebServices.Client.Licenses": "3.1.28",
+          "InsERT.WebServices.Client.InsMonitor": "1.0.30",
+          "InsERT.WebServices.Client.Licenses": "3.1.30",
           "InsERT.WebServices.Client.Push.Receive": "2.1.3",
           "MailBee.NET": "12.3.1",
           "Microsoft.CodeAnalysis.VisualBasic": "4.8.0",
@@ -3554,68 +3551,68 @@
           }
         }
       },
-      "InsERT.Moria.SerwerKasowyService/58.0.0.8944": {
+      "InsERT.Moria.SerwerKasowyService/59.0.0.9026": {
         "dependencies": {
-          "InsERT.Moria.API": "58.0.0.8944",
-          "InsERT.Moria.API.Private": "58.0.0.8944",
-          "InsERT.Moria.Bank.Configuration": "58.0.0.8944",
-          "InsERT.Moria.BusinessResources": "58.0.0.8944",
-          "InsERT.Moria.BusinessResources.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Cenniki.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Components.UI.Configuration": "58.0.0.8944",
-          "InsERT.Moria.DaneDomyslne": "58.0.0.8944",
-          "InsERT.Moria.Deklaracje.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Deklaracje.Definicje": "58.0.0.8944",
-          "InsERT.Moria.DokumentyDoKsiegowania.Configuration": "58.0.0.8944",
-          "InsERT.Moria.DowodyWewnetrzne.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Dzialania.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Egzekutor.Configuration": "58.0.0.8944",
-          "InsERT.Moria.EwidencjaVAT.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Finanse.Configuration": "58.0.0.8944",
-          "InsERT.Moria.HandelElektroniczny.Configuration": "58.0.0.8944",
-          "InsERT.Moria.HandelElektroniczny.Rozszerzenia.Configuration": "58.0.0.8944",
-          "InsERT.Moria.ImportKsiegowy.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Kadry.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Kalendarze.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Kasa.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Klienci.Configuration": "58.0.0.8944",
-          "InsERT.Moria.KlientPoczty.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Komentarze.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Komunikacja.Configuration": "58.0.0.8944",
-          "InsERT.Moria.KontrolaSkarbowa.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Ksiegowosc.Configuration": "58.0.0.8944",
-          "InsERT.Moria.KsiegowoscPelna.Configuration": "58.0.0.8944",
-          "InsERT.Moria.KsiegowoscUproszczona.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Logistyka.Configuration": "58.0.0.8944",
-          "InsERT.Moria.ModelDanych": "58.0.0.8944",
-          "InsERT.Moria.ModelOrganizacyjny.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Narzedzia": "58.0.0.8944",
-          "InsERT.Moria.Numeracja.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Online.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Parametry.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Place.Configuration": "58.0.0.8944",
-          "InsERT.Moria.PolaWlasne": "58.0.0.8944",
-          "InsERT.Moria.PolaWlasne.Configuration": "58.0.0.8944",
-          "InsERT.Moria.PolaWlasne2": "58.0.0.8944",
-          "InsERT.Moria.PolaWlasne2.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Procesy.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Promocje.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Raporty.Configuration": "58.0.0.8944",
-          "InsERT.Moria.RejestrUslugKsiegowych.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Rozrachunki.Configuration": "58.0.0.8944",
-          "InsERT.Moria.SladRewizyjny.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Slowniki.Configuration": "58.0.0.8944",
-          "InsERT.Moria.SprawozdaniaFinansowe.Configuration": "58.0.0.8944",
-          "InsERT.Moria.SrodkiTrwale.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Startup.UI": "58.0.0.8944",
-          "InsERT.Moria.Towary.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Uprawnienia.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Urzadzenia.Core": "58.0.0.8944",
-          "InsERT.Moria.Urzadzenia.Core.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Waluty.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Wspolne.Configuration": "58.0.0.8944",
-          "InsERT.Moria.Wspomaganie": "58.0.0.8944",
-          "InsERT.Moria.Wydruki.Configuration": "58.0.0.8944",
+          "InsERT.Moria.API": "59.0.0.9026",
+          "InsERT.Moria.API.Private": "59.0.0.9026",
+          "InsERT.Moria.Bank.Configuration": "59.0.0.9026",
+          "InsERT.Moria.BusinessResources": "59.0.0.9026",
+          "InsERT.Moria.BusinessResources.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Cenniki.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Components.UI.Configuration": "59.0.0.9026",
+          "InsERT.Moria.DaneDomyslne": "59.0.0.9026",
+          "InsERT.Moria.Deklaracje.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Deklaracje.Definicje": "59.0.0.9026",
+          "InsERT.Moria.DokumentyDoKsiegowania.Configuration": "59.0.0.9026",
+          "InsERT.Moria.DowodyWewnetrzne.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Dzialania.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Egzekutor.Configuration": "59.0.0.9026",
+          "InsERT.Moria.EwidencjaVAT.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Finanse.Configuration": "59.0.0.9026",
+          "InsERT.Moria.HandelElektroniczny.Configuration": "59.0.0.9026",
+          "InsERT.Moria.HandelElektroniczny.Rozszerzenia.Configuration": "59.0.0.9026",
+          "InsERT.Moria.ImportKsiegowy.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Kadry.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Kalendarze.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Kasa.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Klienci.Configuration": "59.0.0.9026",
+          "InsERT.Moria.KlientPoczty.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Komentarze.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Komunikacja.Configuration": "59.0.0.9026",
+          "InsERT.Moria.KontrolaSkarbowa.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Ksiegowosc.Configuration": "59.0.0.9026",
+          "InsERT.Moria.KsiegowoscPelna.Configuration": "59.0.0.9026",
+          "InsERT.Moria.KsiegowoscUproszczona.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Logistyka.Configuration": "59.0.0.9026",
+          "InsERT.Moria.ModelDanych": "59.0.0.9026",
+          "InsERT.Moria.ModelOrganizacyjny.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Narzedzia": "59.0.0.9026",
+          "InsERT.Moria.Numeracja.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Online.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Parametry.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Place.Configuration": "59.0.0.9026",
+          "InsERT.Moria.PolaWlasne": "59.0.0.9026",
+          "InsERT.Moria.PolaWlasne.Configuration": "59.0.0.9026",
+          "InsERT.Moria.PolaWlasne2": "59.0.0.9026",
+          "InsERT.Moria.PolaWlasne2.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Procesy.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Promocje.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Raporty.Configuration": "59.0.0.9026",
+          "InsERT.Moria.RejestrUslugKsiegowych.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Rozrachunki.Configuration": "59.0.0.9026",
+          "InsERT.Moria.SladRewizyjny.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Slowniki.Configuration": "59.0.0.9026",
+          "InsERT.Moria.SprawozdaniaFinansowe.Configuration": "59.0.0.9026",
+          "InsERT.Moria.SrodkiTrwale.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Startup.UI": "59.0.0.9026",
+          "InsERT.Moria.Towary.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Uprawnienia.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Urzadzenia.Core": "59.0.0.9026",
+          "InsERT.Moria.Urzadzenia.Core.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Waluty.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Wspolne.Configuration": "59.0.0.9026",
+          "InsERT.Moria.Wspomaganie": "59.0.0.9026",
+          "InsERT.Moria.Wydruki.Configuration": "59.0.0.9026",
           "Newtonsoft.Json": "13.0.3"
         },
         "runtime": {
@@ -3760,7 +3757,7 @@
         "runtime": {
           "InsERT.Moria.DaneDomyslne.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "58.0.0.8944"
+            "fileVersion": "59.0.0.9026"
           }
         }
       },
@@ -3784,7 +3781,7 @@
         "runtime": {
           "InsERT.Mox.Launcher.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "58.0.0.8944"
+            "fileVersion": "59.0.0.9026"
           }
         }
       },
@@ -5151,7 +5148,7 @@
         "runtime": {
           "InsERT.Moria.WydrukiDaneDomyslne.dll": {
             "assemblyVersion": "1.0.0.0",
-            "fileVersion": "58.0.0.8944"
+            "fileVersion": "59.0.0.9026"
           }
         }
       },
@@ -5259,19 +5256,19 @@
           }
         }
       },
-      "InsERT.Moria.DatabaseUpdate.PreModelDanychUpdate.Reference/58.0.0.0": {
+      "InsERT.Moria.DatabaseUpdate.PreModelDanychUpdate.Reference/59.0.0.0": {
         "runtime": {
           "InsERT.Moria.DatabaseUpdate.PreModelDanychUpdate.dll": {
-            "assemblyVersion": "58.0.0.0",
-            "fileVersion": "58.0.0.0"
+            "assemblyVersion": "59.0.0.0",
+            "fileVersion": "59.0.0.0"
           }
         }
       },
-      "InsERT.Moria.DatabaseUpdate.PostModelDanychUpdate.Reference/58.0.0.0": {
+      "InsERT.Moria.DatabaseUpdate.PostModelDanychUpdate.Reference/59.0.0.0": {
         "runtime": {
           "InsERT.Moria.DatabaseUpdate.PostModelDanychUpdate.dll": {
-            "assemblyVersion": "58.0.0.0",
-            "fileVersion": "58.0.0.0"
+            "assemblyVersion": "59.0.0.0",
+            "fileVersion": "59.0.0.0"
           }
         }
       },
@@ -5283,11 +5280,11 @@
           }
         }
       },
-      "InsERT.Moria.Dokumenty.SQL.Reference/56.0.0.0": {
+      "InsERT.Moria.Dokumenty.SQL.Reference/59.0.0.0": {
         "runtime": {
           "InsERT.Moria.Dokumenty.SQL.dll": {
-            "assemblyVersion": "56.0.0.0",
-            "fileVersion": "56.0.0.0"
+            "assemblyVersion": "59.0.0.0",
+            "fileVersion": "59.0.0.0"
           }
         }
       },
@@ -5307,19 +5304,19 @@
           }
         }
       },
-      "InsERT.Moria.DatabaseUpdate.PostDaneDomyslneUpdate.Reference/58.0.0.0": {
+      "InsERT.Moria.DatabaseUpdate.PostDaneDomyslneUpdate.Reference/59.0.0.0": {
         "runtime": {
           "InsERT.Moria.DatabaseUpdate.PostDaneDomyslneUpdate.dll": {
-            "assemblyVersion": "58.0.0.0",
-            "fileVersion": "58.0.0.0"
+            "assemblyVersion": "59.0.0.0",
+            "fileVersion": "59.0.0.0"
           }
         }
       },
-      "InsERT.Moria.DatabaseUpdate.PostWydrukiDaneDomyslneUpdate.Reference/58.0.0.0": {
+      "InsERT.Moria.DatabaseUpdate.PostWydrukiDaneDomyslneUpdate.Reference/59.0.0.0": {
         "runtime": {
           "InsERT.Moria.DatabaseUpdate.PostWydrukiDaneDomyslneUpdate.dll": {
-            "assemblyVersion": "58.0.0.0",
-            "fileVersion": "58.0.0.0"
+            "assemblyVersion": "59.0.0.0",
+            "fileVersion": "59.0.0.0"
           }
         }
       },
@@ -5652,7 +5649,7 @@
     }
   },
   "libraries": {
-    "InsERT.Moria.SerwerKasowyHost/58.0.0.8944": {
+    "InsERT.Moria.SerwerKasowyHost/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -5893,12 +5890,12 @@
       "path": "ical.net/4.2.0",
       "hashPath": "ical.net.4.2.0.nupkg.sha512"
     },
-    "InsERT.Common.Product/3.0.8": {
+    "InsERT.Common.Product/3.0.17": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-qByai4niVf4sZMCqMQ4jyGe7d+UqNe5bMKXHj/G2t/gOK8S9pZMRUUBVXlS/MdC7fj9S1cTb7Fb0y+uEgUyK5g==",
-      "path": "insert.common.product/3.0.8",
-      "hashPath": "insert.common.product.3.0.8.nupkg.sha512"
+      "sha512": "sha512-vY+FGM79/Ae3G+z+vgIjUBuu5lAhUxGnNMpevh6FKpOSU57Pj4r4/0PDWI0KxK6nmx1KrHKwgCEUL4+PMX6hsg==",
+      "path": "insert.common.product/3.0.17",
+      "hashPath": "insert.common.product.3.0.17.nupkg.sha512"
     },
     "InsERT.Devices.SuzClient/19.0.286": {
       "type": "package",
@@ -5907,61 +5904,68 @@
       "path": "insert.devices.suzclient/19.0.286",
       "hashPath": "insert.devices.suzclient.19.0.286.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients/1.0.89": {
+    "InsERT.Hermes.SyncClients/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-uigDjeOhLCEGagLpPn6VMXI2J+kpOPV8P4okmXgy7Hv5fCdjn8/KKcM5fVoehZUOd6OGqr8Mwv9WCeAGvoSiXA==",
-      "path": "insert.hermes.syncclients/1.0.89",
-      "hashPath": "insert.hermes.syncclients.1.0.89.nupkg.sha512"
+      "sha512": "sha512-2KeRb45DsYN3ACxuPvdjnJYqU1uiDrv+jzcYwV9YR3SQm8BdWzfM4GlnweXNyHsvfVSkf5Ip3+z3hfTQEFjk7w==",
+      "path": "insert.hermes.syncclients/1.0.117",
+      "hashPath": "insert.hermes.syncclients.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.Abstractions/1.0.89": {
+    "InsERT.Hermes.SyncClients.Abstractions/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-8KIk3Q4JgdbElmPTy+HGddlsTQVHkp7v2wPeX1RUheOd+Aks+/a1paokhgeCHxe3+hDyW20Cl4+gQkX867TkKg==",
-      "path": "insert.hermes.syncclients.abstractions/1.0.89",
-      "hashPath": "insert.hermes.syncclients.abstractions.1.0.89.nupkg.sha512"
+      "sha512": "sha512-5O8PfglmBToxMxGYMdeNHyrPmA05OYR2ifhKDUXuH6yHufpwyMFz32Ph5DjS4HU+quBhNOIBtLl2ol512lIFRA==",
+      "path": "insert.hermes.syncclients.abstractions/1.0.117",
+      "hashPath": "insert.hermes.syncclients.abstractions.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.Employees/1.0.89": {
+    "InsERT.Hermes.SyncClients.Employees/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-KOm3n8JqhXW4peIZ8wQwSCrNPctRrMEpn9Z/CtnYlQZtQTSL02f0akHLoPC8bQ2AXqGwnQkOy7D8Sfpm8HffuA==",
-      "path": "insert.hermes.syncclients.employees/1.0.89",
-      "hashPath": "insert.hermes.syncclients.employees.1.0.89.nupkg.sha512"
+      "sha512": "sha512-g1x0otJU0rNrfosJfcgS42oXMf3Jx0CltFZdZIkJzcWhLgJyvUNUhxTuBb27jeL14fDeJUSbPn0aNfMkmdkMEA==",
+      "path": "insert.hermes.syncclients.employees/1.0.117",
+      "hashPath": "insert.hermes.syncclients.employees.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.Extensions/1.0.89": {
+    "InsERT.Hermes.SyncClients.Extensions/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-9M+1raUWuclO/i9VGn2DKdOxJAAmwvCCwNgcIhCTpykdL9imLyJ4RXnM5ZnwjaNH7U0x7oFP5H4okr9kdZ7c1g==",
-      "path": "insert.hermes.syncclients.extensions/1.0.89",
-      "hashPath": "insert.hermes.syncclients.extensions.1.0.89.nupkg.sha512"
+      "sha512": "sha512-VvjiBaWUtusm0IzjXZTvmgmv9rb59o025tlKRM17dxcBs5wMDYnKmJd7uBORS5Hjfql0Ve8xcc1JAJcKf5Nl3Q==",
+      "path": "insert.hermes.syncclients.extensions/1.0.117",
+      "hashPath": "insert.hermes.syncclients.extensions.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.Leaves/1.0.89": {
+    "InsERT.Hermes.SyncClients.Leaves/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-/Vj7KBIxZIz9JA/qIzBAzPwfV2yTQW1mGxtmOsDWgirafAj+UcB/2yB+bn8W7j+6xlIGWLlIqWHajv0ll9Wgrg==",
-      "path": "insert.hermes.syncclients.leaves/1.0.89",
-      "hashPath": "insert.hermes.syncclients.leaves.1.0.89.nupkg.sha512"
+      "sha512": "sha512-qekRcA8ce8eac93KJ/vBK2r7HoKnNRWN5sRETIPpGBp8miPFsXDE8dgxULjHWMzf/63wS7l3JxRB1XgoTDgvEw==",
+      "path": "insert.hermes.syncclients.leaves/1.0.117",
+      "hashPath": "insert.hermes.syncclients.leaves.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.OrganizationalStructure/1.0.89": {
+    "InsERT.Hermes.SyncClients.OrganizationalStructure/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-+OUQAcPk3OzdZguz9+BqOizjHbLRx/kN1YyszrHSU4dLko+WybsV4tIvP+otRT7m25jr0iBWK8JgYVOlOfaLJQ==",
-      "path": "insert.hermes.syncclients.organizationalstructure/1.0.89",
-      "hashPath": "insert.hermes.syncclients.organizationalstructure.1.0.89.nupkg.sha512"
+      "sha512": "sha512-88bYBxXa7cshkrTqPV0NVqektzOR6sW+HEOej1Rdr0QgkYd3GihO8q9RdhG/rJALH/Rwh2Wharecf7WO0kRrmg==",
+      "path": "insert.hermes.syncclients.organizationalstructure/1.0.117",
+      "hashPath": "insert.hermes.syncclients.organizationalstructure.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.RemoteWorks/1.0.89": {
+    "InsERT.Hermes.SyncClients.RemoteWorks/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-FtGl/xrUpRagmIpDBySMgdhxxSou0UD9+21GB1J44xB7YvMnDEFC1PgZTaG8E4iA8xxWYhlEwI5hUSbT0d9oMg==",
-      "path": "insert.hermes.syncclients.remoteworks/1.0.89",
-      "hashPath": "insert.hermes.syncclients.remoteworks.1.0.89.nupkg.sha512"
+      "sha512": "sha512-7lG85hShSJaHzJPfqd5aAymta8fkJf66rPDoPuaTUWPcZtCKIp0oErL24YbDr+GwlqRL3WAxEFu3vV9L9kKtJQ==",
+      "path": "insert.hermes.syncclients.remoteworks/1.0.117",
+      "hashPath": "insert.hermes.syncclients.remoteworks.1.0.117.nupkg.sha512"
     },
-    "InsERT.Hermes.SyncClients.Remunerations/1.0.89": {
+    "InsERT.Hermes.SyncClients.Remunerations/1.0.117": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-1vYeJDAEUw4XT7Zi9dwBKgNYQwHmMBx5kqhxfmmhepWq/9ljQu/pW7OxDymtJXoACpBK5GKw6hEzB83c+D6wbA==",
-      "path": "insert.hermes.syncclients.remunerations/1.0.89",
-      "hashPath": "insert.hermes.syncclients.remunerations.1.0.89.nupkg.sha512"
+      "sha512": "sha512-8XL1xt8+SzTnDPzcIKE9+p3r1myQHVUcOYWMdbK2HWFUnX4uxjZCOKWuNYSPTy7FavYNCrc/1CzNJaoZeCw4Tw==",
+      "path": "insert.hermes.syncclients.remunerations/1.0.117",
+      "hashPath": "insert.hermes.syncclients.remunerations.1.0.117.nupkg.sha512"
+    },
+    "InsERT.Hermes.SyncClients.TaxDocuments/1.0.117": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-E4rL8L0I2VSp2QKE4R3GWWjbgqjitmzed6XDfcQJewnMsDbQpb6mwW0WgtuMmodMppKAiT4lmyXqAKGSORhx1A==",
+      "path": "insert.hermes.syncclients.taxdocuments/1.0.117",
+      "hashPath": "insert.hermes.syncclients.taxdocuments.1.0.117.nupkg.sha512"
     },
     "InsERT.Moria.SzybkiePlatnosci/100.0.0": {
       "type": "package",
@@ -6019,12 +6023,12 @@
       "path": "insert.webservices.client.changelog/2.0.22",
       "hashPath": "insert.webservices.client.changelog.2.0.22.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.CustomerSubmissions/2.2.17-beta": {
+    "InsERT.WebServices.Client.CustomerSubmissions/2.3.4": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-PiIfzcilTqyC/CD4tyBKERYm0QnVTcg9HT2WpMtGzfnf6h0nm53cZzv7NPMb2P3EZpcYyNrsJSrAWn9lyr00Rw==",
-      "path": "insert.webservices.client.customersubmissions/2.2.17-beta",
-      "hashPath": "insert.webservices.client.customersubmissions.2.2.17-beta.nupkg.sha512"
+      "sha512": "sha512-YBDfEP+aIMNBDRejgmJYfKGGj/tGhed+P89PsxNNWs77MPrIXr/sRKITQ8KyqvH4Y/CgTdJzSQ+osoDkx2k7kA==",
+      "path": "insert.webservices.client.customersubmissions/2.3.4",
+      "hashPath": "insert.webservices.client.customersubmissions.2.3.4.nupkg.sha512"
     },
     "InsERT.WebServices.Client.DocumentExchange/2.1.1": {
       "type": "package",
@@ -6033,12 +6037,12 @@
       "path": "insert.webservices.client.documentexchange/2.1.1",
       "hashPath": "insert.webservices.client.documentexchange.2.1.1.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.Documents/1.3.0-preview.17": {
+    "InsERT.WebServices.Client.Documents/1.3.1": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-c72+VEQUxxQ4eQVlCIZlB4Pmx0SUu/io+kk9Vftnn+71+s2Mws8m+PK3UlBRYA2+etrvTDOonO42lwAoKmLj6w==",
-      "path": "insert.webservices.client.documents/1.3.0-preview.17",
-      "hashPath": "insert.webservices.client.documents.1.3.0-preview.17.nupkg.sha512"
+      "sha512": "sha512-v1WcvHF1RidRExgUo6pPlCYNCuiUTXA2Lb1aZgQQ3mbddjBCdjt2KYwTjOaKYMV9768Id+4ueKVNLE/KK9BmTg==",
+      "path": "insert.webservices.client.documents/1.3.1",
+      "hashPath": "insert.webservices.client.documents.1.3.1.nupkg.sha512"
     },
     "InsERT.WebServices.Client.Documents.KITokenAuth/1.0.0": {
       "type": "package",
@@ -6082,12 +6086,12 @@
       "path": "insert.webservices.client.insmail/1.1.3",
       "hashPath": "insert.webservices.client.insmail.1.1.3.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.InsMonitor/1.0.24": {
+    "InsERT.WebServices.Client.InsMonitor/1.0.30": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-F4Q5EnGHtHBw08yuySB87GakHUY6/tzthfFccyz6NMXTWP8+BhzqkgmeK/6+GrigCigw3qj2kmrKFIMWuw973A==",
-      "path": "insert.webservices.client.insmonitor/1.0.24",
-      "hashPath": "insert.webservices.client.insmonitor.1.0.24.nupkg.sha512"
+      "sha512": "sha512-JTNR9P5wtCBAHN+hLrBjuac+lJYSXvw9Ec/ys1/Aftimh+FPuH+D4vxf+bLD9sZTK5h7i0mr9CWT2uayT45WIw==",
+      "path": "insert.webservices.client.insmonitor/1.0.30",
+      "hashPath": "insert.webservices.client.insmonitor.1.0.30.nupkg.sha512"
     },
     "InsERT.WebServices.Client.Ki/3.0.12": {
       "type": "package",
@@ -6096,33 +6100,19 @@
       "path": "insert.webservices.client.ki/3.0.12",
       "hashPath": "insert.webservices.client.ki.3.0.12.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.KSeF2.Core/3.0.0-preview.111": {
+    "InsERT.WebServices.Client.KSeF2.Core/3.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-GZ7U7Yp01iqiFGtKxSSdw3n2+0U7FrAK6ChTHTMq7VIxvSOj/1TNYiacgoB1j7UUJbiEdiiXmArOQts1Deo+2w==",
-      "path": "insert.webservices.client.ksef2.core/3.0.0-preview.111",
-      "hashPath": "insert.webservices.client.ksef2.core.3.0.0-preview.111.nupkg.sha512"
+      "sha512": "sha512-3tHVrV0ccUKYX0l3dlna8xX/2AL+cTyVP2Bpeh7WgyTLxksrsWttUGqVY57RC2onw7tNI16Q3EDgQd/is1Uemg==",
+      "path": "insert.webservices.client.ksef2.core/3.0.0",
+      "hashPath": "insert.webservices.client.ksef2.core.3.0.0.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.KSeF2.CredentialsManage/3.0.0-preview.111": {
+    "InsERT.WebServices.Client.KSeF2.InvoiceWrite/3.0.0": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-FAFkRniICZRVuNapwqMpWrRcscHIP7Iq9f1W0qz+0md/6hwgHeQKOx3FxLZDRsTHuf/cVeaXEoE4VhpJCU6d4w==",
-      "path": "insert.webservices.client.ksef2.credentialsmanage/3.0.0-preview.111",
-      "hashPath": "insert.webservices.client.ksef2.credentialsmanage.3.0.0-preview.111.nupkg.sha512"
-    },
-    "InsERT.WebServices.Client.KSeF2.CredentialsRead/3.0.0-preview.111": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-lyRg/9Tdb633XG9megfzU9Cl13luwrtlKEwV0izQhv8rrJjNfPoXHIYSFrpCfXjHIYp5Sj3k8CyPqPOCxcyvag==",
-      "path": "insert.webservices.client.ksef2.credentialsread/3.0.0-preview.111",
-      "hashPath": "insert.webservices.client.ksef2.credentialsread.3.0.0-preview.111.nupkg.sha512"
-    },
-    "InsERT.WebServices.Client.KSeF2.InvoiceWrite/3.0.0-preview.111": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-x8k2qbSJEmMth2hmASBn5qEnoXuJS1quVHeHAP1yrRkwjTgamyewIYL4DIpwa/n/FGE4xAyVc39dxyDHccGR1A==",
-      "path": "insert.webservices.client.ksef2.invoicewrite/3.0.0-preview.111",
-      "hashPath": "insert.webservices.client.ksef2.invoicewrite.3.0.0-preview.111.nupkg.sha512"
+      "sha512": "sha512-OmYJTVdxIyiGm0IHFNU60e3FA+dmEUoUm4vhjMPHxgpcAwLYNQnElqOCp3Lkt5ylHDEyjBuTQC9sJhW9Zkp5lg==",
+      "path": "insert.webservices.client.ksef2.invoicewrite/3.0.0",
+      "hashPath": "insert.webservices.client.ksef2.invoicewrite.3.0.0.nupkg.sha512"
     },
     "InsERT.WebServices.Client.KSeFService/2.1.0": {
       "type": "package",
@@ -6131,12 +6121,12 @@
       "path": "insert.webservices.client.ksefservice/2.1.0",
       "hashPath": "insert.webservices.client.ksefservice.2.1.0.nupkg.sha512"
     },
-    "InsERT.WebServices.Client.Licenses/3.1.28": {
+    "InsERT.WebServices.Client.Licenses/3.1.30": {
       "type": "package",
       "serviceable": true,
-      "sha512": "sha512-KcrJzqj6wH4WgnpZQR6skcTy6lOBiigI7CghDubcg5rXSjb6h3j0EmlZmZCAkzTOMOiCChxKPjHs8KseZixi+g==",
-      "path": "insert.webservices.client.licenses/3.1.28",
-      "hashPath": "insert.webservices.client.licenses.3.1.28.nupkg.sha512"
+      "sha512": "sha512-Sw11NJevWU6cce/8EoAbmIimqQk33S27E0eLfZoqqxn1ZOF2uHg6SiwjlV/d7RSpu77K3y4eg5a19RvhmcKe+A==",
+      "path": "insert.webservices.client.licenses/3.1.30",
+      "hashPath": "insert.webservices.client.licenses.3.1.30.nupkg.sha512"
     },
     "InsERT.WebServices.Client.Parameters/3.2.2": {
       "type": "package",
@@ -7769,12 +7759,12 @@
       "path": "yuicompressor.net.msbuild/3.0.0",
       "hashPath": "yuicompressor.net.msbuild.3.0.0.nupkg.sha512"
     },
-    "InsERT.Moria.API.Private/58.0.0.8944": {
+    "InsERT.Moria.API.Private/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.SerwerKasowyService/58.0.0.8944": {
+    "InsERT.Moria.SerwerKasowyService/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""
@@ -8779,12 +8769,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.DatabaseUpdate.PreModelDanychUpdate.Reference/58.0.0.0": {
+    "InsERT.Moria.DatabaseUpdate.PreModelDanychUpdate.Reference/59.0.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.DatabaseUpdate.PostModelDanychUpdate.Reference/58.0.0.0": {
+    "InsERT.Moria.DatabaseUpdate.PostModelDanychUpdate.Reference/59.0.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
@@ -8794,7 +8784,7 @@
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.Dokumenty.SQL.Reference/56.0.0.0": {
+    "InsERT.Moria.Dokumenty.SQL.Reference/59.0.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
@@ -8809,12 +8799,12 @@
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.DatabaseUpdate.PostDaneDomyslneUpdate.Reference/58.0.0.0": {
+    "InsERT.Moria.DatabaseUpdate.PostDaneDomyslneUpdate.Reference/59.0.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""
     },
-    "InsERT.Moria.DatabaseUpdate.PostWydrukiDaneDomyslneUpdate.Reference/58.0.0.0": {
+    "InsERT.Moria.DatabaseUpdate.PostWydrukiDaneDomyslneUpdate.Reference/59.0.0.0": {
       "type": "reference",
       "serviceable": false,
       "sha512": ""

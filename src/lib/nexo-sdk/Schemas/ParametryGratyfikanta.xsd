@@ -236,7 +236,16 @@
     </xs:sequence>
     <xs:attribute name="UczestniczyWPPK" type="xs:boolean" use="required" ></xs:attribute>
   </xs:complexType>
-  
+
+  <xs:complexType name="TParametryStazyPracy">
+    <xs:sequence>
+      <xs:element name="DataPoczatkowaObowiazywniaNowelizacjiUstawy" type="xs:date" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Data początku obowiązywania nowelizacji ustawy o stażach pracy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
   
   <xs:element name="ParametryGratyfikanta">
     <xs:annotation>
@@ -251,7 +260,7 @@
         </xs:element>
         <xs:element name="SkladkaWypadkowaPracownik" type="TSkladkaWypadkowaPracownik" minOccurs="0">
           <xs:annotation>
-            <xs:documentation>Stawka ubezpieczenia wypadkowago dla pracowników.</xs:documentation>
+            <xs:documentation>Stawka ubezpieczenia wypadkowego dla pracowników.</xs:documentation>
           </xs:annotation>
         </xs:element>
         <xs:element name="ParametryGodzinNadliczbowych" type="TParametryGodzinNadliczbowychINocnych" minOccurs="0">
@@ -262,6 +271,11 @@
         <xs:element name="ParametryPPK" type="TParametryPPK" minOccurs="0">
           <xs:annotation>
             <xs:documentation>Parametry pracowniczych planów kapitałowych.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="ParametryStazyPracy" type="TParametryStazyPracy" minOccurs="0">
+          <xs:annotation>
+            <xs:documentation>Parametry staży pracy.</xs:documentation>
           </xs:annotation>
         </xs:element>
       </xs:sequence>

@@ -1015,7 +1015,7 @@
       </xs:choice>
     </xs:sequence>
   </xs:complexType>
-
+  
   <xs:complexType name="TStopnieNiepelnosprawnosci">
     <xs:sequence>
       <xs:element name="StopienNiepelnosprawnosci" minOccurs="0" maxOccurs="unbounded">
@@ -1384,6 +1384,115 @@
     </xs:restriction>
   </xs:simpleType>
 
+  <xs:simpleType name="TRodzajAktywnosciZawodowej">
+    <xs:restriction base="xs:string">
+        <xs:enumeration value="UmowaOPrace">
+          <xs:annotation>
+            <xs:documentation>Umowa o pracę.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="UmowaZlecenieAgencyjna">
+          <xs:annotation>
+            <xs:documentation>Umowa zlecenie/agencyjna.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="DzialalnoscGospodarcza">
+          <xs:annotation>
+            <xs:documentation>Działalność gospodarcza.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+        <xs:enumeration value="DzialalnoscGospodarczaUlgaNaStart">
+          <xs:annotation>
+            <xs:documentation>Działalność gospodarcza – ulga na start.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="ZawieszenieDzialanosciOpiekaNadDzieckiem">
+          <xs:annotation>
+            <xs:documentation>Zawieszenie działalności w celu sprawowania opieki nad dzieckiem.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+        <xs:enumeration value="WspolpracaZOsobaProwadzacaDzialalnosc">
+          <xs:annotation>
+            <xs:documentation>Współpraca z osobą prowadzącą działalność.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="WspolpracaZOsobaProwadzacaDzialalnoscZUlgaNaStart">
+          <xs:annotation>
+            <xs:documentation>Współpraca z osobą prowadzącą działalność z ulgą na start.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="WspolpracaZOsobaZZawieszonaDzialalnosciaOpiekaNadDzieckiem">
+          <xs:annotation>
+            <xs:documentation>Współpraca z osobą, która zawiesiła działalność w celu sprawowania opieki nad dzieckiem.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="WspolpracaZOsobaUmowaZlecenieAgencyjna">
+          <xs:annotation>
+            <xs:documentation>Współpraca z osobą wykonującą umowę zlecenia/agencyjną.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="SpoldzielniaRolnicza">
+          <xs:annotation>
+            <xs:documentation>Spółdzielnia rolnicza/kółek rolniczych.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="PracaZarobkowaZaGranica">
+          <xs:annotation>
+            <xs:documentation>Praca zarobkowa za granicą inna niż umowa o pracę.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+      <xs:enumeration value="InneOkresy">
+          <xs:annotation>
+            <xs:documentation>Inne okresy.</xs:documentation>
+          </xs:annotation>
+        </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TSposobPotwierdzeniaOkresuZatrudnienia">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Brak">
+        <xs:annotation>
+          <xs:documentation>Brak.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OplacanieSkladek">
+        <xs:annotation>
+          <xs:documentation>Zaświadczenie z ZUS o opłaceniu składek.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PodleganieUbezpieczeniomSpolecznym">
+        <xs:annotation>
+          <xs:documentation>Zaświadczenie z ZUS o podleganiu ubezpieczeniom społecznym.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PodleganieUbezpieczeniuZdrowotnemu">
+        <xs:annotation>
+          <xs:documentation>Zaświadczenie z ZUS o podleganiu ubezpieczeniu zdrowotnemu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Inne">
+        <xs:annotation>
+          <xs:documentation>Inne.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="TPotwierdzenieOkresuZatrudnienia">
+    <xs:sequence>
+      <xs:element name="Sposob" type="TSposobPotwierdzeniaOkresuZatrudnienia" minOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Sposób potwierdzenia okresu zatrudnienia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="InnyWyjasnienie" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Inny sposób potwierdzenia okresu zatrudnienia - opisowa wartość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
 
   <xs:element name="Pracownicy">
     <xs:annotation>
@@ -2088,6 +2197,16 @@
                               <xs:documentation>Określa, czy okres zatrudnienia ma być wliczany do stażu urlopowego.</xs:documentation>
                             </xs:annotation>
                           </xs:element>
+                          <xs:element name="WliczajDoStazuPracy" type="xs:boolean" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Określa, czy okres zatrudnienia ma być wliczany do stażu pracy.</xs:documentation>
+                            </xs:annotation>
+                          </xs:element>
+                          <xs:element name="WliczajDoStazuPracyWMojejFirmie" type="xs:boolean" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Określa, czy okres zatrudnienia ma być wliczany do lat stażu pracy w 'mojej firmie'.</xs:documentation>
+                            </xs:annotation>
+                          </xs:element>
                           <xs:element name="DniUrlopu" type="xs:int">
                             <xs:annotation>
                               <xs:documentation>Liczba dni wykorzystanego urlopu.</xs:documentation>
@@ -2149,7 +2268,16 @@
                               <xs:documentation>Zwolnienie od pracy z powodu siły wyższej.</xs:documentation>
                             </xs:annotation>
                           </xs:element>
-                          
+                          <xs:element name ="RodzajAktywnosciZawodowej" type="TRodzajAktywnosciZawodowej" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Rodzaj aktywności zawodowej.</xs:documentation>
+                            </xs:annotation>
+                          </xs:element>
+                          <xs:element name ="PotwierdzenieOkresuZatrudnienia" type="TPotwierdzenieOkresuZatrudnienia" minOccurs="0">
+                            <xs:annotation>
+                              <xs:documentation>Potwierdzenie okresu zatrudnienia.</xs:documentation>
+                            </xs:annotation>
+                          </xs:element>
                         </xs:sequence>
                         <xs:attribute name="WMojejFirmie" type="xs:boolean" default="false">
                           <xs:annotation>

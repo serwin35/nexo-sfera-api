@@ -7,7 +7,7 @@
   "targets": {
     ".NETCoreApp,Version=v8.0": {},
     ".NETCoreApp,Version=v8.0/win-x64": {
-      "RendererPDF/58.0.0.8944": {
+      "RendererPDF/59.0.0.9026": {
         "dependencies": {
           "PDFtoImage": "4.0.1",
           "runtimepack.Microsoft.Windows.SDK.NET.Ref": "10.0.17763.31"
@@ -86,7 +86,7 @@
     }
   },
   "libraries": {
-    "RendererPDF/58.0.0.8944": {
+    "RendererPDF/59.0.0.9026": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

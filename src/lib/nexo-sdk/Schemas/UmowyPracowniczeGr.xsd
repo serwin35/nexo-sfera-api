@@ -110,7 +110,7 @@
     </xs:attribute>
     <xs:attribute name="NieOgraniczajZdrowotnego" type="xs:boolean">
       <xs:annotation>
-        <xs:documentation>Nie ograniczaj zdrowotnego (dla umów cywilnopracnych).</xs:documentation>
+        <xs:documentation>Nie ograniczaj zdrowotnego (dla umów cywilnoprawnych).</xs:documentation>
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
@@ -137,7 +137,7 @@
       </xs:enumeration>
       <xs:enumeration value="WgUstawienPracownika">
         <xs:annotation>
-          <xs:documentation>Odlicznie kosztów według parametrów zdefiniowanych w danych pracownika.</xs:documentation>
+          <xs:documentation>Odliczenie kosztów według parametrów zdefiniowanych w danych pracownika.</xs:documentation>
         </xs:annotation>
       </xs:enumeration>
     </xs:restriction>
@@ -194,7 +194,7 @@
     </xs:attribute>
     <xs:attribute name="NaliczanieZaliczki" type="xs:boolean" use="optional">
       <xs:annotation>
-        <xs:documentation>Włączenie naliczania zalicznki na podatek.</xs:documentation>
+        <xs:documentation>Włączenie naliczania zaliczki na podatek.</xs:documentation>
       </xs:annotation>
     </xs:attribute>
     <xs:attribute name="OdliczanieUlgi" type="xs:boolean" use ="optional">
@@ -393,7 +393,7 @@
       </xs:element>
       <xs:element name="Przyczyna">
         <xs:annotation>
-          <xs:documentation>Dane dotyczące przyczyny rozwiazania umowy.</xs:documentation>
+          <xs:documentation>Dane dotyczące przyczyny rozwiązania umowy.</xs:documentation>
         </xs:annotation>
         <xs:complexType>
           <xs:sequence>
@@ -676,6 +676,22 @@
       </xs:annotation>
     </xs:attribute>
   </xs:complexType>
+
+  <xs:complexType name="TPowiekszaStaze">
+    <xs:annotation>
+      <xs:documentation>Definicja parametrów staży wbudowanych.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="StazPracy" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Powiększa staż pracy</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StazUrlopowy" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Powiększa staż urlopowy</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
   
   <xs:complexType name="TUmowa">
     <xs:annotation>
@@ -777,7 +793,7 @@
       </xs:element>
       <xs:element name="CzasWyczekiwania" type="xs:int" minOccurs="0">
         <xs:annotation>
-          <xs:documentation>Opcjonalany okres wyczekiwania na zasiłek chorobowy (w dniach).</xs:documentation>
+          <xs:documentation>Opcjonalny okres wyczekiwania na zasiłek chorobowy (w dniach).</xs:documentation>
         </xs:annotation>
       </xs:element>
       <xs:element name="SkladkiZUS" type="TSkladkiZUS">
@@ -799,7 +815,7 @@
       </xs:choice>
       <xs:element name="IndywidualnaSkalaPodatkowa" type="TSkalaPodatkowa" minOccurs="0">
         <xs:annotation>
-          <xs:documentation>Opcjonalana indywidualna skala podatkowa (dla umów o pracę).</xs:documentation>
+          <xs:documentation>Opcjonalna indywidualna skala podatkowa (dla umów o pracę).</xs:documentation>
         </xs:annotation>
       </xs:element>
       <xs:element name="Zawod" type="xs:string" minOccurs="0">
@@ -863,7 +879,7 @@
         </xs:element>
         <xs:element name="SystemWynagrodzenUC" type="TSystemWynagrodzenUC">
           <xs:annotation>
-            <xs:documentation>System wyangrodzeń na umowie cywilnoprawnej.</xs:documentation>
+            <xs:documentation>System wynagrodzeń na umowie cywilnoprawnej.</xs:documentation>
           </xs:annotation>
         </xs:element>
       </xs:choice>
@@ -920,6 +936,11 @@
             </xs:element>
           </xs:all>
         </xs:complexType>
+      </xs:element>
+      <xs:element name="PowiekszaStaze" type="TPowiekszaStaze" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Powiększane staże wbudowane.</xs:documentation>
+        </xs:annotation>
       </xs:element>
     </xs:sequence>
     <xs:attribute name="Aktywna" type="xs:boolean" default="true">
