@@ -39,6 +39,15 @@ public class CreateDocumentRequest
     [MaxLength(2000)]
     public string? Notes { get; set; }
 
+    /// <summary>
+    /// Document status ID. For historical documents (past IssueDate), use status without automatic document creation:
+    /// - 4: "Bez rezerwacji" (no reservation) - RECOMMENDED for historical import
+    /// - 11: "Odłożone wydanie towaru" (deferred goods release)
+    /// - 17: "Odłożone wydanie towaru i wykonanie usług" (deferred release and services)
+    /// If not specified for historical documents, defaults to status 4 to avoid auto-document creation failures.
+    /// </summary>
+    public int? StatusId { get; set; }
+
     [Required]
     [MinLength(1)]
     public List<CreateDocumentItemRequest> Items { get; set; } = new();
