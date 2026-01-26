@@ -1175,6 +1175,88 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not read dane.InvalidData: {Msg}", daneIdEx.Message);
                     }
 
+                    // NEW: Try to access underlying ObjectContext to check for EF6 errors
+                    try
+                    {
+                        // Try to get DataDomain (might give access to context)
+                        var dataDomain = faktura.DataDomain;
+                        _logger.LogInformation("[FS-v2] faktura.DataDomain type: {Type}", (object)((object)dataDomain)?.GetType().FullName ?? "(null)");
+
+                        // List properties on DataDomain
+                        if (dataDomain != null)
+                        {
+                            var ddType = ((object)dataDomain).GetType();
+                            var ddProps = ddType.GetProperties().Select(p => p.Name).Take(20).ToList();
+                            _logger.LogInformation("[FS-v2] DataDomain properties: {Props}", string.Join(", ", ddProps));
+
+                            // Try to find ObjectContext
+                            var ctxProp = ddType.GetProperty("Context") ?? ddType.GetProperty("ObjectContext");
+                            if (ctxProp != null)
+                            {
+                                var ctx = ctxProp.GetValue(dataDomain);
+                                _logger.LogInformation("[FS-v2] Found context: {Type}", (object)((object?)ctx)?.GetType().FullName ?? "(null)");
+                            }
+                        }
+                    }
+                    catch (Exception ddEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not access DataDomain: {Msg}", ddEx.Message);
+                    }
+
+                    // NEW: Check Dokument entity state
+                    try
+                    {
+                        var dokument = faktura.Dokument;
+                        var dokType = ((object)dokument).GetType();
+
+                        // List all properties on Dokument that might indicate state/errors
+                        var stateProps = dokType.GetProperties()
+                            .Where(p => p.Name.Contains("State") || p.Name.Contains("Stan") || p.Name.Contains("Error") || p.Name.Contains("Valid") || p.Name.Contains("Status"))
+                            .Select(p => {
+                                try { return $"{p.Name}={p.GetValue(dokument)}"; }
+                                catch { return $"{p.Name}=?"; }
+                            })
+                            .ToList();
+                        if (stateProps.Any())
+                        {
+                            _logger.LogInformation("[FS-v2] Dokument state/error props: {Props}", string.Join(", ", stateProps));
+                        }
+
+                        // Check EntityKey (indicates if entity is new or existing)
+                        try
+                        {
+                            var entityKey = dokType.GetProperty("EntityKey")?.GetValue(dokument);
+                            _logger.LogInformation("[FS-v2] Dokument.EntityKey: {Key}", (object)(entityKey?.ToString() ?? "(null)"));
+                        }
+                        catch { }
+                    }
+                    catch (Exception dokEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not check Dokument entity: {Msg}", dokEx.Message);
+                    }
+
+                    // NEW: Subscribe to ChangesSavedCompleted event to capture save result
+                    bool changesSavedEventFired = false;
+                    EventHandler? changesSavedHandler = null;
+                    try
+                    {
+                        changesSavedHandler = (sender, args) => {
+                            changesSavedEventFired = true;
+                            _logger.LogInformation("[FS-v2] ChangesSavedCompleted event fired! Args type: {Type}", (object)(args?.GetType().FullName ?? "(null)"));
+                        };
+                        var fakturaType = ((object)faktura).GetType();
+                        var eventInfo = fakturaType.GetEvent("ChangesSavedCompleted");
+                        if (eventInfo != null)
+                        {
+                            eventInfo.AddEventHandler(faktura, changesSavedHandler);
+                            _logger.LogDebug("[FS-v2] Subscribed to ChangesSavedCompleted event");
+                        }
+                    }
+                    catch (Exception evtEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not subscribe to ChangesSavedCompleted: {Msg}", evtEx.Message);
+                    }
+
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
 
                     // Wrap Zapisz in try-catch to capture any exception
@@ -1198,9 +1280,43 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
+                    // Log whether ChangesSavedCompleted event fired
+                    _logger.LogInformation("[FS-v2] ChangesSavedCompleted event fired: {Fired}", changesSavedEventFired);
+
+                    // Unsubscribe from event
+                    try
+                    {
+                        if (changesSavedHandler != null)
+                        {
+                            var fakturaType = ((object)faktura).GetType();
+                            var eventInfo = fakturaType.GetEvent("ChangesSavedCompleted");
+                            eventInfo?.RemoveEventHandler(faktura, changesSavedHandler);
+                        }
+                    }
+                    catch { }
+
                     bool isSaved = false;
                     if (saveException == null)
                     {
+                        // Log detailed info about saveResult
+                        if (saveResult != null)
+                        {
+                            var resultType = saveResult.GetType();
+                            _logger.LogInformation("[FS-v2] Zapisz() result type: {Type}, value: {Value}", (object)resultType.FullName, (object)saveResult.ToString()!);
+
+                            // If it's not a simple bool, check for properties
+                            if (resultType != typeof(bool))
+                            {
+                                var resultProps = resultType.GetProperties()
+                                    .Select(p => {
+                                        try { return $"{p.Name}={p.GetValue(saveResult)}"; }
+                                        catch { return $"{p.Name}=?"; }
+                                    })
+                                    .ToList();
+                                _logger.LogInformation("[FS-v2] Zapisz() result properties: {Props}", string.Join(", ", resultProps));
+                            }
+                        }
+
                         try
                         {
                             isSaved = (bool)saveResult!;
