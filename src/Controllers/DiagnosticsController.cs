@@ -73,8 +73,76 @@ public class DiagnosticsController : ControllerBase
                 await connection.OpenAsync();
                 results["ConnectionState"] = connection.State.ToString();
 
-                // 1. Get TransakcjaVAT table schema
-                const string schemaQuery = @"
+                // 1. First find tables containing 'VAT' or 'Transakcja'
+                const string findTablesQuery = @"
+                    SELECT DISTINCT TABLE_SCHEMA, TABLE_NAME
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME LIKE '%VAT%' OR TABLE_NAME LIKE '%Transakcja%'
+                    ORDER BY TABLE_NAME";
+
+                var vatTables = new List<string>();
+                await using (var findCmd = new SqlCommand(findTablesQuery, connection))
+                await using (var findReader = await findCmd.ExecuteReaderAsync())
+                {
+                    while (await findReader.ReadAsync())
+                    {
+                        vatTables.Add($"{findReader.GetString(0)}.{findReader.GetString(1)}");
+                    }
+                }
+                results["VATRelatedTables"] = vatTables;
+
+                // 2. Find tables with IdWInstancji column
+                const string findIdWInstancjiQuery = @"
+                    SELECT TABLE_SCHEMA, TABLE_NAME, DATA_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE COLUMN_NAME = 'IdWInstancji'
+                    ORDER BY TABLE_NAME";
+
+                var tablesWithIdWInstancji = new List<Dictionary<string, object?>>();
+                await using (var idCmd = new SqlCommand(findIdWInstancjiQuery, connection))
+                await using (var idReader = await idCmd.ExecuteReaderAsync())
+                {
+                    while (await idReader.ReadAsync())
+                    {
+                        tablesWithIdWInstancji.Add(new Dictionary<string, object?>
+                        {
+                            ["Schema"] = idReader.GetString(0),
+                            ["Table"] = idReader.GetString(1),
+                            ["IdWInstancji_DataType"] = idReader.GetString(2)
+                        });
+                    }
+                }
+                results["TablesWithIdWInstancji"] = tablesWithIdWInstancji;
+
+                // Use first VAT-related table with IdWInstancji, or first table with IdWInstancji
+                string? targetSchema = null;
+                string? targetTable = null;
+
+                var vatTableWithId = tablesWithIdWInstancji.FirstOrDefault(t =>
+                    t["Table"]?.ToString()?.Contains("VAT", StringComparison.OrdinalIgnoreCase) == true ||
+                    t["Table"]?.ToString()?.Contains("Transakcja", StringComparison.OrdinalIgnoreCase) == true);
+
+                if (vatTableWithId != null)
+                {
+                    targetSchema = vatTableWithId["Schema"]?.ToString();
+                    targetTable = vatTableWithId["Table"]?.ToString();
+                }
+                else if (tablesWithIdWInstancji.Any())
+                {
+                    targetSchema = tablesWithIdWInstancji[0]["Schema"]?.ToString();
+                    targetTable = tablesWithIdWInstancji[0]["Table"]?.ToString();
+                }
+
+                results["TargetTable"] = targetTable != null ? $"{targetSchema}.{targetTable}" : "No suitable table found";
+
+                if (targetTable == null)
+                {
+                    results["Error"] = "No table with IdWInstancji column found";
+                    return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+                }
+
+                // 3. Get target table schema
+                var schemaQuery = $@"
                     SELECT
                         c.COLUMN_NAME,
                         c.DATA_TYPE,
@@ -83,7 +151,7 @@ public class DiagnosticsController : ControllerBase
                         c.IS_NULLABLE,
                         c.COLUMN_DEFAULT
                     FROM INFORMATION_SCHEMA.COLUMNS c
-                    WHERE c.TABLE_NAME = 'TransakcjaVAT'
+                    WHERE c.TABLE_SCHEMA = '{targetSchema}' AND c.TABLE_NAME = '{targetTable}'
                     ORDER BY c.ORDINAL_POSITION";
 
                 var columns = new List<Dictionary<string, object?>>();
@@ -103,15 +171,15 @@ public class DiagnosticsController : ControllerBase
                         });
                     }
                 }
-                results["TransakcjaVATColumns"] = columns;
+                results["TargetTableColumns"] = columns;
 
-                // 2. Find IdWInstancji specifically
+                // 4. Find IdWInstancji specifically
                 var idWInstancjiCol = columns.FirstOrDefault(c =>
                     c["ColumnName"]?.ToString()?.Equals("IdWInstancji", StringComparison.OrdinalIgnoreCase) == true);
                 results["IdWInstancjiColumn"] = idWInstancjiCol;
 
-                // 3. Try to read actual data from TransakcjaVAT
-                const string dataQuery = @"SELECT TOP 1 * FROM TransakcjaVAT";
+                // 5. Try to read actual data from the target table
+                var dataQuery = $@"SELECT TOP 1 * FROM [{targetSchema}].[{targetTable}]";
                 await using (var dataCmd = new SqlCommand(dataQuery, connection))
                 await using (var dataReader = await dataCmd.ExecuteReaderAsync())
                 {
