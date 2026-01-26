@@ -1621,6 +1621,285 @@ WHERE Symbol = 'PZ'",
 
         return Ok(ApiResponse<Dictionary<string, object?>>.Ok(result));
     }
+
+    /// <summary>
+    /// Explore available methods on PrzyjeciaZewnetrzne manager to find alternative creation methods
+    /// This helps identify if there's a creation method that accepts parameters to control VAT loading
+    /// </summary>
+    [HttpGet("pz-manager-methods")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> ExplorePzManagerMethods()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            var explorationResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
+            {
+                var methodsInfo = new Dictionary<string, object?>();
+
+                var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
+                if (przyjecia == null)
+                {
+                    methodsInfo["Error"] = "Could not get PrzyjeciaZewnetrzne manager";
+                    return methodsInfo;
+                }
+
+                methodsInfo["ManagerType"] = przyjecia.GetType().FullName;
+
+                // Get all methods on the manager
+                var managerType = przyjecia.GetType();
+                var methods = managerType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+                    .Where(m => !m.IsSpecialName && m.DeclaringType != typeof(object))
+                    .OrderBy(m => m.Name)
+                    .ToList();
+
+                var methodsList = new List<Dictionary<string, object?>>();
+                foreach (var method in methods)
+                {
+                    var parameters = method.GetParameters();
+                    var paramsList = parameters.Select(p => new Dictionary<string, object?>
+                    {
+                        ["Name"] = p.Name,
+                        ["Type"] = p.ParameterType.Name,
+                        ["FullType"] = p.ParameterType.FullName,
+                        ["IsOptional"] = p.IsOptional,
+                        ["HasDefaultValue"] = p.HasDefaultValue,
+                        ["DefaultValue"] = p.HasDefaultValue ? p.DefaultValue?.ToString() : null
+                    }).ToList();
+
+                    methodsList.Add(new Dictionary<string, object?>
+                    {
+                        ["Name"] = method.Name,
+                        ["ReturnType"] = method.ReturnType.Name,
+                        ["FullReturnType"] = method.ReturnType.FullName,
+                        ["Parameters"] = paramsList,
+                        ["IsCreationMethod"] = method.Name.StartsWith("Utworz") || method.Name.StartsWith("Create")
+                    });
+                }
+                methodsInfo["Methods"] = methodsList;
+
+                // Specifically look for Utworz* methods
+                var creationMethods = methodsList
+                    .Where(m => m["Name"]?.ToString()?.StartsWith("Utworz") == true)
+                    .ToList();
+                methodsInfo["CreationMethods"] = creationMethods;
+
+                // Also check interfaces implemented by this manager
+                var interfaces = managerType.GetInterfaces();
+                var interfacesList = interfaces.Select(i => new Dictionary<string, object?>
+                {
+                    ["Name"] = i.Name,
+                    ["FullName"] = i.FullName
+                }).ToList();
+                methodsInfo["Interfaces"] = interfacesList;
+
+                // Check if there's an IPrzyjeciaZewnetrzne interface with specific methods
+                var iPrzyjeciaZewnetrzne = interfaces.FirstOrDefault(i =>
+                    i.Name == "IPrzyjeciaZewnetrzne" || i.Name.Contains("PrzyjeciaZewnetrzne"));
+                if (iPrzyjeciaZewnetrzne != null)
+                {
+                    methodsInfo["MainInterface"] = iPrzyjeciaZewnetrzne.FullName;
+
+                    var interfaceMethods = iPrzyjeciaZewnetrzne.GetMethods();
+                    var interfaceMethodsList = interfaceMethods.Select(m => new Dictionary<string, object?>
+                    {
+                        ["Name"] = m.Name,
+                        ["ReturnType"] = m.ReturnType.Name,
+                        ["Parameters"] = m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
+                    }).ToList();
+                    methodsInfo["InterfaceMethods"] = interfaceMethodsList;
+                }
+
+                return methodsInfo;
+            });
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(explorationResult));
+        }
+        catch (Exception ex)
+        {
+            results["Error"] = ex.Message;
+            results["StackTrace"] = ex.StackTrace?.Substring(0, Math.Min(1000, ex.StackTrace?.Length ?? 0));
+            _logger.LogError(ex, "Error exploring PZ manager methods");
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+    }
+
+    /// <summary>
+    /// Test PZ creation with explicit date parameters to diagnose VAT initialization issues
+    /// </summary>
+    [HttpPost("test-pz-creation-with-dates")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreationWithDates(
+        [FromQuery] DateTime? issueDate = null,
+        [FromQuery] DateTime? externalDocDate = null,
+        [FromQuery] string? externalDocNumber = null)
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            var testResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
+            {
+                var stepResults = new Dictionary<string, object?>
+                {
+                    ["InputIssueDate"] = issueDate?.ToString("o") ?? "Not provided (will use current date)",
+                    ["InputExternalDocDate"] = externalDocDate?.ToString("o") ?? "Not provided",
+                    ["InputExternalDocNumber"] = externalDocNumber ?? "Not provided"
+                };
+
+                var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
+                if (przyjecia == null)
+                {
+                    stepResults["Error"] = "Could not get PrzyjeciaZewnetrzne manager";
+                    return stepResults;
+                }
+
+                // Get configuration
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                var pzConfig = konfiguracje?.DaneDomyslne?.PrzyjecieZewnetrzne;
+
+                stepResults["ConfigFound"] = pzConfig != null;
+                if (pzConfig != null)
+                {
+                    try { stepResults["ConfigPosiadaAspektFinansowy"] = pzConfig.PosiadaAspektFinansowy?.ToString(); }
+                    catch { stepResults["ConfigPosiadaAspektFinansowy"] = "Cannot read"; }
+                }
+
+                // Try creating with Utworz(Konfiguracja)
+                stepResults["Step1_CreateDocument"] = "Starting...";
+                try
+                {
+                    using (var pz = pzConfig != null ? przyjecia.Utworz(pzConfig) : przyjecia.UtworzPrzyjecieZewnetrzne())
+                    {
+                        stepResults["Step1_CreateDocument"] = "SUCCESS";
+                        stepResults["DocumentCreated"] = true;
+
+                        // Step 2: Set dates BEFORE reserving number
+                        var effectiveIssueDate = issueDate ?? DateTime.Now;
+                        var effectiveExternalDate = externalDocDate ?? issueDate ?? DateTime.Now;
+
+                        stepResults["Step2_SetDates"] = "Starting...";
+                        try
+                        {
+                            pz.Dane.DataWydaniaWystawienia = effectiveIssueDate;
+                            stepResults["SetDataWydaniaWystawienia"] = effectiveIssueDate.ToString("o");
+                        }
+                        catch (Exception ex) { stepResults["DataWydaniaWystawienia_Error"] = ex.Message; }
+
+                        try
+                        {
+                            pz.Dane.DataWprowadzenia = effectiveIssueDate;
+                            stepResults["SetDataWprowadzenia"] = effectiveIssueDate.ToString("o");
+                        }
+                        catch (Exception ex) { stepResults["DataWprowadzenia_Error"] = ex.Message; }
+
+                        // Try setting external document date (critical for VAT)
+                        try
+                        {
+                            pz.Dane.DataDokumentuZewnetrznego = effectiveExternalDate;
+                            stepResults["SetDataDokumentuZewnetrznego"] = effectiveExternalDate.ToString("o");
+                        }
+                        catch (Exception ex)
+                        {
+                            stepResults["DataDokumentuZewnetrznego_Error"] = ex.Message;
+                            // Try alternative property names
+                            try
+                            {
+                                pz.Dane.DataZewnetrzna = effectiveExternalDate;
+                                stepResults["SetDataZewnetrzna_Alternative"] = effectiveExternalDate.ToString("o");
+                            }
+                            catch { }
+                        }
+
+                        // Set external document number
+                        if (!string.IsNullOrEmpty(externalDocNumber))
+                        {
+                            try
+                            {
+                                pz.Dane.NumerZewnetrzny = externalDocNumber;
+                                stepResults["SetNumerZewnetrzny"] = externalDocNumber;
+                            }
+                            catch (Exception ex) { stepResults["NumerZewnetrzny_Error"] = ex.Message; }
+                        }
+
+                        stepResults["Step2_SetDates"] = "SUCCESS";
+
+                        // Step 3: Reserve number (this may trigger VAT loading)
+                        stepResults["Step3_ReserveNumber"] = "Starting...";
+                        try
+                        {
+                            pz.ZarezerwujNumer();
+                            var numberPreview = pz.PodajPodgladNumeru()?.ToString();
+                            stepResults["Step3_ReserveNumber"] = "SUCCESS";
+                            stepResults["ReservedNumber"] = numberPreview;
+                        }
+                        catch (Exception numEx)
+                        {
+                            stepResults["Step3_ReserveNumber"] = "ERROR: " + numEx.Message;
+                            if (numEx.ToString().Contains("TransakcjaVAT"))
+                            {
+                                stepResults["TransakcjaVAT_Error"] = true;
+                                stepResults["Recommendation"] = "The error occurs during ZarezerwujNumer(), not document creation. " +
+                                    "VAT transactions are loaded when the document number is reserved. " +
+                                    "Consider disabling financial aspect on the configuration.";
+                            }
+                        }
+
+                        // Step 4: List available properties on pz.Dane to find VAT-related ones
+                        stepResults["Step4_ListDaneProperties"] = "Starting...";
+                        try
+                        {
+                            var daneType = ((object)pz.Dane).GetType();
+                            var daneProperties = daneType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                                .Where(p => p.Name.Contains("VAT", StringComparison.OrdinalIgnoreCase) ||
+                                           p.Name.Contains("Transakcja", StringComparison.OrdinalIgnoreCase) ||
+                                           p.Name.Contains("Aspekt", StringComparison.OrdinalIgnoreCase) ||
+                                           p.Name.Contains("Finansow", StringComparison.OrdinalIgnoreCase) ||
+                                           p.Name.Contains("Data", StringComparison.OrdinalIgnoreCase))
+                                .Select(p => new { p.Name, Type = p.PropertyType.Name })
+                                .ToList();
+                            stepResults["Step4_ListDaneProperties"] = "SUCCESS";
+                            stepResults["VatRelatedProperties"] = daneProperties;
+                        }
+                        catch (Exception propEx)
+                        {
+                            stepResults["Step4_ListDaneProperties"] = "ERROR: " + propEx.Message;
+                        }
+                    }
+                }
+                catch (Exception createEx)
+                {
+                    stepResults["Step1_CreateDocument"] = "ERROR: " + createEx.Message;
+                    stepResults["DocumentCreated"] = false;
+
+                    if (createEx.ToString().Contains("TransakcjaVAT"))
+                    {
+                        stepResults["TransakcjaVAT_Error"] = true;
+                        stepResults["ErrorOccurredAt"] = "Document creation (UtworzPrzyjecieZewnetrzne/Utworz)";
+                        stepResults["Recommendation"] = "The error occurs DURING document creation, before any properties can be set. " +
+                            "This is an SDK/EF6 compatibility issue. Consider: " +
+                            "1) Disabling financial aspect on the PZ configuration in the database, or " +
+                            "2) Using a PZ configuration without VAT aspect (if available).";
+                    }
+                }
+
+                return stepResults;
+            });
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(testResult));
+        }
+        catch (Exception ex)
+        {
+            results["OuterError"] = ex.Message;
+            if (ex.ToString().Contains("TransakcjaVAT"))
+            {
+                results["TransakcjaVAT_Error"] = true;
+            }
+            _logger.LogError(ex, "Error in TestPzCreationWithDates diagnostic");
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+    }
 }
 
 #region Response DTOs
