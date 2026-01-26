@@ -676,11 +676,23 @@ public class DiagnosticsController : ControllerBase
             // Test 2: System.Data.SqlClient (the legacy provider SDK was built with)
             try
             {
-                await using var sysConnection = new System.Data.SqlClient.SqlConnection(connectionString);
-                await sysConnection.OpenAsync();
+                // Use legacy-compatible connection string (without TrustServerCertificate)
+                var legacyConnectionString = _sferaService.GetConnectionString(forLegacySqlClient: true);
+                if (string.IsNullOrEmpty(legacyConnectionString))
+                {
+                    providerComparison["System.Data.SqlClient"] = new Dictionary<string, object?>
+                    {
+                        ["Error"] = "Could not build legacy connection string"
+                    };
+                }
+                else
+                {
+                    await using var sysConnection = new System.Data.SqlClient.SqlConnection(legacyConnectionString);
+                    await sysConnection.OpenAsync();
 
-                var sysResults = await TraceTransakcjaVatWithLegacyProvider(sysConnection, "System.Data.SqlClient");
-                providerComparison["System.Data.SqlClient"] = sysResults;
+                    var sysResults = await TraceTransakcjaVatWithLegacyProvider(sysConnection, "System.Data.SqlClient");
+                    providerComparison["System.Data.SqlClient"] = sysResults;
+                }
             }
             catch (Exception ex)
             {
