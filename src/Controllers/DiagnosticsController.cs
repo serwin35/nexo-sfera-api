@@ -67,6 +67,8 @@ public class DiagnosticsController : ControllerBase
             }
 
             var results = new Dictionary<string, object?>();
+            string? targetSchema = null;
+            string? targetTable = null;
 
             await using (var connection = new SqlConnection(connectionString))
             {
@@ -115,9 +117,6 @@ public class DiagnosticsController : ControllerBase
                 results["TablesWithIdWInstancji"] = tablesWithIdWInstancji;
 
                 // Use first VAT-related table with IdWInstancji, or first table with IdWInstancji
-                string? targetSchema = null;
-                string? targetTable = null;
-
                 var vatTableWithId = tablesWithIdWInstancji.FirstOrDefault(t =>
                     t["Table"]?.ToString()?.Contains("VAT", StringComparison.OrdinalIgnoreCase) == true ||
                     t["Table"]?.ToString()?.Contains("Transakcja", StringComparison.OrdinalIgnoreCase) == true);
