@@ -380,7 +380,8 @@ public class WarehouseDocumentsController : ControllerBase
                     {
                         // Try to get the standard PZ configuration (without VAT in name)
                         pzKonfiguracja = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
-                        _logger.LogInformation("Using PZ configuration: {Config}", pzKonfiguracja?.Symbol ?? "default");
+                        string configSymbol = pzKonfiguracja?.Symbol?.ToString() ?? "default";
+                        _logger.LogInformation("Using PZ configuration: {Config}", (object)configSymbol);
                     }
                 }
                 catch (Exception ex)
