@@ -634,6 +634,258 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Trace the actual column types returned by DbDataReader for TransakcjaVAT table.
+    /// This diagnoses whether the issue is at ADO.NET level or EF6 level.
+    /// Shows exact ordinal positions and CLR types for all columns.
+    /// </summary>
+    [HttpGet("trace-transakcja-vat-reader")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TraceTransakcjaVatReader()
+    {
+        try
+        {
+            var connectionString = _sferaService.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return BadRequest(ApiResponse<Dictionary<string, object?>>.Error("Connection string not available"));
+            }
+
+            var results = new Dictionary<string, object?>();
+
+            // Test with BOTH SQL providers to compare behavior
+            var providerComparison = new Dictionary<string, object?>();
+
+            // Test 1: Microsoft.Data.SqlClient (what we're using)
+            try
+            {
+                await using var msConnection = new SqlConnection(connectionString);
+                await msConnection.OpenAsync();
+
+                var msResults = await TraceTransakcjaVatWithProvider(msConnection, "Microsoft.Data.SqlClient");
+                providerComparison["Microsoft.Data.SqlClient"] = msResults;
+            }
+            catch (Exception ex)
+            {
+                providerComparison["Microsoft.Data.SqlClient"] = new Dictionary<string, object?>
+                {
+                    ["Error"] = ex.Message,
+                    ["InnerError"] = ex.InnerException?.Message
+                };
+            }
+
+            // Test 2: System.Data.SqlClient (the legacy provider SDK was built with)
+            try
+            {
+                await using var sysConnection = new System.Data.SqlClient.SqlConnection(connectionString);
+                await sysConnection.OpenAsync();
+
+                var sysResults = await TraceTransakcjaVatWithLegacyProvider(sysConnection, "System.Data.SqlClient");
+                providerComparison["System.Data.SqlClient"] = sysResults;
+            }
+            catch (Exception ex)
+            {
+                providerComparison["System.Data.SqlClient"] = new Dictionary<string, object?>
+                {
+                    ["Error"] = ex.Message,
+                    ["InnerError"] = ex.InnerException?.Message
+                };
+            }
+
+            results["ProviderComparison"] = providerComparison;
+
+            // Analyze differences
+            var analysis = new List<string>();
+            if (providerComparison["Microsoft.Data.SqlClient"] is Dictionary<string, object?> msData &&
+                providerComparison["System.Data.SqlClient"] is Dictionary<string, object?> sysData)
+            {
+                if (msData.ContainsKey("Columns") && sysData.ContainsKey("Columns"))
+                {
+                    var msColumns = msData["Columns"] as List<Dictionary<string, object?>>;
+                    var sysColumns = sysData["Columns"] as List<Dictionary<string, object?>>;
+
+                    if (msColumns != null && sysColumns != null && msColumns.Count == sysColumns.Count)
+                    {
+                        for (int i = 0; i < msColumns.Count; i++)
+                        {
+                            var msCol = msColumns[i];
+                            var sysCol = sysColumns[i];
+                            var colName = msCol["Name"]?.ToString();
+
+                            if (msCol["ClrType"]?.ToString() != sysCol["ClrType"]?.ToString())
+                            {
+                                analysis.Add($"TYPE MISMATCH at ordinal {i} ({colName}): " +
+                                    $"Microsoft.Data={msCol["ClrType"]}, System.Data={sysCol["ClrType"]}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (analysis.Count == 0)
+            {
+                analysis.Add("No type mismatches detected between providers");
+            }
+
+            results["TypeMismatchAnalysis"] = analysis;
+            results["Diagnosis"] = "If there are type mismatches, the issue is at ADO.NET provider level. " +
+                "If no mismatches, the issue is in EF6 metadata/model mapping.";
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error tracing TransakcjaVAT reader");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error tracing TransakcjaVAT reader",
+                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+        }
+    }
+
+    private async Task<Dictionary<string, object?>> TraceTransakcjaVatWithProvider(
+        SqlConnection connection, string providerName)
+    {
+        var results = new Dictionary<string, object?>
+        {
+            ["Provider"] = providerName,
+            ["ConnectionState"] = connection.State.ToString(),
+            ["ServerVersion"] = connection.ServerVersion
+        };
+
+        // Query TransakcjeVAT with SELECT TOP 1
+        const string query = @"
+            SELECT TOP 1 *
+            FROM [ModelDanychContainer].[TransakcjeVAT]";
+
+        await using var cmd = new SqlCommand(query, connection);
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        var columns = new List<Dictionary<string, object?>>();
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            var colInfo = new Dictionary<string, object?>
+            {
+                ["Ordinal"] = i,
+                ["Name"] = reader.GetName(i),
+                ["ClrType"] = reader.GetFieldType(i)?.FullName,
+                ["DbTypeName"] = reader.GetDataTypeName(i)
+            };
+
+            // Flag special columns
+            var name = reader.GetName(i);
+            if (name == "IdWInstancji" || name == "TimeStamp" || name == "WystepowanieFakturKsef")
+            {
+                colInfo["CRITICAL"] = true;
+            }
+
+            columns.Add(colInfo);
+        }
+        results["Columns"] = columns;
+        results["ColumnCount"] = reader.FieldCount;
+
+        // Read one row to check actual value types
+        if (await reader.ReadAsync())
+        {
+            var sampleValues = new Dictionary<string, object?>();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                var name = reader.GetName(i);
+                if (name == "IdWInstancji" || name == "TimeStamp" || name == "WystepowanieFakturKsef" ||
+                    name == "Id" || name == "IdRodzajuTransakcji")
+                {
+                    var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    sampleValues[name] = new Dictionary<string, object?>
+                    {
+                        ["Ordinal"] = i,
+                        ["IsNull"] = reader.IsDBNull(i),
+                        ["Value"] = value?.ToString(),
+                        ["ActualClrType"] = value?.GetType().FullName,
+                        ["IsByteArray"] = value is byte[]
+                    };
+                }
+            }
+            results["CriticalColumnValues"] = sampleValues;
+        }
+        else
+        {
+            results["CriticalColumnValues"] = "No data in TransakcjeVAT table";
+        }
+
+        return results;
+    }
+
+    private async Task<Dictionary<string, object?>> TraceTransakcjaVatWithLegacyProvider(
+        System.Data.SqlClient.SqlConnection connection, string providerName)
+    {
+        var results = new Dictionary<string, object?>
+        {
+            ["Provider"] = providerName,
+            ["ConnectionState"] = connection.State.ToString(),
+            ["ServerVersion"] = connection.ServerVersion
+        };
+
+        // Query TransakcjeVAT with SELECT TOP 1
+        const string query = @"
+            SELECT TOP 1 *
+            FROM [ModelDanychContainer].[TransakcjeVAT]";
+
+        await using var cmd = new System.Data.SqlClient.SqlCommand(query, connection);
+        await using var reader = await cmd.ExecuteReaderAsync();
+
+        var columns = new List<Dictionary<string, object?>>();
+        for (int i = 0; i < reader.FieldCount; i++)
+        {
+            var colInfo = new Dictionary<string, object?>
+            {
+                ["Ordinal"] = i,
+                ["Name"] = reader.GetName(i),
+                ["ClrType"] = reader.GetFieldType(i)?.FullName,
+                ["DbTypeName"] = reader.GetDataTypeName(i)
+            };
+
+            // Flag special columns
+            var name = reader.GetName(i);
+            if (name == "IdWInstancji" || name == "TimeStamp" || name == "WystepowanieFakturKsef")
+            {
+                colInfo["CRITICAL"] = true;
+            }
+
+            columns.Add(colInfo);
+        }
+        results["Columns"] = columns;
+        results["ColumnCount"] = reader.FieldCount;
+
+        // Read one row to check actual value types
+        if (await reader.ReadAsync())
+        {
+            var sampleValues = new Dictionary<string, object?>();
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                var name = reader.GetName(i);
+                if (name == "IdWInstancji" || name == "TimeStamp" || name == "WystepowanieFakturKsef" ||
+                    name == "Id" || name == "IdRodzajuTransakcji")
+                {
+                    var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
+                    sampleValues[name] = new Dictionary<string, object?>
+                    {
+                        ["Ordinal"] = i,
+                        ["IsNull"] = reader.IsDBNull(i),
+                        ["Value"] = value?.ToString(),
+                        ["ActualClrType"] = value?.GetType().FullName,
+                        ["IsByteArray"] = value is byte[]
+                    };
+                }
+            }
+            results["CriticalColumnValues"] = sampleValues;
+        }
+        else
+        {
+            results["CriticalColumnValues"] = "No data in TransakcjeVAT table";
+        }
+
+        return results;
+    }
+
+    /// <summary>
     /// Get comprehensive SDK structure - all assemblies, types, managers, and schemas
     /// This is the main diagnostic endpoint for understanding Sfera integration capabilities
     /// </summary>
