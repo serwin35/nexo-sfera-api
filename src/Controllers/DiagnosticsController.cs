@@ -289,6 +289,165 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Check if database has WystepowanieFakturKsef column (added in SDK v59)
+    /// This is the key diagnostic for the TransakcjaVAT materialization error.
+    /// If the database is MISSING this column but the SDK expects it, EF6 will read wrong ordinals.
+    /// </summary>
+    [HttpGet("check-sdk-v59-schema")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> CheckSdkV59Schema()
+    {
+        try
+        {
+            var connectionString = _sferaService.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return BadRequest(ApiResponse<Dictionary<string, object?>>.Error("Connection string not available"));
+            }
+
+            var results = new Dictionary<string, object?>();
+
+            await using var connection = new SqlConnection(connectionString);
+            await connection.OpenAsync();
+
+            // 1. Find the TransakcjaVAT or similar table
+            const string findTableQuery = @"
+                SELECT TABLE_SCHEMA, TABLE_NAME
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_NAME LIKE '%TransakcjaVAT%'
+                   OR TABLE_NAME LIKE '%TransakcjeVAT%'
+                   OR TABLE_NAME = 'TransakcjaVAT'
+                ORDER BY TABLE_NAME";
+
+            var tables = new List<string>();
+            string? targetSchema = null;
+            string? targetTable = null;
+
+            await using (var cmd = new SqlCommand(findTableQuery, connection))
+            await using (var reader = await cmd.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
+                {
+                    var schema = reader.GetString(0);
+                    var table = reader.GetString(1);
+                    tables.Add($"{schema}.{table}");
+                    if (targetTable == null)
+                    {
+                        targetSchema = schema;
+                        targetTable = table;
+                    }
+                }
+            }
+
+            results["TransakcjaVATTables"] = tables;
+            results["TargetTable"] = targetTable != null ? $"{targetSchema}.{targetTable}" : "NOT FOUND";
+
+            if (targetTable == null)
+            {
+                results["Error"] = "TransakcjaVAT table not found in database";
+                results["Diagnosis"] = "The database might not have VAT tracking enabled or uses a different schema";
+                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+            }
+
+            // 2. Get all columns with their ordinal positions
+            var columnsQuery = $@"
+                SELECT
+                    ORDINAL_POSITION,
+                    COLUMN_NAME,
+                    DATA_TYPE,
+                    IS_NULLABLE
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table
+                ORDER BY ORDINAL_POSITION";
+
+            var columns = new List<Dictionary<string, object?>>();
+            int? wystepowanieOrdinal = null;
+            int? idWInstancjiOrdinal = null;
+            bool hasWystepowanie = false;
+
+            await using (var cmd = new SqlCommand(columnsQuery, connection))
+            {
+                cmd.Parameters.AddWithValue("@schema", targetSchema);
+                cmd.Parameters.AddWithValue("@table", targetTable);
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
+                {
+                    var ordinal = reader.GetInt32(0);
+                    var colName = reader.GetString(1);
+                    var dataType = reader.GetString(2);
+                    var nullable = reader.GetString(3);
+
+                    columns.Add(new Dictionary<string, object?>
+                    {
+                        ["Ordinal"] = ordinal,
+                        ["ColumnName"] = colName,
+                        ["DataType"] = dataType,
+                        ["IsNullable"] = nullable
+                    });
+
+                    if (colName.Equals("WystepowanieFakturKsef", StringComparison.OrdinalIgnoreCase))
+                    {
+                        hasWystepowanie = true;
+                        wystepowanieOrdinal = ordinal;
+                    }
+                    if (colName.Equals("IdWInstancji", StringComparison.OrdinalIgnoreCase))
+                    {
+                        idWInstancjiOrdinal = ordinal;
+                    }
+                }
+            }
+
+            results["TotalColumns"] = columns.Count;
+            results["HasWystepowanieFakturKsef"] = hasWystepowanie;
+            results["WystepowanieFakturKsef_Ordinal"] = wystepowanieOrdinal;
+            results["IdWInstancji_Ordinal"] = idWInstancjiOrdinal;
+
+            // 3. Show columns around the critical area
+            var criticalColumns = columns.Where(c =>
+            {
+                var ord = (int?)c["Ordinal"];
+                var name = c["ColumnName"]?.ToString() ?? "";
+                return (wystepowanieOrdinal.HasValue && ord >= wystepowanieOrdinal - 2 && ord <= wystepowanieOrdinal + 2) ||
+                       (idWInstancjiOrdinal.HasValue && ord >= idWInstancjiOrdinal - 2 && ord <= idWInstancjiOrdinal + 2) ||
+                       name.Contains("Ksef", StringComparison.OrdinalIgnoreCase) ||
+                       name.Contains("IdWInstancji", StringComparison.OrdinalIgnoreCase);
+            }).ToList();
+
+            results["CriticalColumns"] = criticalColumns;
+
+            // 4. Diagnosis
+            if (!hasWystepowanie)
+            {
+                results["DIAGNOSIS"] = "CRITICAL: Database is MISSING the WystepowanieFakturKsef column! " +
+                    "SDK v59 expects this column but it doesn't exist in the database. " +
+                    "This causes EF6 to read columns at wrong ordinals, resulting in the 'could not be set to Byte[]' error. " +
+                    "SOLUTION: Run Nexo desktop application (Subiekt) to upgrade the database schema, " +
+                    "or contact InsERT support about database migration.";
+                results["DatabaseNeedsUpgrade"] = true;
+            }
+            else
+            {
+                results["DIAGNOSIS"] = "Database has WystepowanieFakturKsef column. " +
+                    "If PZ creation still fails, the issue might be: " +
+                    "1) SDK DLL version mismatch with database " +
+                    "2) EF6 context caching stale metadata " +
+                    "3) Different SQL provider behavior";
+                results["DatabaseSchemaOk"] = true;
+            }
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking SDK v59 schema");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error checking SDK v59 schema",
+                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+        }
+    }
+
+    /// <summary>
     /// Test BIT type mapping by querying the database directly with ADO.NET
     /// This helps diagnose if the issue is at the ADO.NET level or EF6 level
     /// </summary>
