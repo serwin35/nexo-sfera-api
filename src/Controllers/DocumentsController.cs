@@ -728,10 +728,75 @@ public class DocumentsController : ControllerBase
                 {
                     dynamic dane = faktura.Dane;
 
-                    // Set customer
-                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+                    // Set customer using SDK pattern: PodmiotyDokumentu.UstawNabywceWedlug...
+                    // This is the recommended approach per SDK examples (RealizacjaBase.cs)
+                    bool customerSet = false;
 
-                    // CRITICAL: Set warehouse on Dokument - required for sales documents!
+                    // Try PodmiotyDokumentu methods first (SDK pattern)
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(request.CustomerNIP))
+                        {
+                            // Try UstawNabywceWedlugNIP
+                            try
+                            {
+                                faktura.PodmiotyDokumentu.UstawNabywceWedlugNIP(request.CustomerNIP);
+                                _logger.LogInformation("[FS-v3] Set customer via PodmiotyDokumentu.UstawNabywceWedlugNIP({NIP})", request.CustomerNIP);
+                                customerSet = true;
+                            }
+                            catch (Exception nipEx)
+                            {
+                                _logger.LogDebug("[FS-v3] UstawNabywceWedlugNIP failed: {Msg}", nipEx.Message);
+                            }
+                        }
+
+                        // Try by symbol if we have customer ID and NIP didn't work
+                        if (!customerSet && request.CustomerId.HasValue)
+                        {
+                            // Find customer symbol by ID
+                            var podmiotyManager = _sferaService.GetManager("Podmioty");
+                            if (podmiotyManager != null)
+                            {
+                                string? customerSymbol = null;
+                                foreach (var p in podmiotyManager.Dane.Wszystkie())
+                                {
+                                    if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
+                                    {
+                                        customerSymbol = DynamicPropertyHelper.GetString(p, "Sygnatura")
+                                            ?? DynamicPropertyHelper.GetString(DynamicPropertyHelper.GetProperty(p, "Sygnatura"), "PelnaSygnatura")
+                                            ?? DynamicPropertyHelper.GetString(p, "Symbol");
+                                        if (!string.IsNullOrEmpty(customerSymbol))
+                                        {
+                                            try
+                                            {
+                                                faktura.PodmiotyDokumentu.UstawNabywceWedlugSymbolu(customerSymbol);
+                                                _logger.LogInformation("[FS-v3] Set customer via PodmiotyDokumentu.UstawNabywceWedlugSymbolu({Symbol})", customerSymbol);
+                                                customerSet = true;
+                                            }
+                                            catch (Exception symEx)
+                                            {
+                                                _logger.LogDebug("[FS-v3] UstawNabywceWedlugSymbolu failed: {Msg}", symEx.Message);
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception podmEx)
+                    {
+                        _logger.LogDebug("[FS-v3] PodmiotyDokumentu approach failed: {Msg}", podmEx.Message);
+                    }
+
+                    // Fallback to old method if PodmiotyDokumentu didn't work
+                    if (!customerSet)
+                    {
+                        _logger.LogWarning("[FS-v3] PodmiotyDokumentu methods failed, falling back to dane.Podmiot assignment");
+                        SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+                    }
+
+                    // Set warehouse on dane.Magazyn (SDK pattern per examples)
                     var magazyny = _sferaService.GetManager("Magazyny");
 
                     // Set warehouse (use from request or default "MG")
@@ -749,8 +814,9 @@ public class DocumentsController : ControllerBase
                         }
                         if (magazyn != null)
                         {
-                            faktura.Dokument.Magazyn = magazyn;
-                            _logger.LogInformation("[FS-v2] Set Dokument.Magazyn = {Symbol}", warehouseSymbol);
+                            // SDK pattern: use dane.Magazyn (not faktura.Dokument.Magazyn)
+                            dane.Magazyn = magazyn;
+                            _logger.LogInformation("[FS-v3] Set dane.Magazyn = {Symbol}", warehouseSymbol);
                         }
                         else
                         {
@@ -1201,26 +1267,26 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not count items: {Msg}", itemEx.Message);
                     }
 
-                    // Try to add default payments (this may be required for sales invoices)
+                    // Add default payments (required for sales invoices per SDK examples)
+                    // SDK pattern: faktura.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()
                     try
                     {
-                        // Try DodajPlatnosciDomyslne first
-                        faktura.Pozycje.DodajPlatnosciDomyslne();
-                        _logger.LogInformation("[FS-v2] Called DodajPlatnosciDomyslne() successfully");
+                        faktura.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
+                        _logger.LogInformation("[FS-v3] Called Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
                     }
                     catch (Exception payEx)
                     {
-                        _logger.LogDebug("[FS-v2] DodajPlatnosciDomyslne() failed: {Msg}", payEx.Message);
+                        _logger.LogDebug("[FS-v3] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", payEx.Message);
 
-                        // Try alternative payment methods
+                        // Try alternative payment method
                         try
                         {
-                            faktura.Pozycje.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
-                            _logger.LogInformation("[FS-v2] Called DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
+                            faktura.Platnosci.DodajPlatnosciDomyslne();
+                            _logger.LogInformation("[FS-v3] Called Platnosci.DodajPlatnosciDomyslne() successfully");
                         }
                         catch (Exception payEx2)
                         {
-                            _logger.LogDebug("[FS-v2] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", payEx2.Message);
+                            _logger.LogDebug("[FS-v3] Platnosci.DodajPlatnosciDomyslne() also failed: {Msg}", payEx2.Message);
                         }
                     }
 
@@ -3666,103 +3732,133 @@ public class DocumentsController : ControllerBase
 
         foreach (var item in items)
         {
-            dynamic? asortyment = null;
             string searchKey = item.ProductSymbol ?? item.ProductId?.ToString() ?? "unknown";
 
-            // Find product by ID or Symbol
-            if (item.ProductId.HasValue)
-            {
-                foreach (var a in asortymentyManager.Dane.Wszystkie())
-                {
-                    if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
-                    {
-                        asortyment = a;
-                        break;
-                    }
-                }
-            }
-            else if (!string.IsNullOrEmpty(item.ProductSymbol))
-            {
-                foreach (var a in asortymentyManager.Dane.Wszystkie())
-                {
-                    if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
-                    {
-                        asortyment = a;
-                        break;
-                    }
-                }
-            }
-
-            if (asortyment == null)
-            {
-                _logger.LogWarning("[FS-v2] AddSalesInvoiceItems: Product not found: {SearchKey}", searchKey);
-                skippedCount++;
-                continue;
-            }
+            _logger.LogInformation("[FS-v2] Adding item: Symbol={Symbol}, ProductId={Id}, Qty={Qty}",
+                (object)(item.ProductSymbol ?? "(null)"), (object)(item.ProductId?.ToString() ?? "(null)"), item.Quantity);
 
             try
             {
-                // Get product info for logging
-                int towarId = DynamicPropertyHelper.GetId(asortyment);
-                string towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
-                var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
-
-                _logger.LogInformation("[FS-v2] Adding item: Id={Id}, Symbol={Symbol}, Qty={Qty}, Unit={Unit}",
-                    towarId, (object)towarSymbol, item.Quantity, (object)(jednostka?.ToString() ?? "(null)"));
-
                 // Try different Dodaj patterns
                 dynamic? pozycja = null;
 
-                // Pattern 1: Dodaj(asortyment, ilosc, jednostka) - full pattern like warehouse documents
-                try
-                {
-                    if (jednostka != null)
-                    {
-                        pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
-                        if (pozycja != null)
-                        {
-                            _logger.LogDebug("[FS-v2] Dodaj(asortyment, qty, jednostka) succeeded");
-                        }
-                    }
-                }
-                catch (Exception ex1)
-                {
-                    _logger.LogDebug("[FS-v2] Dodaj(asortyment, qty, jednostka) failed: {Msg}", ex1.Message);
-                }
-
-                // Pattern 2: Dodaj(towarId) then set Ilosc - current pattern
-                if (pozycja == null)
+                // Pattern 0 (SDK Pattern): Dodaj(symbol) - simplest SDK pattern from examples
+                // This is the recommended approach according to SDK documentation
+                if (!string.IsNullOrEmpty(item.ProductSymbol))
                 {
                     try
                     {
-                        pozycja = faktura.Pozycje.Dodaj(towarId);
+                        pozycja = faktura.Pozycje.Dodaj(item.ProductSymbol);
                         if (pozycja != null)
                         {
                             pozycja.Ilosc = item.Quantity;
-                            _logger.LogDebug("[FS-v2] Dodaj(towarId) + Ilosc assignment succeeded");
+                            _logger.LogDebug("[FS-v2] Dodaj(symbol) + Ilosc succeeded for {Symbol}", (object)item.ProductSymbol);
                         }
                     }
-                    catch (Exception ex2)
+                    catch (Exception ex0)
                     {
-                        _logger.LogDebug("[FS-v2] Dodaj(towarId) failed: {Msg}", ex2.Message);
+                        _logger.LogDebug("[FS-v2] Dodaj(symbol) failed: {Msg}", ex0.Message);
                     }
                 }
 
-                // Pattern 3: Dodaj(asortyment) then set Ilosc
+                // If Pattern 0 failed, look up asortyment and try other patterns
+                dynamic? asortyment = null;
+                int towarId = 0;
+                string towarSymbol = searchKey;
+                dynamic? jednostka = null;
+
                 if (pozycja == null)
                 {
-                    try
+                    // Find product by ID or Symbol
+                    if (item.ProductId.HasValue)
                     {
-                        pozycja = faktura.Pozycje.Dodaj(asortyment);
-                        if (pozycja != null)
+                        foreach (var a in asortymentyManager.Dane.Wszystkie())
                         {
-                            pozycja.Ilosc = item.Quantity;
-                            _logger.LogDebug("[FS-v2] Dodaj(asortyment) + Ilosc assignment succeeded");
+                            if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                            {
+                                asortyment = a;
+                                break;
+                            }
                         }
                     }
-                    catch (Exception ex3)
+                    else if (!string.IsNullOrEmpty(item.ProductSymbol))
                     {
-                        _logger.LogDebug("[FS-v2] Dodaj(asortyment) failed: {Msg}", ex3.Message);
+                        foreach (var a in asortymentyManager.Dane.Wszystkie())
+                        {
+                            if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                            {
+                                asortyment = a;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (asortyment == null)
+                    {
+                        _logger.LogWarning("[FS-v2] AddSalesInvoiceItems: Product not found: {SearchKey}", searchKey);
+                        skippedCount++;
+                        continue;
+                    }
+
+                    // Get product info for logging and other patterns
+                    towarId = DynamicPropertyHelper.GetId(asortyment);
+                    towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
+                    jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+
+                    _logger.LogDebug("[FS-v2] Found product: Id={Id}, Symbol={Symbol}, Unit={Unit}",
+                        towarId, (object)towarSymbol, (object)(jednostka?.ToString() ?? "(null)"));
+
+                    // Pattern 1: Dodaj(asortyment, ilosc, jednostka) - full pattern like warehouse documents
+                    try
+                    {
+                        if (jednostka != null)
+                        {
+                            pozycja = faktura.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+                            if (pozycja != null)
+                            {
+                                _logger.LogDebug("[FS-v2] Dodaj(asortyment, qty, jednostka) succeeded");
+                            }
+                        }
+                    }
+                    catch (Exception ex1)
+                    {
+                        _logger.LogDebug("[FS-v2] Dodaj(asortyment, qty, jednostka) failed: {Msg}", ex1.Message);
+                    }
+
+                    // Pattern 2: Dodaj(towarId) then set Ilosc
+                    if (pozycja == null)
+                    {
+                        try
+                        {
+                            pozycja = faktura.Pozycje.Dodaj(towarId);
+                            if (pozycja != null)
+                            {
+                                pozycja.Ilosc = item.Quantity;
+                                _logger.LogDebug("[FS-v2] Dodaj(towarId) + Ilosc assignment succeeded");
+                            }
+                        }
+                        catch (Exception ex2)
+                        {
+                            _logger.LogDebug("[FS-v2] Dodaj(towarId) failed: {Msg}", ex2.Message);
+                        }
+                    }
+
+                    // Pattern 3: Dodaj(asortyment) then set Ilosc
+                    if (pozycja == null)
+                    {
+                        try
+                        {
+                            pozycja = faktura.Pozycje.Dodaj(asortyment);
+                            if (pozycja != null)
+                            {
+                                pozycja.Ilosc = item.Quantity;
+                                _logger.LogDebug("[FS-v2] Dodaj(asortyment) + Ilosc assignment succeeded");
+                            }
+                        }
+                        catch (Exception ex3)
+                        {
+                            _logger.LogDebug("[FS-v2] Dodaj(asortyment) failed: {Msg}", ex3.Message);
+                        }
                     }
                 }
 
