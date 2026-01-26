@@ -1254,8 +1254,9 @@ public class WarehouseDocumentsController : ControllerBase
                     ("PrzesunieciaMiedzymagazynowe", WarehouseDocumentType.MM)
                 };
 
-                // Find source document
-                dynamic? sourceDocument = null;
+                // Find source document (read-only entity first)
+                dynamic? sourceDocumentEntity = null;
+                dynamic? sourceManager = null;
                 string? sourceManagerName = null;
 
                 foreach (var (managerName, docType) in managersToCheck)
@@ -1269,23 +1270,24 @@ public class WarehouseDocumentsController : ControllerBase
                         {
                             if (DynamicPropertyHelper.GetId(d) == id)
                             {
-                                sourceDocument = d;
+                                sourceDocumentEntity = d;
+                                sourceManager = manager;
                                 sourceManagerName = managerName;
                                 break;
                             }
                         }
-                        if (sourceDocument != null) break;
+                        if (sourceDocumentEntity != null) break;
                     }
                     catch { continue; }
                 }
 
-                if (sourceDocument == null)
+                if (sourceDocumentEntity == null || sourceManager == null)
                 {
                     return (false, $"Source warehouse document with ID {id} not found");
                 }
 
-                // Find target document
-                dynamic? targetDocument = null;
+                // Find target document (read-only entity)
+                dynamic? targetDocumentEntity = null;
 
                 foreach (var (managerName, docType) in managersToCheck)
                 {
@@ -1298,42 +1300,106 @@ public class WarehouseDocumentsController : ControllerBase
                         {
                             if (DynamicPropertyHelper.GetId(d) == request.TargetDocumentId)
                             {
-                                targetDocument = d;
+                                targetDocumentEntity = d;
                                 break;
                             }
                         }
-                        if (targetDocument != null) break;
+                        if (targetDocumentEntity != null) break;
                     }
                     catch { continue; }
                 }
 
-                if (targetDocument == null)
+                if (targetDocumentEntity == null)
                 {
                     return (false, $"Target warehouse document with ID {request.TargetDocumentId} not found");
                 }
 
-                // Create association using DokumentyPowiazane
+                string sourceNumber = DynamicPropertyHelper.GetNestedString(sourceDocumentEntity, "NumerWewnetrzny", "PelnaSygnatura") ?? id.ToString();
+                string targetNumber = DynamicPropertyHelper.GetNestedString(targetDocumentEntity, "NumerWewnetrzny", "PelnaSygnatura") ?? request.TargetDocumentId.ToString();
+
+                // SDK Pattern: Use Znajdz() to get editable business object, modify, then Zapisz()
                 try
                 {
-                    var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(sourceDocument, "DokumentyPowiazane");
-                    if (dokumentyPowiazane == null)
+                    // Get editable business object using Znajdz(encja)
+                    using (dynamic editableDocument = sourceManager.Znajdz(sourceDocumentEntity))
                     {
-                        return (false, "Source document does not support document associations (DokumentyPowiazane)");
+                        if (editableDocument == null)
+                        {
+                            return (false, $"Could not open document {sourceNumber} for editing");
+                        }
+
+                        // Try to add association via DokumentyPowiazane.Add()
+                        bool associationAdded = false;
+
+                        // Pattern 1: Try Dane.DokumentyPowiazane.Add()
+                        try
+                        {
+                            editableDocument.Dane.DokumentyPowiazane.Add(targetDocumentEntity);
+                            associationAdded = true;
+                            _logger.LogDebug("[ASSOC] Added via Dane.DokumentyPowiazane.Add()");
+                        }
+                        catch (Exception ex1)
+                        {
+                            _logger.LogDebug("[ASSOC] Dane.DokumentyPowiazane.Add() failed: {Msg}", ex1.Message);
+                        }
+
+                        // Pattern 2: Try DokumentyPowiazane.Dodaj() on business object
+                        if (!associationAdded)
+                        {
+                            try
+                            {
+                                editableDocument.DokumentyPowiazane.Dodaj(targetDocumentEntity);
+                                associationAdded = true;
+                                _logger.LogDebug("[ASSOC] Added via DokumentyPowiazane.Dodaj()");
+                            }
+                            catch (Exception ex2)
+                            {
+                                _logger.LogDebug("[ASSOC] DokumentyPowiazane.Dodaj() failed: {Msg}", ex2.Message);
+                            }
+                        }
+
+                        // Pattern 3: Try direct property access
+                        if (!associationAdded)
+                        {
+                            try
+                            {
+                                var powiazane = DynamicPropertyHelper.GetProperty(editableDocument.Dane, "DokumentyPowiazane");
+                                if (powiazane != null)
+                                {
+                                    powiazane.Add(targetDocumentEntity);
+                                    associationAdded = true;
+                                    _logger.LogDebug("[ASSOC] Added via DynamicPropertyHelper");
+                                }
+                            }
+                            catch (Exception ex3)
+                            {
+                                _logger.LogDebug("[ASSOC] DynamicPropertyHelper failed: {Msg}", ex3.Message);
+                            }
+                        }
+
+                        if (!associationAdded)
+                        {
+                            return (false, "Could not add document association - no compatible method found");
+                        }
+
+                        // CRITICAL: Save the changes using SDK pattern
+                        if ((bool)editableDocument.Zapisz())
+                        {
+                            _logger.LogInformation("[ASSOC] Successfully associated {Source} with {Target}", sourceNumber, targetNumber);
+                            return (true, $"Documents {sourceNumber} and {targetNumber} associated successfully");
+                        }
+                        else
+                        {
+                            var errors = GetBusinessObjectErrors(editableDocument);
+                            string errorMsg = errors.Any() ? string.Join("; ", errors) : "Unknown error";
+                            _logger.LogWarning("[ASSOC] Zapisz() failed: {Errors}", errorMsg);
+                            return (false, $"Failed to save association: {errorMsg}");
+                        }
                     }
-
-                    // Add the target document to the collection
-                    dokumentyPowiazane.Dodaj(targetDocument);
-
-                    string sourceNumber = DynamicPropertyHelper.GetNestedString(sourceDocument, "NumerWewnetrzny", "PelnaSygnatura") ?? id.ToString();
-                    string targetNumber = DynamicPropertyHelper.GetNestedString(targetDocument, "NumerWewnetrzny", "PelnaSygnatura") ?? request.TargetDocumentId.ToString();
-
-                    _logger.LogInformation("Associated warehouse document {SourceDoc} with {TargetDoc}", sourceNumber, targetNumber);
-
-                    return (true, $"Documents {sourceNumber} and {targetNumber} associated successfully");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error creating document association");
+                    _logger.LogError(ex, "[ASSOC] Error creating document association");
                     return (false, $"Error creating association: {ex.Message}");
                 }
             });
