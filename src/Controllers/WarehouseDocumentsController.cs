@@ -368,8 +368,121 @@ public class WarehouseDocumentsController : ControllerBase
                     return (false, null, "Failed to get PrzyjeciaZewnetrzne manager", new List<string>());
                 }
 
-                using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
+                // WORKAROUND for EF6 TransakcjaVAT materialization error in .NET 8:
+                // Get PZ configuration and create document with Utworz(Konfiguracja) to avoid VAT loading issues
+                // The standard UtworzPrzyjecieZewnetrzne() triggers VAT transaction loading which fails due to
+                // EF6 column ordinal mismatch after SDK v59 schema changes (new WystepowanieFakturKsef column)
+                dynamic? pzKonfiguracja = null;
+                try
                 {
+                    var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                    if (konfiguracje?.DaneDomyslne != null)
+                    {
+                        // Try to get the standard PZ configuration (without VAT in name)
+                        pzKonfiguracja = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
+                        _logger.LogInformation("Using PZ configuration: {Config}", pzKonfiguracja?.Symbol ?? "default");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Could not get PZ configuration: {Error}. Falling back to standard creation.", ex.Message);
+                }
+
+                // Try to create document using configuration to avoid VAT initialization issues
+                dynamic pz;
+                Exception? firstAttemptError = null;
+                try
+                {
+                    if (pzKonfiguracja != null)
+                    {
+                        // Use Utworz(Konfiguracja) - may avoid some VAT loading paths
+                        pz = przyjecia.Utworz(pzKonfiguracja);
+                        _logger.LogInformation("Created PZ using Utworz(Konfiguracja)");
+                    }
+                    else
+                    {
+                        // Fallback to standard method
+                        pz = przyjecia.UtworzPrzyjecieZewnetrzne();
+                        _logger.LogInformation("Created PZ using UtworzPrzyjecieZewnetrzne()");
+                    }
+                }
+                catch (Exception createEx)
+                {
+                    firstAttemptError = createEx;
+                    // Check if this is the TransakcjaVAT EF6 error
+                    bool isVatError = createEx.ToString().Contains("TransakcjaVAT") ||
+                                      createEx.ToString().Contains("IdWInstancji") ||
+                                      createEx.ToString().Contains("Byte[]");
+
+                    if (isVatError)
+                    {
+                        _logger.LogError(createEx, "EF6 TransakcjaVAT materialization error during PZ creation. " +
+                            "This is likely caused by SDK/database version mismatch. " +
+                            "Ensure SDK v59 DLLs are deployed and server was restarted.");
+
+                        // Return specific error for VAT issue
+                        return (false, null,
+                            "PZ creation failed due to EF6 TransakcjaVAT error. " +
+                            "This is caused by SDK/database version mismatch (column WystepowanieFakturKsef). " +
+                            "Ensure SDK v59 DLLs are deployed and application was restarted.",
+                            new List<string> { createEx.Message });
+                    }
+
+                    // If configuration-based creation fails with different error, try standard method
+                    _logger.LogWarning("Utworz(Konfiguracja) failed: {Error}. Trying UtworzPrzyjecieZewnetrzne().", createEx.Message);
+                    try
+                    {
+                        pz = przyjecia.UtworzPrzyjecieZewnetrzne();
+                        _logger.LogInformation("Created PZ using UtworzPrzyjecieZewnetrzne() as fallback");
+                    }
+                    catch (Exception fallbackEx)
+                    {
+                        // Both methods failed
+                        _logger.LogError(fallbackEx, "Both PZ creation methods failed. First error: {FirstError}",
+                            firstAttemptError?.Message);
+
+                        bool isFallbackVatError = fallbackEx.ToString().Contains("TransakcjaVAT") ||
+                                                  fallbackEx.ToString().Contains("IdWInstancji");
+
+                        if (isFallbackVatError)
+                        {
+                            return (false, null,
+                                "PZ creation failed due to EF6 TransakcjaVAT error. " +
+                                "This is caused by SDK/database version mismatch. " +
+                                "Ensure SDK v59 DLLs are deployed and application was restarted.",
+                                new List<string> { fallbackEx.Message });
+                        }
+
+                        throw; // Re-throw for outer handler
+                    }
+                }
+
+                using (pz)
+                {
+                    // WORKAROUND: Try to disable financial aspect to prevent VAT transaction loading
+                    // This may help avoid the EF6 materialization error on TransakcjaVAT.IdWInstancji
+                    try
+                    {
+                        // Try setting on Dane
+                        pz.Dane.PosiadaAspektFinansowy = false;
+                        _logger.LogInformation("Set PosiadaAspektFinansowy=false on Dane");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug("Could not set PosiadaAspektFinansowy on Dane: {Error}", ex.Message);
+                    }
+
+                    try
+                    {
+                        // Try setting on Dokument
+                        pz.Dokument.PosiadaAspektFinansowy = false;
+                        _logger.LogInformation("Set PosiadaAspektFinansowy=false on Dokument");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug("Could not set PosiadaAspektFinansowy on Dokument: {Error}", ex.Message);
+                    }
+
                     // Set contractor (supplier)
                     SetContractor(pz.Dane, request.ContractorId, request.ContractorNIP);
 
