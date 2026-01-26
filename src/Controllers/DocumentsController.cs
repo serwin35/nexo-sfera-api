@@ -1775,14 +1775,79 @@ public class DocumentsController : ControllerBase
                             _logger.LogInformation("[FS-v2] Setting StatusDokumentuId to {TargetStatus} (request.StatusId={RequestStatus}, default=4 'Bez rezerwacji')",
                                 (object)targetStatusId, (object)(request.StatusId?.ToString() ?? "(null)"));
 
+                            // Try to find and set the StatusDokumentu entity (not just the ID, which is read-only)
                             try
                             {
-                                dane.StatusDokumentuId = targetStatusId;
-                                _logger.LogInformation("[FS-v2] StatusDokumentuId set to: {Id}", (object)targetStatusId);
+                                // Get the target status entity from the document's current status entity set
+                                var currentStatusEntity = dane.StatusDokumentu;
+                                if (currentStatusEntity != null)
+                                {
+                                    // Use reflection to get the EntitySet and find status by ID
+                                    var statusType = ((object)currentStatusEntity).GetType();
+
+                                    // Try to access the ObjectContext through the entity's EntityKey
+                                    var entityKeyProp = statusType.GetProperty("EntityKey");
+                                    if (entityKeyProp != null)
+                                    {
+                                        var entityKey = entityKeyProp.GetValue(currentStatusEntity);
+                                        if (entityKey != null)
+                                        {
+                                            // Get EntityKey's GetEntitySet method or EntitySet property
+                                            var ekType = entityKey.GetType();
+                                            var entityContainerProp = ekType.GetProperty("EntityContainerName");
+                                            var entitySetProp = ekType.GetProperty("EntitySetName");
+                                            _logger.LogInformation("[FS-v2] EntityKey: Container={Container}, Set={Set}",
+                                                (object)(entityContainerProp?.GetValue(entityKey)?.ToString() ?? "?"),
+                                                (object)(entitySetProp?.GetValue(entityKey)?.ToString() ?? "?"));
+                                        }
+                                    }
+
+                                    // Alternative: Try getting status via SDK manager
+                                    try
+                                    {
+                                        var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                                        if (statusyManager != null)
+                                        {
+                                            _logger.LogInformation("[FS-v2] Got StatusyDokumentow manager");
+                                            var statusyDane = statusyManager.Dane;
+                                            if (statusyDane != null)
+                                            {
+                                                var wszystkie = statusyDane.Wszystkie();
+                                                if (wszystkie != null)
+                                                {
+                                                    foreach (var status in (System.Collections.IEnumerable)wszystkie)
+                                                    {
+                                                        int? id = DynamicPropertyHelper.GetInt(status, "Id");
+                                                        if (id == targetStatusId)
+                                                        {
+                                                            _logger.LogInformation("[FS-v2] Found target status entity with Id={Id}", (object)targetStatusId);
+                                                            // Assign the entity to dane.StatusDokumentu
+                                                            dane.StatusDokumentu = status;
+                                                            _logger.LogInformation("[FS-v2] StatusDokumentu entity assigned successfully!");
+
+                                                            // Verify
+                                                            var newId = dane.StatusDokumentuId;
+                                                            _logger.LogInformation("[FS-v2] New StatusDokumentuId after assignment: {Id}", (object)(newId?.ToString() ?? "(null)"));
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            _logger.LogWarning("[FS-v2] StatusyDokumentow manager not available");
+                                        }
+                                    }
+                                    catch (Exception managerEx)
+                                    {
+                                        _logger.LogWarning("[FS-v2] Could not get status via manager: {Msg}", managerEx.Message);
+                                    }
+                                }
                             }
                             catch (Exception statusSetEx)
                             {
-                                _logger.LogWarning("[FS-v2] Could not set StatusDokumentuId directly: {Msg}", statusSetEx.Message);
+                                _logger.LogWarning("[FS-v2] Could not set StatusDokumentu entity: {Msg}", statusSetEx.Message);
                             }
 
                             // Look for methods on faktura to change status
@@ -1917,7 +1982,7 @@ public class DocumentsController : ControllerBase
                             }
                             catch { }
 
-                            // Try UstawStatus method if available
+                            // Try UstawStatus method if available - THIS IS THE CORRECT WAY per SDK examples
                             try
                             {
                                 var ustawStatusMethod = fakturaType.GetMethod("UstawStatus");
@@ -1925,6 +1990,88 @@ public class DocumentsController : ControllerBase
                                 {
                                     _logger.LogInformation("[FS-v2] Found UstawStatus method: {Sig}",
                                         (object)$"UstawStatus({string.Join(", ", ustawStatusMethod.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))})");
+
+                                    // ACTUALLY CALL UstawStatus - this is the SDK pattern!
+                                    // Get status entity from StatusyDokumentow manager
+                                    try
+                                    {
+                                        var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                                        if (statusyManager != null)
+                                        {
+                                            var statusyDane = statusyManager.Dane;
+                                            if (statusyDane != null)
+                                            {
+                                                var wszystkie = statusyDane.Wszystkie();
+                                                if (wszystkie != null)
+                                                {
+                                                    dynamic? targetStatus = null;
+
+                                                    // Find status by ID (4 = "Bez rezerwacji") or by criteria
+                                                    foreach (var status in (System.Collections.IEnumerable)wszystkie)
+                                                    {
+                                                        int? id = DynamicPropertyHelper.GetInt(status, "Id");
+                                                        bool? tworzyAuto = DynamicPropertyHelper.GetBool(status, "TworzDokumentyAutomatyczne");
+                                                        int? typyDok = DynamicPropertyHelper.GetInt(status, "TypyDokumentow");
+
+                                                        // Check if this status matches target ID (4)
+                                                        if (id == targetStatusId)
+                                                        {
+                                                            targetStatus = status;
+                                                            string? nazwa = DynamicPropertyHelper.GetString(status, "Nazwa");
+                                                            _logger.LogInformation("[FS-v2] Found target status by ID: Id={Id}, Nazwa={Nazwa}, TworzAuto={Auto}",
+                                                                (object)id, (object)(nazwa ?? "?"), (object)(tworzyAuto?.ToString() ?? "?"));
+                                                            break;
+                                                        }
+                                                    }
+
+                                                    if (targetStatus != null)
+                                                    {
+                                                        // Get parameter types for UstawStatus
+                                                        var parameters = ustawStatusMethod.GetParameters();
+                                                        _logger.LogInformation("[FS-v2] UstawStatus has {Count} parameters", parameters.Length);
+
+                                                        // Call UstawStatus(status, null) - second param is usually DateTime? for status change date
+                                                        try
+                                                        {
+                                                            if (parameters.Length == 2)
+                                                            {
+                                                                _logger.LogInformation("[FS-v2] Calling faktura.UstawStatus(status, null)...");
+                                                                ustawStatusMethod.Invoke(faktura, new object?[] { targetStatus, null });
+                                                                _logger.LogInformation("[FS-v2] UstawStatus called successfully!");
+
+                                                                // Verify the change
+                                                                var newStatusId = dane.StatusDokumentuId;
+                                                                _logger.LogInformation("[FS-v2] StatusDokumentuId after UstawStatus: {Id}", (object)(newStatusId?.ToString() ?? "(null)"));
+                                                            }
+                                                            else if (parameters.Length == 3)
+                                                            {
+                                                                // Some documents have UstawStatus(status, date, progressCallback)
+                                                                _logger.LogInformation("[FS-v2] Calling faktura.UstawStatus(status, null, null) with 3 params...");
+                                                                ustawStatusMethod.Invoke(faktura, new object?[] { targetStatus, null, null });
+                                                                _logger.LogInformation("[FS-v2] UstawStatus (3 params) called successfully!");
+                                                            }
+                                                            else
+                                                            {
+                                                                _logger.LogWarning("[FS-v2] UstawStatus has unexpected parameter count: {Count}", parameters.Length);
+                                                            }
+                                                        }
+                                                        catch (Exception invokeEx)
+                                                        {
+                                                            _logger.LogWarning("[FS-v2] UstawStatus invoke failed: {Msg}", invokeEx.InnerException?.Message ?? invokeEx.Message);
+                                                        }
+                                                    }
+                                                    else
+                                                    {
+                                                        _logger.LogWarning("[FS-v2] Could not find target status with Id={Id}", (object)targetStatusId);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    catch (Exception ustawEx)
+                                    {
+                                        _logger.LogWarning("[FS-v2] Could not invoke UstawStatus: {Msg}", ustawEx.Message);
+                                    }
                                 }
                             }
                             catch { }
@@ -2928,15 +3075,63 @@ public class DocumentsController : ControllerBase
                 // CRITICAL: Set dates BEFORE ZarezerwujNumer so document number includes correct year/month
                 if (request.IssueDate.HasValue)
                 {
-                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    _logger.LogInformation("[PA] Setting IssueDate to: {Date}", request.IssueDate.Value);
+                    bool dateSet = false;
+
+                    // Try on Dokument object first (like for invoices)
+                    try
                     {
-                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        if (DynamicPropertyHelper.TrySetProperty(paragon.Dokument, "DataWystawienia", request.IssueDate.Value))
+                        {
+                            _logger.LogInformation("[PA] Set paragon.Dokument.DataWystawienia successfully");
+                            dateSet = true;
+                        }
+                    }
+                    catch (Exception ex) { _logger.LogDebug("[PA] Dokument.DataWystawienia failed: {Msg}", ex.Message); }
+
+                    // Try on Dane object
+                    if (DynamicPropertyHelper.TrySetProperty(dane, "DataDokumentu", request.IssueDate.Value))
+                    {
+                        _logger.LogInformation("[PA] Set dane.DataDokumentu successfully");
+                        dateSet = true;
+                    }
+                    if (DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    {
+                        _logger.LogInformation("[PA] Set dane.DataWydaniaWystawienia successfully");
+                        dateSet = true;
+                    }
+                    if (DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value))
+                    {
+                        _logger.LogInformation("[PA] Set dane.DataWystawienia successfully");
+                        dateSet = true;
+                    }
+
+                    // Try DataSprzedazy too
+                    if (DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.IssueDate.Value))
+                    {
+                        _logger.LogInformation("[PA] Set dane.DataSprzedazy successfully");
+                        dateSet = true;
+                    }
+
+                    if (!dateSet)
+                    {
+                        _logger.LogWarning("[PA] Could not set any date property!");
                     }
                 }
 
+                // Verify dates before reserving number
+                try
+                {
+                    var currentDate = DynamicPropertyHelper.GetDateTime(dane, "DataWydaniaWystawienia")
+                        ?? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia")
+                        ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
+                    _logger.LogInformation("[PA] Current date on dane before ZarezerwujNumer: {Date}", (object)(currentDate?.ToString("yyyy-MM-dd") ?? "(null)"));
+                }
+                catch { }
+
                 // CRITICAL: Reserve number AFTER setting dates - number depends on date
                 paragon.ZarezerwujNumer();
-                _logger.LogInformation("Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
+                _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
 
                 if (!string.IsNullOrEmpty(request.Notes))
                 {
@@ -2949,7 +3144,108 @@ public class DocumentsController : ControllerBase
                 // Add items using product ID
                 AddReceiptItemsById(paragon, request.Items);
 
-                if ((bool)paragon.Zapisz())
+                // Handle historical documents - change status to avoid TworzDokumentyAutomatyczne issues
+                bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
+                if (isHistoricalDoc)
+                {
+                    _logger.LogInformation("[PA] Historical document detected - attempting to set status without auto-doc creation");
+                    try
+                    {
+                        int targetStatusId = 4; // "Bez rezerwacji" - no automatic document creation
+                        var paragonType = ((object)paragon).GetType();
+                        var ustawStatusMethod = paragonType.GetMethod("UstawStatus");
+
+                        if (ustawStatusMethod != null)
+                        {
+                            var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                            if (statusyManager != null)
+                            {
+                                var statusyDane = statusyManager.Dane;
+                                if (statusyDane != null)
+                                {
+                                    var wszystkie = statusyDane.Wszystkie();
+                                    if (wszystkie != null)
+                                    {
+                                        dynamic? targetStatus = null;
+                                        foreach (var status in (System.Collections.IEnumerable)wszystkie)
+                                        {
+                                            int? id = DynamicPropertyHelper.GetInt(status, "Id");
+                                            if (id == targetStatusId)
+                                            {
+                                                targetStatus = status;
+                                                string? nazwa = DynamicPropertyHelper.GetString(status, "Nazwa");
+                                                _logger.LogInformation("[PA] Found target status: Id={Id}, Nazwa={Nazwa}", (object)id, (object)(nazwa ?? "?"));
+                                                break;
+                                            }
+                                        }
+
+                                        if (targetStatus != null)
+                                        {
+                                            var parameters = ustawStatusMethod.GetParameters();
+                                            _logger.LogInformation("[PA] Calling paragon.UstawStatus with {Count} parameters", parameters.Length);
+
+                                            if (parameters.Length == 2)
+                                            {
+                                                ustawStatusMethod.Invoke(paragon, new object?[] { targetStatus, null });
+                                                _logger.LogInformation("[PA] UstawStatus called successfully");
+                                            }
+                                            else if (parameters.Length == 3)
+                                            {
+                                                ustawStatusMethod.Invoke(paragon, new object?[] { targetStatus, null, null });
+                                                _logger.LogInformation("[PA] UstawStatus (3 params) called successfully");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Fallback: try setting dane.StatusDokumentu directly
+                            _logger.LogInformation("[PA] UstawStatus not found, trying direct StatusDokumentu assignment");
+                            var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                            if (statusyManager != null)
+                            {
+                                foreach (var status in (System.Collections.IEnumerable)statusyManager.Dane.Wszystkie())
+                                {
+                                    int? id = DynamicPropertyHelper.GetInt(status, "Id");
+                                    if (id == targetStatusId)
+                                    {
+                                        dane.StatusDokumentu = status;
+                                        _logger.LogInformation("[PA] StatusDokumentu assigned directly");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception statusEx)
+                    {
+                        _logger.LogWarning("[PA] Could not set status for historical document: {Msg}", statusEx.Message);
+                    }
+                }
+
+                _logger.LogInformation("[PA] Calling Zapisz()...");
+                bool saveResult = false;
+                try
+                {
+                    saveResult = (bool)paragon.Zapisz();
+                }
+                catch (Exception saveEx)
+                {
+                    _logger.LogError(saveEx, "[PA] Zapisz() threw exception: {Msg}", saveEx.Message);
+                    var inner = saveEx.InnerException;
+                    while (inner != null)
+                    {
+                        _logger.LogError("[PA] Inner: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
+                        inner = inner.InnerException;
+                    }
+                    return (false, null, $"Receipt save exception: {saveEx.Message}", new List<string> { saveEx.Message });
+                }
+
+                _logger.LogInformation("[PA] Zapisz() returned: {Result}", saveResult);
+
+                if (saveResult)
                 {
                     string docNumber = paragon.PodajPodgladNumeru()?.ToString() ?? "";
                     int docId = (int)paragon.Dokument.Id;
@@ -2960,6 +3256,35 @@ public class DocumentsController : ControllerBase
                 else
                 {
                     var errors = GetBusinessObjectErrors(paragon);
+                    _logger.LogWarning("[PA] Zapisz() failed. Errors: {Errors}", string.Join("; ", errors));
+
+                    // Try to get validation errors
+                    try
+                    {
+                        var walidacja = paragon.WalidujDane();
+                        if (walidacja != null)
+                        {
+                            foreach (var err in (System.Collections.IEnumerable)walidacja)
+                            {
+                                string errStr = err?.ToString() ?? "";
+                                if (!string.IsNullOrEmpty(errStr) && !errors.Contains(errStr))
+                                {
+                                    errors.Add(errStr);
+                                    _logger.LogWarning("[PA] Validation error: {Err}", (object)errStr);
+                                }
+                            }
+                        }
+                    }
+                    catch { }
+
+                    // Log current status
+                    try
+                    {
+                        var statusId = dane.StatusDokumentuId;
+                        _logger.LogInformation("[PA] Current StatusDokumentuId: {Id}", (object)(statusId?.ToString() ?? "(null)"));
+                    }
+                    catch { }
+
                     return (false, null, "Failed to create receipt", errors);
                 }
             });
