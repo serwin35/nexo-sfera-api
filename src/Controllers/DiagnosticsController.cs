@@ -1355,6 +1355,272 @@ public class DiagnosticsController : ControllerBase
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
+
+    /// <summary>
+    /// List all document configurations and their financial aspect settings
+    /// This helps identify configurations that might work without triggering VAT loading
+    /// </summary>
+    [HttpGet("document-configurations")]
+    [ProducesResponseType(typeof(ApiResponse<List<Dictionary<string, object?>>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<List<Dictionary<string, object?>>>>> ListDocumentConfigurations()
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync<List<Dictionary<string, object?>>>(() =>
+            {
+                var configurations = new List<Dictionary<string, object?>>();
+
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                if (konfiguracje?.Dane != null)
+                {
+                    foreach (var config in konfiguracje.Dane.Wszystkie())
+                    {
+                        try
+                        {
+                            var configInfo = new Dictionary<string, object?>
+                            {
+                                ["Id"] = config.Id?.ToString(),
+                                ["Symbol"] = config.Symbol?.ToString(),
+                                ["Nazwa"] = config.Nazwa?.ToString()
+                            };
+
+                            // Try to get PosiadaAspektFinansowy
+                            try
+                            {
+                                configInfo["PosiadaAspektFinansowy"] = config.PosiadaAspektFinansowy?.ToString();
+                            }
+                            catch
+                            {
+                                configInfo["PosiadaAspektFinansowy"] = "N/A";
+                            }
+
+                            // Check if it's a PZ-related configuration
+                            string symbol = config.Symbol?.ToString() ?? "";
+                            string nazwa = config.Nazwa?.ToString() ?? "";
+                            bool isPzRelated = symbol.Contains("PZ") || nazwa.Contains("Przyjęcie") || nazwa.Contains("przyjęcie");
+                            configInfo["IsPzRelated"] = isPzRelated;
+
+                            configurations.Add(configInfo);
+                        }
+                        catch (Exception itemEx)
+                        {
+                            configurations.Add(new Dictionary<string, object?>
+                            {
+                                ["Error"] = itemEx.Message
+                            });
+                        }
+                    }
+                }
+
+                return configurations;
+            });
+
+            // Sort to show PZ-related first
+            var sorted = result
+                .OrderByDescending(c => c.ContainsKey("IsPzRelated") && (bool)c["IsPzRelated"]!)
+                .ThenBy(c => c.ContainsKey("Symbol") ? c["Symbol"]?.ToString() : "")
+                .ToList();
+
+            return Ok(ApiResponse<List<Dictionary<string, object?>>>.Ok(sorted));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing document configurations");
+            return StatusCode(500, ApiResponse<List<Dictionary<string, object?>>>.Error(
+                "Error listing configurations",
+                new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Attempt to disable financial aspect for PZ configuration to work around TransakcjaVAT error
+    /// WARNING: This modifies the system configuration!
+    /// </summary>
+    [HttpPost("disable-pz-financial-aspect")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> DisablePzFinancialAspect()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            var modifyResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
+            {
+                var stepResults = new Dictionary<string, object?>();
+
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                if (konfiguracje == null)
+                {
+                    stepResults["Error"] = "Could not get Konfiguracje manager";
+                    return stepResults;
+                }
+
+                // Get PZ configuration
+                dynamic? pzConfig = konfiguracje.DaneDomyslne?.PrzyjecieZewnetrzne;
+                if (pzConfig == null)
+                {
+                    stepResults["Error"] = "Could not get PZ default configuration";
+                    return stepResults;
+                }
+
+                stepResults["ConfigId"] = pzConfig.Id?.ToString();
+                stepResults["ConfigSymbol"] = pzConfig.Symbol?.ToString();
+
+                try
+                {
+                    stepResults["BeforePosiadaAspektFinansowy"] = pzConfig.PosiadaAspektFinansowy?.ToString();
+                }
+                catch
+                {
+                    stepResults["BeforePosiadaAspektFinansowy"] = "CANNOT_READ";
+                }
+
+                // Try to find and modify the configuration
+                stepResults["Step1_FindConfig"] = "Starting...";
+                try
+                {
+                    Guid configId = pzConfig.Id;
+                    using (var configEdit = konfiguracje.Znajdz(c => c.Id == configId))
+                    {
+                        stepResults["Step1_FindConfig"] = "SUCCESS";
+                        stepResults["ConfigEditType"] = configEdit?.GetType().FullName;
+
+                        // Try to access ParametryKonfiguracji
+                        stepResults["Step2_ModifyConfig"] = "Starting...";
+                        try
+                        {
+                            // Method 1: Try ParametryKonfiguracji.PosiadaAspektFinansowy
+                            configEdit.ParametryKonfiguracji.PosiadaAspektFinansowy = false;
+                            stepResults["Step2_ModifyConfig"] = "Set via ParametryKonfiguracji";
+                        }
+                        catch (Exception paramEx)
+                        {
+                            stepResults["ParametryKonfiguracji_Error"] = paramEx.Message;
+
+                            // Method 2: Try direct property
+                            try
+                            {
+                                configEdit.Dane.PosiadaAspektFinansowy = false;
+                                stepResults["Step2_ModifyConfig"] = "Set via Dane";
+                            }
+                            catch (Exception daneEx)
+                            {
+                                stepResults["Dane_Error"] = daneEx.Message;
+                                stepResults["Step2_ModifyConfig"] = "FAILED";
+                            }
+                        }
+
+                        // Try to save
+                        stepResults["Step3_SaveConfig"] = "Starting...";
+                        try
+                        {
+                            bool saved = configEdit.Zapisz();
+                            stepResults["Step3_SaveConfig"] = saved ? "SUCCESS" : "FAILED (Zapisz returned false)";
+
+                            if (!saved)
+                            {
+                                // Try to get errors
+                                try
+                                {
+                                    var errors = new List<string>();
+                                    foreach (var error in configEdit.Bledy)
+                                    {
+                                        errors.Add(error?.ToString() ?? "Unknown error");
+                                    }
+                                    stepResults["SaveErrors"] = errors;
+                                }
+                                catch { }
+                            }
+                        }
+                        catch (Exception saveEx)
+                        {
+                            stepResults["Step3_SaveConfig"] = "ERROR: " + saveEx.Message;
+                        }
+                    }
+                }
+                catch (Exception findEx)
+                {
+                    stepResults["Step1_FindConfig"] = "ERROR: " + findEx.Message;
+
+                    // The Znajdz might trigger the same VAT error
+                    if (findEx.ToString().Contains("TransakcjaVAT"))
+                    {
+                        stepResults["TransakcjaVAT_Error_During_Find"] = true;
+                        stepResults["Recommendation"] = "Configuration modification also triggers VAT loading. " +
+                            "You need to modify the configuration directly in the database using SQL: " +
+                            "UPDATE ModelDanychContainer.Konfiguracje SET PosiadaAspektFinansowy = 0 WHERE Symbol = 'PZ'";
+                    }
+                }
+
+                // Verify the change
+                stepResults["Step4_Verify"] = "Starting...";
+                try
+                {
+                    var verifyConfig = konfiguracje.DaneDomyslne?.PrzyjecieZewnetrzne;
+                    stepResults["AfterPosiadaAspektFinansowy"] = verifyConfig?.PosiadaAspektFinansowy?.ToString();
+                    stepResults["Step4_Verify"] = "SUCCESS";
+                }
+                catch (Exception verifyEx)
+                {
+                    stepResults["Step4_Verify"] = "ERROR: " + verifyEx.Message;
+                }
+
+                return stepResults;
+            });
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(modifyResult));
+        }
+        catch (Exception ex)
+        {
+            results["OuterError"] = ex.Message;
+            _logger.LogError(ex, "Error disabling PZ financial aspect");
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+    }
+
+    /// <summary>
+    /// Get SQL command to manually disable PZ financial aspect in database
+    /// Use this if the SDK-based modification doesn't work
+    /// </summary>
+    [HttpGet("pz-financial-aspect-sql")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public ActionResult<ApiResponse<Dictionary<string, object?>>> GetPzFinancialAspectSql()
+    {
+        var result = new Dictionary<string, object?>
+        {
+            ["Description"] = "SQL commands to disable financial aspect for PZ documents. " +
+                "This will prevent VAT transaction loading during document creation. " +
+                "WARNING: This affects ALL PZ documents in the system!",
+            ["CheckCurrentState"] = @"
+-- Check current PZ configuration
+SELECT Id, Symbol, Nazwa, PosiadaAspektFinansowy
+FROM ModelDanychContainer.Konfiguracje
+WHERE Symbol LIKE '%PZ%' OR Nazwa LIKE '%Przyjęcie%'
+ORDER BY Symbol",
+            ["DisableFinancialAspect"] = @"
+-- Disable financial aspect for standard PZ
+UPDATE ModelDanychContainer.Konfiguracje
+SET PosiadaAspektFinansowy = 0
+WHERE Symbol = 'PZ'
+
+-- Verify the change
+SELECT Id, Symbol, Nazwa, PosiadaAspektFinansowy
+FROM ModelDanychContainer.Konfiguracje
+WHERE Symbol = 'PZ'",
+            ["ReEnableFinancialAspect"] = @"
+-- To re-enable financial aspect later:
+UPDATE ModelDanychContainer.Konfiguracje
+SET PosiadaAspektFinansowy = 1
+WHERE Symbol = 'PZ'",
+            ["AlternativeApproach"] = @"
+-- Alternative: Create a new PZ configuration without financial aspect
+-- This preserves the original PZ configuration
+-- (Requires more complex SQL to copy the configuration)",
+            ["Note"] = "After running the SQL, restart the API application to clear any cached configurations."
+        };
+
+        return Ok(ApiResponse<Dictionary<string, object?>>.Ok(result));
+    }
 }
 
 #region Response DTOs
