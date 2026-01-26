@@ -2563,20 +2563,31 @@ public class DocumentsController : ControllerBase
             return;
         }
 
-        // Get warehouse from document for setting on positions
-        dynamic? dokumentMagazyn = null;
+        // Get default warehouse from document for positions without explicit warehouse
+        dynamic? defaultMagazyn = null;
+        string? defaultMagazynSymbol = null;
         try
         {
-            dokumentMagazyn = faktura.Dokument.Magazyn;
-            if (dokumentMagazyn != null)
+            defaultMagazyn = faktura.Dokument.Magazyn;
+            if (defaultMagazyn != null)
             {
-                string? magSymbol = DynamicPropertyHelper.GetString(dokumentMagazyn, "Symbol");
-                _logger.LogInformation("[FS-v2] Will use warehouse for positions: {Symbol}", (object)(magSymbol ?? "(unknown)"));
+                defaultMagazynSymbol = DynamicPropertyHelper.GetString(defaultMagazyn, "Symbol");
+                _logger.LogInformation("[FS-v2] Default warehouse for positions: {Symbol}", (object)(defaultMagazynSymbol ?? "(unknown)"));
             }
         }
         catch (Exception magEx)
         {
             _logger.LogDebug("[FS-v2] Could not get document warehouse: {Msg}", magEx.Message);
+        }
+
+        // Get Magazyny manager for looking up warehouses by symbol
+        var magazynyManager = _sferaService.GetManager("Magazyny");
+        Dictionary<string, dynamic> warehouseCache = new Dictionary<string, dynamic>(StringComparer.OrdinalIgnoreCase);
+
+        // Cache the default warehouse
+        if (defaultMagazyn != null && !string.IsNullOrEmpty(defaultMagazynSymbol))
+        {
+            warehouseCache[defaultMagazynSymbol] = defaultMagazyn;
         }
 
         int addedCount = 0;
@@ -2702,22 +2713,55 @@ public class DocumentsController : ControllerBase
                     }
 
                     // Set warehouse on position (critical for stock management!)
-                    if (dokumentMagazyn != null)
+                    // Use item's warehouse if specified, otherwise use document default
+                    dynamic? pozycjaMagazyn = defaultMagazyn;
+                    string? pozycjaMagazynSymbol = defaultMagazynSymbol;
+
+                    if (!string.IsNullOrEmpty(item.WarehouseSymbol))
+                    {
+                        // Try to get from cache first
+                        if (warehouseCache.TryGetValue(item.WarehouseSymbol, out var cachedMag))
+                        {
+                            pozycjaMagazyn = cachedMag;
+                            pozycjaMagazynSymbol = item.WarehouseSymbol;
+                        }
+                        else if (magazynyManager != null)
+                        {
+                            // Look up warehouse by symbol
+                            foreach (var m in magazynyManager.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == item.WarehouseSymbol)
+                                {
+                                    pozycjaMagazyn = m;
+                                    pozycjaMagazynSymbol = item.WarehouseSymbol;
+                                    warehouseCache[item.WarehouseSymbol] = m;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (pozycjaMagazynSymbol != item.WarehouseSymbol)
+                        {
+                            _logger.LogWarning("[FS-v2] Warehouse '{Symbol}' not found for item, using default", item.WarehouseSymbol);
+                        }
+                    }
+
+                    if (pozycjaMagazyn != null)
                     {
                         try
                         {
                             // Try direct property
-                            if (DynamicPropertyHelper.TrySetProperty(pozycja, "Magazyn", dokumentMagazyn))
+                            if (DynamicPropertyHelper.TrySetProperty(pozycja, "Magazyn", pozycjaMagazyn))
                             {
-                                _logger.LogDebug("[FS-v2] Set pozycja.Magazyn successfully");
+                                _logger.LogDebug("[FS-v2] Set pozycja.Magazyn = {Symbol}", (object)(pozycjaMagazynSymbol ?? "?"));
                             }
                             else
                             {
                                 // Try Dane.Magazyn
                                 try
                                 {
-                                    pozycja.Dane.Magazyn = dokumentMagazyn;
-                                    _logger.LogDebug("[FS-v2] Set pozycja.Dane.Magazyn successfully");
+                                    pozycja.Dane.Magazyn = pozycjaMagazyn;
+                                    _logger.LogDebug("[FS-v2] Set pozycja.Dane.Magazyn = {Symbol}", (object)(pozycjaMagazynSymbol ?? "?"));
                                 }
                                 catch (Exception daneEx)
                                 {
@@ -2729,6 +2773,10 @@ public class DocumentsController : ControllerBase
                         {
                             _logger.LogDebug("[FS-v2] Could not set warehouse on position: {Msg}", magPozEx.Message);
                         }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("[FS-v2] No warehouse available for position - this may cause save failure");
                     }
 
                     // Set price if provided
