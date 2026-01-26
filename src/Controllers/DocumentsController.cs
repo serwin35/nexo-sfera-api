@@ -1125,7 +1125,7 @@ public class DocumentsController : ControllerBase
                             {
                                 // First, find the payments collection on dane
                                 var daneType = ((object)dane).GetType();
-                                var platnosciProp = daneType.GetProperty("Platnosci") ?? daneType.GetProperty("PlatnosciDokumentu");
+                                var platnosciProp = daneType.GetProperty("PlatnosciDokumentow") ?? daneType.GetProperty("Platnosci") ?? daneType.GetProperty("PlatnosciDokumentu");
 
                                 if (platnosciProp != null)
                                 {
@@ -1535,7 +1535,7 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not subscribe to ChangesSavedCompleted: {Msg}", evtEx.Message);
                     }
 
-                    // NEW: For historical documents, try changing status to avoid automatic document creation
+                    // NEW: For historical documents, try to change status or find a workaround
                     bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                     if (isHistoricalDoc)
                     {
@@ -1543,53 +1543,96 @@ public class DocumentsController : ControllerBase
                         {
                             _logger.LogInformation("[FS-v2] Historical document - checking if we can avoid auto-doc creation...");
 
-                            // Try to get all available statuses for FS documents (TypyDokumentow contains FS = 576 or similar)
                             var currentStatusId = dane.StatusDokumentuId;
                             _logger.LogInformation("[FS-v2] Current StatusDokumentuId: {Id}", (object)(currentStatusId?.ToString() ?? "(null)"));
 
-                            // Try StatusDokumentuId = 1 (often "Do realizacji" - To be fulfilled) which may not create auto docs
-                            // or StatusDokumentuId = 0/default
-                            // Common statuses: 1=Do realizacji, 15=Wydany towar, etc.
+                            // Look for methods on faktura to change status
+                            var fakturaType = ((object)faktura).GetType();
+                            var statusMethods = fakturaType.GetMethods()
+                                .Where(m => m.Name.Contains("Status") || m.Name.Contains("Zmien") || m.Name.Contains("Ustaw"))
+                                .Select(m => $"{m.Name}({string.Join(", ", m.GetParameters().Select(p => p.ParameterType.Name))})")
+                                .Distinct()
+                                .ToList();
+                            _logger.LogInformation("[FS-v2] Status-related methods on faktura: {Methods}", string.Join("; ", statusMethods));
 
-                            // First, list all StatusDokumentuId values we can try
-                            var statusIdsToTry = new int[] { 1, 14, 13, 12, 11, 10, 5, 4, 3, 2 };
-
-                            foreach (var tryStatusId in statusIdsToTry)
+                            // Try setting StatusDokumentu entity directly (not just the ID)
+                            try
                             {
-                                if (tryStatusId == currentStatusId) continue;
-
-                                try
+                                // Get all statuses from the current status's object context
+                                var currentStatus = dane.StatusDokumentu;
+                                if (currentStatus != null)
                                 {
-                                    _logger.LogDebug("[FS-v2] Trying to set StatusDokumentuId to {Id}...", tryStatusId);
-                                    dane.StatusDokumentuId = tryStatusId;
+                                    var statusType = ((object)currentStatus).GetType();
+                                    _logger.LogInformation("[FS-v2] Current status type: {Type}", (object)statusType.FullName);
 
-                                    // Check if the new status has TworzDokumentyAutomatyczne=False
-                                    var newStatus = dane.StatusDokumentu;
-                                    if (newStatus != null)
+                                    // List all statuses that could work for FS (TypyDokumentow = 576)
+                                    // Try to query the ObjectContext for all StatusDokumentu entities
+                                    var objectContextProp = statusType.GetProperty("ObjectContext");
+                                    if (objectContextProp != null)
                                     {
-                                        var newStatusType = ((object)newStatus).GetType();
-                                        var tworzAutoProp = newStatusType.GetProperty("TworzDokumentyAutomatyczne");
-                                        var tworzAuto = tworzAutoProp?.GetValue(newStatus);
-                                        var statusName = newStatusType.GetProperty("Nazwa")?.GetValue(newStatus)?.ToString();
-
-                                        _logger.LogInformation("[FS-v2] Status {Id} '{Name}' has TworzDokumentyAutomatyczne={Auto}",
-                                            tryStatusId, (object)(statusName ?? "?"), (object)(tworzAuto?.ToString() ?? "?"));
-
-                                        if (tworzAuto != null && (bool)tworzAuto == false)
-                                        {
-                                            _logger.LogInformation("[FS-v2] Found status without auto-doc creation: {Id} '{Name}'", tryStatusId, (object)(statusName ?? "?"));
-                                            break; // Keep this status
-                                        }
+                                        var oc = objectContextProp.GetValue(currentStatus);
+                                        _logger.LogDebug("[FS-v2] Status has ObjectContext: {Type}", (object)(oc?.GetType().FullName ?? "(null)"));
                                     }
+                                }
+                            }
+                            catch (Exception scEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Could not explore status entity: {Msg}", scEx.Message);
+                            }
 
-                                    // Reset to original if this status also has auto-doc creation
-                                    dane.StatusDokumentuId = currentStatusId;
-                                }
-                                catch (Exception statusEx)
+                            // Try ZmienStatus method if available
+                            try
+                            {
+                                var zmienStatusMethod = fakturaType.GetMethod("ZmienStatus");
+                                if (zmienStatusMethod != null)
                                 {
-                                    _logger.LogDebug("[FS-v2] Could not try StatusDokumentuId={Id}: {Msg}", tryStatusId, statusEx.Message);
-                                    try { dane.StatusDokumentuId = currentStatusId; } catch { }
+                                    _logger.LogInformation("[FS-v2] Found ZmienStatus method: {Sig}",
+                                        (object)$"ZmienStatus({string.Join(", ", zmienStatusMethod.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))})");
                                 }
+                            }
+                            catch { }
+
+                            // Try UstawStatus method if available
+                            try
+                            {
+                                var ustawStatusMethod = fakturaType.GetMethod("UstawStatus");
+                                if (ustawStatusMethod != null)
+                                {
+                                    _logger.LogInformation("[FS-v2] Found UstawStatus method: {Sig}",
+                                        (object)$"UstawStatus({string.Join(", ", ustawStatusMethod.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))})");
+                                }
+                            }
+                            catch { }
+
+                            // Try to disable automatic document creation property if it exists on faktura
+                            try
+                            {
+                                var wylaczAutoDocsProps = fakturaType.GetProperties()
+                                    .Where(p => p.Name.Contains("Automaty") || p.Name.Contains("Wylacz") || p.Name.Contains("Tworzenie") || p.Name.Contains("TworzDok"))
+                                    .Select(p => p.Name)
+                                    .ToList();
+                                if (wylaczAutoDocsProps.Any())
+                                {
+                                    _logger.LogInformation("[FS-v2] Found auto-doc related properties: {Props}", string.Join(", ", wylaczAutoDocsProps));
+                                }
+
+                                // Try WylaczAutomatyczneWydaniaDoWZ or similar
+                                var wylaczProp = fakturaType.GetProperty("WylaczAutomatyczneWydanie")
+                                    ?? fakturaType.GetProperty("WylaczAutomatyczneTworzenieWZ")
+                                    ?? fakturaType.GetProperty("WylaczTworzenieDokumentowAutomatycznych")
+                                    ?? fakturaType.GetProperty("BezWydaniaTowarow")
+                                    ?? fakturaType.GetProperty("BezSkutkuMagazynowego");
+
+                                if (wylaczProp != null && wylaczProp.CanWrite)
+                                {
+                                    _logger.LogInformation("[FS-v2] Found writable property to disable auto-docs: {Prop}", (object)wylaczProp.Name);
+                                    wylaczProp.SetValue(faktura, true);
+                                    _logger.LogInformation("[FS-v2] Set {Prop} = true", (object)wylaczProp.Name);
+                                }
+                            }
+                            catch (Exception autoEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Could not disable auto-docs: {Msg}", autoEx.Message);
                             }
 
                             _logger.LogInformation("[FS-v2] Final StatusDokumentuId: {Id}", (object)(dane.StatusDokumentuId?.ToString() ?? "(null)"));
