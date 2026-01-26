@@ -576,9 +576,8 @@ public class DocumentsController : ControllerBase
                     // Set customer
                     SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
 
-                    // CRITICAL: Set warehouse and branch on Dokument - required for sales documents!
+                    // CRITICAL: Set warehouse on Dokument - required for sales documents!
                     var magazyny = _sferaService.GetManager("Magazyny");
-                    var oddzialy = _sferaService.GetManager("Oddzialy");
 
                     // Set warehouse (use from request or default "MG")
                     string warehouseSymbol = !string.IsNullOrEmpty(request.WarehouseSymbol) ? request.WarehouseSymbol : "MG";
@@ -604,31 +603,23 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // Set branch (use default "DMs")
-                    if (oddzialy != null)
+                    // Check if Oddzial is already set from context (Sfera sets it during initialization)
+                    try
                     {
-                        dynamic? oddzial = null;
-                        foreach (var o in oddzialy.Dane.Wszystkie())
+                        var currentOddzial = faktura.Dokument.Oddzial;
+                        if (currentOddzial != null)
                         {
-                            if (DynamicPropertyHelper.GetString(o, "Symbol") == "DMs")
-                            {
-                                oddzial = o;
-                                break;
-                            }
-                        }
-                        if (oddzial != null)
-                        {
-                            faktura.Dokument.Oddzial = oddzial;
-                            _logger.LogInformation("[FS-v2] Set Dokument.Oddzial = DMs");
+                            string? oddzialSymbol = DynamicPropertyHelper.GetString(currentOddzial, "Symbol");
+                            _logger.LogInformation("[FS-v2] Dokument.Oddzial already set: {Symbol}", (object)(oddzialSymbol ?? "(no symbol)"));
                         }
                         else
                         {
-                            _logger.LogWarning("[FS-v2] Branch 'DMs' not found");
+                            _logger.LogWarning("[FS-v2] Dokument.Oddzial is NOT set - this may cause save to fail");
                         }
                     }
-                    else
+                    catch (Exception oddEx)
                     {
-                        _logger.LogWarning("[FS-v2] Could not get Oddzialy manager");
+                        _logger.LogDebug("[FS-v2] Could not check Oddzial: {Msg}", oddEx.Message);
                     }
 
                     // CRITICAL: Set dates BEFORE reserving number (number format includes year/month)
