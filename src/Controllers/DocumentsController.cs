@@ -1043,6 +1043,90 @@ public class DocumentsController : ControllerBase
                     }
                     catch { }
 
+                    // NEW: Check MoznaZapisac PROPERTY (different from CzyMoznaZapisac method)
+                    try
+                    {
+                        var moznaZapisacProp = faktura.MoznaZapisac;
+                        _logger.LogInformation("[FS-v2] faktura.MoznaZapisac (property) = {Value}", (object)(moznaZapisacProp?.ToString() ?? "(null)"));
+                    }
+                    catch (Exception mzEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read MoznaZapisac property: {Msg}", mzEx.Message);
+                    }
+
+                    // NEW: Check InvalidData DIRECTLY on faktura (not via Dokument)
+                    try
+                    {
+                        var invalidData = faktura.InvalidData;
+                        if (invalidData != null)
+                        {
+                            _logger.LogWarning("[FS-v2] faktura.InvalidData is NOT null! Type: {Type}", (object)((object)invalidData).GetType().FullName);
+
+                            // Try to enumerate if it's a collection
+                            try
+                            {
+                                int invalidCount = 0;
+                                foreach (var item in invalidData)
+                                {
+                                    invalidCount++;
+                                    _logger.LogWarning("[FS-v2] InvalidData[{Idx}]: {Item}", invalidCount, (object)(item?.ToString() ?? "(null)"));
+                                }
+                                _logger.LogWarning("[FS-v2] InvalidData has {Count} items", invalidCount);
+                            }
+                            catch
+                            {
+                                // Not enumerable, just log the value
+                                _logger.LogWarning("[FS-v2] InvalidData value: {Value}", (object)(invalidData?.ToString() ?? "(null)"));
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogInformation("[FS-v2] faktura.InvalidData is null (no validation errors)");
+                        }
+                    }
+                    catch (Exception idEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read faktura.InvalidData: {Msg}", idEx.Message);
+                    }
+
+                    // NEW: Check ValidationDisabled - might be useful for historical imports
+                    try
+                    {
+                        var valDisabled = faktura.ValidationDisabled;
+                        _logger.LogInformation("[FS-v2] faktura.ValidationDisabled = {Value}", (object)(valDisabled?.ToString() ?? "(null)"));
+                    }
+                    catch (Exception vdEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read ValidationDisabled: {Msg}", vdEx.Message);
+                    }
+
+                    // NEW: Try to read Dane.InvalidData as well
+                    try
+                    {
+                        var daneInvalidData = dane.InvalidData;
+                        if (daneInvalidData != null)
+                        {
+                            _logger.LogWarning("[FS-v2] dane.InvalidData is NOT null! Type: {Type}", (object)((object)daneInvalidData).GetType().FullName);
+                            try
+                            {
+                                int count = 0;
+                                foreach (var item in daneInvalidData)
+                                {
+                                    count++;
+                                    _logger.LogWarning("[FS-v2] dane.InvalidData[{Idx}]: {Item}", count, (object)(item?.ToString() ?? "(null)"));
+                                }
+                            }
+                            catch
+                            {
+                                _logger.LogWarning("[FS-v2] dane.InvalidData: {Value}", (object)(daneInvalidData?.ToString() ?? "(null)"));
+                            }
+                        }
+                    }
+                    catch (Exception daneIdEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read dane.InvalidData: {Msg}", daneIdEx.Message);
+                    }
+
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
                     var saveResult = faktura.Zapisz();
                     bool isSaved = false;
