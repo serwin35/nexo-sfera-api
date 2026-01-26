@@ -1938,6 +1938,413 @@ WHERE Symbol = 'PZ'",
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
+
+    /// <summary>
+    /// Test both PZ creation methods to identify which one triggers TransakcjaVAT error
+    /// This tests: UtworzPrzyjecieZewnetrzne() vs UtworzPrzyjecieZewnetrzneVAT()
+    /// </summary>
+    [HttpGet("test-pz-creation-methods")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreationMethods()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            var testResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
+            {
+                var methodResults = new Dictionary<string, object?>();
+
+                var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
+                if (przyjecia == null)
+                {
+                    methodResults["Error"] = "Could not get PrzyjeciaZewnetrzne manager";
+                    return methodResults;
+                }
+
+                methodResults["ManagerObtained"] = true;
+
+                // Get available configurations first
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                if (konfiguracje != null)
+                {
+                    var configInfo = new Dictionary<string, object?>();
+                    try
+                    {
+                        var pzConfig = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
+                        if (pzConfig != null)
+                        {
+                            configInfo["PrzyjecieZewnetrzne_Symbol"] = pzConfig.Symbol?.ToString();
+                            configInfo["PrzyjecieZewnetrzne_Nazwa"] = pzConfig.Nazwa?.ToString();
+                            try { configInfo["PrzyjecieZewnetrzne_PosiadaAspektFinansowy"] = pzConfig.PosiadaAspektFinansowy?.ToString(); }
+                            catch { configInfo["PrzyjecieZewnetrzne_PosiadaAspektFinansowy"] = "Cannot read"; }
+                        }
+                    }
+                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzne_Error"] = ex.Message; }
+
+                    try
+                    {
+                        var pzVatConfig = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzneZVAT;
+                        if (pzVatConfig != null)
+                        {
+                            configInfo["PrzyjecieZewnetrzneZVAT_Symbol"] = pzVatConfig.Symbol?.ToString();
+                            configInfo["PrzyjecieZewnetrzneZVAT_Nazwa"] = pzVatConfig.Nazwa?.ToString();
+                            try { configInfo["PrzyjecieZewnetrzneZVAT_PosiadaAspektFinansowy"] = pzVatConfig.PosiadaAspektFinansowy?.ToString(); }
+                            catch { configInfo["PrzyjecieZewnetrzneZVAT_PosiadaAspektFinansowy"] = "Cannot read"; }
+                        }
+                    }
+                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzneZVAT_Error"] = ex.Message; }
+
+                    methodResults["Configurations"] = configInfo;
+                }
+
+                // Test Method 1: UtworzPrzyjecieZewnetrzne() - PZ WITHOUT VAT
+                methodResults["Method1_UtworzPrzyjecieZewnetrzne"] = new Dictionary<string, object?>();
+                var method1Result = (Dictionary<string, object?>)methodResults["Method1_UtworzPrzyjecieZewnetrzne"]!;
+                try
+                {
+                    _logger.LogInformation("Testing UtworzPrzyjecieZewnetrzne() (without VAT)");
+                    using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
+                    {
+                        method1Result["CreateSuccess"] = true;
+                        method1Result["DocumentType"] = ((object)pz).GetType().Name;
+
+                        // Check configuration on created document
+                        try
+                        {
+                            var konfiguracja = pz.Dane.Konfiguracja;
+                            if (konfiguracja != null)
+                            {
+                                method1Result["DocumentConfigSymbol"] = konfiguracja.Symbol?.ToString();
+                                method1Result["DocumentConfigName"] = konfiguracja.Nazwa?.ToString();
+                                try { method1Result["DocumentConfigPosiadaAspektFinansowy"] = konfiguracja.PosiadaAspektFinansowy?.ToString(); }
+                                catch { method1Result["DocumentConfigPosiadaAspektFinansowy"] = "Cannot read"; }
+                            }
+                        }
+                        catch (Exception ex) { method1Result["ConfigReadError"] = ex.Message; }
+
+                        // Try to reserve number - this may trigger VAT loading
+                        try
+                        {
+                            pz.ZarezerwujNumer();
+                            method1Result["ReserveNumberSuccess"] = true;
+                            method1Result["NumberPreview"] = pz.PodajPodgladNumeru()?.ToString();
+                        }
+                        catch (Exception numEx)
+                        {
+                            method1Result["ReserveNumberSuccess"] = false;
+                            method1Result["ReserveNumberError"] = numEx.Message;
+                            if (numEx.ToString().Contains("TransakcjaVAT") || numEx.ToString().Contains("IdWInstancji"))
+                            {
+                                method1Result["IsTransakcjaVATError"] = true;
+                            }
+                        }
+
+                        // Don't save - just dispose
+                        method1Result["TestComplete"] = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    method1Result["CreateSuccess"] = false;
+                    method1Result["CreateError"] = ex.Message;
+                    if (ex.ToString().Contains("TransakcjaVAT") || ex.ToString().Contains("IdWInstancji"))
+                    {
+                        method1Result["IsTransakcjaVATError"] = true;
+                    }
+                    _logger.LogError(ex, "UtworzPrzyjecieZewnetrzne() failed");
+                }
+
+                // Test Method 2: UtworzPrzyjecieZewnetrzneVAT() - PZ WITH VAT
+                methodResults["Method2_UtworzPrzyjecieZewnetrzneVAT"] = new Dictionary<string, object?>();
+                var method2Result = (Dictionary<string, object?>)methodResults["Method2_UtworzPrzyjecieZewnetrzneVAT"]!;
+                try
+                {
+                    _logger.LogInformation("Testing UtworzPrzyjecieZewnetrzneVAT() (with VAT)");
+                    using (var pzVat = przyjecia.UtworzPrzyjecieZewnetrzneVAT())
+                    {
+                        method2Result["CreateSuccess"] = true;
+                        method2Result["DocumentType"] = ((object)pzVat).GetType().Name;
+
+                        // Check configuration on created document
+                        try
+                        {
+                            var konfiguracja = pzVat.Dane.Konfiguracja;
+                            if (konfiguracja != null)
+                            {
+                                method2Result["DocumentConfigSymbol"] = konfiguracja.Symbol?.ToString();
+                                method2Result["DocumentConfigName"] = konfiguracja.Nazwa?.ToString();
+                                try { method2Result["DocumentConfigPosiadaAspektFinansowy"] = konfiguracja.PosiadaAspektFinansowy?.ToString(); }
+                                catch { method2Result["DocumentConfigPosiadaAspektFinansowy"] = "Cannot read"; }
+                            }
+                        }
+                        catch (Exception ex) { method2Result["ConfigReadError"] = ex.Message; }
+
+                        // Try to reserve number - this WILL likely trigger VAT loading
+                        try
+                        {
+                            pzVat.ZarezerwujNumer();
+                            method2Result["ReserveNumberSuccess"] = true;
+                            method2Result["NumberPreview"] = pzVat.PodajPodgladNumeru()?.ToString();
+                        }
+                        catch (Exception numEx)
+                        {
+                            method2Result["ReserveNumberSuccess"] = false;
+                            method2Result["ReserveNumberError"] = numEx.Message;
+                            if (numEx.ToString().Contains("TransakcjaVAT") || numEx.ToString().Contains("IdWInstancji"))
+                            {
+                                method2Result["IsTransakcjaVATError"] = true;
+                            }
+                        }
+
+                        // Don't save - just dispose
+                        method2Result["TestComplete"] = true;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    method2Result["CreateSuccess"] = false;
+                    method2Result["CreateError"] = ex.Message;
+                    if (ex.ToString().Contains("TransakcjaVAT") || ex.ToString().Contains("IdWInstancji"))
+                    {
+                        method2Result["IsTransakcjaVATError"] = true;
+                    }
+                    _logger.LogError(ex, "UtworzPrzyjecieZewnetrzneVAT() failed");
+                }
+
+                // Summary
+                var summary = new Dictionary<string, object?>();
+                bool method1Works = method1Result.ContainsKey("CreateSuccess") && (bool)method1Result["CreateSuccess"]!;
+                bool method2Works = method2Result.ContainsKey("CreateSuccess") && (bool)method2Result["CreateSuccess"]!;
+
+                summary["Method1_UtworzPrzyjecieZewnetrzne_Works"] = method1Works;
+                summary["Method2_UtworzPrzyjecieZewnetrzneVAT_Works"] = method2Works;
+
+                if (method1Works && !method2Works)
+                {
+                    summary["Recommendation"] = "Use UtworzPrzyjecieZewnetrzne() for documents without VAT. " +
+                        "For documents WITH VAT, the TransakcjaVAT error occurs due to SDK/EF6 version mismatch.";
+                }
+                else if (!method1Works && !method2Works)
+                {
+                    summary["Recommendation"] = "Both methods fail. Check if the default PZ configuration has PosiadaAspektFinansowy=true. " +
+                        "If so, the TransakcjaVAT error is triggered even for 'without VAT' documents. " +
+                        "Consider disabling PosiadaAspektFinansowy on the PZ configuration in the database.";
+                }
+                else if (method1Works && method2Works)
+                {
+                    summary["Recommendation"] = "Both methods work! The error might be caused by something else in your code path.";
+                }
+
+                methodResults["Summary"] = summary;
+                return methodResults;
+            });
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(testResult));
+        }
+        catch (Exception ex)
+        {
+            results["OuterError"] = ex.Message;
+            if (ex.ToString().Contains("TransakcjaVAT"))
+            {
+                results["TransakcjaVAT_Error"] = true;
+            }
+            _logger.LogError(ex, "Error in TestPzCreationMethods diagnostic");
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+    }
+
+    /// <summary>
+    /// List all available PZ configurations and their financial aspect settings
+    /// This helps identify which configurations can be used without triggering VAT loading
+    /// </summary>
+    [HttpGet("list-pz-configurations")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> ListPzConfigurations()
+    {
+        var results = new Dictionary<string, object?>();
+
+        try
+        {
+            var configResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
+            {
+                var configs = new Dictionary<string, object?>();
+
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                if (konfiguracje == null)
+                {
+                    configs["Error"] = "Could not get Konfiguracje manager";
+                    return configs;
+                }
+
+                // Get all configurations using Dane.Wszystkie()
+                var allConfigsList = new List<Dictionary<string, object?>>();
+                var pzConfigsList = new List<Dictionary<string, object?>>();
+
+                try
+                {
+                    // Try to get all configurations
+                    foreach (var config in konfiguracje.Dane.Wszystkie())
+                    {
+                        try
+                        {
+                            var configInfo = new Dictionary<string, object?>
+                            {
+                                ["Symbol"] = config.Symbol?.ToString(),
+                                ["Nazwa"] = config.Nazwa?.ToString(),
+                                ["Id"] = config.Id?.ToString()
+                            };
+
+                            // Try to read PosiadaAspektFinansowy
+                            try
+                            {
+                                configInfo["PosiadaAspektFinansowy"] = config.PosiadaAspektFinansowy?.ToString();
+                            }
+                            catch
+                            {
+                                configInfo["PosiadaAspektFinansowy"] = "Cannot read";
+                            }
+
+                            // Try to read TypDokumentu
+                            try
+                            {
+                                configInfo["TypDokumentu"] = config.TypDokumentu?.ToString();
+                            }
+                            catch
+                            {
+                                configInfo["TypDokumentu"] = "Cannot read";
+                            }
+
+                            allConfigsList.Add(configInfo);
+
+                            // Check if this is a PZ-related configuration
+                            string? symbol = config.Symbol?.ToString();
+                            string? nazwa = config.Nazwa?.ToString();
+                            if ((symbol != null && (symbol.Contains("PZ") || symbol.Contains("Przyjęcie") || symbol.Contains("Przyjecie"))) ||
+                                (nazwa != null && (nazwa.Contains("PZ") || nazwa.Contains("przyjęci") || nazwa.Contains("przyjeci"))))
+                            {
+                                pzConfigsList.Add(configInfo);
+                            }
+                        }
+                        catch (Exception configEx)
+                        {
+                            allConfigsList.Add(new Dictionary<string, object?>
+                            {
+                                ["Error"] = configEx.Message
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    configs["GetAllConfigsError"] = ex.Message;
+                }
+
+                configs["TotalConfigurationsCount"] = allConfigsList.Count;
+                configs["PzRelatedConfigurations"] = pzConfigsList;
+
+                // Also get default configurations
+                var defaults = new Dictionary<string, object?>();
+                try
+                {
+                    var pz = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
+                    if (pz != null)
+                    {
+                        defaults["PrzyjecieZewnetrzne"] = new Dictionary<string, object?>
+                        {
+                            ["Symbol"] = pz.Symbol?.ToString(),
+                            ["Nazwa"] = pz.Nazwa?.ToString(),
+                            ["Id"] = pz.Id?.ToString(),
+                            ["PosiadaAspektFinansowy"] = SafeGetProperty(pz, "PosiadaAspektFinansowy")
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    defaults["PrzyjecieZewnetrzne_Error"] = ex.Message;
+                }
+
+                try
+                {
+                    var pzVat = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzneZVAT;
+                    if (pzVat != null)
+                    {
+                        defaults["PrzyjecieZewnetrzneZVAT"] = new Dictionary<string, object?>
+                        {
+                            ["Symbol"] = pzVat.Symbol?.ToString(),
+                            ["Nazwa"] = pzVat.Nazwa?.ToString(),
+                            ["Id"] = pzVat.Id?.ToString(),
+                            ["PosiadaAspektFinansowy"] = SafeGetProperty(pzVat, "PosiadaAspektFinansowy")
+                        };
+                    }
+                }
+                catch (Exception ex)
+                {
+                    defaults["PrzyjecieZewnetrzneZVAT_Error"] = ex.Message;
+                }
+
+                configs["DefaultConfigurations"] = defaults;
+
+                // Find configurations without financial aspect that could be used to avoid VAT loading
+                var noFinancialAspect = new List<Dictionary<string, object?>>();
+                foreach (var config in pzConfigsList)
+                {
+                    if (config.TryGetValue("PosiadaAspektFinansowy", out var value))
+                    {
+                        string? valueStr = value?.ToString()?.ToLower();
+                        if (valueStr == "false" || valueStr == "0")
+                        {
+                            noFinancialAspect.Add(config);
+                        }
+                    }
+                }
+                configs["PzConfigurationsWithoutFinancialAspect"] = noFinancialAspect;
+
+                if (noFinancialAspect.Count == 0)
+                {
+                    configs["Recommendation"] = "No PZ configurations found without financial aspect. " +
+                        "To avoid TransakcjaVAT errors, consider: " +
+                        "1) Setting PosiadaAspektFinansowy=false on an existing PZ configuration in the database, OR " +
+                        "2) Creating a new PZ configuration without financial aspect. " +
+                        "SQL: UPDATE ModelDanychContainer.Konfiguracje SET PosiadaAspektFinansowy = 0 WHERE Symbol = 'PZ'";
+                }
+                else
+                {
+                    configs["Recommendation"] = $"Found {noFinancialAspect.Count} PZ configuration(s) without financial aspect. " +
+                        "Use Utworz(configuration) with one of these to avoid TransakcjaVAT loading issues.";
+                }
+
+                return configs;
+            });
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(configResult));
+        }
+        catch (Exception ex)
+        {
+            results["OuterError"] = ex.Message;
+            _logger.LogError(ex, "Error in ListPzConfigurations diagnostic");
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+    }
+
+    private static string? SafeGetProperty(dynamic obj, string propertyName)
+    {
+        try
+        {
+            var type = ((object)obj).GetType();
+            var prop = type.GetProperty(propertyName);
+            if (prop != null)
+            {
+                var value = prop.GetValue(obj);
+                return value?.ToString();
+            }
+            return null;
+        }
+        catch
+        {
+            return "Cannot read";
+        }
+    }
 }
 
 #region Response DTOs
