@@ -1089,14 +1089,107 @@ public class DocumentsController : ControllerBase
                     // This might be required for the document to be valid for saving
                     try
                     {
-                        _logger.LogInformation("[FS-v2] Calling Bilansuj() to balance the document...");
-                        faktura.Bilansuj();
-                        _logger.LogInformation("[FS-v2] Bilansuj() completed successfully");
+                        var fakturaType = ((object)faktura).GetType();
 
-                        // Check for balance-related properties after Bilansuj()
+                        // First, discover Bilansuj method overloads
+                        var bilansujMethods = fakturaType.GetMethods()
+                            .Where(m => m.Name == "Bilansuj")
+                            .Select(m => $"Bilansuj({string.Join(", ", m.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}"))})")
+                            .ToList();
+                        _logger.LogInformation("[FS-v2] Bilansuj method overloads: {Methods}", string.Join("; ", bilansujMethods));
+
+                        // Try calling Bilansuj with different argument combinations
+                        bool bilansujCalled = false;
+
+                        // Try with no arguments first (maybe there's a parameterless overload we missed)
                         try
                         {
-                            var fakturaType = ((object)faktura).GetType();
+                            var bilansujMethod = fakturaType.GetMethod("Bilansuj", Type.EmptyTypes);
+                            if (bilansujMethod != null)
+                            {
+                                _logger.LogInformation("[FS-v2] Calling Bilansuj() with no args...");
+                                bilansujMethod.Invoke(faktura, null);
+                                _logger.LogInformation("[FS-v2] Bilansuj() with no args succeeded");
+                                bilansujCalled = true;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogDebug("[FS-v2] Bilansuj() no args failed: {Msg}", ex.InnerException?.Message ?? ex.Message);
+                        }
+
+                        // Try with a single PozycjaDokumentu argument (balance specific position)
+                        if (!bilansujCalled)
+                        {
+                            try
+                            {
+                                var bilansujMethods2 = fakturaType.GetMethods().Where(m => m.Name == "Bilansuj").ToList();
+                                foreach (var method in bilansujMethods2)
+                                {
+                                    var parameters = method.GetParameters();
+                                    _logger.LogDebug("[FS-v2] Trying Bilansuj overload with {Count} params: {Params}",
+                                        parameters.Length,
+                                        string.Join(", ", parameters.Select(p => p.ParameterType.FullName)));
+
+                                    // If it takes a single PozycjaDokumentu, try with the first position
+                                    if (parameters.Length == 1 && parameters[0].ParameterType.Name.Contains("Pozycja"))
+                                    {
+                                        try
+                                        {
+                                            var pozycje = dane.Pozycje;
+                                            if (pozycje != null)
+                                            {
+                                                foreach (var poz in pozycje)
+                                                {
+                                                    _logger.LogInformation("[FS-v2] Calling Bilansuj(pozycja) for each position...");
+                                                    method.Invoke(faktura, new object[] { poz });
+                                                }
+                                                _logger.LogInformation("[FS-v2] Bilansuj(pozycja) completed for all positions");
+                                                bilansujCalled = true;
+                                            }
+                                        }
+                                        catch (Exception posEx)
+                                        {
+                                            _logger.LogDebug("[FS-v2] Bilansuj(pozycja) failed: {Msg}", posEx.InnerException?.Message ?? posEx.Message);
+                                        }
+                                        break;
+                                    }
+                                    // If it takes IEnumerable of positions
+                                    else if (parameters.Length == 1 && parameters[0].ParameterType.Name.Contains("IEnumerable"))
+                                    {
+                                        try
+                                        {
+                                            var pozycje = dane.Pozycje;
+                                            if (pozycje != null)
+                                            {
+                                                _logger.LogInformation("[FS-v2] Calling Bilansuj(IEnumerable pozycje)...");
+                                                method.Invoke(faktura, new object[] { pozycje });
+                                                _logger.LogInformation("[FS-v2] Bilansuj(IEnumerable) succeeded");
+                                                bilansujCalled = true;
+                                            }
+                                        }
+                                        catch (Exception enumEx)
+                                        {
+                                            _logger.LogDebug("[FS-v2] Bilansuj(IEnumerable) failed: {Msg}", enumEx.InnerException?.Message ?? enumEx.Message);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                            catch (Exception reflEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Bilansuj reflection failed: {Msg}", reflEx.Message);
+                            }
+                        }
+
+                        if (!bilansujCalled)
+                        {
+                            _logger.LogWarning("[FS-v2] Could not call any Bilansuj overload successfully");
+                        }
+
+                        // Check for balance-related properties after Bilansuj attempt
+                        try
+                        {
                             var balanceProps = fakturaType.GetProperties()
                                 .Where(p => p.Name.Contains("Bilans") || p.Name.Contains("Balance") || p.Name.Contains("Zbilans") || p.Name.Contains("Saldo"))
                                 .ToList();
@@ -1114,7 +1207,7 @@ public class DocumentsController : ControllerBase
                     }
                     catch (Exception bilansujEx)
                     {
-                        _logger.LogWarning("[FS-v2] Bilansuj() failed: {Msg}", bilansujEx.Message);
+                        _logger.LogWarning("[FS-v2] Bilansuj() section failed: {Msg}", bilansujEx.Message);
                     }
 
                     // List all available methods on faktura that might help with validation/errors
