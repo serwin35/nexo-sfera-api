@@ -1203,6 +1203,93 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not access DataDomain: {Msg}", ddEx.Message);
                     }
 
+                    // NEW: Check what document status 15 means and list available statuses
+                    try
+                    {
+                        var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                        if (statusyManager != null)
+                        {
+                            var statusList = new List<string>();
+                            foreach (var s in statusyManager.Dane.Wszystkie())
+                            {
+                                int sId = DynamicPropertyHelper.GetId(s);
+                                string? sName = DynamicPropertyHelper.GetString(s, "Nazwa") ?? DynamicPropertyHelper.GetString(s, "Symbol");
+                                statusList.Add($"[{sId}] {sName}");
+                            }
+                            _logger.LogInformation("[FS-v2] Available document statuses: {Statuses}", string.Join(", ", statusList.Take(20)));
+                        }
+                    }
+                    catch (Exception statusEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not list document statuses: {Msg}", statusEx.Message);
+                    }
+
+                    // NEW: Check if current status allows saving
+                    try
+                    {
+                        var currentStatus = faktura.Dokument.StatusDokumentu;
+                        if (currentStatus != null)
+                        {
+                            var statusType = ((object)currentStatus).GetType();
+                            var statusProps = statusType.GetProperties()
+                                .Select(p => {
+                                    try { return $"{p.Name}={p.GetValue(currentStatus)}"; }
+                                    catch { return $"{p.Name}=?"; }
+                                })
+                                .ToList();
+                            _logger.LogInformation("[FS-v2] Current StatusDokumentu properties: {Props}", string.Join(", ", statusProps.Take(15)));
+                        }
+                    }
+                    catch (Exception csEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not read current status details: {Msg}", csEx.Message);
+                    }
+
+                    // NEW: Try to find and use ObjectContext from the entity
+                    try
+                    {
+                        var dokument = faktura.Dokument;
+                        var dokType = ((object)dokument).GetType();
+
+                        // Look for ObjectContext property
+                        var contextProp = dokType.GetProperty("ObjectContext") ??
+                                         dokType.GetProperty("Context") ??
+                                         dokType.GetProperty("DataContext");
+                        if (contextProp != null)
+                        {
+                            var objContext = contextProp.GetValue(dokument);
+                            if (objContext != null)
+                            {
+                                _logger.LogInformation("[FS-v2] Found ObjectContext on Dokument: {Type}", (object)((object)objContext).GetType().FullName);
+
+                                // Try to get ObjectStateManager
+                                var osmProp = ((object)objContext).GetType().GetProperty("ObjectStateManager");
+                                if (osmProp != null)
+                                {
+                                    var osm = osmProp.GetValue(objContext);
+                                    _logger.LogInformation("[FS-v2] Got ObjectStateManager");
+
+                                    // Try to get state entries with errors
+                                    var getEntriesMethod = ((object)osm!).GetType().GetMethod("GetObjectStateEntries", new[] { typeof(System.Data.Entity.EntityState) });
+                                    if (getEntriesMethod != null)
+                                    {
+                                        var addedEntries = getEntriesMethod.Invoke(osm, new object[] { System.Data.Entity.EntityState.Added });
+                                        int entryCount = 0;
+                                        foreach (var entry in (System.Collections.IEnumerable)addedEntries!)
+                                        {
+                                            entryCount++;
+                                        }
+                                        _logger.LogInformation("[FS-v2] ObjectStateManager has {Count} Added entries", entryCount);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception ctxEx)
+                    {
+                        _logger.LogDebug("[FS-v2] Could not access ObjectContext: {Msg}", ctxEx.Message);
+                    }
+
                     // NEW: Check Dokument entity state
                     try
                     {
@@ -1427,6 +1514,62 @@ public class DocumentsController : ControllerBase
                             catch (Exception zzEx)
                             {
                                 _logger.LogDebug("[FS-v2] ZapiszZatwierdzone() not available: {Msg}", zzEx.Message);
+                            }
+                        }
+
+                        // NEW: Try to call SaveChanges directly on ObjectContext (bypass SDK validation)
+                        if (!isSaved)
+                        {
+                            _logger.LogWarning("[FS-v2] All SDK save methods failed, attempting direct ObjectContext.SaveChanges()...");
+                            try
+                            {
+                                var dokument = faktura.Dokument;
+                                var dokType = ((object)dokument).GetType();
+
+                                // Try to find ObjectContext
+                                var contextProp = dokType.GetProperty("ObjectContext");
+                                if (contextProp != null)
+                                {
+                                    var objContext = contextProp.GetValue(dokument);
+                                    if (objContext != null)
+                                    {
+                                        var saveChangesMethod = ((object)objContext).GetType().GetMethod("SaveChanges", Type.EmptyTypes);
+                                        if (saveChangesMethod != null)
+                                        {
+                                            _logger.LogInformation("[FS-v2] Calling ObjectContext.SaveChanges() directly...");
+                                            try
+                                            {
+                                                var result = saveChangesMethod.Invoke(objContext, null);
+                                                _logger.LogInformation("[FS-v2] SaveChanges() returned: {Result}", (object)(result?.ToString() ?? "(null)"));
+
+                                                // Check if document was actually saved
+                                                var newId = faktura.Dokument.Id;
+                                                _logger.LogInformation("[FS-v2] Document Id after SaveChanges: {Id}", (object)(newId?.ToString() ?? "(null)"));
+                                                if (newId != null && (int)newId > 0)
+                                                {
+                                                    isSaved = true;
+                                                    _logger.LogInformation("[FS-v2] Direct SaveChanges() succeeded!");
+                                                }
+                                            }
+                                            catch (Exception scEx)
+                                            {
+                                                _logger.LogError(scEx, "[FS-v2] SaveChanges() threw exception: {Msg}", scEx.Message);
+
+                                                // Log inner exceptions
+                                                var inner = scEx.InnerException;
+                                                while (inner != null)
+                                                {
+                                                    _logger.LogError("[FS-v2] SaveChanges inner: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
+                                                    inner = inner.InnerException;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception ocEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Could not access ObjectContext for direct save: {Msg}", ocEx.Message);
                             }
                         }
                     }
