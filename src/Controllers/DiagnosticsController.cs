@@ -51,6 +51,177 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
+    /// Investigate TransakcjaVAT table schema and IdWInstancji column type
+    /// This diagnoses the "could not be set to Byte[]" error
+    /// </summary>
+    [HttpGet("transakcja-vat-schema")]
+    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> InvestigateTransakcjaVatSchema()
+    {
+        try
+        {
+            var connectionString = _sferaService.GetConnectionString();
+            if (string.IsNullOrEmpty(connectionString))
+            {
+                return BadRequest(ApiResponse<Dictionary<string, object?>>.Error("Connection string not available"));
+            }
+
+            var results = new Dictionary<string, object?>();
+
+            await using (var connection = new SqlConnection(connectionString))
+            {
+                await connection.OpenAsync();
+                results["ConnectionState"] = connection.State.ToString();
+
+                // 1. Get TransakcjaVAT table schema
+                const string schemaQuery = @"
+                    SELECT
+                        c.COLUMN_NAME,
+                        c.DATA_TYPE,
+                        c.CHARACTER_MAXIMUM_LENGTH,
+                        c.NUMERIC_PRECISION,
+                        c.IS_NULLABLE,
+                        c.COLUMN_DEFAULT
+                    FROM INFORMATION_SCHEMA.COLUMNS c
+                    WHERE c.TABLE_NAME = 'TransakcjaVAT'
+                    ORDER BY c.ORDINAL_POSITION";
+
+                var columns = new List<Dictionary<string, object?>>();
+                await using (var cmd = new SqlCommand(schemaQuery, connection))
+                await using (var reader = await cmd.ExecuteReaderAsync())
+                {
+                    while (await reader.ReadAsync())
+                    {
+                        columns.Add(new Dictionary<string, object?>
+                        {
+                            ["ColumnName"] = reader.GetString(0),
+                            ["DataType"] = reader.GetString(1),
+                            ["MaxLength"] = reader.IsDBNull(2) ? null : reader.GetValue(2),
+                            ["Precision"] = reader.IsDBNull(3) ? null : reader.GetValue(3),
+                            ["IsNullable"] = reader.GetString(4),
+                            ["DefaultValue"] = reader.IsDBNull(5) ? null : reader.GetValue(5)
+                        });
+                    }
+                }
+                results["TransakcjaVATColumns"] = columns;
+
+                // 2. Find IdWInstancji specifically
+                var idWInstancjiCol = columns.FirstOrDefault(c =>
+                    c["ColumnName"]?.ToString()?.Equals("IdWInstancji", StringComparison.OrdinalIgnoreCase) == true);
+                results["IdWInstancjiColumn"] = idWInstancjiCol;
+
+                // 3. Try to read actual data from TransakcjaVAT
+                const string dataQuery = @"SELECT TOP 1 * FROM TransakcjaVAT";
+                await using (var dataCmd = new SqlCommand(dataQuery, connection))
+                await using (var dataReader = await dataCmd.ExecuteReaderAsync())
+                {
+                    var columnTypes = new List<Dictionary<string, object?>>();
+                    for (int i = 0; i < dataReader.FieldCount; i++)
+                    {
+                        columnTypes.Add(new Dictionary<string, object?>
+                        {
+                            ["Name"] = dataReader.GetName(i),
+                            ["FieldType"] = dataReader.GetFieldType(i)?.FullName,
+                            ["DataTypeName"] = dataReader.GetDataTypeName(i)
+                        });
+                    }
+                    results["ADO_ColumnTypes"] = columnTypes;
+
+                    // Find IdWInstancji in ADO.NET results
+                    var idWInstancjiIdx = -1;
+                    for (int i = 0; i < dataReader.FieldCount; i++)
+                    {
+                        if (dataReader.GetName(i).Equals("IdWInstancji", StringComparison.OrdinalIgnoreCase))
+                        {
+                            idWInstancjiIdx = i;
+                            break;
+                        }
+                    }
+
+                    if (idWInstancjiIdx >= 0 && await dataReader.ReadAsync())
+                    {
+                        var idValue = dataReader.GetValue(idWInstancjiIdx);
+                        results["IdWInstancji_Value"] = idValue?.ToString();
+                        results["IdWInstancji_CLRType"] = idValue?.GetType().FullName;
+                        results["IdWInstancji_IsDBNull"] = dataReader.IsDBNull(idWInstancjiIdx);
+
+                        // Try getting as Int32
+                        try
+                        {
+                            var intValue = dataReader.GetInt32(idWInstancjiIdx);
+                            results["IdWInstancji_GetInt32"] = intValue;
+                        }
+                        catch (Exception ex)
+                        {
+                            results["IdWInstancji_GetInt32Error"] = ex.Message;
+                        }
+                    }
+                    else
+                    {
+                        results["IdWInstancji_Note"] = idWInstancjiIdx < 0
+                            ? "Column IdWInstancji not found in result set"
+                            : "No data in TransakcjaVAT table";
+                    }
+                }
+
+                // 4. Check for any uniqueidentifier or binary columns that could cause issues
+                const string binaryQuery = @"
+                    SELECT COLUMN_NAME, DATA_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'TransakcjaVAT'
+                    AND DATA_TYPE IN ('binary', 'varbinary', 'uniqueidentifier', 'timestamp', 'rowversion')";
+
+                var binaryColumns = new List<string>();
+                await using (var binCmd = new SqlCommand(binaryQuery, connection))
+                await using (var binReader = await binCmd.ExecuteReaderAsync())
+                {
+                    while (await binReader.ReadAsync())
+                    {
+                        binaryColumns.Add($"{binReader.GetString(0)} ({binReader.GetString(1)})");
+                    }
+                }
+                results["BinaryTypeColumns"] = binaryColumns;
+            }
+
+            // 5. Compare with System.Data.SqlClient provider
+            try
+            {
+                await using var sysConnection = new System.Data.SqlClient.SqlConnection(connectionString);
+                await sysConnection.OpenAsync();
+
+                const string sysDataQuery = @"SELECT TOP 1 IdWInstancji FROM TransakcjaVAT";
+                await using var sysCmd = new System.Data.SqlClient.SqlCommand(sysDataQuery, sysConnection);
+                await using var sysReader = await sysCmd.ExecuteReaderAsync();
+
+                if (await sysReader.ReadAsync())
+                {
+                    var sysValue = sysReader.GetValue(0);
+                    results["SystemDataSqlClient_Value"] = sysValue?.ToString();
+                    results["SystemDataSqlClient_CLRType"] = sysValue?.GetType().FullName;
+                    results["SystemDataSqlClient_FieldType"] = sysReader.GetFieldType(0)?.FullName;
+                }
+            }
+            catch (Exception sysEx)
+            {
+                results["SystemDataSqlClient_Error"] = sysEx.Message;
+            }
+
+            results["Diagnosis"] = "Compare Microsoft.Data.SqlClient vs System.Data.SqlClient results. " +
+                "If IdWInstancji shows as INT in schema but CLRType is Byte[], " +
+                "the issue is in EF6 model mapping or provider type conversion, not database schema.";
+
+            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error investigating TransakcjaVAT schema");
+            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
+                "Error investigating TransakcjaVAT schema",
+                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+        }
+    }
+
+    /// <summary>
     /// Test BIT type mapping by querying the database directly with ADO.NET
     /// This helps diagnose if the issue is at the ADO.NET level or EF6 level
     /// </summary>
