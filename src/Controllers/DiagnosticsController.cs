@@ -331,11 +331,31 @@ public class DiagnosticsController : ControllerBase
                     var schema = reader.GetString(0);
                     var table = reader.GetString(1);
                     tables.Add($"{schema}.{table}");
-                    if (targetTable == null)
+
+                    // Prioritize ModelDanychContainer.TransakcjeVAT (the actual data table)
+                    // over index tables (idx_*) or junction tables
+                    if (schema == "ModelDanychContainer" && table == "TransakcjeVAT")
                     {
                         targetSchema = schema;
                         targetTable = table;
                     }
+                    else if (targetTable == null && !table.StartsWith("idx_") && !table.Contains("_"))
+                    {
+                        // Fallback to first non-index table
+                        targetSchema = schema;
+                        targetTable = table;
+                    }
+                }
+            }
+
+            // If no good table found, use ModelDanychContainer.TransakcjeVAT if it exists
+            if (targetTable == null)
+            {
+                var mdcTable = tables.FirstOrDefault(t => t == "ModelDanychContainer.TransakcjeVAT");
+                if (mdcTable != null)
+                {
+                    targetSchema = "ModelDanychContainer";
+                    targetTable = "TransakcjeVAT";
                 }
             }
 
@@ -416,7 +436,33 @@ public class DiagnosticsController : ControllerBase
 
             results["CriticalColumns"] = criticalColumns;
 
-            // 4. Diagnosis
+            // 4. Check ALL TransakcjeVAT tables for WystepowanieFakturKsef
+            var allTablesCheck = new List<Dictionary<string, object?>>();
+            foreach (var tableFullName in tables)
+            {
+                var parts = tableFullName.Split('.');
+                if (parts.Length != 2) continue;
+
+                var checkQuery = @"
+                    SELECT COUNT(*) as HasColumn
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_SCHEMA = @schema AND TABLE_NAME = @table
+                    AND COLUMN_NAME = 'WystepowanieFakturKsef'";
+
+                await using var checkCmd = new SqlCommand(checkQuery, connection);
+                checkCmd.Parameters.AddWithValue("@schema", parts[0]);
+                checkCmd.Parameters.AddWithValue("@table", parts[1]);
+                var hasCol = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
+
+                allTablesCheck.Add(new Dictionary<string, object?>
+                {
+                    ["Table"] = tableFullName,
+                    ["HasWystepowanieFakturKsef"] = hasCol
+                });
+            }
+            results["AllTablesWystepowanieCheck"] = allTablesCheck;
+
+            // 5. Diagnosis
             if (!hasWystepowanie)
             {
                 results["DIAGNOSIS"] = "CRITICAL: Database is MISSING the WystepowanieFakturKsef column! " +
