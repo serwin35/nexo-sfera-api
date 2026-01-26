@@ -35,7 +35,8 @@ public interface ISferaService
     /// Gets the database connection string used by Sfera.
     /// Returns null if not connected.
     /// </summary>
-    string? GetConnectionString();
+    /// <param name="forLegacySqlClient">If true, builds connection string compatible with System.Data.SqlClient</param>
+    string? GetConnectionString(bool forLegacySqlClient = false);
 
     /// <summary>
     /// Switches to a different operator if credentials differ from current login.
