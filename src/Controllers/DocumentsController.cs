@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
@@ -29,6 +30,54 @@ public class DocumentsController : ControllerBase
         _sferaService = sferaService;
         _logger = logger;
         _stockHelper = stockHelper;
+    }
+
+    /// <summary>
+    /// Gets the Nexo operator credentials from the current user's claims (set by API key authentication).
+    /// Returns null if no per-key credentials are configured.
+    /// </summary>
+    private (string? Login, string? Password) GetOperatorCredentialsFromClaims()
+    {
+        var nexoLogin = User.FindFirst("NexoLogin")?.Value;
+        var nexoPassword = User.FindFirst("NexoPassword")?.Value;
+        return (nexoLogin, nexoPassword);
+    }
+
+    /// <summary>
+    /// Switches to the operator specified in API key claims (if any).
+    /// Must be called inside ExecuteWithLockAsync on the SDK STA thread.
+    /// </summary>
+    private bool SwitchToRequestOperator((string? Login, string? Password) credentials)
+    {
+        if (string.IsNullOrEmpty(credentials.Login))
+        {
+            // No per-key credentials, use default operator
+            return true;
+        }
+
+        if (!_sferaService.SwitchOperatorIfNeeded(credentials.Login, credentials.Password))
+        {
+            _logger.LogError("Failed to switch to operator {Login} for this request", (object)credentials.Login);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Determines if a document type should NOT have import remarks added.
+    /// Invoices and receipts should not have "Import ILUO" remarks.
+    /// </summary>
+    private bool ShouldSkipImportRemarks(DocumentType documentType)
+    {
+        return documentType == DocumentType.SalesInvoice ||
+               documentType == DocumentType.PurchaseInvoice ||
+               documentType == DocumentType.Receipt ||
+               documentType == DocumentType.ReceiptReturn ||
+               documentType == DocumentType.AdvanceInvoice ||
+               documentType == DocumentType.VatMarginInvoice ||
+               documentType == DocumentType.SalesInvoiceCorrection ||
+               documentType == DocumentType.PurchaseInvoiceCorrection;
     }
 
     /// <summary>
@@ -561,8 +610,15 @@ public class DocumentsController : ControllerBase
             }
 
             // Use thread-safe execution - EF6 is NOT thread-safe
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if configured)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
+                }
+
                 var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
                 if (dokumentySprzedazy == null)
                 {
@@ -1094,8 +1150,8 @@ public class DocumentsController : ControllerBase
                     // Set payment method
                     SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
 
-                    // Set notes
-                    if (!string.IsNullOrEmpty(request.Notes))
+                    // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                    if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(request.Type))
                     {
                         try
                         {
@@ -1106,6 +1162,10 @@ public class DocumentsController : ControllerBase
                         {
                             _logger.LogWarning(ex, "Failed to set notes: {Message}", ex.Message);
                         }
+                    }
+                    else if (!string.IsNullOrEmpty(request.Notes) && ShouldSkipImportRemarks(request.Type))
+                    {
+                        _logger.LogInformation("Skipping notes for {DocumentType} (invoices and receipts should not have import remarks)", request.Type);
                     }
 
                     // Add items to sales invoice - use specialized method for better diagnostics
@@ -2322,8 +2382,15 @@ public class DocumentsController : ControllerBase
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if configured)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
+                }
+
                 var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowieniaManager == null)
                 {
@@ -2375,10 +2442,14 @@ public class DocumentsController : ControllerBase
                     zamowienie.ZarezerwujNumer();
                     _logger.LogInformation("Reserved customer order number: {Number}", (string?)zamowienie.PodajPodgladNumeru()?.ToString() ?? "");
 
-                    // Set notes
-                    if (!string.IsNullOrEmpty(request.Notes))
+                    // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                    if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(request.Type))
                     {
                         dane.Uwagi = request.Notes;
+                    }
+                    else if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        _logger.LogInformation("Skipping notes for {DocumentType}", request.Type);
                     }
 
                     // Add items using product ID
@@ -2437,8 +2508,15 @@ public class DocumentsController : ControllerBase
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if configured)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
+                }
+
                 var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
                 if (dokumentyZakupu == null)
                 {
@@ -2488,8 +2566,8 @@ public class DocumentsController : ControllerBase
                     faktura.ZarezerwujNumer();
                     _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
 
-                    // Set notes
-                    if (!string.IsNullOrEmpty(request.Notes))
+                    // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                    if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(request.Type))
                     {
                         dane.Uwagi = request.Notes;
                     }
@@ -2590,9 +2668,14 @@ public class DocumentsController : ControllerBase
                 dane.PrzyczynaKorekty = request.CorrectionReason;
             }
 
-            if (!string.IsNullOrEmpty(request.Notes))
+            // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.SalesInvoiceCorrection))
             {
                 dane.Uwagi = request.Notes;
+            }
+            else if (!string.IsNullOrEmpty(request.Notes))
+            {
+                _logger.LogInformation("Skipping notes for SalesInvoiceCorrection");
             }
 
             if (request.IssueDate.HasValue)
@@ -2683,9 +2766,14 @@ public class DocumentsController : ControllerBase
                 dane.PrzyczynaKorekty = request.CorrectionReason;
             }
 
-            if (!string.IsNullOrEmpty(request.Notes))
+            // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.PurchaseInvoiceCorrection))
             {
                 dane.Uwagi = request.Notes;
+            }
+            else if (!string.IsNullOrEmpty(request.Notes))
+            {
+                _logger.LogInformation("Skipping notes for PurchaseInvoiceCorrection");
             }
 
             if (request.IssueDate.HasValue)
@@ -2757,8 +2845,15 @@ public class DocumentsController : ControllerBase
             }
 
             // Use thread-safe execution - EF6 is NOT thread-safe
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
+                // Switch to the operator specified in API key (if configured)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
+                }
+
                 var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
                 if (dokumentySprzedazy == null)
                 {
@@ -2863,9 +2958,14 @@ public class DocumentsController : ControllerBase
                 paragon.ZarezerwujNumer();
                 _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
 
-                if (!string.IsNullOrEmpty(request.Notes))
+                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.Receipt))
                 {
                     dane.Uwagi = request.Notes;
+                }
+                else if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    _logger.LogInformation("Skipping notes for Receipt (receipts should not have import remarks)");
                 }
 
                 // Set payment method
@@ -3112,9 +3212,14 @@ public class DocumentsController : ControllerBase
                 dane.PrzyczynaKorekty = request.CorrectionReason;
             }
 
-            if (!string.IsNullOrEmpty(request.Notes))
+            // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.ReceiptReturn))
             {
                 dane.Uwagi = request.Notes;
+            }
+            else if (!string.IsNullOrEmpty(request.Notes))
+            {
+                _logger.LogInformation("Skipping notes for ReceiptReturn");
             }
 
             // Add return items
@@ -3197,9 +3302,14 @@ public class DocumentsController : ControllerBase
                     dane.DataSprzedazy = request.SaleDate.Value;
                 }
 
-                if (!string.IsNullOrEmpty(request.Notes))
+                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.AdvanceInvoice))
                 {
                     dane.Uwagi = request.Notes;
+                }
+                else if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    _logger.LogInformation("Skipping notes for AdvanceInvoice");
                 }
 
                 // Add items
@@ -3286,9 +3396,14 @@ public class DocumentsController : ControllerBase
                     dane.DataSprzedazy = request.SaleDate.Value;
                 }
 
-                if (!string.IsNullOrEmpty(request.Notes))
+                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.VatMarginInvoice))
                 {
                     dane.Uwagi = request.Notes;
+                }
+                else if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    _logger.LogInformation("Skipping notes for VatMarginInvoice");
                 }
 
                 // Add items
