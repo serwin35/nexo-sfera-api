@@ -3256,7 +3256,7 @@ public class DocumentsController : ControllerBase
                 else
                 {
                     var errors = GetBusinessObjectErrors(paragon);
-                    _logger.LogWarning("[PA] Zapisz() failed. Errors: {Errors}", string.Join("; ", errors));
+                    _logger.LogWarning("[PA] Zapisz() failed. Errors: {Errors}", (object)string.Join("; ", errors));
 
                     // Try to get validation errors
                     try
