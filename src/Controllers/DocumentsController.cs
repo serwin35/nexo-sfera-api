@@ -4879,7 +4879,8 @@ public class DocumentsController : ControllerBase
                 FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
                 Title = DynamicPropertyHelper.GetString(dokument, "Tytul"),
                 Type = DocumentType.SalesInvoice,
-                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
+                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                           DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
                 SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
@@ -4938,7 +4939,8 @@ public class DocumentsController : ControllerBase
                 ExternalNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny"),
                 Title = DynamicPropertyHelper.GetString(dokument, "Tytul"),
                 Type = DocumentType.PurchaseInvoice,
-                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
+                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                           DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
                 ReceiptDate = DynamicPropertyHelper.GetDateTime(dokument, "DataPrzyjecia"),
@@ -4997,7 +4999,8 @@ public class DocumentsController : ControllerBase
                 ReferenceNumber = DynamicPropertyHelper.GetString(dokument, "NumerReferencyjny"),
                 Title = DynamicPropertyHelper.GetString(dokument, "Tytul"),
                 Type = DocumentType.CustomerOrder,
-                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
+                StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                           DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
                 Deadline = DynamicPropertyHelper.GetDateTime(dokument, "TerminRealizacji"),
