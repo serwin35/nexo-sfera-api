@@ -10,6 +10,8 @@
     <UseWindowsForms>true</UseWindowsForms>
     <!-- Required for Nexo SDK EF6 serialization -->
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
+    <!-- Enable Windows targeting for cross-platform builds -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
   </PropertyGroup>
 
   <!-- Runtime configuration matching Nexo SDK Importer settings -->
