@@ -1821,12 +1821,37 @@ public class DocumentsController : ControllerBase
                                                         if (id == targetStatusId)
                                                         {
                                                             _logger.LogInformation("[FS-v2] Found target status entity with Id={Id}", (object)targetStatusId);
-                                                            // Assign the entity to dane.StatusDokumentu
-                                                            dane.StatusDokumentu = status;
-                                                            _logger.LogInformation("[FS-v2] StatusDokumentu entity assigned successfully!");
+
+                                                            // Method 1: Try setting StatusDokumentuId (FK property) directly
+                                                            bool statusSet = false;
+                                                            if (DynamicPropertyHelper.TrySetProperty(dane, "StatusDokumentuId", targetStatusId))
+                                                            {
+                                                                _logger.LogInformation("[FS-v2] StatusDokumentuId set to {Id}", (object)targetStatusId);
+                                                                statusSet = true;
+                                                            }
+
+                                                            // Method 2: Try reflection-based navigation property assignment
+                                                            if (!statusSet)
+                                                            {
+                                                                try
+                                                                {
+                                                                    var daneType = ((object)dane).GetType();
+                                                                    var statusProp = daneType.GetProperty("StatusDokumentu");
+                                                                    if (statusProp != null && statusProp.CanWrite)
+                                                                    {
+                                                                        statusProp.SetValue(dane, status);
+                                                                        _logger.LogInformation("[FS-v2] StatusDokumentu set via reflection");
+                                                                        statusSet = true;
+                                                                    }
+                                                                }
+                                                                catch (Exception reflEx)
+                                                                {
+                                                                    _logger.LogDebug("[FS-v2] Reflection assignment failed: {Msg}", (object)reflEx.Message);
+                                                                }
+                                                            }
 
                                                             // Verify
-                                                            var newId = dane.StatusDokumentuId;
+                                                            var newId = DynamicPropertyHelper.GetInt(dane, "StatusDokumentuId");
                                                             _logger.LogInformation("[FS-v2] New StatusDokumentuId after assignment: {Id}", (object)(newId?.ToString() ?? "(null)"));
                                                             break;
                                                         }
@@ -3201,22 +3226,42 @@ public class DocumentsController : ControllerBase
                         }
                         else
                         {
-                            // Fallback: try setting dane.StatusDokumentu directly
-                            _logger.LogInformation("[PA] UstawStatus not found, trying direct StatusDokumentu assignment");
-                            var statusyManager = _sferaService.GetManager("StatusyDokumentow");
-                            if (statusyManager != null)
+                            // Fallback: try setting StatusDokumentuId (FK) directly
+                            _logger.LogInformation("[PA] UstawStatus not found, trying StatusDokumentuId assignment");
+                            try
                             {
-                                foreach (var status in (System.Collections.IEnumerable)statusyManager.Dane.Wszystkie())
+                                // Method 1: Set StatusDokumentuId (the FK property)
+                                if (DynamicPropertyHelper.TrySetProperty(dane, "StatusDokumentuId", targetStatusId))
                                 {
-                                    int? id = DynamicPropertyHelper.GetInt(status, "Id");
-                                    if (id == targetStatusId)
+                                    _logger.LogInformation("[PA] StatusDokumentuId set to {Id}", (object)targetStatusId);
+                                }
+                                else
+                                {
+                                    // Method 2: Try reflection on Dokument property
+                                    var dokument = DynamicPropertyHelper.GetProperty(paragon, "Dokument");
+                                    if (dokument != null)
                                     {
-                                        dane.StatusDokumentu = status;
-                                        _logger.LogInformation("[PA] StatusDokumentu assigned directly");
-                                        break;
+                                        DynamicPropertyHelper.TrySetProperty(dokument, "StatusDokumentuId", targetStatusId);
+                                        _logger.LogInformation("[PA] Dokument.StatusDokumentuId set to {Id}", (object)targetStatusId);
                                     }
                                 }
                             }
+                            catch (Exception fkEx)
+                            {
+                                _logger.LogWarning("[PA] StatusDokumentuId assignment failed: {Msg}", (object)fkEx.Message);
+                            }
+
+                            // Also try PominAutomatyczny like FS does
+                            try
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(paragon, "PominAutomatyczny", true))
+                                {
+                                    _logger.LogInformation("[PA] PominAutomatyczny set to true");
+                                }
+                                DynamicPropertyHelper.TrySetProperty(paragon, "WylaczKontroleRealizacji", true);
+                                DynamicPropertyHelper.TrySetProperty(paragon, "WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa", true);
+                            }
+                            catch { }
                         }
                     }
                     catch (Exception statusEx)
