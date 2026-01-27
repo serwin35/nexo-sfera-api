@@ -73,11 +73,22 @@ public class DocumentsController : ControllerBase
         return documentType == DocumentType.SalesInvoice ||
                documentType == DocumentType.PurchaseInvoice ||
                documentType == DocumentType.Receipt ||
-               documentType == DocumentType.ReceiptReturn ||
-               documentType == DocumentType.AdvanceInvoice ||
-               documentType == DocumentType.VatMarginInvoice ||
                documentType == DocumentType.SalesInvoiceCorrection ||
                documentType == DocumentType.PurchaseInvoiceCorrection;
+    }
+
+    /// <summary>
+    /// Determines if import remarks should be skipped based on document context.
+    /// Used for document types that don't map to DocumentType enum (receipts, corrections, etc.)
+    /// </summary>
+    private bool ShouldSkipImportRemarksForContext(string context)
+    {
+        // Skip remarks for all invoice and receipt types
+        return context.Contains("Invoice", StringComparison.OrdinalIgnoreCase) ||
+               context.Contains("Receipt", StringComparison.OrdinalIgnoreCase) ||
+               context.Contains("Correction", StringComparison.OrdinalIgnoreCase) ||
+               context.Contains("Paragon", StringComparison.OrdinalIgnoreCase) ||
+               context.Contains("Faktura", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -2959,7 +2970,7 @@ public class DocumentsController : ControllerBase
                 _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
 
                 // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.Receipt))
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("Receipt"))
                 {
                     dane.Uwagi = request.Notes;
                 }
@@ -3213,7 +3224,7 @@ public class DocumentsController : ControllerBase
             }
 
             // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.ReceiptReturn))
+            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("ReceiptReturn"))
             {
                 dane.Uwagi = request.Notes;
             }
@@ -3303,7 +3314,7 @@ public class DocumentsController : ControllerBase
                 }
 
                 // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.AdvanceInvoice))
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("AdvanceInvoice"))
                 {
                     dane.Uwagi = request.Notes;
                 }
@@ -3397,7 +3408,7 @@ public class DocumentsController : ControllerBase
                 }
 
                 // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.VatMarginInvoice))
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("VatMarginInvoice"))
                 {
                     dane.Uwagi = request.Notes;
                 }
