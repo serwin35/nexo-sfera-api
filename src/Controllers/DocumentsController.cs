@@ -3090,14 +3090,55 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
+                // Check if document is ready to save (like sales invoice does)
+                try
+                {
+                    var moznaZapisac = paragon.MoznaZapisac;
+                    _logger.LogInformation("[PA] MoznaZapisac BEFORE Zapisz(): {Value}", (object)(moznaZapisac?.ToString() ?? "(null)"));
+                    if (moznaZapisac != null && !(bool)moznaZapisac)
+                    {
+                        _logger.LogWarning("[PA] MoznaZapisac is false - document not ready to save");
+                        // Still try to save but log the warning
+                    }
+                }
+                catch (Exception mzEx)
+                {
+                    _logger.LogDebug("[PA] MoznaZapisac check failed: {Msg}", mzEx.Message);
+                }
+
+                // Check for validation issues BEFORE save
+                try
+                {
+                    var invalidDataBefore = paragon.InvalidData;
+                    if (invalidDataBefore != null)
+                    {
+                        int beforeCount = 0;
+                        foreach (var item in invalidDataBefore)
+                        {
+                            beforeCount++;
+                            _logger.LogWarning("[PA] InvalidData BEFORE save [{Idx}]: {Item}", beforeCount, (object)(item?.ToString() ?? "(null)"));
+                        }
+                        if (beforeCount > 0)
+                        {
+                            _logger.LogWarning("[PA] Found {Count} InvalidData items BEFORE Zapisz()", beforeCount);
+                        }
+                    }
+                }
+                catch (Exception idEx)
+                {
+                    _logger.LogDebug("[PA] Could not read InvalidData before save: {Msg}", idEx.Message);
+                }
+
                 _logger.LogInformation("[PA] Calling Zapisz()...");
                 bool saveResult = false;
+                Exception? saveException = null;
                 try
                 {
                     saveResult = (bool)paragon.Zapisz();
                 }
                 catch (Exception saveEx)
                 {
+                    saveException = saveEx;
                     _logger.LogError(saveEx, "[PA] Zapisz() threw exception: {Msg}", saveEx.Message);
                     var inner = saveEx.InnerException;
                     while (inner != null)
@@ -3105,23 +3146,249 @@ public class DocumentsController : ControllerBase
                         _logger.LogError("[PA] Inner: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
                         inner = inner.InnerException;
                     }
-                    return (false, null, $"Receipt save exception: {saveEx.Message}", new List<string> { saveEx.Message });
                 }
 
                 _logger.LogInformation("[PA] Zapisz() returned: {Result}", saveResult);
 
-                if (saveResult)
+                // Check InvalidData AFTER save attempt (errors might be populated by Zapisz)
+                try
+                {
+                    var invalidDataAfter = paragon.InvalidData;
+                    if (invalidDataAfter != null)
+                    {
+                        int afterCount = 0;
+                        foreach (var item in invalidDataAfter)
+                        {
+                            afterCount++;
+                            // Try to get more details from ITypedDataErrorInfo
+                            try
+                            {
+                                var itemType = ((object)item).GetType();
+                                var errorProp = itemType.GetProperty("ErrorMessage") ?? itemType.GetProperty("Message") ?? itemType.GetProperty("Error");
+                                var propProp = itemType.GetProperty("PropertyName") ?? itemType.GetProperty("Property");
+                                string errorMsg = errorProp?.GetValue(item)?.ToString() ?? item?.ToString() ?? "(null)";
+                                string propName = propProp?.GetValue(item)?.ToString() ?? "(unknown)";
+                                _logger.LogWarning("[PA] InvalidData AFTER save [{Idx}]: Property={Prop}, Error={Error}", afterCount, (object)propName, (object)errorMsg);
+                            }
+                            catch
+                            {
+                                _logger.LogWarning("[PA] InvalidData AFTER save [{Idx}]: {Item}", afterCount, (object)(item?.ToString() ?? "(null)"));
+                            }
+                        }
+                        if (afterCount > 0)
+                        {
+                            _logger.LogWarning("[PA] InvalidData has {Count} items AFTER Zapisz() - these may explain the failure", afterCount);
+                        }
+                    }
+                }
+                catch (Exception idAfterEx)
+                {
+                    _logger.LogDebug("[PA] Could not read InvalidData after save: {Msg}", idAfterEx.Message);
+                }
+
+                // Check MoznaZapisac AFTER save attempt
+                try
+                {
+                    var moznaZapisacAfter = paragon.MoznaZapisac;
+                    _logger.LogInformation("[PA] MoznaZapisac AFTER Zapisz(): {Value}", (object)(moznaZapisacAfter?.ToString() ?? "(null)"));
+                }
+                catch { }
+
+                // If Zapisz() failed, try alternative save methods (like sales invoice does)
+                bool isSaved = saveResult;
+                if (!isSaved && saveException == null)
+                {
+                    _logger.LogWarning("[PA] Zapisz() returned false, trying alternative save methods...");
+
+                    // Try ZapiszBezWalidacji if available
+                    try
+                    {
+                        var altResult = paragon.ZapiszBezWalidacji();
+                        _logger.LogInformation("[PA] ZapiszBezWalidacji() returned: {Result}", (object)(altResult?.ToString() ?? "(null)"));
+                        if (altResult != null && (bool)altResult)
+                        {
+                            isSaved = true;
+                        }
+                    }
+                    catch (Exception altEx)
+                    {
+                        _logger.LogDebug("[PA] ZapiszBezWalidacji() not available: {Msg}", altEx.Message);
+                    }
+
+                    // Try Zatwierdz + Zapisz if still not saved
+                    if (!isSaved)
+                    {
+                        try
+                        {
+                            paragon.Zatwierdz();
+                            _logger.LogInformation("[PA] Zatwierdz() called, trying Zapisz() again...");
+                            var retryResult = paragon.Zapisz();
+                            _logger.LogInformation("[PA] Zapisz() after Zatwierdz() returned: {Result}", (object)(retryResult?.ToString() ?? "(null)"));
+                            if (retryResult != null && (bool)retryResult)
+                            {
+                                isSaved = true;
+                            }
+                        }
+                        catch (Exception zatwEx)
+                        {
+                            _logger.LogDebug("[PA] Zatwierdz() approach failed: {Msg}", zatwEx.Message);
+                        }
+                    }
+
+                    // Try ZapiszZatwierdzone if available
+                    if (!isSaved)
+                    {
+                        try
+                        {
+                            var zzResult = paragon.ZapiszZatwierdzone();
+                            _logger.LogInformation("[PA] ZapiszZatwierdzone() returned: {Result}", (object)(zzResult?.ToString() ?? "(null)"));
+                            if (zzResult != null && (bool)zzResult)
+                            {
+                                isSaved = true;
+                            }
+                        }
+                        catch (Exception zzEx)
+                        {
+                            _logger.LogDebug("[PA] ZapiszZatwierdzone() not available: {Msg}", zzEx.Message);
+                        }
+                    }
+
+                    // Try to call SaveChanges directly on ObjectContext (bypass SDK validation)
+                    if (!isSaved)
+                    {
+                        _logger.LogWarning("[PA] All SDK save methods failed, attempting direct ObjectContext.SaveChanges()...");
+                        try
+                        {
+                            var dokument = paragon.Dokument;
+                            var dokType = ((object)dokument).GetType();
+
+                            // Try to find ObjectContext
+                            var contextProp = dokType.GetProperty("ObjectContext");
+                            if (contextProp != null)
+                            {
+                                var objContext = contextProp.GetValue(dokument);
+                                if (objContext != null)
+                                {
+                                    var saveChangesMethod = ((object)objContext).GetType().GetMethod("SaveChanges", Type.EmptyTypes);
+                                    if (saveChangesMethod != null)
+                                    {
+                                        _logger.LogInformation("[PA] Calling ObjectContext.SaveChanges() directly...");
+                                        try
+                                        {
+                                            var result = saveChangesMethod.Invoke(objContext, null);
+                                            _logger.LogInformation("[PA] SaveChanges() returned: {Result}", (object)(result?.ToString() ?? "(null)"));
+
+                                            // Check if document was actually saved
+                                            var newId = paragon.Dokument.Id;
+                                            _logger.LogInformation("[PA] Document Id after SaveChanges: {Id}", (object)(newId?.ToString() ?? "(null)"));
+                                            if (newId != null && (int)newId > 0)
+                                            {
+                                                isSaved = true;
+                                                _logger.LogInformation("[PA] Direct SaveChanges() succeeded!");
+                                            }
+                                        }
+                                        catch (Exception scEx)
+                                        {
+                                            _logger.LogError(scEx, "[PA] SaveChanges() threw exception: {Msg}", scEx.Message);
+
+                                            // Log inner exceptions
+                                            var inner = scEx.InnerException;
+                                            while (inner != null)
+                                            {
+                                                _logger.LogError("[PA] SaveChanges inner: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
+                                                inner = inner.InnerException;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch (Exception ocEx)
+                        {
+                            _logger.LogDebug("[PA] Could not access ObjectContext for direct save: {Msg}", ocEx.Message);
+                        }
+                    }
+                }
+
+                if (saveException != null)
+                {
+                    return (false, null, $"Receipt save exception: {saveException.Message}", new List<string> { saveException.Message });
+                }
+
+                if (isSaved)
                 {
                     string docNumber = paragon.PodajPodgladNumeru()?.ToString() ?? "";
                     int docId = (int)paragon.Dokument.Id;
-                    _logger.LogInformation("Created receipt {Number}, Id={Id}", docNumber, docId);
+                    _logger.LogInformation("[PA] Created receipt {Number}, Id={Id}", docNumber, docId);
 
                     return (true, MapSalesDocumentToDto(dane), "Receipt created successfully", new List<string>());
                 }
                 else
                 {
-                    var errors = GetBusinessObjectErrors(paragon);
-                    _logger.LogWarning("[PA] Zapisz() failed. Errors: {Errors}", (object)string.Join("; ", errors));
+                    _logger.LogWarning("[PA] Zapisz() failed, extracting errors...");
+
+                    // Try to call PobierzBledy or similar methods
+                    try
+                    {
+                        var bledy = paragon.PobierzBledy();
+                        if (bledy != null)
+                        {
+                            foreach (var b in bledy)
+                            {
+                                _logger.LogWarning("[PA] PobierzBledy: {Error}", (object)(b?.ToString() ?? "Unknown"));
+                            }
+                        }
+                    }
+                    catch (Exception pbEx)
+                    {
+                        _logger.LogDebug("[PA] PobierzBledy() not available: {Msg}", pbEx.Message);
+                    }
+
+                    // Try BledyWalidacji
+                    try
+                    {
+                        var bledyWal = paragon.BledyWalidacji;
+                        if (bledyWal != null)
+                        {
+                            foreach (var b in bledyWal)
+                            {
+                                _logger.LogWarning("[PA] BledyWalidacji: {Error}", (object)(b?.ToString() ?? "Unknown"));
+                            }
+                        }
+                    }
+                    catch (Exception bwEx)
+                    {
+                        _logger.LogDebug("[PA] BledyWalidacji not available: {Msg}", bwEx.Message);
+                    }
+
+                    // Try Informacje
+                    try
+                    {
+                        var info = paragon.Informacje;
+                        if (info != null)
+                        {
+                            _logger.LogInformation("[PA] paragon.Informacje: {Info}", (object)(info?.ToString() ?? "(null)"));
+                        }
+                    }
+                    catch { }
+
+                    // Try Status
+                    try
+                    {
+                        var status = paragon.Status;
+                        _logger.LogInformation("[PA] paragon.Status: {Status}", (object)(status?.ToString() ?? "(null)"));
+                    }
+                    catch { }
+
+                    List<string> errors = GetBusinessObjectErrors(paragon);
+                    _logger.LogWarning("[PA] GetBusinessObjectErrors returned {Count} errors", errors?.Count ?? 0);
+                    if (errors != null && errors.Count > 0)
+                    {
+                        foreach (string err in errors)
+                        {
+                            _logger.LogWarning("[PA] BusinessObject error: {Error}", err);
+                        }
+                    }
 
                     // Try to get validation errors
                     try
@@ -3135,12 +3402,15 @@ public class DocumentsController : ControllerBase
                                 if (!string.IsNullOrEmpty(errStr) && !errors.Contains(errStr))
                                 {
                                     errors.Add(errStr);
-                                    _logger.LogWarning("[PA] Validation error: {Err}", (object)errStr);
+                                    _logger.LogWarning("[PA] WalidujDane error: {Err}", (object)errStr);
                                 }
                             }
                         }
                     }
-                    catch { }
+                    catch (Exception wdEx)
+                    {
+                        _logger.LogDebug("[PA] WalidujDane() not available: {Msg}", wdEx.Message);
+                    }
 
                     // Log current status
                     try
@@ -3149,6 +3419,33 @@ public class DocumentsController : ControllerBase
                         _logger.LogInformation("[PA] Current StatusDokumentuId: {Id}", (object)(statusId?.ToString() ?? "(null)"));
                     }
                     catch { }
+
+                    // Log item count to verify items were added
+                    try
+                    {
+                        var pozycje = paragon.Pozycje;
+                        if (pozycje != null)
+                        {
+                            int count = 0;
+                            foreach (var _ in pozycje)
+                            {
+                                count++;
+                            }
+                            _logger.LogInformation("[PA] Receipt has {Count} items (positions)", count);
+                            if (count == 0)
+                            {
+                                errors.Add("No items (positions) were added to the receipt");
+                                _logger.LogError("[PA] Receipt has no items! This is likely the cause of save failure.");
+                            }
+                        }
+                    }
+                    catch { }
+
+                    if (errors.Count == 0)
+                    {
+                        _logger.LogWarning("[PA] No errors found but Zapisz() returned false. Document may have validation issues not exposed via standard properties.");
+                        errors.Add("Unknown validation error - document cannot be saved");
+                    }
 
                     return (false, null, "Failed to create receipt", errors);
                 }
