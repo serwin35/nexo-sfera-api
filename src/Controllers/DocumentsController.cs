@@ -1831,25 +1831,23 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not subscribe to ChangesSavedCompleted: {Msg}", evtEx.Message);
                     }
 
-                    // NEW: Allow user to specify StatusId for any document
-                    if (request.StatusId.HasValue && !request.IssueDate.HasValue || (request.IssueDate.HasValue && request.IssueDate.Value.Date >= DateTime.Today.AddDays(-30)))
+                    // NEW: Allow user to specify StatusId for NON-historical documents only
+                    // (Historical documents get their status set earlier at line ~885)
+                    bool isNonHistorical = !request.IssueDate.HasValue || (request.IssueDate.HasValue && request.IssueDate.Value.Date >= DateTime.Today.AddDays(-30));
+                    if (isNonHistorical && request.StatusId.HasValue)
                     {
-                        // Non-historical document with explicit StatusId
-                        if (request.StatusId.HasValue)
+                        try
                         {
-                            try
-                            {
-                                _logger.LogInformation("[FS-v2] Setting StatusDokumentuId to user-specified value: {StatusId}", (object)request.StatusId.Value);
-                                dane.StatusDokumentuId = request.StatusId.Value;
-                            }
-                            catch (Exception ex)
-                            {
-                                _logger.LogWarning("[FS-v2] Could not set StatusDokumentuId: {Msg}", ex.Message);
-                            }
+                            _logger.LogInformation("[FS-v2] Setting StatusDokumentuId to user-specified value (non-historical): {StatusId}", (object)request.StatusId.Value);
+                            dane.StatusDokumentuId = request.StatusId.Value;
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning("[FS-v2] Could not set StatusDokumentuId: {Msg}", ex.Message);
                         }
                     }
 
-                    // NOTE: Historical document status configuration now happens BEFORE adding items (see line ~850)
+                    // NOTE: Historical document status configuration now happens BEFORE adding items (see line ~885)
                     // This duplicate logic after items are added has been disabled because setting status
                     // after adding items doesn't work - the SDK has already set up constraints/triggers
                     // based on the initial status when items were added.
@@ -1873,7 +1871,7 @@ public class DocumentsController : ControllerBase
 
                             // [Old historical status code removed - approximately 400 lines]
                             // This code attempted to change status AFTER adding items, which does not work.
-                            // Historical status is now set BEFORE adding items (see line ~850).
+                            // Historical status is now set BEFORE adding items (see line ~885).
                             */
 
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
