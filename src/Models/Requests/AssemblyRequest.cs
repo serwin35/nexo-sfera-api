@@ -32,11 +32,16 @@ public class CreateAssemblyRequest
     public string WarehouseSymbol { get; set; } = string.Empty;
 
     /// <summary>
-    /// Components (składniki) for assembly
+    /// Components (składniki) for assembly.
+    /// If not provided or empty, components will be auto-populated from the komplet definition in Nexo.
     /// </summary>
-    [Required]
-    [MinLength(1, ErrorMessage = "At least one component is required")]
-    public List<AssemblyComponentRequest> Components { get; set; } = new();
+    public List<AssemblyComponentRequest>? Components { get; set; }
+
+    /// <summary>
+    /// Use komplet definition from Nexo to auto-populate components.
+    /// If true, Components field is ignored.
+    /// </summary>
+    public bool UseKompletDefinition { get; set; } = true;
 
     /// <summary>
     /// Optional notes
