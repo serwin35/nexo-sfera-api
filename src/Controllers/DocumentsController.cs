@@ -881,6 +881,97 @@ public class DocumentsController : ControllerBase
                         {
                             _logger.LogDebug("[FS-v2] WylaczWalidacje() not available: {Msg}", wwEx.Message);
                         }
+
+                        // CRITICAL: Set status BEFORE adding items to prevent auto-doc creation
+                        // Status must be set early, before items are added, to avoid SDK constraints
+                        try
+                        {
+                            _logger.LogInformation("[FS-v2] Historical document - setting status BEFORE adding items to avoid auto-doc creation...");
+
+                            // Use StatusId from request or default to 4 ("Bez rezerwacji") for historical documents
+                            // Status 4 has TworzDokumentyAutomatyczne=False, so it won't try to create automatic WZ documents
+                            int targetStatusId = request.StatusId ?? 4; // Default to "Bez rezerwacji"
+                            _logger.LogInformation("[FS-v2] Target StatusId for historical doc: {TargetStatus} (request.StatusId={RequestStatus}, default=4 'Bez rezerwacji')",
+                                (object)targetStatusId, (object)(request.StatusId?.ToString() ?? "(null)"));
+
+                            // Try to set the status via StatusyDokumentow manager
+                            try
+                            {
+                                var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                                if (statusyManager != null)
+                                {
+                                    _logger.LogInformation("[FS-v2] Got StatusyDokumentow manager");
+                                    var statusyDane = statusyManager.Dane;
+                                    if (statusyDane != null)
+                                    {
+                                        var wszystkie = statusyDane.Wszystkie();
+                                        if (wszystkie != null)
+                                        {
+                                            foreach (var status in (System.Collections.IEnumerable)wszystkie)
+                                            {
+                                                int? id = DynamicPropertyHelper.GetInt(status, "Id");
+                                                if (id == targetStatusId)
+                                                {
+                                                    _logger.LogInformation("[FS-v2] Found target status entity with Id={Id}", (object)targetStatusId);
+
+                                                    // Try setting StatusDokumentu navigation property directly
+                                                    try
+                                                    {
+                                                        var daneType = ((object)dane).GetType();
+                                                        var statusProp = daneType.GetProperty("StatusDokumentu");
+                                                        if (statusProp != null && statusProp.CanWrite)
+                                                        {
+                                                            statusProp.SetValue(dane, status);
+                                                            _logger.LogInformation("[FS-v2] StatusDokumentu set via reflection BEFORE adding items");
+                                                        }
+                                                    }
+                                                    catch (Exception reflEx)
+                                                    {
+                                                        _logger.LogDebug("[FS-v2] Reflection assignment failed: {Msg}", (object)reflEx.Message);
+                                                    }
+
+                                                    // Also try setting StatusDokumentuId (FK property) directly
+                                                    if (DynamicPropertyHelper.TrySetProperty(dane, "StatusDokumentuId", targetStatusId))
+                                                    {
+                                                        _logger.LogInformation("[FS-v2] StatusDokumentuId set to {Id} BEFORE adding items", (object)targetStatusId);
+                                                    }
+
+                                                    break;
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            catch (Exception managerEx)
+                            {
+                                _logger.LogWarning("[FS-v2] Could not set status via manager: {Msg}", managerEx.Message);
+                            }
+
+                            // Set PominAutomatyczny to skip automatic document creation
+                            var fakturaType = ((object)faktura).GetType();
+                            var pominProp = fakturaType.GetProperty("PominAutomatyczny");
+                            if (pominProp != null && pominProp.CanWrite)
+                            {
+                                _logger.LogInformation("[FS-v2] Setting PominAutomatyczny = true BEFORE adding items");
+                                pominProp.SetValue(faktura, true);
+                                _logger.LogInformation("[FS-v2] PominAutomatyczny set successfully");
+                            }
+
+                            // Also set WylaczKontroleRealizacji (skip realization control)
+                            var kontrolaProp = fakturaType.GetProperty("WylaczKontroleRealizacji");
+                            if (kontrolaProp != null && kontrolaProp.CanWrite)
+                            {
+                                _logger.LogInformation("[FS-v2] Setting WylaczKontroleRealizacji = true BEFORE adding items");
+                                kontrolaProp.SetValue(faktura, true);
+                            }
+
+                            _logger.LogInformation("[FS-v2] Historical status configuration complete BEFORE adding items");
+                        }
+                        catch (Exception histEx)
+                        {
+                            _logger.LogWarning("[FS-v2] Historical status configuration failed: {Msg}", histEx.Message);
+                        }
                     }
 
                     // ALWAYS: Try to disable stock blocking (important for any sales invoice)
@@ -1758,7 +1849,12 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // NEW: For historical documents, try to change status or find a workaround
+                    // NOTE: Historical document status configuration now happens BEFORE adding items (see line ~850)
+                    // This duplicate logic after items are added has been disabled because setting status
+                    // after adding items doesn't work - the SDK has already set up constraints/triggers
+                    // based on the initial status when items were added.
+                    /*
+                    // OLD: For historical documents, try to change status or find a workaround (MOVED EARLIER)
                     bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                     if (isHistoricalDoc)
                     {
