@@ -66,7 +66,7 @@ public class DocumentsController : ControllerBase
 
     /// <summary>
     /// Determines if a document type should NOT have import remarks added.
-    /// Invoices and receipts should not have "Import ILUO" remarks.
+    /// Only standard invoices and receipts should skip "Import ILUO" remarks.
     /// </summary>
     private bool ShouldSkipImportRemarks(DocumentType documentType)
     {
@@ -78,15 +78,15 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
-    /// Determines if import remarks should be skipped based on document context.
-    /// Used for document types that don't map to DocumentType enum (receipts, corrections, etc.)
+    /// Determines if import remarks should be skipped for specialized invoice and receipt types.
+    /// Used for document types like advance invoices, VAT margin invoices, and receipt returns
+    /// that don't have a direct DocumentType enum value but should still skip import remarks.
     /// </summary>
     private bool ShouldSkipImportRemarksForContext(string context)
     {
-        // Skip remarks for all invoice and receipt types
+        // Skip remarks only for specialized invoice and receipt types
         return context.Contains("Invoice", StringComparison.OrdinalIgnoreCase) ||
                context.Contains("Receipt", StringComparison.OrdinalIgnoreCase) ||
-               context.Contains("Correction", StringComparison.OrdinalIgnoreCase) ||
                context.Contains("Paragon", StringComparison.OrdinalIgnoreCase) ||
                context.Contains("Faktura", StringComparison.OrdinalIgnoreCase);
     }
@@ -2582,6 +2582,10 @@ public class DocumentsController : ControllerBase
                     {
                         dane.Uwagi = request.Notes;
                     }
+                    else if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        _logger.LogInformation("Skipping notes for {DocumentType}", request.Type);
+                    }
 
                     // Add items using product ID
                     AddItemsToDocumentById(faktura, request.Items);
@@ -4621,6 +4625,7 @@ public class DocumentsController : ControllerBase
 
                 // Status
                 StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
+                           DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id") ??
                            DynamicPropertyHelper.GetNullableInt(dokument, "Status", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
