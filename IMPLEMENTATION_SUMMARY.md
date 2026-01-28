@@ -210,6 +210,7 @@ curl -X POST http://localhost:5000/api/documents/sales-invoice \
 
 ```bash
 # Test with service item
+# Note: Remove the comments below when using this JSON
 curl -X POST http://localhost:5000/api/documents/receipt \
   -H "Authorization: Bearer your-api-key" \
   -H "Content-Type: application/json" \
@@ -218,7 +219,7 @@ curl -X POST http://localhost:5000/api/documents/receipt \
     "issueDate": "2026-01-27",
     "items": [
       {
-        "productSymbol": "DMSUSGI00081",  # Service item
+        "productSymbol": "DMSUSGI00081",
         "quantity": 1,
         "priceNet": 100.00
       }
@@ -226,10 +227,15 @@ curl -X POST http://localhost:5000/api/documents/receipt \
   }'
 
 # Verify status in response
+# This should return a document with statusId, status, and statusSymbol fields
 curl http://localhost:5000/api/documents/12345 \
   -H "Authorization: Bearer your-api-key"
-# Check response includes: statusId, status, statusSymbol
 ```
+
+**Expected Response Fields**:
+- `statusId` - numeric ID
+- `status` - status name
+- `statusSymbol` - status symbol
 
 ## Technical Improvements Made
 
