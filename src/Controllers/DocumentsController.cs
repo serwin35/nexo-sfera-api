@@ -3002,28 +3002,27 @@ public class DocumentsController : ControllerBase
                 }
 
                 // CRITICAL: Add default payment for receipt (required by SDK for receipts)
+                // SDK pattern: paragon.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()
                 _logger.LogInformation("[PA] Adding default immediate payment...");
                 try
                 {
-                    var platnosci = DynamicPropertyHelper.GetProperty(paragon, "Platnosci");
-                    if (platnosci != null)
-                    {
-                        // Try DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() from SDK examples
-                        var methodInfo = platnosci.GetType().GetMethod("DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu");
-                        if (methodInfo != null)
-                        {
-                            methodInfo.Invoke(platnosci, null);
-                            _logger.LogInformation("[PA] Default payment added via DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()");
-                        }
-                        else
-                        {
-                            _logger.LogDebug("[PA] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() not found, trying alternative methods");
-                        }
-                    }
+                    paragon.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
+                    _logger.LogInformation("[PA] Called Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
                 }
                 catch (Exception platEx)
                 {
-                    _logger.LogWarning("[PA] Could not add default payment: {Msg}", platEx.Message);
+                    _logger.LogDebug("[PA] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", platEx.Message);
+
+                    // Try alternative payment method
+                    try
+                    {
+                        paragon.Platnosci.DodajPlatnosciDomyslne();
+                        _logger.LogInformation("[PA] Called Platnosci.DodajPlatnosciDomyslne() successfully");
+                    }
+                    catch (Exception platEx2)
+                    {
+                        _logger.LogDebug("[PA] Platnosci.DodajPlatnosciDomyslne() also failed: {Msg}", platEx2.Message);
+                    }
                 }
 
                 // Handle historical documents - change status to avoid TworzDokumentyAutomatyczne issues
