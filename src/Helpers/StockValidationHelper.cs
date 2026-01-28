@@ -260,7 +260,7 @@ public class StockValidationHelper
             var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
             if (rodzaj != null)
             {
-                var stanyMagazynowe = DynamicPropertyHelper.GetNullableBool(rodzaj, "StanyMagazynowe");
+                bool? stanyMagazynowe = DynamicPropertyHelper.GetNullableBool(rodzaj, "StanyMagazynowe");
                 if (stanyMagazynowe.HasValue)
                 {
                     bool isService = !stanyMagazynowe.Value;
