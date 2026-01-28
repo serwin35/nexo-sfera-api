@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35122.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RozszerzeniaKontroliSkarbowej", "RozszerzeniaKontroliSkarbowej.csproj", "{DB8BB1C5-0631-42B8-BD7F-97D533A5A7C1}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DB8BB1C5-0631-42B8-BD7F-97D533A5A7C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB8BB1C5-0631-42B8-BD7F-97D533A5A7C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB8BB1C5-0631-42B8-BD7F-97D533A5A7C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB8BB1C5-0631-42B8-BD7F-97D533A5A7C1}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {33B88BE2-E597-4895-BE95-BEEC3F77EC0E}
+	EndGlobalSection
+EndGlobal

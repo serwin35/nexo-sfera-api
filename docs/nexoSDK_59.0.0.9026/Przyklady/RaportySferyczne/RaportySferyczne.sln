@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.3.32804.467
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RaportySferyczne", "RaportySferyczne.csproj", "{933515A7-8A7B-45A2-BEFF-DA27C5C97035}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{933515A7-8A7B-45A2-BEFF-DA27C5C97035}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{933515A7-8A7B-45A2-BEFF-DA27C5C97035}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{933515A7-8A7B-45A2-BEFF-DA27C5C97035}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{933515A7-8A7B-45A2-BEFF-DA27C5C97035}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {10A6CB30-3748-4F17-ACED-1F71FBF882C5}
+	EndGlobalSection
+EndGlobal

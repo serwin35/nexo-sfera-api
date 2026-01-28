@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Użyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2020/dokumentyDoKsiegowania/kasa" 
+  targetNamespace="http://schemas.insert.com.pl/2020/dokumentyDoKsiegowania/kasa" 
+  xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+  <xs:annotation>
+    <xs:documentation>Dane operacji kasowej.</xs:documentation>
+  </xs:annotation>
+  
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+  
+  <xs:complexType name="TNaglowekOperacjiKasowej">
+    <xs:annotation>
+      <xs:documentation>Zbiór pól nagłówkowych operacji kasowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Numer" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Numer operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wplyw" type="xs:boolean" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Czy operacja kasowa jest typu wpływ.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Data" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Wartość operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PodmiotHistoria" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Podmiot operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PodmiotAdresHistoria" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Adres podmiotu operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StanowiskoKasowe" type="ddk:TPositiveInt" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Identyfikator stanowiska kasowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="FormaPlatnosci" type="ddk:TPositiveInt" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Forma płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RodzajOperacjiKasowej" type="ddk:TPositiveInt" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Identyfikator rodzaju operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Tytulem" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Pole tytułem operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Zbiór pól własnych operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PozycjaWRaporcie" type="xs:int" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Numer pozycji w raporcie kasowym, na którym znajduje się dana operacja kasowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RaportKasowy" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Numer raportu kasowego, na którym znajduje się dana operacja kasowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SesjaKasowa" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Sesja kasowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Opis operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Status" type="xs:unsignedByte" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Status operacji kasowej (0 - wykonana, 1 - odłożona, 2 - unieważniona).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="IdDokumentuRozliczanego" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Identyfikator dokumentu rozliczanego przez operację kasową.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TypRozrachunku" type="xs:unsignedByte" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Typ rozrachunku powiązanego z operacją kasową (1 - należność, 2 - zobowiązanie).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Waluta" type="ddk:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Waluta operacji kasowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="RodzajRozrachunku" type="ddk:TGuid" use="optional">
+      <xs:annotation>
+        <xs:documentation>Rodzaj rozrachunku powiązanego z operacją kasową (identyfikator obiektu ze słownika).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypDokumentuRozliczanego" type="ddk:TGuid" use="optional">
+      <xs:annotation>
+        <xs:documentation>Typ dokumentu rozliczanego przez operację kasową.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NumerDokumentuRozliczanego" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Numer dokumentu rozliczanego przez operację kasową.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="GrupaPodmiotu" type="ddk:TPositiveInt" use="optional">
+      <xs:annotation>
+        <xs:documentation>Grupa podmiotu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TytulemZRozrachunku" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Tytułem z rozrachunku.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+	<xs:attribute name="Wrazliwa" type="xs:boolean" use="optional">
+	    <xs:annotation>
+		    <xs:documentation>Operacja wrażliwa.</xs:documentation>
+		</xs:annotation>
+	</xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TOperacjaKasowa">
+    <xs:annotation>
+      <xs:documentation>Operacja kasowa wraz z wersją schematu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wersja" type="xs:string" nillable="false" fixed="2020">
+        <xs:annotation>
+          <xs:documentation>Wersja schematu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Naglowek" type="TNaglowekOperacjiKasowej" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Nagłówek operacji kasowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="Dokument" type="TOperacjaKasowa">
+    <xs:annotation>
+      <xs:documentation>Główny węzeł opakowujący operację kasową.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

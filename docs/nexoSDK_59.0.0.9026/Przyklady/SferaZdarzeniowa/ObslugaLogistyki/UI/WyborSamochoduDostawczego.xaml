@@ -1,0 +1,35 @@
+﻿<Window x:Class="ObslugaLogistyki.UI.WyborSamochoduDostawczego"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+        DataContext="{Binding RelativeSource={RelativeSource Self}}"
+        Title="Wybór samochodu dostawczego"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        ShowInTaskbar="False"
+        Topmost="True"
+        xmlns:local="clr-namespace:ObslugaLogistyki.UI"
+        mc:Ignorable="d" 
+        Width="410" Height="200">
+    <DockPanel LastChildFill="True">
+        <Button     IsDefault="True"
+                    Content="OK"
+                    Width="75"
+                    Height="30"
+                    IsCancel="False"
+                    Margin="0,5,5,5"
+                    Click="OnOkClick"
+                    DockPanel.Dock="Bottom"
+                    HorizontalAlignment="Right"/>
+        <StackPanel Orientation="Vertical">
+            <TextBlock Margin="5,5,0,0" TextWrapping="WrapWithOverflow">
+            <Run Text="Sposób dostawy został zmieniony na "/><Run Text="{Binding Path=NazwaSposobuDostawy, Mode=OneTime}"/><Run Text=". Należy wybrać samochód dostawczy:"/>
+            </TextBlock>
+            <ComboBox   ItemsSource="{Binding Path=DataSource, Mode=OneTime}"
+                    Margin="5 10 5 0"
+                    SelectedValue="{Binding Path=Item, Mode=TwoWay}"
+                    DisplayMemberPath="Wartosc"/>
+        </StackPanel>
+    </DockPanel>
+</Window>

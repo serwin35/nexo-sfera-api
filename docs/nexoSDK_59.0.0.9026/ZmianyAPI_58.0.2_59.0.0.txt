@@ -1,0 +1,271 @@
+********************************************************************************
+InsERT.Moria.API, Version=1.0.0.0, Culture=neutral, PublicKeyToken=8f3ef93a6b458098
+Zmiany pomiędzy wersją 58.0.2 a 59.0.0
+
+********************************************************************************
+Usunięto typy (2):
+	public class InsERT.Moria.Dokumenty.Logistyka.NieobslugiwanySerwisWysylkiBlad
+	public interface InsERT.Moria.KontrolaSkarbowa.IPlikJPKSTKRParametry
+
+********************************************************************************
+Dodano typy (34):
+	 public enum InsERT.Moria.Deklaracje.StatusDeklaracjiPortalHR
+	 public class InsERT.Moria.Deklaracje.Atrybuty.PoZmianieWartosciWgNazwSymbolicznychAttribute
+	 public interface InsERT.Moria.Dokumenty.Logistyka.ICzasoweWylaczenieKSeFInformacja
+	 public interface InsERT.Moria.Dokumenty.Logistyka.IPostepOperacjiKSeF
+	 public class InsERT.Moria.Dokumenty.Logistyka.DemoKsefNiedostepneNaPodmiocieZPortalemBlad
+	 public static class InsERT.Moria.Dokumenty.Logistyka.NumerKseFRegex
+	 public class InsERT.Moria.Dokumenty.Logistyka.RzeczywisteSerwisyWysylkiNiedostepneNaWersjiDemonstracyjnejBlad
+	 public class InsERT.Moria.Dokumenty.Logistyka.TestowySerwisWysylkiNiedostepnyBlad
+	 public enum InsERT.Moria.Dokumenty.Logistyka.RodzajTelefonuNaEFakturze
+	 public enum InsERT.Moria.Dokumenty.Logistyka.TypParametruFunkcjiDokumentuElektronicznego
+	 public class InsERT.Moria.EwidencjaVAT.NiepoprawnyMiesiacNaliczeniaDlaSystemuKaucyjnegoBlad
+	 public class InsERT.Moria.EwidencjaVAT.TransakcjaSystemKaucyjnyDostepnaOd2026Blad
+	 public class InsERT.Moria.EwidencjaVAT.WystepowanieFakturKSefNiezgodneZTypemDokumentuJPKBlad
+	 public class InsERT.Moria.Kadry.Duze.EZwolnieniaBledyWImportowanymRaporcieBlad
+	 public class InsERT.Moria.Kadry.Duze.EZwolnieniaBrakZwolnienwRaporcieBlad
+	 public class InsERT.Moria.Kadry.Duze.EZwolnieniaIstniejaEZLAKwRaporcieBlad
+	 public enum InsERT.Moria.Kadry.Duze.StatusMigracjiPortalHR
+	 public enum InsERT.Moria.Komunikacja.KierunkiKomunikacji
+	 public enum InsERT.Moria.Komunikacja.DocumentsGateway.RodzajOperacjiKSeF
+	 public class InsERT.Moria.Komunikacja.PortalDokumentow.CzasoweWylaczenieKSeFException
+	 public class InsERT.Moria.Komunikacja.PortalDokumentow.LimitKomunikacjiKsefException
+	 public interface InsERT.Moria.KontrolaSkarbowa.IMenedzerNaliczaniaWysylkiST
+	 public interface InsERT.Moria.KontrolaSkarbowa.IMenedzerNaliczaniaWysylkiST_STKR
+	 public interface InsERT.Moria.KontrolaSkarbowa.IPlikJPKSTParametry
+	 public class InsERT.Moria.KontrolaSkarbowa.PlikZaOkresObrachunkowyJestJuzDodanyBlad
+	 public class InsERT.Moria.KsiegowoscUproszczona.BrakNumeruDokumentuLubOpisuOstrzezenie
+	 public class InsERT.Moria.KsiegowoscUproszczona.DarowiznyNiewchodzaceDoLimituNieMogaBycWiekszeNizSumaPrzychodowBlad
+	 public enum InsERT.Moria.KsiegowoscUproszczona.KolumnaZapisuWZPiK2026
+	 public static class InsERT.Moria.ModelDanych.RodzajZapisuKsiegowegoExtensions
+	 public abstract class InsERT.Moria.SrodkiTrwale.IstniejeJPKSTWPodanymOkresieDataErrorBase
+	 public class InsERT.Moria.SrodkiTrwale.IstniejeJPKSTWPodanymOkresieOperacjiSTOstrzezenie
+	 public class InsERT.Moria.SrodkiTrwale.IstniejeJPKSTWPodanymOkresieReklasyfikacjiSTOstrzezenie
+	 public class InsERT.Moria.SrodkiTrwale.PrzyczynaLikwidacjiObslugiwanaWylacznieWJPKSTKROstrzezenie
+	 public interface InsERT.Moria.Wydruki.IPolaWierszaCIT8FRPodstawaOpodatkowaniaDeklaracjiDlaWydruku
+
+********************************************************************************
+Zmieniono typy (26):
+	public interface InsERT.Moria.Dokumenty.Logistyka.IKontekstPolaEFaktury
+
+	Dodano (3):
+		int? IndeksElementu { get; }
+		string TekstowaWartoscDomyslna { get; }
+		object WartoscDomyslna { get; }
+
+	----------------------------------------------------------------------------
+	public interface InsERT.Moria.Dokumenty.Logistyka.IKoordynatorWysylaniaEFaktur
+
+	Dodano (6):
+		System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikPobieraniaUpo> PobierzUpo(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, System.Func<int, int, string, bool, bool> aktualizatorPostepu)
+		System.Threading.Tasks.Task<System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikPobieraniaUpo>> PobierzUpoAsync(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, System.Func<int, int, string, bool, bool> aktualizatorPostepu)
+		System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikPrzekazywaniaDokumentuDoWysylki> PrzekazDoWysylki(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, InsERT.Moria.Dokumenty.Logistyka.IPostepOperacjiKSeF aktualizatorPostepu)
+		System.Threading.Tasks.Task<System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikPrzekazywaniaDokumentuDoWysylki>> PrzekazDoWysylkiAsync(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, InsERT.Moria.Dokumenty.Logistyka.IPostepOperacjiKSeF aktualizatorPostepu)
+		System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikSprawdzaniaStatusuWysylki> SprawdzStatus(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, InsERT.Moria.Dokumenty.Logistyka.IPostepOperacjiKSeF aktualizatorPostepu)
+		System.Threading.Tasks.Task<System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikSprawdzaniaStatusuWysylki>> SprawdzStatusAsync(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, InsERT.Moria.Dokumenty.Logistyka.IPostepOperacjiKSeF aktualizatorPostepu)
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.Dokumenty.Logistyka.ImportEFaktur_DodanoNowegoKlientaOstrzezenie
+
+	Dodano (1):
+		public ImportEFaktur_DodanoNowegoKlientaOstrzezenie(string dodatkowyKomunikat)
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.Dokumenty.Logistyka.ParametryGenerowaniaEFaktury
+
+	Usunięto (1):
+		public string Token { get; set; }
+
+	----------------------------------------------------------------------------
+	public static class InsERT.Moria.Dokumenty.Logistyka.PolaEFaktury
+
+	Usunięto (1):
+		public const System.String OkresFa (OkresFa)
+
+	Dodano (4):
+		public const System.String IPKSeF (IPKSeF)
+		public const System.String LinkDoPlatnosci (LinkDoPlatnosci)
+		public const System.String P_6_Do (P_6_Do)
+		public const System.String P_6_Od (P_6_Od)
+
+	----------------------------------------------------------------------------
+	public abstract class InsERT.Moria.Dokumenty.Logistyka.WalidatorNumeruKsef
+
+	Usunięto (1):
+		public const System.String WyrazenieRegularneNumeruKsef (([1-9]((\d[1-9])|([1-9]\d))\d{7}|M\d{9}|[A-Z]{3}\d{7})-(20[2-9][0-9]|2[1-9][0-9]{2}|[3-9][0-9]{3})(0[1-9]|1[0-2])(0[1-9]|[1-2][0-9]|3[0-1])-([0-9A-F]{6})-?([0-9A-F]{6})-([0-9A-F]{2}))
+
+	----------------------------------------------------------------------------
+	public static class InsERT.Moria.Dokumenty.Logistyka.WbudowaneFunkcjeGenerowaniaDodatkowegoOpisu
+
+	Dodano (2):
+		public static System.Guid LinkDoSledzeniaPrzesylki_Id
+		public static System.Guid LinkDoSzybkiejPlatnosci_Id
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego
+
+	Dodano (15):
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego ListaPoprzednichZaliczek (14)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego NaglowekNotatkaKsiegowa (844)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego NaglowekZagregowaneNazwyPozycji (842)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego NaglowekZagregowaneNazwyPozycjiDokumentuElektronicznego (1157)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego NaglowekZagregowaneOpisyPozycji (843)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiDataWystawienia (1702)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiKurs (1709)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiNumerDokumentu (1701)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiWartoscBrutto (1705)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiWartoscBruttoWWalucie (1708)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiWartoscNetto (1703)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiWartoscNettoWWalucie (1706)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiWartoscVat (1704)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PolePoprzedniejZaliczkiWartoscVatWWalucie (1707)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuHandlowego PoleStawkiVATKaucjiOperator (1605)
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuMagazynowego
+
+	Dodano (2):
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuMagazynowego NaglowekZagregowaneNazwyPozycji (613)
+		public InsERT.Moria.Dokumenty.Logistyka.DokumentyDoKsiegowania.ElementTresciDokumentuMagazynowego NaglowekZagregowaneOpisyPozycji (614)
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.DokumentyDoKsiegowania.NiepoprawnyElementOpisuKsiegowegoDlaTegoTypuDokumentuBlad
+
+	Usunięto (1):
+		public NiepoprawnyElementOpisuKsiegowegoDlaTegoTypuDokumentuBlad()
+
+	Dodano (3):
+		public NiepoprawnyElementOpisuKsiegowegoDlaTegoTypuDokumentuBlad(InsERT.Moria.DokumentyDoKsiegowania.OpisywanyKsiegowoElementDokumentu opisywanyKsiegowoElementDokumentu, InsERT.Moria.DokumentyDoKsiegowania.RodzajDokumentuDoKsiegowania rodzajDokumentuDoKsiegowania)
+		public InsERT.Moria.DokumentyDoKsiegowania.OpisywanyKsiegowoElementDokumentu OpisywanyKsiegowoElementDokumentu { get; }
+		public InsERT.Moria.DokumentyDoKsiegowania.RodzajDokumentuDoKsiegowania RodzajDokumentuDoKsiegowania { get; }
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.EwidencjaVAT.DokumentyDoKsiegowania.ElementTresciZapisuWEwidencjiVAT
+
+	Dodano (1):
+		public InsERT.Moria.EwidencjaVAT.DokumentyDoKsiegowania.ElementTresciZapisuWEwidencjiVAT NaglowekNumerKSeF (230)
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.Kadry.Duze.TypZadaniaSynchronizacjiZPortalemHR
+
+	Dodano (3):
+		public InsERT.Moria.Kadry.Duze.TypZadaniaSynchronizacjiZPortalemHR WycofanieDeklaracji (23)
+		public InsERT.Moria.Kadry.Duze.TypZadaniaSynchronizacjiZPortalemHR WysylkaDeklaracji (22)
+		public InsERT.Moria.Kadry.Duze.TypZadaniaSynchronizacjiZPortalemHR ZakonczenieMigracjiDanychDoPortaluHR (102)
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.Komunikacja.RodzajAwarii
+
+	Dodano (1):
+		public InsERT.Moria.Komunikacja.RodzajAwarii PlanowanePraceInsERT (5)
+
+	----------------------------------------------------------------------------
+	public interface InsERT.Moria.KontrolaSkarbowa.IMenadzerNaliczaniaPlikowJPK
+
+	Usunięto (1):
+		bool GenerujPlikDlaEwidencjiVAT { get; set; }
+
+	Dodano (2):
+		InsERT.Moria.KontrolaSkarbowa.IPlikJPKParametry DodajPlik(InsERT.Moria.KontrolaSkarbowa.RodzajJPK rodzajJPK, InsERT.Moria.ModelDanych.OkresObrachunkowy okresObrachunkowy)
+		bool GenerujPlikDlaSrodkowTrwalych { get; set; }
+
+	----------------------------------------------------------------------------
+	public interface InsERT.Moria.KontrolaSkarbowa.IMenedzerNaliczaniaWysylkiSTKR
+
+	Usunięto (1):
+		InsERT.Moria.KontrolaSkarbowa.IPlikJPKSTKRParametry PlikJPKSTKRParametry { get; }
+
+	----------------------------------------------------------------------------
+	public interface InsERT.Moria.KontrolaSkarbowa.IPlikJPKParametry
+
+	Dodano (1):
+		bool NaZadanie { get; set; }
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.KontrolaSkarbowa.BrakWersjiJPKDlaOkresuBlad
+
+	Usunięto (1):
+		public BrakWersjiJPKDlaOkresuBlad()
+
+	Dodano (1):
+		public BrakWersjiJPKDlaOkresuBlad(string okres)
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.KontrolaSkarbowa.IstniejeWysylkaWybranegoJPKWPodanymOkresieBlad
+
+	Usunięto (1):
+		public IstniejeWysylkaWybranegoJPKWPodanymOkresieBlad(string rodzajPlikuJPK)
+
+	Dodano (1):
+		public IstniejeWysylkaWybranegoJPKWPodanymOkresieBlad(string okres, string rodzajPlikuJPK)
+
+	----------------------------------------------------------------------------
+	public abstract class InsERT.Moria.KontrolaSkarbowa.NaliczonoEventArgs
+
+	Usunięto (1):
+		public NaliczonoEventArgs(InsERT.Moria.KontrolaSkarbowa.WynikGenerowaniaPlikuJPK wynik)
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.KontrolaSkarbowa.CelZlozenia
+
+	Dodano (1):
+		public InsERT.Moria.KontrolaSkarbowa.CelZlozenia NaZadanie (0)
+
+	----------------------------------------------------------------------------
+	public enum InsERT.Moria.KontrolaSkarbowa.RodzajJPK
+
+	Dodano (1):
+		public InsERT.Moria.KontrolaSkarbowa.RodzajJPK ST (15)
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.Ksiegowosc.Portale.DaneWypelnieniaNaPodstawieOpisuDokumentu
+
+	Dodano (1):
+		public string NumerKSeF { get; set; }
+
+	----------------------------------------------------------------------------
+	public interface InsERT.Moria.Ksiegowosc.Portale.OCR.IWynikOCR
+
+	Dodano (1):
+		string NumerKSeF()
+
+	----------------------------------------------------------------------------
+	public interface InsERT.Moria.KsiegowoscPelna.IKontaKsiegowe
+
+	Dodano (8):
+		System.ValueTuple<InsERT.Moria.ModelDanych.KontoKsiegowe, string> SprobujZapewnicIstnienie(InsERT.Moria.ModelDanych.DefinicjaKontaKsiegowego definicjaKonta, params InsERT.Moria.ModelDanych.ElementKartotekiKsiegowej[] elementyKartotekKsiegowych)
+		System.ValueTuple<InsERT.Moria.ModelDanych.KontoKsiegowe, string> SprobujZapewnicIstnienie(InsERT.Moria.ModelDanych.OkresObrachunkowy okresObrachunkowy, string numerKonta)
+		System.ValueTuple<InsERT.Moria.ModelDanych.KontoKsiegowe, string> SprobujZapewnicIstnienie(int okresObrachunkowyId, string numerKonta)
+		System.ValueTuple<InsERT.Moria.ModelDanych.KontoKsiegowe, string> SprobujZapewnicIstnienie(System.DateTime dowolnaDataOkresuObrachunkowego, string numerKonta)
+		InsERT.Moria.ModelDanych.KontoKsiegowe ZapewnijIstnienie(InsERT.Moria.ModelDanych.DefinicjaKontaKsiegowego definicjaKonta, params InsERT.Moria.ModelDanych.ElementKartotekiKsiegowej[] elementyKartotekKsiegowych)
+		InsERT.Moria.ModelDanych.KontoKsiegowe ZapewnijIstnienie(InsERT.Moria.ModelDanych.OkresObrachunkowy okresObrachunkowy, string numerKonta)
+		InsERT.Moria.ModelDanych.KontoKsiegowe ZapewnijIstnienie(int okresObrachunkowyId, string numerKonta)
+		InsERT.Moria.ModelDanych.KontoKsiegowe ZapewnijIstnienie(System.DateTime dowolnaDataOkresuObrachunkowego, string numerKonta)
+
+	----------------------------------------------------------------------------
+	public static class InsERT.Moria.ModelDanych.OkresObrachunkowyExtension
+
+	Dodano (1):
+		public static string Formatuj(this InsERT.Moria.ModelDanych.OkresObrachunkowy okresObrachunkowy)
+
+	----------------------------------------------------------------------------
+	public class InsERT.Moria.Properties.SrodkiTrwaleResources
+
+	Dodano (2):
+		public static string IstniejeJPKSTWPodanymOkresieKomunikat { get; }
+		public static string PrzyczynaLikwidacjiObslugiwanaWylacznieWJPKSTKRKomunikat { get; }
+
+	----------------------------------------------------------------------------
+
+********************************************************************************
+Żaden typ nie został oznaczony atrybutem Obsolete.
+Elementy oznaczone atrybutem Obsolete (2):
+
+	public interface InsERT.Moria.Dokumenty.Logistyka.IKoordynatorWysylaniaEFaktur
+		System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikPrzekazywaniaDokumentuDoWysylki> PrzekazDoWysylki(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, System.Action<int, int, string> aktualizatorPostepu)
+		Komunikat: 
+
+		System.Threading.Tasks.Task<System.Collections.Generic.List<InsERT.Moria.Dokumenty.Logistyka.IWynikPrzekazywaniaDokumentuDoWysylki>> PrzekazDoWysylkiAsync(System.Collections.Generic.List<InsERT.Moria.ModelDanych.DokumentElektroniczny> dokumenty, System.Action<int, int, string> aktualizatorPostepu)
+		Komunikat: 
+
+	----------------------------------------------------------------------------

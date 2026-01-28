@@ -1,0 +1,39 @@
+﻿Przykłady rozszerzeń dla InsERT nexo.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2023
+
+Po przystosowaniu rozszerzenia do własnych potrzeb należy:
+
+ 1. Zmienić dane dostawcy rozszerzeń na swoje własne.
+ 2. Zmodyfikować informacje w 'AssemblyInfo.cs'
+ 3. Wygenerować nowe GUID-y funkcji, żeby się przez przypadek nie powieliły.
+
+Zawiera przykładową implementację obsługi zamówień opakowań prezentowych otrzymywanych z Allegro.
+Rozwiązanie automatycznie przepisuje ""Uwagi kupującego"" z zamówienia wysyłkowego do pola własnego "Wiadomość do sprzedającego" na zamówieniu od klienta.
+Podczas montażu stworzonego zamówienia z pola "Wiadomość do sprzedającego" odczytywane są dedykacje (rozdzielone przecinkiem), które następnie wpisywane są w polach własnych "Dedykacja" partii kompletu na zleceniu montażu.
+Następnie podczas wystawiania faktury do zamówienia do pola własnego "Koszty opakowań" na pozycji faktury wpisywany jest koszt składników opakowań powstały przy montażu.
+Dodatkowo w oknie zlecenia montażu zostały dodane operacje "Edytuj dedykacje" oraz "Utwórz pliki dla maszyny grawerującej", a na liście zleceń operacja "Utwórz pliki dla maszyny grawerującej".
+
+W celu zapewnienia poprawnego działania rozszerzenia należy w Subiekcie nexo skonfigurować następujące pola własne:
+
+Słownik własny SQL - grupy asortymentu:
+    Kolumna klucza: Id
+    Kolumna wartości: Nazwa
+    Klauzula FROM: ModelDanychContainer.GrupyAsortymentu
+
+Konfiguracja dokumentu zamówienia od klienta:
+    "Przepisuj koszty opakowań" (wartość logiczna)
+    "Grupa opakowań prezentowych" (w/u słownik własny SQL)
+
+Zamówienie od klienta:
+    "Wiadomość do sprzedającego" (długi tekst)
+
+Pozycja dokumentu sprzedaży:
+    "Koszty opakowań" (liczba rzeczywista)
+
+Partia:
+    "Dedykacja" (tekst)
+
+
+Nazwy używanych pól własnych można zmienić w pliku 'OpakowaniaPrezentowe.config.json', który należy wgrać do katalogu Config w katalogu binariów dla podmiotu (C:\Users\{uzytkownik}\AppData\Local\InsERT\Deployments\Nexo\{binaria podmiotu}\Config)

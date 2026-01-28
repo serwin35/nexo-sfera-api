@@ -1,0 +1,163 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platform>x64</Platform>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ProjectGuid>{2CA22B7C-D301-44CE-AC8F-11C473EAE406}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>GeneratorDanych</RootNamespace>
+    <AssemblyName>GeneratorDanych</AssemblyName>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <nexoSdkBinPath>..\..\..\bin\</nexoSdkBinPath>
+    <nexoSdkNarzedziaPath>..\..\..\Narzedzia\</nexoSdkNarzedziaPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.API.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.DaneDomyslne">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.DaneDomyslne.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.ModelDanych">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.ModelDanych.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Sfera">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.Sfera.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Sfera.UI">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.Sfera.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFramework.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFramework.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFrameworkSupport">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Launcher">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.Launcher.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.UIFramework">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.UIFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.SqlClient">
+      <HintPath>$(nexoSdkBinPath)System.Data.SqlClient.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Converters\BooleanAndConverter.cs" />
+    <Compile Include="Converters\BooleanToVisibilityConverter.cs" />
+    <Compile Include="DomyslneUstawienia.cs" />
+    <Compile Include="ILogOperacji.cs" />
+    <Compile Include="OperacjeSferyczne\GeneratorNazwTowarow.cs" />
+    <Compile Include="OperacjeSferyczne\GeneratorTowarow.cs" />
+    <Compile Include="OperacjeSferyczne\GeneratorZamowienOdKlientow.cs" />
+    <Compile Include="GeneratorDanychException.cs" />
+    <Compile Include="Converters\NegateBooleanConverter.cs" />
+    <Compile Include="OperacjeSferyczne\Losowanie.cs" />
+    <Compile Include="OperacjeSferyczne\PobieranieDanych.cs" />
+    <Compile Include="LogOperacji.cs" />
+    <Compile Include="OperacjeSferyczne\PomiarCzasuOperacji.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="DaneDoUruchomieniaSfery.cs" />
+    <Compile Include="Interaction.cs" />
+    <Compile Include="MainWindowViewModel.cs" />
+    <Compile Include="PostepLadowaniaSfery.cs" />
+    <Compile Include="PostepViewModel.cs" />
+    <Compile Include="PropertyChangedNotifier.cs" />
+    <Compile Include="OperacjeSferyczne\Rozszerzenia.cs" />
+    <Compile Include="Uchwyty.cs" />
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="MainWindow.xaml.cs">
+      <DependentUpon>MainWindow.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="DomyslneUstawienia.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <None Include="Konfiguracja.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="ParametryInstalacji.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Pliki\Cechy.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Pliki\Towary.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="Pliki\Wzory.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>13.0.3</Version>
+    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <Resource Include="readme.txt" />
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)InsERT.Moria.ThemeControls.dll&quot; &quot;$(TargetDir)\InsERT.Moria.ThemeControls.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)InsERT.Moria.ThemeLight.dll&quot; &quot;$(TargetDir)\InsERT.Moria.ThemeLight.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)InsERT.Moria.ThemeDark.dll&quot; &quot;$(TargetDir)\InsERT.Moria.ThemeDark.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)Xaml.pak&quot; &quot;$(TargetDir)\Xaml.pak&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)Xml.pak&quot; &quot;$(TargetDir)\Xml.pak&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)Sgd.pak&quot; &quot;$(TargetDir)\Sgd.pak&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)sni.dll&quot; &quot;$(TargetDir)sni.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)ijwhost.dll&quot; &quot;$(TargetDir)ijwhost.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)Microsoft.Data.SqlClient.SNI.dll&quot; &quot;$(TargetDir)Microsoft.Data.SqlClient.SNI.dll&quot;" />
+    <Exec Command="if exist &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; (call &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; /PlikKonfiguracji:Konfiguracja.xml /KatalogDocelowy:&quot;$(TargetDir)\&quot;) else (echo Nie można zbudować pakietu i instalatora, ponieważ nie istnieje plik: &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot;)" />
+  </Target>
+</Project>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania"
+  id="DaneBR_ParametrObslugiTypuDDKPart">
+  <xs:annotation>
+    <xs:documentation>Konfiguracja parametrów obsługi typów dokumentów do dekretacji biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TParametrObslugiTypuDDK">
+    <xs:annotation>
+      <xs:documentation>Obiekt parametru obsługi typów dokumentów do dekretacji.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="TrybObslugiKsiegowej" use="required" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Tryb obsługi księgowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BlokadaDokumentuZrodlowegoKsiegowoscPelna" use="required" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Parametr mówiący kiedy blokować dokument źródłowy dokumentu do dekretacji w księgowości pełnej (zawsze, gdy opisany księgowo, gdy zaksięgowany lub nigdy).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BlokadaDokumentuZrodlowegoKsiegowoscUproszczona" use="required" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Parametr mówiący kiedy blokować dokument źródłowy dokumentu do dekretacji w księgowości uproszczonej (zawsze, gdy opisany księgowo, gdy zaksięgowany lub nigdy).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WyjatkiBlokadyDokumentuZrodlowego" use="required" type="xs:long">
+      <xs:annotation>
+        <xs:documentation>Wyjątki blokady dokumentu źródłowego zezwlające na jego edycję (np.: edycja statusu faktury).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="EdycjaOpisuKsiegowegoWDokumencieZrodlowym" use="optional" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Flaga włączająca edycję opisu księgowego w dokumencie źródłowym. Uwaga: nie wszystkie dokumenty mają edytowalny opis księgowy z poziomu dokumentu źródłowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypDokumentu" use="required" type="ddk2012:TGuid">
+      <xs:annotation>
+        <xs:documentation>Identyfikator typu dokumentu do dekretacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypParametruNadrzednego" use="optional" type="ddk2012:TGuid">
+      <xs:annotation>
+        <xs:documentation>Identyfikator typu parametru nadrzędnego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ZrodloNumeru" use="required" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Parametr mówiący skąd zostanie pobrany numer dokumentu do dekretacji widoczny w serwisie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ZrodloDaty" use="required" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Parametr mówiący skąd zostanie pobrana data dokumentu do dekretacji widoczna w serwisie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KopiujOpisKsiegowyDokumentuZrodlowegoNaPozycje" use="optional" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Parametr określający czy zostania skopiowane opisy księgowe z dokumentu źródłowego na pozycję w docelowym ddk.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TParametryObslugiTypuDDK">
+    <xs:annotation>
+      <xs:documentation>Kolekcja parametrów obsługi typów dokumentów do dekretacji.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ParametrObslugiTypuDokumentuDoKsiegowania" maxOccurs="unbounded" type="TParametrObslugiTypuDDK">
+        <xs:annotation>
+          <xs:documentation>Parametr obsługi typów dokumentów do dekretacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

@@ -1,0 +1,32 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Konfiguracja StworzPakiet="Tak" StworzInstalator="Tak" NazwaFolderuPakietu="Pakiet" NazwaFolderuInstalatora="Instalator" LokalizacjaSdkBin="..\..\..\..\Bin\" LokalizacjaSdkNarzedzia="..\..\..\..\Narzedzia\">
+  <Pakiet>
+    <!-- source manifest -->
+    <Package Identity="InwentaryzacjaImport-1.0.0.0" DisplayName="" VersionDisplayName="" MinimumServerVersion="">
+      <Contents>
+        <File Name="InwentaryzacjaImport.dll" />
+        <File Name="InwentaryzacjaImport.plugin" />
+      </Contents>
+      <LaunchScenarios></LaunchScenarios>
+      <DeployActions />
+      <Dependencies>
+        <!-- jeżeli aplikacja jest przeznaczona dla konkretnej wersji programu, to należy odkomentować poniższy znacznik (domyślnie ustawiona jest wersja sdk) -->
+        <!--<Dependency Kind="Required" Specification="Nexo-42.0.0.5788"/>-->
+      </Dependencies>
+    </Package>
+    <!-- end of source manifest -->
+  </Pakiet>
+  <Instalator>
+    <Tytul>Instalator rozszerzeń importu spisów inwentaryzacyjnych</Tytul>
+    <TekstPowitalny>Witamy w instalatorze rozszerzeń importu spisów inwentaryzacyjnych dla Subiekta nexo.</TekstPowitalny>
+    <!-- dane autora rozwiązania własnego -->
+    <DostawcaInfo>Copyright © 2022</DostawcaInfo>
+    <UtworzSkrotNaPulpicie>false</UtworzSkrotNaPulpicie>
+    <UtworzSkrotWMenuStart>false</UtworzSkrotWMenuStart>
+    <WymaganyRestart>false</WymaganyRestart>
+    <KiP2>false</KiP2>
+    <PlikLogo></PlikLogo>
+    <PlikLicencji></PlikLicencji>
+    <PlikWynikowy>InwentaryzacjaImport-1.0.0.0.exe</PlikWynikowy>
+  </Instalator>
+</Konfiguracja>

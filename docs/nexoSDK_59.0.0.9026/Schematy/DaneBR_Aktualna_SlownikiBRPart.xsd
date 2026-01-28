@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  id="DaneBR_SlownikiBRPart">
+  <xs:annotation>
+    <xs:documentation>Dane słowników biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:include id="KategorieKsiegowePart" schemaLocation="./DaneBR_Aktualna_KategorieKsiegowePart.xsd" />
+  <xs:include id="TransakcjeVATPart" schemaLocation="./DaneBR_Aktualna_TransakcjeVATPart.xsd" />
+  <xs:include id="StawkiRyczaltowePart" schemaLocation="./DaneBR_Aktualna_StawkiRyczaltowePart.xsd" />
+  <xs:include id="KsiegoweSlownikiUzytkownikaPart" schemaLocation="./DaneBR_Aktualna_KsiegoweSlownikiUzytkownikaPart.xsd" />
+  
+  <xs:complexType name="TSlownikiBR">
+    <xs:annotation>
+      <xs:documentation>Słowniki biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="KategorieKsiegowe" type="TKategorieKsiegowe" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Słownik kategorii księgowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TransakcjeVAT" type="TTransakcjeVAT" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Słownik transakcji VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StawkiRyczaltowe" type="TStawkiRyczaltowe" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Słownik stawek ryczałtowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KsiegoweSlownikiUzytkownika" type="TKsiegoweSlownikiUzytkownika" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Księgowe słowniki użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

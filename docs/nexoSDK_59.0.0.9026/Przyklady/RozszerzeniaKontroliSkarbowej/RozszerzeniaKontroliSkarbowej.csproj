@@ -1,0 +1,70 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ProjectGuid>{DB8BB1C5-0631-42B8-BD7F-97D533A5A7C1}</ProjectGuid>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>RozszerzeniaKontroliSkarbowej</RootNamespace>
+    <AssemblyName>RozszerzeniaKontroliSkarbowej</AssemblyName>
+    <nexoSdkBinPath>..\..\Bin\</nexoSdkBinPath>
+    <nexoSdkNarzedziaPath>..\..\Narzedzia\</nexoSdkNarzedziaPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>full</DebugType>
+    <OutputPath>bin\Debug\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.API.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.DaneDomyslne">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.DaneDomyslne.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.ModelDanych">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.ModelDanych.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Sfera">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.Sfera.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFramework.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFramework.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFrameworkSupport">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.DatabaseAccess">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.DatabaseAccess.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Narzedzia">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.Narzedzia.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RozszerzeniaBase.cs" />
+    <Compile Include="Rozszerzenia_JPK_FA.cs" />
+    <Compile Include="Rozszerzenia_JPK_FA_RR.cs" />
+    <Compile Include="Rozszerzenia_JPK_MAG.cs" />
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+</Project>

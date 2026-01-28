@@ -1,0 +1,259 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="Dane_PodmiotyPart"
+    elementFormDefault="qualified"
+    xmlns="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+    targetNamespace="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd"/>
+
+  <!-- Słownik osoby -->
+  <xs:complexType name="TOsoba">
+    <xs:sequence>
+      <xs:element name="Pracownik" type="TPracownik" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="Wspolnik" type="TWspolnik" minOccurs="0" maxOccurs="1"/>
+    </xs:sequence>
+    <xs:attribute name="Imie" type="xs:string" use="optional"/>
+    <xs:attribute name="Nazwisko" type="xs:string" use="required"/>
+    <xs:attribute name="PESEL" type="xs:string" use="optional"/>
+    <xs:attribute name="Rolnik" type="xs:boolean" use="optional" />
+    <xs:attribute name="NrDowodu" type="xs:string" use="optional"/>
+    <xs:attribute name="OrganWydajacyDowod" type="xs:string" use="optional"/>
+    <xs:attribute name="DataWydaniaDowodu" type="xs:date" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TPracownik">
+    <xs:attribute name="ImieOjca" type="xs:string" use="required"/>
+    <xs:attribute name="ImieMatki" type="xs:string" use="required"/>
+    <xs:attribute name="NazwiskoRodowe" type="xs:string" use="required"/>
+    <xs:attribute name="MiejsceUrodzenia" type="xs:string" use="required"/>
+    <xs:attribute name="Plec" type="xs:unsignedByte" use="required"/>
+    <xs:attribute name="Obywatelstwo" type="xs:string" use="required"/>
+    <xs:attribute name="DataUrodzenia" type="xs:date" use="required"/>
+    <xs:attribute name="IdentyfikatorPodatkowy" type="xs:unsignedByte" use="required"/>
+    <xs:attribute name="OddzialNFZ" type="xs:unsignedByte" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TWspolnik">
+    <xs:attribute name="NazwaSkrocona" type="xs:string" use="required"/>
+    <xs:attribute name="REGON" type="xs:string" use="required"/>
+    <xs:attribute name="Aktywny" type="xs:boolean" use="required"/>
+    <xs:attribute name="IdentyfikatorPodatkowy" type="xs:unsignedByte" use="required"/>
+    <xs:attribute name="DataUrodzenia" type="xs:date" use="required"/>
+  </xs:complexType>
+
+  <!-- Słownik firmy -->
+  <xs:complexType name="TFirma">
+    <xs:attribute name="Nazwa" type="xs:string" use="optional"/>
+    <xs:attribute name="Regon" type="xs:string" use="optional"/>
+    <xs:attribute name="NazwaPlatnikaZUS" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Nieużywany</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Typ" type="xs:unsignedByte" use="optional"/>
+	<xs:attribute name="SME" type="xs:string" use="optional"/>
+  </xs:complexType>
+
+  <!-- Słownik funduszu promocji -->
+  <xs:complexType name="TFunduszPromocji">
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="Nazwa" type="xs:string" use="required"/>
+    <xs:attribute name="TypNaliczenia" type="xs:int" use="required"/>
+    <xs:attribute name="Procent" type="xs:decimal" use="required"/>
+    <xs:attribute name="Kwota" type="xs:decimal" use="required"/>
+    <xs:attribute name="DomyslnaIlosc" type="xs:decimal" use="required"/>
+    <xs:attribute name="SposobNaliczaniaProcentu" type="xs:int" use="required"/>
+  </xs:complexType>
+
+  <!-- Slownik Podmiotu -->
+  <xs:complexType name="TPodmiot">
+    <xs:sequence>
+      <xs:element name="Osoba" type="TOsoba" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="Firma" type="TFirma" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="FunduszPromocji" type="TFunduszPromocji" minOccurs="0" maxOccurs="1"/>
+      <xs:element name="IdentyfikatoryHistoryczne" type="TIdentyfikatoryHistorycznePodmiotu" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Identyfikatory danych historycznych podmiotu. Używane do znajdowania podmiotu w docelowej bazie. Element opcjonalny.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Cechy" type="xs:IDREF" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="Branze" type="xs:IDREF" minOccurs="0" maxOccurs="unbounded" />
+      <xs:element name="Grupy" type="xs:IDREF" minOccurs="0" maxOccurs="unbounded" />
+    </xs:sequence>
+    <xs:attribute name="Symbol" type="xs:string" use="required"/>
+    <xs:attribute name="NazwaSkrocona" type="xs:string"/>
+    <xs:attribute name="NIP" type="xs:string"/>
+    <xs:attribute name="NIPUE" type="xs:string" use="optional" />
+    <xs:attribute name="PanstwoRejestracjiId" type="xs:IDREF" use="optional" />
+    <xs:attribute name="PodatnikUE" type="xs:boolean" use="optional" />
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="FormaPlatnosciId" type="xs:IDREF" use="optional"/>
+    <xs:attribute name="Typ" type="xs:short" use="required"/>
+    <xs:attribute name="TypObiektu" type="TTypObiektuPodmiot" use="required" />
+    <xs:attribute name="MetodaKasowa" type="xs:boolean" use="optional" />
+    <xs:attribute name="RegionId" type="xs:IDREF" use="optional" />
+    <xs:attribute name="UczestnikProgramu" type="xs:boolean" use="optional" />
+  </xs:complexType>
+
+  <xs:complexType name="TPodmioty">
+    <xs:sequence>
+      <xs:element name="Podmiot" type="TPodmiot"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <!-- Slownik Podmiotu historia -->
+  <xs:complexType name="TPodmiotHistoria">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="NIP" type="xs:string"/>
+    <xs:attribute name="NazwaSkrocona" type="xs:string"/>
+    <xs:attribute name="REGON" type="xs:string"/>
+    <xs:attribute name="NIPUE" type="xs:string"/>
+    <xs:attribute name="Imie" type="xs:string"/>
+    <xs:attribute name="Nazwisko" type="xs:string"/>
+    <xs:attribute name="PESEL" type="xs:string"/>
+    <xs:attribute name="TypPodmiotu" type="xs:int" use="required"/>
+    <xs:attribute name="Telefon" type="xs:string"/>
+    <xs:attribute name="Fax" type="xs:string"/>
+    <xs:attribute name="Email" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="PodmiotId" type="xs:IDREF" use="required"/>
+    <xs:attribute name="Symbol" type="xs:string" use="required"/>
+	<xs:attribute name="SME" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="TPodmiotyHistoria">
+    <xs:sequence>
+      <xs:element name="PodmiotHistoria" type="TPodmiotHistoria"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TTypObiektuPodmiot">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Kontrahent" />
+      <xs:enumeration value="MojaFirma" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TCecha">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="Typ" type="xs:int" use="required"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="PodmiotId" type="xs:IDREF" use="required">
+      <xs:annotation>
+        <xs:documentation>Wartość pomijana w procesie importu. Do usunięcia w kolejnej wersji nexo. Na ten moment wystawczy wstawić Id dowolnego elementu podmiotu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="GrupaCechId" type="xs:IDREF" use ="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TCechy">
+    <xs:sequence>
+      <xs:element name="Cecha" type="TCecha"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TGrupaCech">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TGrupyCech">
+    <xs:sequence>
+      <xs:element name="GrupaCech" type="TGrupaCech"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TBranza">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="PodmiotId" type="xs:IDREF" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TBranze">
+    <xs:sequence>
+      <xs:element name="Branza" type="TBranza"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TDzialPodmiotu">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TDzialyPodmiotu">
+    <xs:sequence>
+      <xs:element name="DzialyPodmiotu" type="TDzialPodmiotu"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TPrzedstawiciel">
+    <xs:attribute name="Pokoj" type="xs:string"/>
+    <xs:attribute name="Imie" type="xs:string"/>
+    <xs:attribute name="Nazwisko" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="PodmiotId" type="xs:IDREF" use="required"/>
+    <xs:attribute name="StanowiskoId" type="xs:IDREF" use="optional"/>
+    <xs:attribute name="DzialPodmiotuId" type="xs:IDREF" use="optional"/>
+  </xs:complexType>
+
+  <xs:complexType name="TPrzedstawiciele">
+    <xs:sequence>
+      <xs:element name="Przedstawiciel" type="TPrzedstawiciel"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TStanowisko">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TStanowiska">
+    <xs:sequence>
+      <xs:element name="Stanowiska" type="TStanowisko"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TUczestnictwoWProgramie">
+    <xs:attribute name="NumerKarty" type="xs:string"/>
+    <xs:attribute name="DataWydania" type="xs:date" use="optional"/>
+    <xs:attribute name="DataWaznosci" type="xs:date" use="optional"/>
+    <xs:attribute name="Punkty" type="xs:decimal" use="required"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+    <xs:attribute name="PodmiotId" type="xs:IDREF" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TUczestnictwaWProgramie">
+    <xs:sequence>
+      <xs:element name="UczestnictwoWProgramie" type="TUczestnictwoWProgramie"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TProgramLojalnosciowy">
+    <xs:attribute name="Nazwa" type="xs:string"/>
+    <xs:attribute name="Id" type="xs:ID" use="required"/>
+    <xs:attribute name="BId" type="xs:string" use="required"/>
+  </xs:complexType>
+
+  <xs:complexType name="TProgramyLojalnosciowe">
+    <xs:sequence>
+      <xs:element name="ProgramLojalnosciowy" type="TProgramLojalnosciowy"  maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TIdentyfikatoryHistorycznePodmiotu">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:string" maxOccurs="unbounded"/>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

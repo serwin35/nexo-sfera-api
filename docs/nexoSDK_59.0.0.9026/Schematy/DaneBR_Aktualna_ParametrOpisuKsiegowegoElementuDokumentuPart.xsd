@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania"
+  id="DaneBR_ParametryOpisowKsiegowychElementowDokumentuPart">
+  <xs:annotation>
+    <xs:documentation>Konfiguracja parametrów opisu księgowego elementu dokumentu biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TParametrOpisuKsiegowegoElementuDokumentu">
+    <xs:annotation>
+      <xs:documentation>Obiekt parametru opisu księgowego elementu dokumentu biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="ElementDokumentu" use="required" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Opisywany księgowo element dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KategoriaKsiegowaBID" use="optional" type="ddk2012:TGuid">
+      <xs:annotation>
+        <xs:documentation>Identyfikator kategorii księgowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KategoriaKsiegowaNaPodstawieKategoriiDokumentu" use="required" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Czy kategoria księgowa ma się wypełniać na podstawie kategorii dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypDokumentuDoKsiegowaniaBID" use="optional" type="ddk2012:TGuid">
+      <xs:annotation>
+        <xs:documentation>Identyfikator typu dokumentu do dekretacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="OpisDomyslny" use="optional" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Domyślny opis.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypOdliczeniaDomyslny" use="optional" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Domyślny rodzaj odliczenia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="RodzajZakupuDomyslny" use="optional" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Domyślny rodzaj zakupu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TransakcjaVATID" use="optional" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Identyfikator domyślnej transakcji VAT.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TransakcjaVATNaPodstawieTransakcjiHandlowej" use="required" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Czy transakcja VAT ma się wypełniać na podstawie transakcji handlowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StawkaRyczaltowaID" use="optional" type="ddk2012:TGuid">
+      <xs:annotation>
+        <xs:documentation>Identyfikator domyślnej stawki ryczałtowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="CelZakupuDomyslny" use="optional" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Domyślny cel zakupu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TParametryOpisowKsiegowychElementowDokumentu">
+    <xs:annotation>
+      <xs:documentation>Kolekcja parametrów opisu księgowego elementu dokumentu biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ParametrOpisuKsiegowegoElementuDokumentu" maxOccurs="unbounded" type="TParametrOpisuKsiegowegoElementuDokumentu">
+        <xs:annotation>
+          <xs:documentation>Parametr opisu księgowego elementu dokumentu biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

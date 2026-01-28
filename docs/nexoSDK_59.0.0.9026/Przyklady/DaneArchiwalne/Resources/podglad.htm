@@ -1,0 +1,187 @@
+﻿<html>
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta http-equiv="Content-Language" content="pl">
+    <title>Podgląd</title>
+    <style>
+/* Ogolne */
+  body { 
+	margin: 5px; font-family: 'Arial CE', 'Arial', sans-serif; 
+	background-color: window; 
+	scrollbar-face-color:window; 
+	scrollbar-shadow-color:window; 
+	scrollbar-highlight-color:window; 
+	scrollbar-3dlight-color:threedshadow; 
+	scrollbar-darkshadow-color:threedshadow; 
+	scrollbar-track-color:threedface; 
+	overflow:auto 
+	}
+  
+  #insertgt { border: 0px solid green; width: 100%; margin: 0px; padding: 0px; }
+  table { border: 0px solid red; margin-bottom: 5px; }
+  td, div { font-size: 8pt; vertical-align: top; text-align: left; }
+  th { 
+  	font-size: 8pt; 
+  	vertical-align: top; 
+  	text-align: left;
+  	background-color: threedface;
+  }
+  tr { background-color: window; }
+  tr.parzysty { background-color: ThreeDHighlight; }
+  .ukryty, #ukryty { display: none; }
+  .nowrap, #nowrap { white-space: nowrap; }
+	.bold { font-weight: bold; }
+	.nobr { white-space: nowrap; padding-right: 5px; }
+
+/* Podglad dokumentu */    
+
+  /* Dane wystawienia */
+  table.naglowek_daty { border: 0px solid red; margin-bottom: 5px; width: 100%; }
+  table.naglowek_daty td.naglowek { /*width: 75%*/ }
+  table.naglowek_daty td.daty { border-bottom: 1px solid threeddarkshadow; /*width: 25%*/ }
+  table.naglowek_daty td.daty div { border-top: 1px solid threeddarkshadow; text-align: center; }
+  table.naglowek_daty td.daty div.opis { background-color: threedface; }
+  
+  /* Firmy (Nabywca) */
+  table.firmy { border: 0px solid threeddarkshadow; width: 100%; }
+  table.firmy td.firma { border-top: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; padding: 0px; }
+  table.firmy table.daty td.opis { background-color: threedface; border-top: 1px solid threeddarkshadow; border-bottom: 5px solid window; padding: 0px 2px; }
+  table.firmy table.daty td { border-top: 1px solid threeddarkshadow; border-bottom: 5px solid window; padding: 0px 15px 0px 5px; }
+  table.firmy div.opis { background-color: threedface; text-align: center; }
+  
+  /* Tytul i podtytul */
+  h1 { text-align: center; font-weight: normal; font-size: 12pt; margin: 10px; }
+  h2 { text-align: center; font-weight: normal; font-size: 10pt; margin: 5px; }
+  
+  /* Tabela zawartosci */
+  table.zawartosc { border-left: 1px solid threeddarkshadow; width: 100%; padding: 0px; }
+  table.zawartosc th { border: 1px solid threeddarkshadow; border-left: 0px solid threeddarkshadow; font-weight: normal; text-align: center; background-color: threedface; padding: 1px; }
+  table.zawartosc td { border-right: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; font-weight: normal; text-align: right; padding: 1px; }
+  table.zawartosc td.center { text-align: center; }
+  table.zawartosc td.left { text-align: left; }
+  
+  /* Tabela VAT */
+  div.vat { text-align: right; }
+  table.vat { border-left: 1px solid threeddarkshadow; padding: 0px; margin: 10px 0px;  }
+  table.vat th { border: 1px solid threeddarkshadow; border-left: 0px solid threeddarkshadow; font-weight: normal; text-align: center; background-color: threedface; padding: 1px; }
+  table.vat td { border-right: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; font-weight: normal; text-align: right; padding: 1px 2px; }
+  table.vat td.center { text-align: center; }
+  table.vat td.left { text-align: left; }
+  
+  /* Podsumowanie dokumentu */
+  table.podsumowanie { border: 0px solid threeddarkshadow; width: 100%; }
+  /*table.podsumowanie td { width: 50%; }*/
+  table.podsumowanie td.formy_platnosci td { font-weight: normal; padding-right: 10px; }
+  table.podsumowanie td.formy_platnosci table#przedplaty { width:100%; border-bottom: 1px solid threeddarkshadow; }
+  table.podsumowanie td.formy_platnosci table#przedplaty td { padding-right: 0px; }
+  table.podsumowanie td.formy_platnosci td.kwota { font-weight: normal; text-align: right; }
+  table.podsumowanie td.do_zaplaty { width: 50%; }
+  table.podsumowanie td.do_zaplaty table { width: 100%; border-top: 2px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; }
+  table.podsumowanie td.do_zaplaty table tr.razem { background-color: threedface; }
+  table.podsumowanie td.do_zaplaty table td.razem { font-size: 11pt; font-weight: bold; }
+  table.podsumowanie td.do_zaplaty table td.razem_kwota { font-size: 11pt; font-weight: bold; text-align: right; }
+  table.podsumowanie td.do_zaplaty table td span { font-weight: bold; margin-right: 10px; }
+  
+  /* Uwagi */
+  table.uwagi { border: 0px solid threeddarkshadow; }
+  table.uwagi td.opis { font-weight: bold; }
+  
+  /* Podpisy */
+  table.podpisy { border: 0px solid threeddarkshadow; }
+  table.podpisy td.opis { /*font-weight: bold;*/ background-color: threedface; border-top: 1px solid threeddarkshadow; border-bottom: 5px solid window; padding: 0px 15px 0px 2px; }
+  table.podpisy td { border-top: 1px solid threeddarkshadow; border-bottom: 5px solid window; padding: 0px 20px 0px 5px; }
+
+/* Podglad towaru */
+
+  /* Symbol i Nazwa */
+  table.nazwa { width: 100% }
+  table.nazwa td { border-bottom: 1px solid threeddarkshadow; font-size: 12pt; padding-left: 5px; font-weight: bold; }
+  table.nazwa td.symbol { background-color: threedface; font-weight: bold; padding-right: 10px; window-space: nowrap; }
+
+  /* Informacje */
+  table.info { width: 100% }
+  table.info td.separator { border-top: 0px solid threeddarkshadow; } 
+  table.info td { border-top: 1px solid threeddarkshadow; border-bottom: 5px solid window; padding-left: 5px;  }
+  table.info td.opis { background-color: threedface; font-weight: bold; margin-right: 10px; }
+
+  /* Ceny */
+  table.ceny { width: 100% }
+  table.ceny td, th { padding-left: 5px; }
+  table.ceny .tytul { font-size: 10pt; padding-left: 0px; padding-right: 5px; window-space: nowrap; font-weight: bold; }
+  table.ceny .opis { background-color: threedface; font-weight: bold; padding-left: 5px; border-top: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; }
+  table.ceny .nazwa { text-align: left; border-bottom: 1px solid threeddarkshadow; }
+  table.ceny .kwota { text-align: right; border-bottom: 1px solid threeddarkshadow; }
+  table.ceny .waluta { text-align: center; border-bottom: 1px solid threeddarkshadow; }
+
+/* Podglad kontrahenta */
+
+  /* Symbol i Nazwa */
+    /* jak dla towaru*/
+
+  /* Informacje */
+    /* jak dla towaru*/
+
+  /* Adres */
+  table.adres { width: 100% }
+  table.adres td { padding: 0px; }
+  table.adres td.adres { border-top: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; }
+  table.adres td.adres img { vertical-align: middle; margin: 0px 5px 0px 0px; }
+  table.adres td.adres span { margin-left: 10px; }
+  table.adres td.separator { border-top: 0px solid threeddarkshadow; border-bottom: 0px solid threeddarkshadow; }
+  table.adres td div { margin: 0px 5px 2px 5px; }
+  table.adres td div.opis { background-color: threedface; margin: 0px; padding-top: 1px; padding-bottom: 1px; text-align: center; font-weight: bold; }
+  
+  /* Rachunki */
+  div.rachunki { font-weight: normal; font-size: 10pt; font-weight: bold; margin: 5px; }
+  table.rachunki { width: 100% }
+  table.rachunki th { border-top: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; background-color: threedface; padding: 1px 1px 1px 5px; }
+  table.rachunki td { border-bottom: 1px solid threeddarkshadow; padding: 1px 1px 1px 5px; }
+
+  /* Uwagi */
+  table.uwagi { width: 100% }
+  table.uwagi td { border-top: 1px solid threeddarkshadow; padding: 0px; }
+  table.uwagi td div.opis { background-color: threedface; margin: 0px; padding-top: 1px; padding-bottom: 1px; text-align: left; padding-left: 5px; font-weight: bold; }
+  table.uwagi td.uwaga { padding-left: 5px; }
+
+/* Podglad dokumentow kasowych */
+
+  /* Firma */
+  table.firma { width: 100% }
+  table.firma td { padding: 0px; }
+  table.firma td.adres { border-top: 1px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; }
+  table.firma td.adres img { vertical-align: middle; margin: 0px 5px 0px 0px; }
+  table.firma td.adres span { margin-left: 10px; }
+  table.firma td.separator { border-top: 0px solid threeddarkshadow; border-bottom: 0px solid threeddarkshadow; }
+  table.firma td.data { border-top: 1px solid threeddarkshadow; border-bottom: 0px solid threeddarkshadow; }
+  table.firma td.data div.opis { margin: 0px 0px 2px 0px; text-align: left; padding-left: 5px; }
+  table.firma td.data div.typ { margin: 0px 0px 2px 0px; font-size: 16px;  background-color: threedface; margin: 0px; padding-top: 1px; padding-bottom: 1px; text-align: center; font-weight: bold; }
+  table.firma td.data div.typ_no { font-size: 16px; font-weight: bold; }
+  table.firma td div { margin: 0px 5px 2px 5px; }
+  table.firma td div.opis { background-color: threedface; margin: 0px; padding-top: 1px; padding-bottom: 1px; text-align: center; font-weight: bold; }
+  
+  /* Kwota */
+  table.kwota { width: 100%; }
+  table.kwota td.pusta { background-color: window; border-bottom: 0px solid threeddarkshadow; border-top: 0px solid threeddarkshadow; }
+  table.kwota tr.razem { background-color: threedface; }
+  table.kwota td.razem { font-size: 11pt; font-weight: bold; border-top: 2px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; padding-left: 4px; }
+  table.kwota td.razem_kwota { font-size: 11pt; font-weight: bold; text-align: right; border-top: 2px solid threeddarkshadow; border-bottom: 1px solid threeddarkshadow; padding-right: 4px; }
+  table.kwota td span { font-weight: bold; margin-right: 10px; }
+  
+  /* Tytulem */
+  table.tytulem { width: 100% }
+  table.tytulem td { border-top: 1px solid threeddarkshadow; padding: 0px; }
+  table.tytulem td div.opis { background-color: threedface; margin: 0px; padding-top: 1px; padding-bottom: 1px; text-align: left; padding-left: 5px; font-weight: bold; }
+  table.tytulem td.uwaga { padding-left: 5px; }
+  table.tytulem td.separator { border-top: 0px solid threeddarkshadow; }
+  
+  /*ogolne*/
+  #null, #null *, #null td { color:silver; }
+
+    </style>
+  </head>
+  <body>
+    <div id="insertgt">
+        ###PODGLAD###
+    </div>
+  </body>
+</html>

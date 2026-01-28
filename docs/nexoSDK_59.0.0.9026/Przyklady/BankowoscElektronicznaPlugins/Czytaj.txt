@@ -1,0 +1,21 @@
+﻿Przykłady rozszerzeń dla InsERT nexo.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2013-2019
+
+Proszę korzystać i dowolnie modyfikować, po wykonaniu następujących kroków:
+
+ 1. Zmienić dane dostawcy rozszerzeń na swoje własne.
+ 2. Zmodyfikować informacje w AssemblyInfo.cs
+ 3. Wygenerować nowe GUID-y funkcji, żeby się przez przypadek nie powieliły.
+
+Zawiera implementację następujących rodzajów rozszerzeń:
+
+ 1. FunkcjaEksportuDyspozycjiBankowychZKodowaniemV2
+	a. FunkcjaEksportuDyspozycjiBankowychZKodowaniemV2_Przyklad - eksport dyspozycji do pliku w przykładowym formacie.
+
+ 2. FunkcjaImportuWyciaguBankowegoV2
+ 	a. FunkcjaImportuWyciaguBankowegoV2_Przyklad - przykładowy import operacji bankowych z pliku TXT.
+
+ 3. IKryteriumRozpoznawaniaRodzajuOperacjiBankowej
+ 	a. KryteriumRozpoznawaniaRodzajuOperacjiBankowej_Przyklad - przykładowe kryterium rozpoznawania rodzaju operacji bankowej po polu szczegóły.

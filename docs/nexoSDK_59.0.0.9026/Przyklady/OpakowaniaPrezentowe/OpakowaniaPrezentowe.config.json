@@ -1,0 +1,13 @@
+﻿{
+    "PoleWlasne_Konfiguracja_PrzepiszKosztyOpakowanPrzyRealizacji": "Przepisuj koszty opakowań",
+    "PoleWlasne_Konfiguracja_GrupaOpakowanPrezentowych": "Grupa opakowań prezentowych",
+    "PoleWlasne_DokumentZK_WiadomoscDoSprzedajacego": "Wiadomość do sprzedającego",
+    "PoleWlasne_PozycjaDokumentu_KosztOpakowan": "Koszty opakowań",
+    "PoleWlasne_Partia_Dedykacja": "Dedykacja",
+
+    "Operacja_Formatka_EdytujDedykacje": "Operacje | Edytuj dedykacje",
+    "Operacja_Formatka_UtworzPlikMaszynyGrawerujacej": "Operacje | Utwórz pliki dla maszyny grawerującej",
+    "Operacja_Lista_UtworzPlikMaszynyGrawerujacej": "Operacje | Utwórz pliki dla maszyny grawerującej",
+
+    "SciezkaZapisuSVG": "D:\\SVGFiles\\"
+}

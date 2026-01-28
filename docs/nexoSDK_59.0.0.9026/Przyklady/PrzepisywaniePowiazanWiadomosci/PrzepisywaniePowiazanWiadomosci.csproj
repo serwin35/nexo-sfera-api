@@ -1,0 +1,150 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <Platform>x64</Platform>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ProjectGuid>{7C9533CC-D7DB-4CAF-96A5-635DA414E975}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>PrzepisywaniePowiazanWiadomosci</RootNamespace>
+    <AssemblyName>PrzepisywaniePowiazanWiadomosci</AssemblyName>
+    <nexoSdkBinPath>..\..\Bin\</nexoSdkBinPath>
+    <nexoSdkNarzedziaPath>..\..\Narzedzia\</nexoSdkNarzedziaPath>
+    <AbsolutePathToSdkBin>$(nexoSdkBinPath)</AbsolutePathToSdkBin>
+    <AbsolutePathParam>$([System.IO.Path]::Combine($(MSBuildProjectDirectory), $(nexoSdkBinPath)))</AbsolutePathParam>
+    <AbsolutePathToSdkBin Condition=" '$([System.IO.Path]::IsPathRooted($(nexoSdkBinPath)))' != 'true' ">$([System.IO.Path]::GetFullPath($(AbsolutePathParam)))</AbsolutePathToSdkBin>
+    <ProjectTypeGuids>{60dc8134-eba5-43b8-bcc9-bb4bc16c2548};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.API.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.DaneDomyslne">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.DaneDomyslne.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.ModelDanych">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.ModelDanych.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Sfera">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.Sfera.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.Sfera.UI">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.Sfera.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFramework.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFramework.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFrameworkSupport">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Launcher">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.Launcher.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.UIFramework">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.UIFramework.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Windows.Interactivity">
+      <HintPath>$(nexoSdkBinPath)System.Windows.Interactivity.dll</HintPath>
+    </Reference>
+    <Reference Include="System.Data.SqlClient">
+      <HintPath>$(nexoSdkBinPath)System.Data.SqlClient.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+  </ItemGroup>
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </ApplicationDefinition>
+    <Compile Include="Converters\BoolToVisibilityConverter.cs" />
+    <Compile Include="Converters\LogicalAndConverter.cs" />
+    <Compile Include="Converters\ReversedBoolToVisibilityConverter.cs" />
+    <Compile Include="Exceptions\SferaException.cs" />
+    <Compile Include="LaczenieZeSferaWindow.xaml.cs">
+      <DependentUpon>LaczenieZeSferaWindow.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\MainViewModel.Properties.cs" />
+    <Compile Include="ManagerPowiazanWiadomosciPocztowych.cs" />
+    <Compile Include="Models\UproszczonaWiadomoscPocztowa.cs" />
+    <Compile Include="Models\UproszczoneKontoPocztowe.cs" />
+    <Compile Include="ViewModels\ViewModelBase.cs" />
+    <Page Include="LaczenieZeSferaWindow.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="MainWindow.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Compile Include="App.xaml.cs">
+      <DependentUpon>App.xaml</DependentUpon>
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Converters\MultiCommandParametersConverter.cs" />
+    <Compile Include="Converters\NegationBooleanConverter.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Properties\Resources.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DesignTime>True</DesignTime>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Include="Properties\Settings.Designer.cs">
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+    </Compile>
+    <EmbeddedResource Include="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+    <None Include="app.config" />
+    <None Include="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Konfiguracja.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="ParametryInstalacji.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.135" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="copy /y &quot;$(AbsolutePathToSdkBin)InsERT.Moria.ThemeControls.dll&quot; &quot;$(TargetDir)\InsERT.Moria.ThemeControls.dll&quot;" />
+    <Exec Command="copy /y &quot;$(AbsolutePathToSdkBin)InsERT.Moria.ThemeLight.dll&quot; &quot;$(TargetDir)\InsERT.Moria.ThemeLight.dll&quot;" />
+    <Exec Command="copy /y &quot;$(AbsolutePathToSdkBin)InsERT.Moria.ThemeDark.dll&quot; &quot;$(TargetDir)\InsERT.Moria.ThemeDark.dll&quot;" />
+    <Exec Command="copy /y &quot;$(AbsolutePathToSdkBin)Xaml.pak&quot; &quot;$(TargetDir)\Xaml.pak&quot;" />
+    <Exec Command="copy /y &quot;$(AbsolutePathToSdkBin)Xml.pak&quot; &quot;$(TargetDir)\Xml.pak&quot;" />
+    <Exec Command="copy /y &quot;$(AbsolutePathToSdkBin)Sgd.pak&quot; &quot;$(TargetDir)\Sgd.pak&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)sni.dll&quot; &quot;$(TargetDir)sni.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)ijwhost.dll&quot; &quot;$(TargetDir)ijwhost.dll&quot;" />
+    <Exec Command="copy /y &quot;$(nexoSdkBinPath)Microsoft.Data.SqlClient.SNI.dll&quot; &quot;$(TargetDir)Microsoft.Data.SqlClient.SNI.dll&quot;" />
+    <Exec Command="if exist &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; (call &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; /PlikKonfiguracji:Konfiguracja.xml /KatalogDocelowy:&quot;$(TargetDir)\&quot;) else (echo Nie można zbudować pakietu i instalatora, ponieważ nie istnieje plik: &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot;)" />
+  </Target>
+</Project>

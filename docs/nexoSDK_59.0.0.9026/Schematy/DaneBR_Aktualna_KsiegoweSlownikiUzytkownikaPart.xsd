@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema 
+  id="DaneBR_2014_KsiegoweSlownikiUzytkownikaPart"
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+  <xs:annotation>
+    <xs:documentation>Księgowe słowniki użytkownika biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TWartoscKsiegowegoSlownikaUzytkownika">
+    <xs:annotation>
+      <xs:documentation>Obiekt wartości księgowego słownika użytkownika.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa w słowniku.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Symbol" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Symbol w słowniku.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator wpisu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TWartosciKsiegowychSlownikowUzytkownika">
+    <xs:annotation>
+      <xs:documentation>Kolekcja wartości księgowych słowników użytkownika.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="WartoscKsiegowegoSlownikaUzytkownika" type="TWartoscKsiegowegoSlownikaUzytkownika" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Wartość księgowego słownika użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TKsiegowySlownikUzytkownika">
+    <xs:annotation>
+      <xs:documentation>Definicja księgowego słownika użytkownika.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wartosci" type="TWartosciKsiegowychSlownikowUzytkownika" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja wartości słownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Id" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator słownika.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Typ" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ wartości słownika.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa słownika.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TKsiegoweSlownikiUzytkownika">
+    <xs:annotation>
+      <xs:documentation>Kolekcja księgowych słowników użytkownika biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="KsiegowySlownikUzytkownika" type="TKsiegowySlownikUzytkownika" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Księgowy słownik użytkownika biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

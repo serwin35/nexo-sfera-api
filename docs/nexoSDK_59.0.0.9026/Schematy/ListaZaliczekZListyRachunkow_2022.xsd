@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2022/dokumentyDoKsiegowania/place" 
+  targetNamespace="http://schemas.insert.com.pl/2022/dokumentyDoKsiegowania/place"
+  xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" 
+  xmlns:bazowe="http://schemas.insert.com.pl/2022/dokumentyDoKsiegowania/place/bazowe">
+  <xs:annotation>
+    <xs:documentation>Dane listy zaliczek z listy rachunków.</xs:documentation>
+  </xs:annotation>
+  
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+  <xs:import id="PlaceBazowePart" namespace="http://schemas.insert.com.pl/2022/dokumentyDoKsiegowania/place/bazowe" schemaLocation="BazoweTypy_2022.xsd" />
+  
+  <xs:complexType name="TNaglowekListyZaliczekZListyRachunkow">
+    <xs:annotation>
+      <xs:documentation>Zbiór pól nagłówkowych listy zaliczek z listy rachunków</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="bazowe:TNaglowekListyRachunkowBazowy">
+        <xs:sequence>
+          <xs:element name="DaneZaliczek" type="bazowe:TNaglowekListyRachunkowDaneZaliczek" nillable="false">
+            <xs:annotation>
+              <xs:documentation>Dane dotyczące zaliczek z listy rachunków.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <xs:complexType name="TRachunekDoUmowyPracowniczejZaliczki">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące zaliczek w kontekście rachunku do umowy pracowniczej.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="bazowe:TRachunekDoUmowyPracowniczejZListyRachunkowBazowy">
+        <xs:sequence>
+          <xs:element name="KwotaBruttoRachunku" type="xs:decimal" nillable="false">
+            <xs:annotation>
+              <xs:documentation>Kwota brutto rachunku.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="DaneZaliczek" type="bazowe:TRachunekDoUmowyPracowniczejDaneZaliczek" nillable="false">
+            <xs:annotation>
+              <xs:documentation>Zaliczki w kontekście rachunku do umowy pracowniczej.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <xs:complexType name="TRachunkiDoUmowPracowniczychZaliczki">
+    <xs:annotation>
+      <xs:documentation>Kolekcja pozycji zaliczek.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="RachunekDoUmowyPracowniczej" type="TRachunekDoUmowyPracowniczejZaliczki">
+        <xs:annotation>
+          <xs:documentation>Pozycja zaliczek listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+    
+  <xs:complexType name="TListaZaliczekZListyRachunkow">
+    <xs:annotation>
+      <xs:documentation>Lista zaliczek z listy rachunków.</xs:documentation>
+    </xs:annotation>
+    <xs:complexContent>
+      <xs:extension base="bazowe:TListaRachunkowBazowa">
+        <xs:sequence>
+          <xs:element name="Naglowek" type="TNaglowekListyZaliczekZListyRachunkow" nillable="false">
+            <xs:annotation>
+              <xs:documentation>Nagłówek listy zaliczek z listy rachunków.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+          <xs:element name="Zaliczki" type="TRachunkiDoUmowPracowniczychZaliczki" nillable="true">
+            <xs:annotation>
+              <xs:documentation>Pozycje zaliczek listy z listy rachunków.</xs:documentation>
+            </xs:annotation>
+          </xs:element>
+        </xs:sequence>
+      </xs:extension>
+    </xs:complexContent>
+  </xs:complexType>
+  
+  <xs:element name="Dokument" type="TListaZaliczekZListyRachunkow">
+    <xs:annotation>
+      <xs:documentation>Główny węzeł opakowujący listę zaliczek z listy rachunków.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

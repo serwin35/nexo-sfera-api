@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania" 
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania"
+  id="DaneBR">
+  <xs:annotation>
+    <xs:documentation>Dane biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:include id="DaneNadawcyPart" schemaLocation="./DaneBR_Aktualna_NadawcaBR.xsd" />
+  <xs:include id="OpisyKsiegowe" schemaLocation="./DaneBR_Aktualna_OpisyKsiegowePart.xsd" />
+  <xs:include id="StatusyKsiegowe" schemaLocation="./DaneBR_Aktualna_StatusyKsiegowePart.xsd" />
+  <xs:include id="SlownikiPart" schemaLocation="./DaneBR_Aktualna_SlownikiBRPart.xsd" />
+  <xs:include id="ParametryOpisowKsiegowychElementowDokumentuPart" schemaLocation="./DaneBR_Aktualna_ParametrOpisuKsiegowegoElementuDokumentuPart.xsd" />
+  <xs:include id="ParametryObslugiTypowDDKPart" schemaLocation="./DaneBR_Aktualna_ParametrObslugiTypuDDKPart.xsd" />
+  <xs:include id="ParametrDostepnosciAtrybutuOpisuKsiegowegoPart" schemaLocation="./DaneBR_Aktualna_ParametrDostepnosciAtrybutuOpisuKsiegowegoPart.xsd" />
+  
+  <xs:complexType name="TDaneBiuraRachunkowego">
+    <xs:annotation>
+      <xs:documentation>Dane biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wersja" type="xs:string" fixed="2024">
+        <xs:annotation>
+          <xs:documentation>Wersja schematu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nadawca" type="TNadawca" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Informacje o nadawcy.</xs:documentation>
+        </xs:annotation>        
+      </xs:element>
+      <xs:element name="SlownikiZmienione" type="xs:boolean" default="false" minOccurs="1" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Czy słowniki zostały zmienione po stronie biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PotwierdzeniaUsuniecia" type="ddk2012:TListaGuid" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Lista identyfikatorów usuniętych dokumentów do dekretacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StatusyKsiegowe" type="TStatusyKsiegowe" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Statusy księgowe.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OpisyKsiegowe" type="TOpisyKsiegoweBR" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Opisy księgowe.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ParametryOpisowKsiegowychElementowDokumentu" type="TParametryOpisowKsiegowychElementowDokumentu" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Parametry opisów księgowych elementów dokumentu biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ParametryObslugiTypuDokumentowDoKsiegowania" type="TParametryObslugiTypuDDK" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Parametry obsługi typu dokumentów do dekretacji biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ParametryDostepnosciAtrybutowOpisuKsiegowego" type="TParametryDostepnosciAtrybutowOpisuKsiegowego" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Parametry dostępności atrybutów opisu księgowego biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Slowniki" type="TSlownikiBR" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Słowniki biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="Dane" type="TDaneBiuraRachunkowego">
+    <xs:annotation>
+      <xs:documentation>Główny węzeł opakowujący dane biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>
