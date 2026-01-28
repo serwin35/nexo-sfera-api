@@ -300,31 +300,43 @@ public class StockValidationHelper
 
         foreach (var item in items)
         {
-            var lookup = FindProduct(getProductId(item), getProductSymbol(item), getProductEan(item));
+            var productIdParam = getProductId(item);
+            var productSymbolParam = getProductSymbol(item);
+            var productEanParam = getProductEan(item);
+            var quantityParam = getQuantity(item);
+            
+            _logger.LogDebug("Validating stock for item: ProductId={ProductId}, Symbol={Symbol}, EAN={EAN}, Qty={Qty}",
+                productIdParam, productSymbolParam ?? "(null)", productEanParam ?? "(null)", (object)quantityParam);
+            
+            var lookup = FindProduct(productIdParam, productSymbolParam, productEanParam);
 
             if (!lookup.Found)
             {
+                _logger.LogWarning("Product not found during stock validation: {ErrorMessage}", lookup.ErrorMessage);
                 result.AllItemsAvailable = false;
                 result.Errors.Add(lookup.ErrorMessage ?? "Product not found");
                 result.Items.Add(new StockValidationItemResult
                 {
                     HasSufficientStock = false,
-                    ProductSymbol = getProductSymbol(item),
-                    RequestedQuantity = getQuantity(item),
+                    ProductSymbol = productSymbolParam,
+                    RequestedQuantity = quantityParam,
                     ErrorMessage = lookup.ErrorMessage
                 });
                 continue;
             }
 
+            _logger.LogDebug("Product found: ID={ProductId}, Symbol={Symbol}, Name={Name}",
+                (object)lookup.ProductId, lookup.ProductSymbol ?? "(null)", lookup.ProductName ?? "(null)");
+
             // Aggregate quantities for the same product
             if (itemsByProduct.ContainsKey(lookup.ProductId))
             {
                 var existing = itemsByProduct[lookup.ProductId];
-                itemsByProduct[lookup.ProductId] = (existing.Quantity + getQuantity(item), existing.Symbol, existing.Name, existing.Product);
+                itemsByProduct[lookup.ProductId] = (existing.Quantity + quantityParam, existing.Symbol, existing.Name, existing.Product);
             }
             else
             {
-                itemsByProduct[lookup.ProductId] = (getQuantity(item), lookup.ProductSymbol, lookup.ProductName, lookup.Product);
+                itemsByProduct[lookup.ProductId] = (quantityParam, lookup.ProductSymbol, lookup.ProductName, lookup.Product);
             }
         }
 
@@ -359,6 +371,9 @@ public class StockValidationHelper
             var requested = kvp.Value.Quantity;
             var hasStock = available >= requested;
 
+            _logger.LogDebug("Stock check for '{Symbol}' (ID: {ProductId}): requested={Requested}, available={Available}, hasStock={HasStock}",
+                kvp.Value.Symbol, (object)kvp.Key, (object)requested, (object)available, (object)hasStock);
+
             var itemResult = new StockValidationItemResult
             {
                 HasSufficientStock = hasStock,
@@ -374,6 +389,7 @@ public class StockValidationHelper
                 result.AllItemsAvailable = false;
                 itemResult.ErrorMessage = $"Insufficient stock for '{kvp.Value.Symbol}': requested {requested}, available {available} (shortage: {itemResult.Shortage})";
                 result.Errors.Add(itemResult.ErrorMessage);
+                _logger.LogWarning("Insufficient stock detected: {ErrorMessage}", itemResult.ErrorMessage);
             }
 
             result.Items.Add(itemResult);
