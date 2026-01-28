@@ -222,32 +222,58 @@ public class StockValidationHelper
     /// </summary>
     public bool IsService(dynamic product)
     {
-        if (product == null) return false;
+        if (product == null)
+        {
+            _logger.LogDebug("IsService: product is null, returning false");
+            return false;
+        }
         
         try
         {
             // Check Rodzaj_Id property - 1 = Service (Usluga)
             var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
-            if (rodzajId.HasValue && rodzajId.Value == 1)
+            if (rodzajId.HasValue)
             {
-                return true;
-            }
-            
-            // Alternative: check Rodzaj.Symbol if available
-            var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
-            if (rodzaj != null)
-            {
-                var symbol = DynamicPropertyHelper.GetString(rodzaj, "Symbol");
-                if (symbol == "Usluga" || symbol == "U")
+                _logger.LogDebug("IsService: Rodzaj_Id = {RodzajId}", (object)rodzajId.Value);
+                if (rodzajId.Value == 1)
                 {
                     return true;
                 }
+            }
+            else
+            {
+                _logger.LogDebug("IsService: Rodzaj_Id not found or null");
+            }
+            
+            // Alternative: check Rodzaj.Symbol if available
+            // Use DynamicPropertyHelper to safely navigate the nested property
+            try
+            {
+                var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
+                if (rodzaj != null)
+                {
+                    var symbol = DynamicPropertyHelper.GetString(rodzaj, "Symbol");
+                    _logger.LogDebug("IsService: Rodzaj.Symbol = {Symbol}", (object?)(symbol ?? "(null)"));
+                    if (symbol == "Usluga" || symbol == "U")
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("IsService: Rodzaj property not found or null");
+                }
+            }
+            catch (Exception innerEx)
+            {
+                // Log but don't fail - just continue to return false
+                _logger.LogDebug("IsService: Error accessing Rodzaj.Symbol: {Message}", (object)innerEx.Message);
             }
         }
         catch (Exception ex)
         {
             // Log exception but continue - if we can't determine, assume it's not a service (safer to validate stock)
-            _logger.LogDebug("Could not determine if product is a service: {Message}", ex.Message);
+            _logger.LogWarning("Could not determine if product is a service: {Message}", (object)ex.Message);
         }
         
         return false;
@@ -274,31 +300,43 @@ public class StockValidationHelper
 
         foreach (var item in items)
         {
-            var lookup = FindProduct(getProductId(item), getProductSymbol(item), getProductEan(item));
+            var productIdParam = getProductId(item);
+            var productSymbolParam = getProductSymbol(item);
+            var productEanParam = getProductEan(item);
+            var quantityParam = getQuantity(item);
+            
+            _logger.LogDebug("Validating stock for item: ProductId={ProductId}, Symbol={Symbol}, EAN={EAN}, Qty={Qty}",
+                productIdParam, productSymbolParam ?? "(null)", productEanParam ?? "(null)", quantityParam);
+            
+            var lookup = FindProduct(productIdParam, productSymbolParam, productEanParam);
 
             if (!lookup.Found)
             {
+                _logger.LogWarning("Product not found during stock validation: {ErrorMessage}", lookup.ErrorMessage);
                 result.AllItemsAvailable = false;
                 result.Errors.Add(lookup.ErrorMessage ?? "Product not found");
                 result.Items.Add(new StockValidationItemResult
                 {
                     HasSufficientStock = false,
-                    ProductSymbol = getProductSymbol(item),
-                    RequestedQuantity = getQuantity(item),
+                    ProductSymbol = productSymbolParam,
+                    RequestedQuantity = quantityParam,
                     ErrorMessage = lookup.ErrorMessage
                 });
                 continue;
             }
 
+            _logger.LogDebug("Product found: ID={ProductId}, Symbol={Symbol}, Name={Name}",
+                lookup.ProductId, lookup.ProductSymbol ?? "(null)", lookup.ProductName ?? "(null)");
+
             // Aggregate quantities for the same product
             if (itemsByProduct.ContainsKey(lookup.ProductId))
             {
                 var existing = itemsByProduct[lookup.ProductId];
-                itemsByProduct[lookup.ProductId] = (existing.Quantity + getQuantity(item), existing.Symbol, existing.Name, existing.Product);
+                itemsByProduct[lookup.ProductId] = (existing.Quantity + quantityParam, existing.Symbol, existing.Name, existing.Product);
             }
             else
             {
-                itemsByProduct[lookup.ProductId] = (getQuantity(item), lookup.ProductSymbol, lookup.ProductName, lookup.Product);
+                itemsByProduct[lookup.ProductId] = (quantityParam, lookup.ProductSymbol, lookup.ProductName, lookup.Product);
             }
         }
 
@@ -333,6 +371,9 @@ public class StockValidationHelper
             var requested = kvp.Value.Quantity;
             var hasStock = available >= requested;
 
+            _logger.LogDebug("Stock check for '{Symbol}' (ID: {ProductId}): requested={Requested}, available={Available}, hasStock={HasStock}",
+                (object?)(kvp.Value.Symbol ?? "(null)"), kvp.Key, (object)requested, (object)available, (object)hasStock);
+
             var itemResult = new StockValidationItemResult
             {
                 HasSufficientStock = hasStock,
@@ -348,6 +389,7 @@ public class StockValidationHelper
                 result.AllItemsAvailable = false;
                 itemResult.ErrorMessage = $"Insufficient stock for '{kvp.Value.Symbol}': requested {requested}, available {available} (shortage: {itemResult.Shortage})";
                 result.Errors.Add(itemResult.ErrorMessage);
+                _logger.LogWarning("Insufficient stock detected: {ErrorMessage}", itemResult.ErrorMessage);
             }
 
             result.Items.Add(itemResult);
