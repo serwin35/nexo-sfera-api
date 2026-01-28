@@ -138,8 +138,9 @@ public class StockValidationHelper
             var rodzaj = DynamicPropertyHelper.GetString(product, "Rodzaj");
             return rodzaj != null && rodzaj.Equals("Usluga", StringComparison.OrdinalIgnoreCase);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to check if product is a service");
             return false;
         }
     }
@@ -345,6 +346,13 @@ public class StockValidationHelper
         var lookup = FindProduct(productId, null, null);
         if (!lookup.Found) return false;
 
+        // Services always have sufficient "stock"
+        if (IsService(lookup.Product))
+        {
+            _logger.LogDebug("Skipping stock check for service product ID {Id} - services always pass validation", productId);
+            return true;
+        }
+
         var available = GetAvailableStock(lookup.Product!, warehouseSymbol);
         return available >= requiredQuantity;
     }
@@ -356,6 +364,13 @@ public class StockValidationHelper
     {
         var lookup = FindProduct(null, productSymbol, null);
         if (!lookup.Found) return false;
+
+        // Services always have sufficient "stock"
+        if (IsService(lookup.Product))
+        {
+            _logger.LogDebug("Skipping stock check for service product '{Symbol}' - services always pass validation", productSymbol);
+            return true;
+        }
 
         var available = GetAvailableStock(lookup.Product!, warehouseSymbol);
         return available >= requiredQuantity;
