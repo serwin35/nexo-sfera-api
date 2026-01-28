@@ -127,7 +127,7 @@ public class StockValidationHelper
 
     /// <summary>
     /// Checks if a product is a service (Rodzaj = "Usluga").
-    /// Services don't require stock validation.
+    /// Services don't require stock validation as they represent intangible products without physical inventory.
     /// </summary>
     public bool IsService(dynamic product)
     {
