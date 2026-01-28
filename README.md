@@ -66,6 +66,103 @@ dotnet run
 API bedzie dostepne pod adresem: `http://localhost:5000`
 Swagger UI: `http://localhost:5000/swagger`
 
+## Multi-tenant (wiele firm)
+
+API obsługuje scenariusze multi-tenant, gdzie różne klucze API mogą korzystać z różnych operatorów Nexo. To umożliwia obsługę wielu firm lub działów w ramach jednej instancji API.
+
+### Konfiguracja kluczy API z osobnymi operatorami
+
+Edytuj plik `src/appsettings.json`:
+
+```json
+{
+  "ApiKeys": {
+    "Keys": [
+      {
+        "Key": "klucz-api-firma-a",
+        "Name": "Firma A - Główna",
+        "IsActive": true,
+        "NexoLogin": "operator1",
+        "NexoPassword": "haslo1",
+        "DefaultWarehouse": "MG1",
+        "DefaultBranch": "WAW",
+        "CompanyDescription": "Firma A - Oddział Warszawa"
+      },
+      {
+        "Key": "klucz-api-firma-b",
+        "Name": "Firma B - E-commerce",
+        "IsActive": true,
+        "NexoLogin": "operator2",
+        "NexoPassword": "haslo2",
+        "DefaultWarehouse": "MG2",
+        "DefaultBranch": "KRK",
+        "CompanyDescription": "Firma B - Oddział Kraków"
+      },
+      {
+        "Key": "klucz-api-default",
+        "Name": "Klucz domyślny",
+        "IsActive": true,
+        "CompanyDescription": "Używa domyślnego operatora z sekcji Sfera"
+      }
+    ]
+  }
+}
+```
+
+### Parametry klucza API
+
+| Parametr | Wymagany | Opis |
+|----------|----------|------|
+| `Key` | **Tak** | Unikalny klucz API (używany w nagłówku Authorization) |
+| `Name` | **Tak** | Nazwa opisowa klucza dla celów identyfikacji |
+| `IsActive` | **Tak** | Czy klucz jest aktywny (`true`/`false`) |
+| `NexoLogin` | Nie | Login operatora Nexo dla tego klucza (opcjonalnie) |
+| `NexoPassword` | Nie | Hasło operatora Nexo dla tego klucza (opcjonalnie) |
+| `Database` | Nie | Nazwa bazy danych Nexo (dla scenariuszy z wieloma bazami) |
+| `DefaultWarehouse` | Nie | Domyślny symbol magazynu |
+| `DefaultBranch` | Nie | Domyślny symbol oddziału |
+| `CompanyDescription` | Nie | Opis firmy/kontekstu dla celów logowania |
+
+### Jak działa multi-tenant
+
+1. **Autentykacja**: Każde żądanie API jest autoryzowane kluczem API przekazanym w nagłówku `Authorization: Bearer {klucz}`
+
+2. **Przełączanie operatora**: Jeśli klucz API ma zdefiniowane `NexoLogin` i `NexoPassword`, system automatycznie przełącza się na tego operatora przed wykonaniem operacji
+
+3. **Izolacja danych**: Każdy operator w Nexo ma własne uprawnienia i widzi tylko dane, do których ma dostęp
+
+4. **Domyślny operator**: Jeśli klucz API nie ma zdefiniowanych danych operatora, używany jest operator z sekcji `Sfera.NexoLogin`/`Sfera.NexoPassword`
+
+### Przykład użycia
+
+```bash
+# Firma A - operator1
+curl -X POST http://localhost:5000/api/documents/sales-invoice \
+  -H "Authorization: Bearer klucz-api-firma-a" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "CustomerId": 123,
+    "Items": [...]
+  }'
+
+# Firma B - operator2
+curl -X POST http://localhost:5000/api/documents/sales-invoice \
+  -H "Authorization: Bearer klucz-api-firma-b" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "CustomerId": 456,
+    "Items": [...]
+  }'
+```
+
+### Bezpieczeństwo
+
+⚠️ **Ważne**:
+- Przechowuj klucze API w bezpiecznym miejscu (np. zmienne środowiskowe, Azure Key Vault)
+- Używaj HTTPS w produkcji
+- Regularnie rotuj klucze API
+- Nadawaj minimalne wymagane uprawnienia operatorom Nexo
+
 ## Srodowisko testowe
 
 - **API URL:** `http://mssql-insert.sys.dmservice.pl:5000/`
@@ -466,6 +563,66 @@ pozycja.Ilosc = quantity;
 // 4. Zapisz dokument
 faktura.Zapisz();
 ```
+
+## Uwagi techniczne
+
+### Walidacja stanów magazynowych dla usług
+
+API automatycznie pomija walidację stanów magazynowych dla produktów typu **usługa** (Rodzaj_Id = 1). 
+
+Oznacza to, że:
+- ✅ Usługi mogą być dodawane do dokumentów sprzedaży bez sprawdzania stanów
+- ✅ Nie pojawią się błędy typu "Insufficient stock for 'USLUGA001'"
+- ✅ Usługi są rozpoznawane po właściwości `Rodzaj_Id = 1` w tabeli Asortymenty
+
+**Przykład**: 
+```
+Produkt: DMSUSGI00081 (Usługa)
+Rodzaj_Id: 1
+Stan magazynowy: 0 (nie ma znaczenia)
+Walidacja: POMINIĘTA ✓
+```
+
+Walidacja stanów działa normalnie dla:
+- Towarów (Rodzaj_Id = 0)
+- Kompletów (Rodzaj_Id = 2)
+- Materiałów (Rodzaj_Id = 3)
+
+### Statusy dokumentów w odpowiedziach API
+
+Wszystkie odpowiedzi API zawierają pełne informacje o statusie dokumentu:
+
+```json
+{
+  "id": 12345,
+  "number": "FS/2026/01/123",
+  "statusId": 3,
+  "status": "Zrealizowano",
+  "statusSymbol": "ZREAL",
+  ...
+}
+```
+
+- `statusId` - ID numeryczne statusu
+- `status` - Nazwa statusu (czytelna dla człowieka)
+- `statusSymbol` - Symbol statusu (do porównań programistycznych)
+
+### Pomijanie uwag importowych
+
+API automatycznie pomija dodawanie uwag typu "Import ILUO: ..." dla:
+- Faktur sprzedaży (FS)
+- Faktur zakupu (FZ)
+- Paragonów (PA)
+- Korekt faktur
+- Faktur zaliczkowych
+- Faktur VAT marża
+
+Jeśli przekażesz pole `notes` w żądaniu tworzenia tych dokumentów, zostanie ono **zignorowane** i zalogowane jako informacja.
+
+Uwagi są dodawane normalnie dla:
+- Dokumentów magazynowych (WZ, PZ, RW, PW, MM)
+- Zamówień (ZK, ZD)
+- Innych typów dokumentów
 
 ## Licencja
 
