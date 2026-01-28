@@ -222,32 +222,58 @@ public class StockValidationHelper
     /// </summary>
     public bool IsService(dynamic product)
     {
-        if (product == null) return false;
+        if (product == null)
+        {
+            _logger.LogDebug("IsService: product is null, returning false");
+            return false;
+        }
         
         try
         {
             // Check Rodzaj_Id property - 1 = Service (Usluga)
             var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
-            if (rodzajId.HasValue && rodzajId.Value == 1)
+            if (rodzajId.HasValue)
             {
-                return true;
-            }
-            
-            // Alternative: check Rodzaj.Symbol if available
-            var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
-            if (rodzaj != null)
-            {
-                var symbol = DynamicPropertyHelper.GetString(rodzaj, "Symbol");
-                if (symbol == "Usluga" || symbol == "U")
+                _logger.LogDebug("IsService: Rodzaj_Id = {RodzajId}", (object)rodzajId.Value);
+                if (rodzajId.Value == 1)
                 {
                     return true;
                 }
+            }
+            else
+            {
+                _logger.LogDebug("IsService: Rodzaj_Id not found or null");
+            }
+            
+            // Alternative: check Rodzaj.Symbol if available
+            // Use DynamicPropertyHelper to safely navigate the nested property
+            try
+            {
+                var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
+                if (rodzaj != null)
+                {
+                    var symbol = DynamicPropertyHelper.GetString(rodzaj, "Symbol");
+                    _logger.LogDebug("IsService: Rodzaj.Symbol = {Symbol}", (object?)(symbol ?? "(null)"));
+                    if (symbol == "Usluga" || symbol == "U")
+                    {
+                        return true;
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("IsService: Rodzaj property not found or null");
+                }
+            }
+            catch (Exception innerEx)
+            {
+                // Log but don't fail - just continue to return false
+                _logger.LogDebug("IsService: Error accessing Rodzaj.Symbol: {Message}", (object)innerEx.Message);
             }
         }
         catch (Exception ex)
         {
             // Log exception but continue - if we can't determine, assume it's not a service (safer to validate stock)
-            _logger.LogDebug("Could not determine if product is a service: {Message}", ex.Message);
+            _logger.LogWarning("Could not determine if product is a service: {Message}", (object)ex.Message);
         }
         
         return false;
