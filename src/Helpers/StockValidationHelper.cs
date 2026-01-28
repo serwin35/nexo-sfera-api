@@ -12,6 +12,21 @@ public class StockValidationHelper
     private readonly ISferaService _sferaService;
     private readonly ILogger<StockValidationHelper> _logger;
 
+    /// <summary>
+    /// Common service name patterns for heuristic detection.
+    /// Used as a fallback when Rodzaj_Id is not available or set incorrectly.
+    /// These patterns are matched at the start of product names/symbols to minimize false positives.
+    /// </summary>
+    private static readonly string[] ServiceNamePatterns = new[]
+    {
+        "usługa", "usługi", "service",
+        "koszt przesyłki", "shipping cost", "dostawa", "delivery",
+        "obsługa", "obsługi", "handling",
+        "montaż", "instalacja", "installation",
+        "transport", "przewóz",
+        "opłata", "fee", "charge"
+    };
+
     public StockValidationHelper(ISferaService sferaService, ILogger<StockValidationHelper> logger)
     {
         _sferaService = sferaService;
@@ -286,25 +301,27 @@ public class StockValidationHelper
             }
             
             // PRIORITY 3: Use heuristics based on product name/symbol patterns
-            // Some service items might not have Rodzaj_Id set properly
+            // Fallback: When Rodzaj_Id is not available or not set correctly in the source system,
+            // we use pattern matching on product names/symbols. This is not 100% accurate and may
+            // produce false positives, but it's better than failing stock validation for obvious services.
+            // We match patterns at the start of the name to reduce false positives.
             var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "";
             var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "";
             
-            // Common service name patterns (case-insensitive)
-            var serviceNamePatterns = new[]
+            foreach (var pattern in ServiceNamePatterns)
             {
-                "usługa", "uslugi", "service",
-                "koszt przesyłki", "shipping", "dostawa", "delivery",
-                "obsługa", "handling", "obsługi",
-                "montaż", "instalacja", "installation",
-                "transport", "przewóz",
-                "opłata", "fee", "charge"
-            };
-            
-            foreach (var pattern in serviceNamePatterns)
-            {
-                if (productName.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
-                    productSymbol.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                // Check if the pattern appears at the start of name or symbol (more precise)
+                // or if it's a multi-word pattern that appears anywhere (like "koszt przesyłki")
+                bool startsWithPattern = productName.StartsWith(pattern, StringComparison.OrdinalIgnoreCase) ||
+                                        productSymbol.StartsWith(pattern, StringComparison.OrdinalIgnoreCase);
+                
+                // For longer patterns (multi-word), also check if they appear anywhere in the name
+                // This handles cases like "Opłata za koszt przesyłki i obsługi"
+                bool containsMultiWordPattern = pattern.Contains(' ') && 
+                                               (productName.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                                                productSymbol.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+                
+                if (startsWithPattern || containsMultiWordPattern)
                 {
                     _logger.LogInformation("IsService: Detected service by name/symbol pattern '{Pattern}' in '{Name}' (Symbol: {Symbol})",
                         (object)pattern, (object)productName, (object)productSymbol);
@@ -321,8 +338,19 @@ public class StockValidationHelper
         catch (Exception ex)
         {
             // Unexpected exception - log and assume not a service (safer)
-            var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "(unknown)";
-            var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "(unknown)";
+            // Try to get product info for better error messages, but don't fail if these throw too
+            string productName = "(unknown)";
+            string productSymbol = "(unknown)";
+            try
+            {
+                productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "(unknown)";
+                productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "(unknown)";
+            }
+            catch
+            {
+                // Ignore errors when trying to get product info for logging
+            }
+            
             _logger.LogWarning(ex, "IsService: Exception while checking if product '{Name}' (Symbol: {Symbol}) is a service",
                 (object)productName, (object)productSymbol);
             return false;
