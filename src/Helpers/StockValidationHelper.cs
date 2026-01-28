@@ -231,29 +231,74 @@ public class StockValidationHelper
         return total;
     }
 
-    public static bool IsService(dynamic product)
+    /// <summary>
+    /// Checks if a product is a service type.
+    /// Services don't require stock validation as they are not physical items.
+    /// In Nexo Sfera SDK:
+    /// - Rodzaj_Id = 1 means Service (Usługa)
+    /// - Rodzaj_Id = 2 means Product (Towar)
+    /// - Rodzaj_Id = 3 means Set (Komplet)
+    /// Alternative markers: GrupaTowaru = "US", TypTowaru = 2
+    /// </summary>
+    /// <param name="product">Product object to check</param>
+    /// <param name="logger">Optional logger for debugging service detection</param>
+    /// <returns>True if the product is a service, false otherwise</returns>
+    public static bool IsService(dynamic product, ILogger? logger = null)
     {
         if (product == null)
             return false;
 
         try
         {
+            var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "(unknown)";
+            var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "(unknown)";
+            var productId = DynamicPropertyHelper.GetId(product);
+
             // 1. Najpewniejsze: Rodzaj_Id
+            // In Nexo Sfera SDK:
+            // - Rodzaj_Id = 1 means Service (Usługa)
+            // - Rodzaj_Id = 2 means Product (Towar)
+            // - Rodzaj_Id = 3 means Set (Komplet)
             var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
             if (rodzajId.HasValue)
-                return rodzajId.Value == 1;
+            {
+                bool isService = rodzajId.Value == 1;
+                if (isService && logger != null)
+                {
+                    logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via Rodzaj_Id={RodzajId}", 
+                        (object)productSymbol, (object)productId, (object)rodzajId.Value);
+                }
+                return isService;
+            }
 
-            // 2. GrupaTowaru
-            if (product.GrupaTowaru != null && product.GrupaTowaru == "US")
+            // 2. GrupaTowaru - alternative check for service type
+            // Some systems use "US" to mark services
+            var grupaTowaru = DynamicPropertyHelper.GetString(product, "GrupaTowaru");
+            if (!string.IsNullOrEmpty(grupaTowaru) && grupaTowaru.Equals("US", StringComparison.OrdinalIgnoreCase))
+            {
+                if (logger != null)
+                {
+                    logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via GrupaTowaru='{GrupaTowaru}'", 
+                        (object)productSymbol, (object)productId, (object)grupaTowaru);
+                }
                 return true;
+            }
 
-            // 3. TypTowaru
-            if (product.TypTowaru != null && (int)product.TypTowaru == 2)
+            // 3. TypTowaru - another alternative marker
+            // TypTowaru == 2 indicates a service in some configurations
+            var typTowaru = DynamicPropertyHelper.GetNullableInt(product, "TypTowaru");
+            if (typTowaru.HasValue && typTowaru.Value == 2)
+            {
+                if (logger != null)
+                {
+                    logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via TypTowaru={TypTowaru}", 
+                        (object)productSymbol, (object)productId, (object)typTowaru.Value);
+                }
                 return true;
+            }
 
-            // 4. Heurystyka na nazwie/symbolu
-            var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "";
-            var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "";
+            // 4. Heurystyka na nazwie/symbolu - fallback when metadata is missing
+            // This is used as a safety net for cases where Rodzaj_Id is not set correctly
             foreach (var pattern in ServiceNamePatterns)
             {
                 if (productName.StartsWith(pattern, StringComparison.OrdinalIgnoreCase) ||
@@ -261,13 +306,32 @@ public class StockValidationHelper
                     (pattern.Contains(' ') && (productName.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
                                                productSymbol.Contains(pattern, StringComparison.OrdinalIgnoreCase))))
                 {
+                    if (logger != null)
+                    {
+                        logger.LogDebug("Product '{Symbol}' (ID: {Id}, Name: '{Name}') detected as service via name/symbol pattern '{Pattern}'", 
+                            (object)productSymbol, (object)productId, (object)productName, (object)pattern);
+                    }
                     return true;
                 }
             }
+            
+            // Not a service - log for debugging
+            if (logger != null)
+            {
+                var rodzajIdStr = rodzajId.HasValue ? rodzajId.Value.ToString() : "(null)";
+                var typTowaruStr = typTowaru.HasValue ? typTowaru.Value.ToString() : "(null)";
+                logger.LogDebug("Product '{Symbol}' (ID: {Id}) is NOT a service (Rodzaj_Id={RodzajId}, GrupaTowaru={GrupaTowaru}, TypTowaru={TypTowaru})", 
+                    (object)productSymbol, (object)productId, (object)rodzajIdStr, (object)(grupaTowaru ?? "(null)"), (object)typTowaruStr);
+            }
         }
-        catch
+        catch (Exception ex)
         {
             // Ignoruj wyjątki, traktuj jako nie-usługa
+            // It's safer to require stock validation for unknown types
+            if (logger != null)
+            {
+                logger.LogWarning(ex, "Exception while checking if product is a service - treating as non-service");
+            }
         }
         return false;
     }
@@ -470,9 +534,10 @@ public class StockValidationHelper
             }
 
             // Skip stock validation for services
-            if (IsService(product))
+            if (IsService(product, _logger))
             {
-                _logger.LogInformation("Skipping stock validation for service product '{Symbol}' (ID: {Id})", kvp.Value.Symbol, kvp.Key);
+                _logger.LogInformation("Skipping stock validation for service product '{Symbol}' (ID: {Id}, Name: '{Name}')", 
+                    kvp.Value.Symbol ?? "(null)", kvp.Key, kvp.Value.Name ?? "(null)");
                 var serviceResult = new StockValidationItemResult
                 {
                     HasSufficientStock = true, // Services always have "stock"
@@ -527,7 +592,7 @@ public class StockValidationHelper
         if (!lookup.Found) return false;
 
         // Services always have sufficient "stock"
-        if (IsService(lookup.Product))
+        if (IsService(lookup.Product, _logger))
         {
             _logger.LogInformation("Skipping stock check for service product ID {Id} - services always pass validation", productId);
             return true;
@@ -547,7 +612,7 @@ public class StockValidationHelper
         if (!lookup.Found) return false;
 
         // Services always have sufficient "stock"
-        if (IsService(lookup.Product))
+        if (IsService(lookup.Product, _logger))
         {
             _logger.LogInformation("Skipping stock check for service product '{Symbol}' - services always pass validation", productSymbol);
             return true;
