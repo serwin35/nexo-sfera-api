@@ -237,8 +237,46 @@ public class StockValidationHelper
     }
 
     /// <summary>
+    /// Checks if a product is a service type (Rodzaj_Id = 1).
+    /// Services don't require stock validation as they are not physical items.
+    /// </summary>
+    public bool IsService(dynamic product)
+    {
+        if (product == null) return false;
+        
+        try
+        {
+            // Check Rodzaj_Id property - 1 = Service (Usluga)
+            var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
+            if (rodzajId.HasValue && rodzajId.Value == 1)
+            {
+                return true;
+            }
+            
+            // Alternative: check Rodzaj.Symbol if available
+            var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
+            if (rodzaj != null)
+            {
+                var symbol = DynamicPropertyHelper.GetString(rodzaj, "Symbol");
+                if (symbol == "Usluga" || symbol == "U")
+                {
+                    return true;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            // Log exception but continue - if we can't determine, assume it's not a service (safer to validate stock)
+            _logger.LogDebug("Could not determine if product is a service: {Message}", ex.Message);
+        }
+        
+        return false;
+    }
+
+    /// <summary>
     /// Validates stock availability for a list of items.
     /// Used before creating outgoing documents (WZ, RW, MM, FS, Paragon).
+    /// Services (Rodzaj_Id = 1) are automatically skipped as they don't require stock.
     /// </summary>
     /// <typeparam name="T">Item type with ProductId, ProductSymbol, ProductEan, Quantity</typeparam>
     public StockValidationResult ValidateStock<T>(
@@ -252,7 +290,7 @@ public class StockValidationHelper
         var result = new StockValidationResult { AllItemsAvailable = true };
 
         // Group items by product to aggregate quantities
-        var itemsByProduct = new Dictionary<int, (decimal Quantity, string? Symbol, string? Name)>();
+        var itemsByProduct = new Dictionary<int, (decimal Quantity, string? Symbol, string? Name, dynamic? Product)>();
 
         foreach (var item in items)
         {
@@ -276,19 +314,19 @@ public class StockValidationHelper
             if (itemsByProduct.ContainsKey(lookup.ProductId))
             {
                 var existing = itemsByProduct[lookup.ProductId];
-                itemsByProduct[lookup.ProductId] = (existing.Quantity + getQuantity(item), existing.Symbol, existing.Name);
+                itemsByProduct[lookup.ProductId] = (existing.Quantity + getQuantity(item), existing.Symbol, existing.Name, existing.Product);
             }
             else
             {
-                itemsByProduct[lookup.ProductId] = (getQuantity(item), lookup.ProductSymbol, lookup.ProductName);
+                itemsByProduct[lookup.ProductId] = (getQuantity(item), lookup.ProductSymbol, lookup.ProductName, lookup.Product);
             }
         }
 
         // Now validate stock for aggregated quantities
         foreach (var kvp in itemsByProduct)
         {
-            var productLookup = FindProduct(kvp.Key, null, null);
-            if (!productLookup.Found)
+            var product = kvp.Value.Product;
+            if (product == null)
             {
                 // Shouldn't happen, but handle it
                 continue;
@@ -340,6 +378,7 @@ public class StockValidationHelper
 
     /// <summary>
     /// Simple stock check for a single product.
+    /// Automatically returns true for service items (Rodzaj_Id = 1).
     /// </summary>
     public bool HasSufficientStock(int productId, string warehouseSymbol, decimal requiredQuantity)
     {
@@ -359,6 +398,7 @@ public class StockValidationHelper
 
     /// <summary>
     /// Simple stock check for a single product by symbol.
+    /// Automatically returns true for service items (Rodzaj_Id = 1).
     /// </summary>
     public bool HasSufficientStockBySymbol(string productSymbol, string warehouseSymbol, decimal requiredQuantity)
     {
