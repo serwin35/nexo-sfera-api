@@ -2985,14 +2985,21 @@ public class DocumentsController : ControllerBase
                         ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
                     _logger.LogInformation("[PA] Current date on dane before ZarezerwujNumer: {Date}", (object)(currentDate?.ToString("yyyy-MM-dd") ?? "(null)"));
                 }
-                catch { }
+                catch (Exception verifyEx)
+                {
+                    _logger.LogDebug("[PA] Date verification before ZarezerwujNumer failed: {Msg}", verifyEx.Message);
+                }
 
                 // CRITICAL: Reserve number AFTER setting dates - number depends on date
                 paragon.ZarezerwujNumer();
                 _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
 
                 // IMPORTANT: Verify and re-set date AFTER ZarezerwujNumer if needed
-                // Some SDK operations may reset the date to current date during number reservation
+                // WARNING: Some SDK operations may reset the date to current date during number reservation.
+                // If this happens, restoring the historical date may create a mismatch between the document
+                // number (which may include year/month from current date) and the actual document date.
+                // This is a known limitation when creating historical receipts. If the number format includes
+                // the date, the user may need to manually adjust the document after creation.
                 if (request.IssueDate.HasValue)
                 {
                     try
