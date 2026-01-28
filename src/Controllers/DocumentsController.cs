@@ -2953,6 +2953,24 @@ public class DocumentsController : ControllerBase
                         dateSet = true;
                     }
 
+                    // CRITICAL: Try DataWprowadzenia - this controls document entry date and numbering
+                    if (DynamicPropertyHelper.TrySetProperty(dane, "DataWprowadzenia", request.IssueDate.Value))
+                    {
+                        _logger.LogInformation("[PA] Set dane.DataWprowadzenia successfully");
+                        dateSet = true;
+                    }
+
+                    // Try simple "Data" property on paragon object (may be used for receipts)
+                    try
+                    {
+                        if (DynamicPropertyHelper.TrySetProperty(paragon, "Data", request.IssueDate.Value))
+                        {
+                            _logger.LogInformation("[PA] Set paragon.Data successfully");
+                            dateSet = true;
+                        }
+                    }
+                    catch (Exception ex) { _logger.LogDebug("[PA] paragon.Data failed: {Msg}", ex.Message); }
+
                     if (!dateSet)
                     {
                         _logger.LogWarning("[PA] Could not set any date property!");
@@ -2967,11 +2985,55 @@ public class DocumentsController : ControllerBase
                         ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
                     _logger.LogInformation("[PA] Current date on dane before ZarezerwujNumer: {Date}", (object)(currentDate?.ToString("yyyy-MM-dd") ?? "(null)"));
                 }
-                catch { }
+                catch (Exception verifyEx)
+                {
+                    _logger.LogDebug("[PA] Date verification before ZarezerwujNumer failed: {Msg}", verifyEx.Message);
+                }
 
                 // CRITICAL: Reserve number AFTER setting dates - number depends on date
                 paragon.ZarezerwujNumer();
                 _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
+
+                // IMPORTANT: Verify and re-set date AFTER ZarezerwujNumer if needed
+                // WARNING: Some SDK operations may reset the date to current date during number reservation.
+                // If this happens, restoring the historical date may create a mismatch between the document
+                // number (which may include year/month from current date) and the actual document date.
+                // This is a known limitation when creating historical receipts. If the number format includes
+                // the date, the user may need to manually adjust the document after creation.
+                if (request.IssueDate.HasValue)
+                {
+                    try
+                    {
+                        var dateAfterReserve = DynamicPropertyHelper.GetDateTime(dane, "DataWydaniaWystawienia")
+                            ?? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia")
+                            ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
+                        _logger.LogInformation("[PA] Date on dane AFTER ZarezerwujNumer: {Date}", (object)(dateAfterReserve?.ToString("yyyy-MM-dd") ?? "(null)"));
+
+                        // If date was reset to current date, try to set it again
+                        if (dateAfterReserve.HasValue && dateAfterReserve.Value.Date != request.IssueDate.Value.Date)
+                        {
+                            _logger.LogWarning("[PA] Date changed from {Requested} to {Actual} after ZarezerwujNumer! Attempting to restore...",
+                                (object)request.IssueDate.Value.ToString("yyyy-MM-dd"), (object)dateAfterReserve.Value.ToString("yyyy-MM-dd"));
+
+                            // Re-set all date properties
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value);
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataDokumentu", request.IssueDate.Value);
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWprowadzenia", request.IssueDate.Value);
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.IssueDate.Value);
+
+                            // Verify after re-setting
+                            var dateAfterRestore = DynamicPropertyHelper.GetDateTime(dane, "DataWydaniaWystawienia")
+                                ?? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia")
+                                ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
+                            _logger.LogInformation("[PA] Date after restore attempt: {Date}", (object)(dateAfterRestore?.ToString("yyyy-MM-dd") ?? "(null)"));
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug("[PA] Date verification/restoration after ZarezerwujNumer failed: {Msg}", ex.Message);
+                    }
+                }
 
                 // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
                 if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("Receipt"))
