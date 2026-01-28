@@ -2989,6 +2989,43 @@ public class DocumentsController : ControllerBase
                 // Add items using product ID
                 AddReceiptItemsById(paragon, request.Items);
 
+                // CRITICAL: Recalculate document totals after adding items (required by SDK)
+                _logger.LogInformation("[PA] Calling Przelicz() to recalculate document totals...");
+                try
+                {
+                    paragon.Przelicz();
+                    _logger.LogInformation("[PA] Przelicz() completed successfully");
+                }
+                catch (Exception przeliczEx)
+                {
+                    _logger.LogWarning("[PA] Przelicz() failed: {Msg}", przeliczEx.Message);
+                }
+
+                // CRITICAL: Add default payment for receipt (required by SDK for receipts)
+                _logger.LogInformation("[PA] Adding default immediate payment...");
+                try
+                {
+                    var platnosci = DynamicPropertyHelper.GetProperty(paragon, "Platnosci");
+                    if (platnosci != null)
+                    {
+                        // Try DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() from SDK examples
+                        var methodInfo = platnosci.GetType().GetMethod("DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu");
+                        if (methodInfo != null)
+                        {
+                            methodInfo.Invoke(platnosci, null);
+                            _logger.LogInformation("[PA] Default payment added via DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()");
+                        }
+                        else
+                        {
+                            _logger.LogDebug("[PA] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() not found, trying alternative methods");
+                        }
+                    }
+                }
+                catch (Exception platEx)
+                {
+                    _logger.LogWarning("[PA] Could not add default payment: {Msg}", platEx.Message);
+                }
+
                 // Handle historical documents - change status to avoid TworzDokumentyAutomatyczne issues
                 bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                 if (isHistoricalDoc)
