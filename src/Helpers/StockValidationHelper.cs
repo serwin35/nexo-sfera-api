@@ -280,7 +280,7 @@ public class StockValidationHelper
     /// - Rodzaj_Id = 2 means Product (Towar)
     /// - Rodzaj_Id = 3 means Set (Komplet)
     /// </summary>
-    public bool IsService__old-methods(dynamic product)
+    public bool IsService__old_methods(dynamic product)
     {
         if (product == null)
         {
