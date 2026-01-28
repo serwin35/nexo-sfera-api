@@ -5184,6 +5184,7 @@ public class DocumentsController : ControllerBase
                 StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
                            DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
+                StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
                 IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
                 SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
                 DueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci"),
@@ -5244,6 +5245,7 @@ public class DocumentsController : ControllerBase
                 StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
                            DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
+                StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
                 IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
                 ReceiptDate = DynamicPropertyHelper.GetDateTime(dokument, "DataPrzyjecia"),
                 DueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci"),
@@ -5304,6 +5306,7 @@ public class DocumentsController : ControllerBase
                 StatusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
                            DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
+                StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
                 IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
                 Deadline = DynamicPropertyHelper.GetDateTime(dokument, "TerminRealizacji"),
                 DeliveryDate = DynamicPropertyHelper.GetDateTime(dokument, "DataDostawy"),
