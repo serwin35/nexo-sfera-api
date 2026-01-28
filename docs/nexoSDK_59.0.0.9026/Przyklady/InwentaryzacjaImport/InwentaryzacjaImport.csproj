@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <EnableDefaultPageItems>false</EnableDefaultPageItems>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ProjectGuid>{3E7342FE-0B0E-4F8A-8EA6-531DF889DE4A}</ProjectGuid>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>InwentaryzacjaImport</RootNamespace>
+    <AssemblyName>InwentaryzacjaImport</AssemblyName>
+    <nexoSdkBinPath>..\..\Bin\</nexoSdkBinPath>
+    <nexoSdkNarzedziaPath>..\..\Narzedzia\</nexoSdkNarzedziaPath>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>full</DebugType>
+    <OutputPath>bin\Debug\</OutputPath>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <OutputPath>bin\Release\</OutputPath>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.API.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DostawcaRozszerzenia.cs" />
+    <Compile Include="FunkcjaParseraInwentaryzatoraCSV.cs" />
+    <Compile Include="FunkcjaParseraInwentaryzatoraNovitus.cs" />
+    <Compile Include="FunkcjaParseraInwentaryzatoraXLSX.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="dane\Spis.csv" />
+    <None Include="InwentaryzacjaImport.plugin">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="Czytaj.txt" />
+    <Content Include="Konfiguracja.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="DocumentFormat.OpenXml" Version="2.20.0" />
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="if exist &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; (call &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; /PlikKonfiguracji:Konfiguracja.xml /KatalogDocelowy:&quot;$(TargetDir)\&quot;) else (echo Nie można zbudować pakietu i instalatora, ponieważ nie istnieje plik: &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot;)" />
+  </Target>
+</Project>

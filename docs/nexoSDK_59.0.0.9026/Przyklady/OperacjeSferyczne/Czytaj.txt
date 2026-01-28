@@ -1,0 +1,16 @@
+﻿Przykłady rozszerzeń dla InsERT nexo.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2023
+
+Po przystosowaniu rozszerzenia do własnych potrzeb należy:
+
+ 1. Zmienić dane dostawcy rozszerzeń na swoje własne.
+ 2. Zmodyfikować informacje w 'AssemblyInfo.cs'
+ 3. Wygenerować nowe GUID-y funkcji, żeby się przez przypadek nie powieliły.
+
+Zawiera przykładową implementację menu sferycznego. Rozszerzenie dodaje:
+- w module pracowników operacje do eksportu/importu pracowników. Zakres przenoszonych danych, to podstawowe dane osobowe, adresy oraz kontakty.
+- w modułach dokumentów operację zbiorczej zmiany pól własnych (typu tekst, liczba rzeczywista, liczba całkowita lub wartość logiczna)
+- na formatkach dokumentów w menu "Operacje" operację usunięcia wszystkich pozycji
+- na liście asortymentu w menu "Zbiorczo | Opis" operację zbiorczej zmiany strony WWW

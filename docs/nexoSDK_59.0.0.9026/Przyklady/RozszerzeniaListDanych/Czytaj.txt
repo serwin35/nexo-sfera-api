@@ -1,0 +1,20 @@
+﻿Przykłady rozszerzeń dla InsERT nexo.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2023
+
+Przed próbą zbudowania przykładu należy podmienić ścieżkę do SDK w plikach 'RozszerzeniaListDanych.csproj' oraz 'Konfiguracja.xml'. W tym celu należy:
+
+ 1. Otworzyć plik w dowolnym edytorze tekstu, np. Notatnik.
+ 2. Podmienić każde wystąpienie ścieżki 'C:\nexoSDK' na prawidłową ścieżkę do SDK.
+ 3. Zapisać zmiany.
+
+
+Dodatkowo, po przystosowaniu rozszerzenia do własnych potrzeb należy:
+
+ 1. Zmienić dane dostawcy rozszerzeń na swoje własne.
+ 2. Zmodyfikować informacje w 'AssemblyInfo.cs'
+ 3. Wygenerować nowe GUID-y funkcji, żeby się przez przypadek nie powieliły.
+
+
+Zawiera implementację własnych filtrów danych na listach asortymentu, inwentaryzacji, spisów inwentaryzacyjnych oraz wybranych typów dokumentów.

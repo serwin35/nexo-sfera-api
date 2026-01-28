@@ -1,0 +1,245 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="ZbiorczeNaliczenieDokumentow_2021"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    elementFormDefault="qualified"
+    xmlns="http://schemas.insert.com.pl/2021/dokumentyDoKsiegowania/logistyka"
+    targetNamespace="http://schemas.insert.com.pl/2021/dokumentyDoKsiegowania/logistyka"
+    xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+	<xs:annotation>
+		<xs:documentation>DokumentKorektaKosztow_2018</xs:documentation>
+	</xs:annotation>
+
+	<xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+	<xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+
+	<xs:complexType name="TNaglowekZbiorczegoNaliczeniaDokumentow">
+		<xs:annotation>
+			<xs:documentation></xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Zbiór pól własnych korekty kosztów magazynowych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Konfiguracja" type="ddk:TGuid" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator konfiguracji dokumentu zbiorczego naliczenia zwrotów (stała).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Numer" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Urzadzenie" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Nazwa urządzenia.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerUnikatowyUrzadzenia" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer unikatowy urządzenia.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataPoczatkowa" type="xs:dateTime" use="required">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataKoncowa" type="xs:dateTime" use="required">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataWystawienia" type="xs:dateTime" use="required">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataPodatkowa" type="xs:dateTime" use="required">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="MiejsceWystawienia" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Oddzial" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Oddział.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="ddk:TGuid" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Netto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Brutto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="VAT" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ParagonyNetto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość netto paragonów.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ParagonyBrutto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto paragonów.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ParagonyVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT paragonów.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="FakturyNetto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość netto faktur.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="FakturyBrutto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto faktur.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="FakturyVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT faktur.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="AutomatyczniePrzeliczajVAT" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TypDokumentuJPK" type="xs:unsignedByte" use="optional">
+			<xs:annotation>
+				<xs:documentation>Typ dokumentu na potrzeby JPK_V7</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaHandlowa" type="ddk:TGuid" use="optional">
+			<xs:annotation>
+				<xs:documentation></xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KategoriaDokumentu" type="ddk:TPositiveInt" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator kategorii dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Uwagi" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Uwagi z dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPozycjaZbiorczegoNaliczeniaDokumentow">
+		<xs:annotation>
+			<xs:documentation></xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="Index" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Indeks pozycji dokumentu na potrzeby opisu księgowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="StawkaVAT" type="ddk:TGuid" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator stawki VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Paragon" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Czy jest pozycją z paragonów?</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Faktura" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Czy jest pozycją z faktury?</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Netto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto w danej stawce VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Brutto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto w danej stawce VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="VAT" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT w danej stawce VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TZbiorczeNaliczenieDokumentow">
+		<xs:annotation>
+			<xs:documentation></xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Wersja" type="xs:string" nillable="false" fixed="2021">
+				<xs:annotation>
+					<xs:documentation>Wersja  schematu.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Naglowek" type="TNaglowekZbiorczegoNaliczeniaDokumentow" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Nagłówek dokumentu.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Pozycje" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje dokumentu.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Pozycja" type="TPozycjaZbiorczegoNaliczeniaDokumentow" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja dokumentu.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="UjeteDokumenty" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Ujęte dokumenty.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="UjetyDokument" type="ddk:TGuid" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Ujęty dokument do księgowania (raport dobowy lub zwrot).</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:element name="Dokument" type="TZbiorczeNaliczenieDokumentow">
+		<xs:annotation>
+			<xs:documentation>Główny węzeł opakowujący dokument korekty kosztów magazynowych.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+</xs:schema>

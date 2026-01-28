@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  id="Dane_DaneAsortymentow"
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Dane o asortymentach.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TGrupaAsortymentu">
+    <xs:annotation>
+      <xs:documentation>Obiekt grupy asortymentu.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla grupy asortymentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy grupy asortymentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Nazwa grupy asortymentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TGrupyAsortymentow">
+    <xs:annotation>
+      <xs:documentation>Kolekcja grup asortymentów.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="GrupaAsortymentu" type="TGrupaAsortymentu" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Grupa asortymentu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TCechaAsortymentu">
+    <xs:annotation>
+      <xs:documentation>Obiekt cechy asortymentu.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla cechy asortymentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy cechy asortymentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Nazwa" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Nazwa cechy asortymentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TCechyAsortymentow">
+    <xs:annotation>
+      <xs:documentation>Kolekcja cech asortymentów.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="CechaAsortymentu" type="TCechaAsortymentu" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Cecha asortymentu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

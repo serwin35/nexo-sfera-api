@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  id="DaneBR_OpisyKsiegowePart"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+  <xs:annotation>
+    <xs:documentation>Dane opisów księgowych biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+  
+  <!-- xsd z definiowanymi typami danych -->
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  
+  <!-- Dokument -->
+  <xs:complexType name="TOpisKsiegowyElementuDokumentuBR">
+    <xs:annotation>
+      <xs:documentation>Obiekt opisu księgowego elementu dokumentu biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="WartosciKsiegowychSlownikowUzytkownika" type="TWartosciKsiegowychSlownikowUzytkownikaBR" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja wartości księgowych słowników użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy opisu księgowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla opisu księgowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Element" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Opisywany element dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Indeks1" type="xs:int" use="optional">
+      <xs:annotation>
+        <xs:documentation>Indeks na potrzeby opisywanych pozycji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KategoriaKsiegowaId" type="ddk2012:TGuid" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator kategorii księgowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Opis" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Opis tekstowy w opisie księgowym.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypOdliczenia" use="optional" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Rodzaj odliczenia w opisie księgowym.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="RodzajZakupu" use="optional" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Rodzaj zakupu w opisie księgowym.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TransakcjaVATID" use="optional" type="xs:int">
+      <xs:annotation>
+        <xs:documentation>Identyfikator transakcji VAT w opisie księgowym.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StawkaRyczaltowaID" use="optional" type="ddk2012:TGuid">
+      <xs:annotation>
+        <xs:documentation>Identyfikator stawki ryczałtowej w opisie księgowym.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="CelZakupu" use="optional" type="xs:unsignedByte">
+      <xs:annotation>
+        <xs:documentation>Cel zakupu w opisie księgowym.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TOpisKsiegowyBR">
+    <xs:annotation>
+      <xs:documentation>Opis księgowy biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="OpisKsiegowyElementuDokumentu" type="TOpisKsiegowyElementuDokumentuBR" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Opis księgowy elementu dokumentu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="WersjaDDK" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Wersja dokumentu do dekretacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WersjaOpisu" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Wersja opisu księgowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DokumentDoKsiegowaniaBId" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator dokumentu do dekretacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TOpisyKsiegoweBR">
+    <xs:annotation>
+      <xs:documentation>Kolekcja opisów księgowych biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="OpisKsiegowy" type="TOpisKsiegowyBR" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Opis księgowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TWartosciKsiegowychSlownikowUzytkownikaBR">
+    <xs:annotation>
+      <xs:documentation>Kolekcja wartości księgowych słowników użytkownika biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wartosc" type="ddk2012:TGuid" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Wartość księgowego słownika użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

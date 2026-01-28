@@ -1,0 +1,213 @@
+﻿<Window 
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:viewModels="clr-namespace:PrzepisywaniePowiazanWiadomosci.ViewModels"
+        xmlns:converters="clr-namespace:PrzepisywaniePowiazanWiadomosci.Converters"
+        xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
+        mc:Ignorable="d"
+        Title="Przepisywanie powiązań wiadomości pocztowych" Height="800" Width="700"
+        WindowStartupLocation="CenterScreen"
+        Background="#eeeeee">
+    <Window.DataContext>
+        <viewModels:MainViewModel />
+    </Window.DataContext>
+
+    <i:Interaction.Triggers>
+        <i:EventTrigger EventName="Closing">
+            <i:InvokeCommandAction Command="{Binding ZamykanieOknaCommand}"/>
+        </i:EventTrigger>
+    </i:Interaction.Triggers>
+
+    <Window.Resources>
+        <converters:NegationBooleanConverter x:Key="NegationBooleanConverter"/>
+        <converters:MultiCommandParametersConverter x:Key="MultiCommandParametersConverter"/>
+        <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+        <converters:ReversedBoolToVisibilityConverter x:Key="ReversedBoolToVisibilityConverter"/>
+        <converters:LogicalAndConverter x:Key="LogicalAndConverter"/>
+
+        <Style BasedOn="{StaticResource {x:Type Label}}" TargetType="Label" x:Key="LabelHeader">
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Foreground" Value="#1198bd"/>
+        </Style>
+    </Window.Resources>
+
+    <Window.InputBindings>
+        <KeyBinding Command="{Binding AutouzupelnianieCommand}" Key="F1" CommandParameter="{Binding ElementName=NexoHasloPasswordBox}"/>
+        <KeyBinding Command="{Binding WyczyscAutouzupelnianieCommand}" Key="F2" CommandParameter="{Binding ElementName=NexoHasloPasswordBox}"/>
+    </Window.InputBindings>
+
+    <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="40"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Label Grid.Row="0" Grid.Column="0" Content="Logowanie do Sfery" Style="{StaticResource LabelHeader}"/>
+
+        <Label Grid.Row="1" Grid.Column="0" Content="Login:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="3"/>
+        <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding Login}" Margin="3" 
+                 IsEnabled="{Binding PolaczonoZeSfera, Converter={StaticResource NegationBooleanConverter}}"/>
+
+        <Label Grid.Row="2" Grid.Column="0" Content="Hasło:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="3"/>
+        <PasswordBox Grid.Row="2" Grid.Column="1" Margin="3" Name="NexoHasloPasswordBox"
+                     IsEnabled="{Binding PolaczonoZeSfera, Converter={StaticResource NegationBooleanConverter}}"/>
+
+        <Label Grid.Row="3" Grid.Column="0" Content="Serwer SQL:" Margin="3"/>
+        <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding Serwer}" Margin="3"
+                 IsEnabled="{Binding PolaczonoZeSfera, Converter={StaticResource NegationBooleanConverter}}"/>
+
+        <Label Grid.Row="4" Grid.Column="0"  Content="Baza SQL:" Margin="3"/>
+        <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding Baza}" Margin="3"
+                 IsEnabled="{Binding PolaczonoZeSfera, Converter={StaticResource NegationBooleanConverter}}"/>
+
+        <CheckBox Grid.Row="5" Grid.Column="0" Content="Autentykacja Windows" Margin="5"
+                  IsChecked="{Binding AutentykacjaWindows}"
+                  IsEnabled="{Binding PolaczonoZeSfera, Converter={StaticResource NegationBooleanConverter}}"/>
+
+        <Label Grid.Row="6" Grid.Column="0" Content="Nazwa użytkownika serwera SQL:" Margin="3"/>
+        <TextBox Grid.Row="6" Grid.Column="1" Margin="3"               
+                 Text="{Binding NazwaUzytkownikaSerwera}">
+            <TextBox.IsEnabled>
+                <MultiBinding Converter="{StaticResource LogicalAndConverter}">
+                    <Binding Path="AutentykacjaWindows" Converter="{StaticResource NegationBooleanConverter}"/>
+                    <Binding Path="PolaczonoZeSfera" Converter="{StaticResource NegationBooleanConverter}"/>
+                </MultiBinding>
+            </TextBox.IsEnabled>
+        </TextBox>
+
+        <Label Grid.Row="7" Grid.Column="0" Content="Hasło użytkownika serwera SQL:" Margin="3"/>
+        <PasswordBox Grid.Row="7" Grid.Column="1" Margin="3" Name="HasloSerwerPasswordBox">
+            <PasswordBox.IsEnabled>
+                <MultiBinding Converter="{StaticResource LogicalAndConverter}">
+                    <Binding Path="AutentykacjaWindows" Converter="{StaticResource NegationBooleanConverter}"/>
+                    <Binding Path="PolaczonoZeSfera" Converter="{StaticResource NegationBooleanConverter}"/>
+                </MultiBinding>
+            </PasswordBox.IsEnabled>
+        </PasswordBox>
+
+        <Label Grid.Row="8" Grid.Column="0" Content="Konta pocztowe" Style="{StaticResource LabelHeader}"/>
+
+        <Button Grid.Row="9" Grid.ColumnSpan="3" Content="Zaloguj się i pobierz konta pocztowe"
+                MinWidth="100" HorizontalAlignment="Left" Margin="0 10 10 10"
+                Command="{Binding UruchomSfereIPobierzKontaPocztoweCommand}"
+                Visibility="{Binding PolaczonoZeSfera, Converter={StaticResource ReversedBoolToVisibilityConverter}}">
+            <Button.CommandParameter>
+                <MultiBinding Converter="{StaticResource MultiCommandParametersConverter}">
+                    <Binding ElementName="NexoHasloPasswordBox"/>
+                    <Binding ElementName="HasloSerwerPasswordBox"/>
+                </MultiBinding>
+            </Button.CommandParameter>
+        </Button>
+
+        <Label Grid.Row="10" Grid.Column="0" Content="Konto źródłowe:" Margin="3"/>
+        <ComboBox Grid.Row="10" Grid.Column="1" Margin="3"
+                  ItemsSource="{Binding Path=KontaPocztowe}"
+                  DisplayMemberPath="NazwaRozszerzona"
+                  SelectedValuePath="NazwaRozszerzona"
+                  SelectedItem="{Binding Path=KontoZrodlowe}">
+            <ComboBox.IsEnabled>
+                <MultiBinding Converter="{StaticResource LogicalAndConverter}">
+                    <Binding Path="TrwaPrzepisywaniePowiazan" Converter="{StaticResource NegationBooleanConverter}"/>
+                    <Binding Path="PolaczonoZeSfera"/>
+                </MultiBinding>
+            </ComboBox.IsEnabled>
+        </ComboBox>
+
+        <Label Grid.Row="11" Grid.Column="0" Content="Konto docelowe:" Margin="3"/>
+        <ComboBox Grid.Row="11" Grid.Column="1" Margin="3"
+                  ItemsSource="{Binding Path=KontaPocztowe}"
+                  DisplayMemberPath="NazwaRozszerzona"
+                  SelectedValuePath="NazwaRozszerzona"
+                  SelectedItem="{Binding Path=KontoDocelowe}">
+            <ComboBox.IsEnabled>
+                <MultiBinding Converter="{StaticResource LogicalAndConverter}">
+                    <Binding Path="TrwaPrzepisywaniePowiazan" Converter="{StaticResource NegationBooleanConverter}"/>
+                    <Binding Path="PolaczonoZeSfera"/>
+                </MultiBinding>
+            </ComboBox.IsEnabled>
+        </ComboBox>
+
+        <Button Grid.Row="12" Grid.ColumnSpan="3" Content="Przepisz powiązania wiadomości pocztowych"
+                MinWidth="100" HorizontalAlignment="Left" Margin="0 10 10 10"
+                Command="{Binding PrzepiszPowiazaniaWiadomosciPocztowychCommand}">
+            <Button.IsEnabled>
+                <MultiBinding Converter="{StaticResource LogicalAndConverter}">
+                    <Binding Path="TrwaPrzepisywaniePowiazan" Converter="{StaticResource NegationBooleanConverter}"/>
+                    <Binding Path="PolaczonoZeSfera"/>
+                </MultiBinding>
+            </Button.IsEnabled>
+        </Button>
+
+        <Label Grid.Row="13" Grid.ColumnSpan="3" Content="Wiadomości, dla których przepisano powiązania:" Margin="3"/>
+
+        <ItemsControl Grid.Row="14" Grid.ColumnSpan="3" x:Name="WiadomoscPocztoweItems" VirtualizingStackPanel.IsVirtualizing="True"
+                      Grid.IsSharedSizeScope="True"
+                      Margin="5" ScrollViewer.CanContentScroll="True" ItemsSource="{Binding Path=PrzetworzoneWiadomosciPocztowe}"
+                      Background="#ffffff">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+
+                    <DockPanel Height="30" HorizontalAlignment="Stretch">
+
+                        <DockPanel.Resources>
+                            <SolidColorBrush x:Key="Brush" Color="Silver"/>
+                        </DockPanel.Resources>
+
+                        <Border DockPanel.Dock="Right" BorderBrush="{StaticResource Brush}" BorderThickness="1 0 1 1">
+                            <Button Content="Wyświetl wiadomość" Margin="5"
+                                Command="{Binding ElementName=WiadomoscPocztoweItems, Path=DataContext.PokazWiadomoscPocztowaCommand}"
+                                CommandParameter="{Binding}"/>
+                        </Border>
+                        <Border DockPanel.Dock="Left" BorderBrush="{StaticResource Brush}" BorderThickness="1 0 0 1">
+                            <TextBlock Text="{Binding Path=Temat}" Margin="5"/>
+                        </Border>
+                    </DockPanel>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <VirtualizingStackPanel />
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.Template>
+                <ControlTemplate>
+                    <Border BorderThickness="{TemplateBinding Border.BorderThickness}" Padding="{TemplateBinding Control.Padding}"
+                            BorderBrush="{TemplateBinding Border.BorderBrush}" Background="{TemplateBinding Panel.Background}"
+                            SnapsToDevicePixels="True">
+                        <ScrollViewer Padding="{TemplateBinding Control.Padding}" Focusable="False">
+                            <ItemsPresenter SnapsToDevicePixels="{TemplateBinding UIElement.SnapsToDevicePixels}" />
+                        </ScrollViewer>
+                    </Border>
+                </ControlTemplate>
+            </ItemsControl.Template>
+        </ItemsControl>
+
+        <Grid Grid.Row="15" Grid.ColumnSpan="3" Margin="5">
+            <ProgressBar Value="{Binding ProgresPrzepisywaniaPowiazan}" IsIndeterminate="{Binding TrwaPrzepisywaniePowiazan}"/>
+            <TextBlock Text="Trwa przepisywanie powiązań wiadomości pocztowych..." HorizontalAlignment="Center" VerticalAlignment="Center"
+                       Visibility="{Binding TrwaPrzepisywaniePowiazan, Converter={StaticResource BoolToVisibilityConverter}}"/>
+        </Grid>
+
+    </Grid>
+</Window>

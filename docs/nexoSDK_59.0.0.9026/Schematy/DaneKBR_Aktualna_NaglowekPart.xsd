@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" id="Dane">
+  <xs:annotation>
+    <xs:documentation>Dane nagłówka dokumentu do dekretacji.</xs:documentation>
+  </xs:annotation>
+
+  <!-- TODO ustalić wymagalność pól -->
+  <!-- xsd z definiowanymi typami danych -->
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <!-- Nagłówek dokumentu do księgowania -->
+  <xs:complexType name="TNaglowek">
+    <xs:annotation>
+      <xs:documentation>Obiekt nagłówka dokumentu do dekretacji.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Pozycje" type="ddk2012:TGuid">
+        <xs:annotation>
+          <xs:documentation>Identyfikatory dokumentów do dekretacji będących pozycjami danego dokumentu do dekretacji (wykorzystywane w raportach kasowych i wyciągach bankowych).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Typ" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ dokumentu do dekretacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Data" type="xs:date" use="required">
+      <xs:annotation>
+        <xs:documentation>Data dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Wartosc" type="xs:decimal" use="optional">
+      <xs:annotation>
+        <xs:documentation>Wartość dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NumerDokumentu" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Numer dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Wersja" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Wersja schematu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DokumentDoKsiegowaniaId" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="AdresId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator adresu podmiotu na dokumencie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="PodmiotHistoriaId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator podmiotu na dokumencie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WalutaId" type="xs:IDREF" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator waluty dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WalutaBId" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator waluty dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WersjaOpisu" type="xs:int" use="optional">
+      <xs:annotation>
+        <xs:documentation>Wersja opisu księgowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="PowiazaneWydanie" type="ddk2012:TGuid" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator powiązanego dokumentu magazynowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Koszt" type="xs:decimal" use="optional">
+      <xs:annotation>
+        <xs:documentation>Koszt dokumentu.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Tytulem" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Tytułem</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TytulemZRozrachunku" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Tytułem z rozrachunku</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StanowiskoKasoweId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator stanowiska kasowego na dokumencie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="RachunekBankowyId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator rachunku bankowego na dokumencie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="MagazynId" type="xs:IDREF" use="optional">
+      <xs:annotation>
+        <xs:documentation>Identyfikator magazynu na dokumencie.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="ZawieraDokumentElektroniczny" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Czy zawiera eFakturę?. UWAGA: w nexo 57 i wcześniejszych nie wykorzystywana.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NumerKSeF" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Numer identyfikujący fakturę w Krajowym Systemie e-Faktur (KSeF). UWAGA: w nexo 57 i wcześniejszych nie wykorzystywana.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TNaglowki">
+    <xs:annotation>
+      <xs:documentation>Kolekcja nagłówków dokumentu do dekretacji.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Naglowek" type="TNaglowek" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Nagłówek dokumentu do dekretacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

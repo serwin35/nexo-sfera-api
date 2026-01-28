@@ -1,0 +1,338 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  id="Dane_SkladnikiPlacowePart"
+  elementFormDefault="qualified"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  xmlns="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+  <xs:annotation>
+    <xs:documentation>Dane składnika płacowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TSkladnikPlacowy">
+    <xs:annotation>
+      <xs:documentation>Obiekt składnika płacowego.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa składnika płacowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Typ" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ sładnika płacowego</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypGr" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>TypGr składnika płacowego</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="TypPlatnika" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ płatnika składnika płacowego</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="PlaconyWNaturze" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Czy składnik płacowy płacony w naturze</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Instytujca" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Instytujca składnika płacowego</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla składnika płacowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy składnika płacowego.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TSkladnikiPlacowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja składników płacowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Skladnik" type="TSkladnikPlacowy" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Składnik płacowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TRodzajPracyWSzczegolnychWarunkach">
+    <xs:annotation>
+      <xs:documentation>Obiekt rodzaju pracy w szczególnych warunkach.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa rodzaju pracy w szczególnych warunkach.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Kod" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Kod rodzaju pracy w szczególnych warunkach.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla rodzaju pracy w szczególnych warunkach.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy rodzaju pracy w szczególnych warunkach.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TRodzajePracyWSzczegolnychWarunkach">
+    <xs:annotation>
+      <xs:documentation>Kolekcja rodzajów pracy w szczególnych warunkach.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Rodzaj" type="TRodzajPracyWSzczegolnychWarunkach" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Rodzaj pracy w szczególnych warunkach.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKodTytuluUbezpieczenia">
+    <xs:annotation>
+      <xs:documentation>Obiekt kodu tytułu ubezpieczenia.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Opis" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Nazwa kodu tytułu ubezpieczenia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Kod" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Kod tytułu ubezpieczenia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla kodu tytułu ubezpieczenia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy kodu tytułu ubezpieczenia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TKodyTutuluUbezpieczenia">
+    <xs:annotation>
+      <xs:documentation>Kolekcja kodów tytułów ubezpieczenia.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Kod" type="TKodTytuluUbezpieczenia" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Kod tytułu ubezpieczenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TTypUmowyPracowniczejHistoria">
+    <xs:annotation>
+      <xs:documentation>Obiekt typu umowy pracowniczej historia.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="IdInnych" type ="xs:int" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Kolekcja pozostałych id typów umów pracowniczych</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa typu umowy pracowniczej historia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Typ" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ umowy pracowniczej historia</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla typu umowy pracowniczej historia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy typu umowy pracowniczej historia.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TTypyUmowyPracowniczejHistoria">
+    <xs:annotation>
+      <xs:documentation>Kolekcja typów umowy pracowniczej historia.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="TypUmowyPracowniczejHistoria" type="TTypUmowyPracowniczejHistoria" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Typ umowy pracowniczej historia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TRodzajUmowyPracowniczej">
+    <xs:annotation>
+      <xs:documentation>Obiekt rodzaju umowy pracowniczej</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa rodzaju umowy pracowniczej</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Typ" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Typ rodzaju umowy pracowniczej</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla rodzaju umowy pracowniczej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy rodzaju umowy pracowniczej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TRodzajeUmowPracowniczych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja rodzajów umów pracowniczych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="RodzajUmowyPracowniczej" type="TRodzajUmowyPracowniczej" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Rodzaje umów pracowniczych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TJednostkaOrganizacyjnaGr">
+    <xs:annotation>
+      <xs:documentation>Obiekt jednostki oraganizacyjnej (działu)</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa obiektu jednostki oraganizacyjnej (działu)</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla obiektu jednostki oraganizacyjnej (działu).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy obiektu jednostki oraganizacyjnej (działu).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TJednostkiOrganizacyjneGr">
+    <xs:annotation>
+      <xs:documentation>Kolekcja jednostek oraganizacyjnych (działów).</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="JednostkiOrganizacyjneGr" type="TJednostkaOrganizacyjnaGr" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Jednostki organizacyjne (działy).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TRodzajWydatkuDelegacji">
+    <xs:annotation>
+      <xs:documentation>Obiekt rodzaj wydatku delegacji.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Nazwa rodzaju wydatku delegacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla rodzaju wydatku delegacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy rodzaju wydatku delegacji.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TRodzajeWydatkowDelegacji">
+    <xs:annotation>
+      <xs:documentation>Kolekcja rodzajów wydatków delegacji.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="RodzajWydatku" type="TRodzajWydatkuDelegacji" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Rodzaj wydatku delegacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKategoriaPlacowa">
+    <xs:annotation>
+      <xs:documentation>Obiekt kategorii płacowej.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string">
+      <xs:annotation>
+        <xs:documentation>Nazwa kategorii płacowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:ID" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator jednoznacznie identyfikujący w ramach pliku XML dla kategorii płacowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="BId" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator bazodanowy kategorii płacowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TKategoriePlacowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja kategorii płacowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="KategoriaPlacowa" type="TKategoriaPlacowa" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Kategoria płacowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

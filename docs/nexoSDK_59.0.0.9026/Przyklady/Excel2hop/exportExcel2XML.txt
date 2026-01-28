@@ -1,0 +1,22 @@
+﻿exportExcel2XML
+~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2016-2017
+
+Narzędzie/przykład rozwiązania służącego do eksportu danych z plików XLSX (Excel) do plików XML
+zgodnych ze schematami przeniesienia danych do InsERT nexo. Wyeksportowane dane należy 
+wczytać w kreatorze wdrożeniowym, po wybraniu opcji "Import z katalogu".
+
+Narzędzie pozwala zapisać dane kartotek klientów i towarów oraz stany magazynowe i informacje
+o nierozliczonych rozrachunkach. Wymaga danych w plikach XLSX w określonym formacie, tzn. korzysta 
+z arkuszy o ustalonej strukturze. Przykładowe pliki są dołączone. Nie należy zmieniać ich struktury.
+Nie przeszkadza to jednak skopiować danych z innego źródła (np. także arkusza excelowego) i wtedy 
+dokonać eksportu z użyciem tego narzędzia, a następnie importu w nexo.
+Uwaga! W tabelach nie powinno być pustych komórek. Brak informacji należy oznaczyć w komórce 
+znakiem "-" (minus).
+
+W programie, po wskazaniu arkusza excelowego o ustalonej strukturze, należy wybrać rodzaj danych 
+znajdujących się w pliku źródłowym (co wiąże się ze strukturą tego pliku), i wywołać opcję
+generowania plików XML. Program generuje je do miejsca, w którym znajduje się plik źródłowy.
+
+Struktura danych XML została opisana w dokumentacji nexo SDK.

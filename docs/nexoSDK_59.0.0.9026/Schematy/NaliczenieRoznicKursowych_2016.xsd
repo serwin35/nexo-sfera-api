@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2016/dokumentyDoKsiegowania/ksiegowosc" 
+  targetNamespace="http://schemas.insert.com.pl/2016/dokumentyDoKsiegowania/ksiegowosc"
+  xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">  
+  <xs:annotation>
+    <xs:documentation>Dane naliczenia różnic kursowych.</xs:documentation>
+  </xs:annotation>
+  
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+  
+  <xs:complexType name="TNaglowekNaliczeniaRoznicKursowych">
+    <xs:annotation>
+      <xs:documentation>Zbiór pól nagłówkowych naliczenia różnic kursowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Zbiór pól własnych naliczenia różnic kursowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataNaliczenia" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data naliczenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DodatniaRoznicaKursowa" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Dodatnia różnica kursowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UjemnaRoznicaKursowa" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Ujemna różnica kursowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Typ" type="xs:unsignedByte" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Typ naliczenia różnic kursowych (0 - Od rozliczeń, 1 - Od środków pieniężnych).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OkresOd" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Pierwszy dzień okresu za jaki zostały naliczone róznice kursowe.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OkresDo" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Ostatni dzień okresu za jaki zostały naliczone róznice kursowe.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Numer" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Numer naliczenia różnic kursowych</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rachunek" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Rachunek bankowy naliczenia różnic kursowych od środków pieniężnych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+    </xs:sequence>
+  </xs:complexType>
+  
+    <xs:complexType name="TPozycjaNaliczeniaRoznicKursowych">
+    <xs:annotation>
+      <xs:documentation>Pozycja naliczenia różnic kursowych.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Zbiory pól własnych dla pozycji naliczenia różnoic kursowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DodatniaRoznicaKursowa" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Dodatnia różnica kursowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UjemnaRoznicaKursowa" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Ujemna różnica kursowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DokumentRozrachunku" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Dokument rozrachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KursRozrachunkuLubWplywu" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kurs rozrachunku lub wpływu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataPowstaniaRozrachunkuLubWplywu" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data powstania rozrachunku lub wpływu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KwotaRozrachunkuLubWplywu" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kwota rozrachunku lub wpływu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WalutaRozrachunku" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Waluta rozrachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DokumentSplaty" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Dokument spłaty.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KursSplatyLubWyplywu" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kurs spłaty lub wypływu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataSplatyLubWyplywu" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data spłaty lub wypływu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KwotaSplatyLubWyplywu" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kwota spłaty lub wypływu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WalutaSplaty" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Waluta spłaty.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kolejnosc" type="xs:int" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kolejność pozycji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+		<xs:element name="StawkaRyczaltowa" type="ddk:TGuid">
+			<xs:annotation>
+				<xs:documentation>Stawka ryczałtowa.</xs:documentation>
+			</xs:annotation>
+		</xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+	<xs:complexType name="TPozycjeNaliczeniaRoznicKursowych">
+    <xs:annotation>
+      <xs:documentation>Kolekcja pozycji wyciągu bankowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Pozycja" type="TPozycjaNaliczeniaRoznicKursowych">
+        <xs:annotation>
+          <xs:documentation>Węzeł pozycji naliczenia różnic kursowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TNaliczenieRoznicKursowych">
+    <xs:annotation>
+      <xs:documentation>Naliczenie różnic kursowych wraz z wersją schematu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wersja" type="xs:string" nillable="false" fixed="2016">
+        <xs:annotation>
+          <xs:documentation>Wersja schematu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Naglowek" type="TNaglowekNaliczeniaRoznicKursowych" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Nagłówek naliczenia różnic kursowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+          <xs:element name="Pozycje" type="TPozycjeNaliczeniaRoznicKursowych" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Pozycje naliczenia różnic kursowych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="Dokument" type="TNaliczenieRoznicKursowych">
+    <xs:annotation>
+      <xs:documentation>Główny węzeł opakowujący naliczenie różnic kursowych.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

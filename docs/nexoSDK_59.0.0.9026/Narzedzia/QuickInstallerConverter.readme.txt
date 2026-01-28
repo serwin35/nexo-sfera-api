@@ -1,0 +1,20 @@
+QuickInstallerConverter
+
+Po zainstalowaniu wersji 57, instalatory rozwiązań własnych utworzone w starszych wersjach, przestają działać. 
+
+QuickInstallerConverter służy do konwertowania takich starych instalatorów na format wersji 57.
+
+Użycie: 
+
+QuickInstallerConverter.exe <stary instalator> <nowe SDK>
+
+Wynikiem działania jest nowy plik instalatora z sufiksem "-nowy".
+
+1. Instalator musi być stary, bo uruchomienie na nowym instalatorze zakończy się błędem. 
+2. Nowe SDK musi być w wersji 57+ (albo w alfie 2), bo inaczej będzie błąd. 
+
+Przykład: 
+
+QuickInstallerConverter.exe "c:\MojeRozwiazaniaSferyczne\MojaAplikacja-instalator.exe" "c:\nexoSDK\nexoSDK_57.0.0.9999"
+
+Wynikiem wykonania tego polecenia jest c:\MojeRozwiazaniaSferyczne\MojaAplikacja-instalator-nowy.exe.

@@ -1,0 +1,19 @@
+﻿AutoresponderMailowy
+~~~~~~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2015
+
+Rozwiązanie własne będące rozszerzeniem do Gestora nexo PRO.
+
+Zwraca informacje o cenie i dostępności towarów, na podstawie symboli 
+podanych w temacie wiadomości (rozdzielone średnikiem). Dodatkowo, dodaje 
+działanie o zadanej kategorii jeśli w odpowiedzi znalazł się towar 
+o cenie przekraczającej zadany próg.
+
+Implementuje czynność dla reguły wiadomości pocztowych. Ozanacza to , że po zainstalowaniu 
+w podmiocie za pomocą Programu serwisowego, w oknie reguły, w sekcji Czynności, 
+na liście rozwijalnej pojawi się nowa czynność "Autoresponder z cenami towarów".
+
+Wymagania:
+1. Licencje (może być wersja prezentacyjna): Subiekt nexo PRO, Gestor nexo PRO
+2. Skonfigurowane konto pocztowe.

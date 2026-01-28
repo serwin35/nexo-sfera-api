@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2017/dokumentyDoKsiegowania/rozrachunki" 
+  targetNamespace="http://schemas.insert.com.pl/2017/dokumentyDoKsiegowania/rozrachunki" 
+  xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+  <xs:annotation>
+    <xs:documentation>Dane noty odsetkowej.</xs:documentation>
+  </xs:annotation>
+  
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+  
+  <xs:complexType name="TNaglowekNotyOdsetkowej">
+    <xs:annotation>
+      <xs:documentation>Zbiór pól nagłówkowych noty odsetkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Data" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data noty odsetkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Numer" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Numer noty odsetkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dluznik" type="ddk:TPositiveInt">
+        <xs:annotation>
+          <xs:documentation>Dłużnik.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DluznikAdres" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Adres dłużnika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Waluta" type="ddk:TGuid" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Waluta noty odsetkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StanNaDzien" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Stan na dzień.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RazemNaleznosci" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Razem należności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RazemOdsetki" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Razem odsetki.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RazemDoZaplaty" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Razem do zapłaty.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TerminPlatnosci" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Termin płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SposobPlatnosci" type="xs:unsignedByte" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Sposób płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RachunekPlatnosci" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Rachunek płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kasa" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Kasa płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StanowiskoKasowe" type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Stanowisko kasowe płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" nillable="false">
+          <xs:annotation>
+            <xs:documentation>Opis noty odsetkowej.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TPozycjaNotyOdsetkowej">
+    <xs:annotation>
+      <xs:documentation>Zbiór pól pozycji noty odsetkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Index" type="xs:int" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Dni spóźnienia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataDokumentu" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data dokumentu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerDokumentu" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Numer dokumentu źródłowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KwotaDokumentu" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kwota dokumentu źródłowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kwota" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Kwota.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Pozostalo" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Pozostało.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TerminPlatnosci" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Termin płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DniSpoznienia" type="xs:int" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Dni spóźnienia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RodzajOdsetek" type="xs:unsignedByte" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Rodzaj odsetek.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Odsetki" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Odsetki.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DoZaplaty" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Do zapłaty.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TPozycjeNotyOdsetkowej">
+    <xs:annotation>
+      <xs:documentation>Kolekcja pozycji noty odsetkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Pozycja" type="TPozycjaNotyOdsetkowej">
+        <xs:annotation>
+          <xs:documentation>Węzeł pozycji noty odsetkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TNotaOdsetkowa">
+    <xs:annotation>
+      <xs:documentation>Nota odsetowa wraz z wersją schematu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wersja" type="xs:string" nillable="false" fixed="2017">
+        <xs:annotation>
+          <xs:documentation>Wersja schematu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Naglowek" type="TNaglowekNotyOdsetkowej" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Nagłówek noty odsetkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Pozycje" type="TPozycjeNotyOdsetkowej" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Pozycje noty odsetkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="Dokument" type="TNotaOdsetkowa">
+    <xs:annotation>
+      <xs:documentation>Główny węzeł opakowujący notę odsetkową.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

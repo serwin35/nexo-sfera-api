@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  id="DaneBR_TransakcjeVatPart"
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Dane o transakcjach VAT biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TTransakcjaVAT">
+    <xs:annotation>
+      <xs:documentation>Obiekt transakcji VAT biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="TransakcjeHandloweDlaKtorychDomyslna" type="TTransakcjeHandlowe" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Transakcje handlowe, dla których dana transakcja VAT jest domyślna.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa transakcji VAT.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Symbol" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Symbol transakcji VAT.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Dotyczy" type="xs:unsignedByte" use="required">
+      <xs:annotation>
+        <xs:documentation>Jakiego rodzaju ewidencji VAT dotyczy (sprzedaż lub zakup).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Aktywna" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Czy transakcja aktywna</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="xs:int" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator transakcji VAT.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TTransakcjeVAT">
+    <xs:annotation>
+      <xs:documentation>Kolekcja transakcji VAT biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="TransakcjaVAT" type="TTransakcjaVAT" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Transakcja VAT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TTransakcjeHandlowe">
+    <xs:annotation>
+      <xs:documentation>Kolekcja transakcji handlowych biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="TransakcjaHandlowa" type="TTransakcjaHandlowa" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Transakcja handlowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TTransakcjaHandlowa">
+    <xs:annotation>
+      <xs:documentation>Obiekt transakcji handlowej biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="TransakcjaHandlowaId" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator transakcji handlowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+</xs:schema>

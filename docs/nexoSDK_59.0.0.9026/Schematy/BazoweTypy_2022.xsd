@@ -1,0 +1,1097 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2022/dokumentyDoKsiegowania/place/bazowe"
+  targetNamespace="http://schemas.insert.com.pl/2022/dokumentyDoKsiegowania/place/bazowe"
+  xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+	<xs:annotation>
+		<xs:documentation>Typy bazowe dla schematów list płac oraz rachunków do umów pracowniczych.</xs:documentation>
+	</xs:annotation>
+
+	<xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+	<xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+
+	<xs:complexType name="TNaglowekListyPlacBazowy">
+		<xs:annotation>
+			<xs:documentation>Bazowy zbiór pól nagłówkowych listy płac.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Miesiac" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Miesiąc listy płac.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Tytul" type="xs:string" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Tytuł listy płac.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Numer" type="xs:string" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Numer listy płac.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DataWyplaty" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data wypłaty listy płac.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ListaKadryIPlace" type="xs:boolean" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Czy lista płac wystawiona w programie Kadry i Płace 2</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KategoriaPlacowa"  type="ddk:TPositiveInt" nillable="true">
+				<xs:annotation>
+					<xs:documentation>Kategoria płacowa listy płac</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TNaglowekListyPlacDaneZaliczek">
+		<xs:annotation>
+			<xs:documentation>Bazowy zbiór pól nagłówkowych listy płac dotyczących zaliczek.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="DataPrzekazaniaZaliczki" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data przekazania zaliczki.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TNaglowekListyPlacDaneSkladekZUS">
+		<xs:annotation>
+			<xs:documentation>Bazowy zbiór pól nagłówkowych listy płac dotyczących składek ZUS.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="DataPrzekazaniaSkladekZUS" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data przekazania składek ZUS.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TNaglowekPPK">
+		<xs:annotation>
+			<xs:documentation>Bazowy zbiór pól nagłówkowych PPK.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="PodstawaPPK" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Podstawa PPK.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaPodstawowaPPKPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka podstawowa PPK pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaDodatkowaPPKPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka dodatkowa PPK pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaPodstawowaPPKPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka podstawowa PPK pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaDodatkowaPPKPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka dodatkowa PPK pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PodlegaPPK" type="xs:boolean" minOccurs="0" maxOccurs="1" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Czy podlega PPK.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DataPrzekazaniaWplatDoPPK" type="xs:date" minOccurs="0" maxOccurs="1" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data przekazania wpłat do PPK.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TWyplataBazowa">
+		<xs:annotation>
+			<xs:documentation>Bazowe pola wiersza wypłaty.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Indeks" type="xs:int" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Indeks dla znajdowania opisu księgowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PracownikHistoria" type="ddk:TPositiveInt">
+				<xs:annotation>
+					<xs:documentation>Identyfikator podmiotu pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PracownikAdresHistoria" type="ddk:TPositiveInt" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Identyfikator adresu pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="UmowaObowiazujeOd" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data początku obowiązywania umowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="UmowaObowiazujeDo" type="xs:date" nillable="true">
+				<xs:annotation>
+					<xs:documentation>Data końca obowiązywania umowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PelenEtat" type="xs:boolean" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Czy umowa z pracownikiem jest na pełen etat.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="OpisUmowy" type="xs:string" nillable="true">
+				<xs:annotation>
+					<xs:documentation>Opis umowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Zbiór pól własnych wypłat listy płac.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NumerUmowy" type="xs:string" nillable="true">
+				<xs:annotation>
+					<xs:documentation>Numer umowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RodzajUmowyPracowniczej" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Rodzaj umowy pracowniczej</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RodzajPracyWSzczegolnychWarunkach" type="xs:int" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Kod rodzaju pracy w szczególnych watrunkach</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KodTytuluUbezpieczenia" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Kod tytułu ubuezpieczenia</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TypUmowyPracowniczejHistoria" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Typ umowy pracowniczej</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="JednostkaOrganizacyjna" type="xs:int" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Jednostka organizacyjna (dział)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TWyplataDaneWynagrodzenia">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące wynagrodzenia pracownika.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Brutto" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota brutto.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Netto" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota netto.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DoWyplaty" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota do wypłaty.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PrzelewDoWyplaty" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota przelewu do wypłaty.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="GotowkaDoWyplaty" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota gotówki do wypłaty.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DodatkiOpodatkowane" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota opodatkowanych dodatków.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PotraceniaNieopodatkowane" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota nieopodatkowanych potrąceń.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Potracenia" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Potrącenia (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NaliczeniaNieopodatkowane" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota naliczeń nieopodatkowanych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="WyplaconeWNaturze" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota wypłacona w naturze.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PrzychodZwolnionyWyplata" type="xs:decimal" nillable="true" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Przychód zwolniony</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TWyplataDaneZaliczek">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące zaliczek pracownika.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="ZaliczkaNaPodatek" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota zaliczki na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NadplataPIT40" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Nadpłata PIT-40.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KwotaBrutto" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota brutto.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KwotaNetto" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota netto.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZaliczkaNaPodatekWyliczona" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota zaliczki wyliczonej na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZaliczkaNaPodatekOdroczona" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota zaliczki odroczonej na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SplataOdroczonejZaliczkiNaPodatek" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota spłaty zaliczki odroczonej na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TWyplataDaneSkladekZUS">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące składek ZUS pracownika.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="SkladkaEmerytalnaPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki emerytalnej pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaEmerytalnaPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki emerytalnej pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaRentowaPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki rentowej pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaRentowaPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki rentowej pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaChorobowa" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki chorobowej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaWypadkowa" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki wypadkowej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FP" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota odprowadzana na Fundusz Pracy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FGSP" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota odprowadzana na Fundusz Gwarantowanych Świadczeń Pracowniczych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FEP" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota odprowadzana na Fundusz Gwarantowanych Świadczeń Pracowniczych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaZdrowotna" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki zdrowotnej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaZdrowotnaOdliczanaOdPodatku" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki zdrowotnej odliczanej od podatku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaZdrowotnaNieodliczanaOdPodatku" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki zdrowotnej nieodliczanej od podatku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSPracownikaRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS pracownika (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSPracodawcyRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS pracodawcy (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSRazemBezZasilkow" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS (suma) z wyłączeniem zasiłków.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZasilkiZUSOpodatkowane" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota zasiłków ZUS opodatkowanych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZasilkiZUSNieopodatkowane" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota zasiłków ZUS nieopodatkowanych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZasilkiZUSRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota zasiłków ZUS (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSOdPrzychoduZwolnionego" type="xs:decimal" nillable="true" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Składki ZUS od przychodu zwolnionego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TWyplataPPK">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące PPK pracownika.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="PodstawaPPK" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Podstawa PPK.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaPodstawowaPPKPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka podstawowa PPK pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaDodatkowaPPKPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka dodatkowa PPK pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaPodstawowaPPKPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka podstawowa PPK pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaDodatkowaPPKPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Składka dodatkowa PPK pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PodlegaPPK" type="xs:boolean" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Czy podlega PPK.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<!--
+  <xs:simpleType name="TTypRodzajuUmowyPracowniczej">
+    <xs:annotation>
+      <xs:documentation>Typ wyliczeniowy typu rodzaju umowy pracowniczej.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="CzasOkreslony" />
+      <xs:enumeration value="CzasNieokreslony" />
+      <xs:enumeration value="CzasOkreslonyZNieznanaDataZakonczenia" />
+      <xs:enumeration value="DoDniaPorodu" />
+      <xs:enumeration value="NaWykonanieZadania" />
+      <xs:enumeration value="NaZastepstwo" />
+    </xs:restriction>
+  </xs:simpleType>
+  -->
+	<xs:complexType name="TListaPlacBazowa">
+		<xs:annotation>
+			<xs:documentation>Bazowa lista płac wraz z wersją schematu.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Wersja" type="xs:string" nillable="false" fixed="2022">
+				<xs:annotation>
+					<xs:documentation>Wersja schematu.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Zbiór pól własnych listy płac.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TRachunekDoUmowyPracowniczejBazowy">
+		<xs:annotation>
+			<xs:documentation>Bazowy rachunek do umowy pracowniczej wraz z wersją schematu.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Wersja" type="xs:string" nillable="false" fixed="2022">
+				<xs:annotation>
+					<xs:documentation>Wersja schematu.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Zbiór pól własnych rachunku do umowy pracowniczej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TNaglowekRachunkuDoUmowyPracowniczejBazowy">
+		<xs:annotation>
+			<xs:documentation>Bazowy zbiór pól nagłówkowych rachunku do umowy pracowniczej.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Miesiac" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Miesiąc rachunku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ListaWynagrodzen" type="xs:string">
+				<xs:annotation>
+					<xs:documentation>Numer listy wynagrodzen</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Tytul" type="xs:string" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Tytuł rachunku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Numer" type="xs:string" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Numer rachunku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DataWystawienia" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data wystawienia rachunku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DataWyplaty" type="xs:date" nillable="false" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Data wypłaty rachunku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="CzyRyczalt" type="xs:boolean" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Czy rachunek rozliczany ryczałtem.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KwotaRachunku" type="xs:decimal" nillable="true" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota brutto rachunku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Pracownik" type="ddk:TPositiveInt" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Identyfikator podmiotu pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="OpisZUmowy" type="xs:string" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Opis z umowy pracowniczej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PoczatekUmowy" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data początku umowy pracowniczej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KoniecUmowy" type="xs:date" nillable="true">
+				<xs:annotation>
+					<xs:documentation>Data końca umowy pracowniczej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NumerUmowy" type="xs:string" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Numer umowy pracowniczej/</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KodTytuluUbezpieczenia" type="xs:int">
+				<xs:annotation>
+					<xs:documentation>Kod tytułu ubuezpieczenia</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="JednostkaOrganizacyjna" type="xs:int" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Jednostka organizacyjna (dział)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="RodzajPrzychodu" type="xs:unsignedByte" nillable="false">
+				<xs:annotation>
+					<xs:documentation>
+						Rodzaj przychodu:
+						1 - Działalność wykonywana osobiście,
+						2 - Czynności związane z pełnieniem obowiązków społecznych,
+						3 - Prawa autorskie,
+						4 - Inne źródła.
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KategoriaPlacowa"  type="ddk:TPositiveInt" nillable="true">
+				<xs:annotation>
+					<xs:documentation>Kategoria płacowa listy płac</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TRachunekDoUmowyPracowniczejDaneWynagrodzenia">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące wynagrodzenia pracownika na rachunku do umowy pracowniczej.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Brutto" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota brutto wynagrodzenia.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KosztyUzyskaniaPrzychoduProcent" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Koszty uzyskania przychodu [%].</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KosztyUzyskaniaPrzychodu" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Koszty uzyskania przychodu (kwota).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Netto" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota netto wynagrodzenia.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DoWyplaty" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota do wypłaty.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Przelew" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota wynagrodzenia przelewem.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="GotowkaDoWyplaty" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota do wypłaty gotówką.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Potracenia" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Potrącenia</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NaliczeniaNieopodatkowane" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Naliczenia pracodawcy nieopodatkowane</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="WyplaconeWNaturze" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Wypłacone w naturze</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="PrzychodZwolnionyWyplata" type="xs:decimal" nillable="true" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Przychód zwolniony</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TRachunekDoUmowyPracowniczejDaneSkladekZUS">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące składek ZUS na rachunku do umowy pracowniczej.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="DataPrzekazaniaSkladekZUS" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data przekazania składek ZUS.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaEmerytalnaPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki emerytalnej pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaEmerytalnaPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki emerytalnej pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaRentowaPracownika" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki rentowej pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaRentowaPracodawcy" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki rentowej pracodawcy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaChorobowa" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki chorobowej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaWypadkowa" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki wypadkowej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FP" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota odprowadzana na Fundusz Pracy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FGSP" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota odprowadzana na Fundusz Gwarantowanych Świadczeń Pracownika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="FEP" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota odprowadzana na Fundusz Gwarantowanych Świadczeń Pracowniczych.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaZdrowotna" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki zdrowotnej.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaZdrowotnaOdliczana" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki zdrowotnej odliczanej od podatku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkaZdrowotnaNieodliczana" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki zdrowotnej nieodliczanej od podatku.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSPracownikaRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS pracownika (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSPracodawcyRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS pracodawcy (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSRazem" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS (suma).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSRazemBezZasilkow" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Kwota składki ZUS razem bez zasiłków</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZasilkiZUSNieopodatkowane" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Kwota zasiłków ZUS nieopodatkowanych</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZasilkiZUSOpodatkowane" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Kwota zasiłków ZUS opodatkowanych</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZasilkiZUSRazem" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Kwota zasiłków ZUS razem</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SkladkiZUSOdPrzychoduZwolnionego" type="xs:decimal" nillable="true" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Składki ZUS od przychodu zwolnionego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TRachunekDoUmowyPracowniczejDaneZaliczek">
+		<xs:annotation>
+			<xs:documentation>Dane dotyczące zaliczek na rachunku do umowy pracowniczej.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="DataPrzekazaniaZaliczki" type="xs:date" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Data przekazania zaliczki.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZaliczkaNaPodatek" type="xs:decimal" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Kwota zaliczki na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZaliczkaNaPodatekWyliczona" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota zaliczki wyliczonej na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ZaliczkaNaPodatekOdroczona" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota zaliczki odroczonej na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SplataOdroczonejZaliczkiNaPodatek" type="xs:decimal" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kwota spłaty zaliczki odroczonej na podatek dochodowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+  <xs:complexType name="TRachunekDoUmowyPracowniczejPPK">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące PPK pracownika.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="PodstawaPPK" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Podstawa PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladkaPodstawowaPPKPracodawcy" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Składka podstawowa PPK pracodawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladkaDodatkowaPPKPracodawcy" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Składka dodatkowa PPK pracodawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladkaPodstawowaPPKPracownika" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Składka podstawowa PPK pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladkaDodatkowaPPKPracownika" type="xs:decimal" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Składka dodatkowa PPK pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PodlegaPPK" type="xs:boolean" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Czy podlega PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+	<xs:complexType name="TWartoscSkladnikaPlacowego">
+		<xs:annotation>
+			<xs:documentation>Składnik płacowy listy płac</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="SkladnikPlacowy" type="ddk:TGuid" >
+				<xs:annotation>
+					<xs:documentation>GUIS składnika płacowego</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name ="Wartosc" type="xs:decimal">
+				<xs:annotation>
+					<xs:documentation>Wartość składnika płacowego</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KomornikHistoria" type="ddk:TPositiveInt" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Identyfikator podmiotu komornika.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TWartosciSkladnikowPlacowych">
+		<xs:annotation>
+			<xs:documentation>Kolekcja wypłat, zaliczek i składek ZUS.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element minOccurs="0" maxOccurs="unbounded" name="WartoscSkladnikaPlacowego" type="TWartoscSkladnikaPlacowego">
+				<xs:annotation>
+					<xs:documentation>Wypłaty, zaliczki i składki ZUS.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+
+  <xs:complexType name="TListaRachunkowBazowa">
+    <xs:annotation>
+      <xs:documentation>Bazowa lista rachunków wraz z wersją schematu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wersja" type="xs:string" nillable="false" fixed="2022">
+        <xs:annotation>
+          <xs:documentation>Wersja schematu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Zbiór pól własnych listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TNaglowekListyRachunkowBazowy">
+    <xs:annotation>
+      <xs:documentation>Bazowy zbiór pól nagłówkowych listy płac.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Miesiac" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Miesiąc listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Tytul" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Tytuł listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Numer" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Numer listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataWyplaty" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data wypłaty listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ListaKadryIPlace" type="xs:boolean" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Czy lista rachunków wystawiona w programie Kadry i Płace 2</xs:documentation>
+        </xs:annotation>
+      </xs:element>      
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TNaglowekListyRachunkowDaneZaliczek">
+    <xs:annotation>
+      <xs:documentation>Bazowy zbiór pól nagłówkowych listy rachunków dotyczących zaliczek.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="DataPrzekazaniaZaliczki" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data przekazania zaliczki.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TNaglowekListyRachunkowDaneSkladekZUS">
+    <xs:annotation>
+      <xs:documentation>Bazowy zbiór pól nagłówkowych listy rachunków dotyczących składek ZUS.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="DataPrzekazaniaSkladekZUS" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data przekazania składek ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TRachunekDoUmowyPracowniczejZListyRachunkowBazowy">
+    <xs:annotation>
+      <xs:documentation>Bazowe pola wiersza rachunku do umowy pracowniczej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Indeks" type="xs:int" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Indeks dla znajdowania opisu księgowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Numer" type="xs:string" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Numer rachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ListaWynagrodzen" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer listy wynagrodzen</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KategoriaPlacowa"  type="ddk:TPositiveInt" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Kategoria płacowa listy rachunków</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataWystawienia" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data wystawienia rachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataWyplaty" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data wypłaty rachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Miesiac" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Miesiąc rachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerUmowy" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Numer umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>      
+      <xs:element name="PracownikHistoria" type="ddk:TPositiveInt">
+        <xs:annotation>
+          <xs:documentation>Identyfikator podmiotu pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PracownikAdresHistoria" type="ddk:TPositiveInt" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Identyfikator adresu pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="CzyRyczalt" type="xs:boolean" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Czy rachunek rozliczany ryczałtem.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RodzajPrzychodu" type="xs:unsignedByte" nillable="false">
+        <xs:annotation>
+          <xs:documentation>
+            Rodzaj przychodu:
+            1 - Działalność wykonywana osobiście,
+            2 - Czynności związane z pełnieniem obowiązków społecznych,
+            3 - Prawa autorskie,
+            4 - Inne źródła.
+          </xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UmowaObowiazujeOd" type="xs:date" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data początku obowiązywania umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UmowaObowiazujeDo" type="xs:date" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Data końca obowiązywania umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+      <xs:element name="OpisUmowy" type="xs:string" nillable="true">
+        <xs:annotation>
+          <xs:documentation>Opis umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RodzajUmowyPracowniczej" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Rodzaj umowy pracowniczej</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KodTytuluUbezpieczenia" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Kod tytułu ubuezpieczenia</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+      
+      <xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Zbiór pól własnych rachunków do umowy pracowniczej listy rachunków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+      
+      <xs:element name="RodzajPracyWSzczegolnychWarunkach" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Kod rodzaju pracy w szczególnych watrunkach</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+      <xs:element name="TypUmowyPracowniczejHistoria" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Typ umowy pracowniczej</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="JednostkaOrganizacyjna" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Jednostka organizacyjna (dział)</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+      <xs:element name="DataPrzekazaniaWplatDoPPK" type="xs:date" minOccurs="0" maxOccurs="1" nillable="false">
+        <xs:annotation>
+          <xs:documentation>Data przekazania wpłat do PPK.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      
+    </xs:sequence>
+  </xs:complexType>
+  
+  
+</xs:schema>

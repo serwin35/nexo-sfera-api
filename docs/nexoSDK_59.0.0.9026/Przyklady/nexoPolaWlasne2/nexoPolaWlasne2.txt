@@ -1,0 +1,25 @@
+﻿Przykład wykorzystania API dostępowego do pól własnych w wersji 2. dla InsERT nexo PRO.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2018
+
+Przykład pokazuje przede wszystkim:
+1. W jaki sposób odczytać informacje o zdefiniowanych zaawansowanych polach własnych wersji 2. oraz słownikach własnych wersji 2.
+2. W jaki sposób odczytać i ustawić wartości pól zaawansowanych wersji 2. w przykładowym obiekcie asortymentu.
+
+Przykład wymaga zdefiniowania w Subiekt nexo następujących pól własnych w wersji 2. dla asortymentu:
+1. pole zaawansowane typu "Tekst" o nazwie "pz tekst"
+2. pole zaawansowane typu "Długi tekst" o nazwie "pz długi tekst"
+2. pole zaawansowane typu "Liczba całkowita" o nazwie "pz int"
+3. pole zaawansowane typu "Liczba rzeczywista" o nazwie "pz decimal" z minimalną precyzją 2
+4. pole zaawansowane typu "Wartość logiczna" o nazwie "pz bool"
+5. pole zaawansowane typu "Data" o nazwie "pz data"
+6. pole zaawansowane typu "Słownik własny" o nazwie "pz słownik"
+	* słownik może być dowolny, byle by zawierał conajmniej jedną wartość
+7. pole zaawansowane typu "Słownik własny SQL" o nazwie "pz słownik sql o kluczu Int"
+	* słownik musi mieć klucz o typie Int oraz posiadać przynajmniej jedną wartość zwracaną przez polecenie SELECT
+8. pole zaawansowane typu "Słownik własny SQL" o nazwie "pz słownik sql o kluczu Guid"
+	* słownik musi mieć klucz o typie GUID oraz posiadać przynajmniej jedną wartość zwracaną przez polecenie SELECT
+9. pole zaawansowane typu "Słownik systemowy" walut o nazwie "pz waluta"
+10. pole zaawansowane typu "Słownik systemowy" magazynów o nazwie "pz magazyn"
+11. pole zaawansowane typu "Słownik systemowy" rachunków bankowych o nazwie "pz rachunek"

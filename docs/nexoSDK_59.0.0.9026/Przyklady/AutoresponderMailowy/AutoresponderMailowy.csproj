@@ -1,0 +1,74 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+  </PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>net8.0-windows10.0.17763.0</TargetFramework>
+  </PropertyGroup>
+  <PropertyGroup>
+    <ProjectGuid>{31368334-2E3B-4903-AB8C-2B3347BAA482}</ProjectGuid>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>AutoresponderMailowy</RootNamespace>
+    <AssemblyName>AutoresponderMailowy</AssemblyName>
+    <nexoSdkBinPath>..\..\Bin\</nexoSdkBinPath>
+    <nexoSdkNarzedziaPath>..\..\Narzedzia\</nexoSdkNarzedziaPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <DebugType>full</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <DebugType>pdbonly</DebugType>
+    <OutputPath>bin\Release\</OutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.API.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.DaneDomyslne">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.DaneDomyslne.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Moria.ModelDanych">
+      <HintPath>$(nexoSdkBinPath)InsERT.Moria.ModelDanych.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFramework.Core">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFramework.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFrameworkSupport">
+      <HintPath>$(nexoSdkBinPath)InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="DostawcaPluginow.cs" />
+    <Compile Include="CzynnoscAutoresponderaMailowego.cs" />
+    <Compile Include="InformacjeOTowarze.cs" />
+    <Compile Include="MinimalnaCenaDlaGenerowaniaDzialania.cs" />
+    <Compile Include="ParametrKategoriaDzialania.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PrywatnyKontekstWyliczeniaCeny.cs" />
+    <Compile Include="Rozszerzenia.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="AutoresponderMailowy.plugin" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Konfiguracja.xml" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="ParametryInstalacji.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="AutoresponderMailowy.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="HtmlAgilityPack" Version="1.11.46" />
+  </ItemGroup>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="if exist &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; (call &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot; /PlikKonfiguracji:Konfiguracja.xml /KatalogDocelowy:&quot;$(TargetDir)\&quot;) else (echo Nie można zbudować pakietu i instalatora, ponieważ nie istnieje plik: &quot;$(nexoSdkNarzedziaPath)PackageAndInstallerBuilder.exe&quot;)" />
+  </Target>
+</Project>

@@ -1,0 +1,1526 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema
+  xmlns:xs="http://www.w3.org/2001/XMLSchema"
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2025_5/dokumentyDoKsiegowania/logistyka"
+  targetNamespace="http://schemas.insert.com.pl/2025_5/dokumentyDoKsiegowania/logistyka"
+  xmlns:ddk="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania">
+	<xs:annotation>
+		<xs:documentation>Dane dokumentu handlowego.</xs:documentation>
+	</xs:annotation>
+
+	<xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+	<xs:import id="PolaWlasnePart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./Dane_2012_PolaWlasnePart.xsd" />
+
+	<xs:complexType name="TNaglowekDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Zbiór pól nagłówkowych dokumentu handlowego.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="KolekcjePolWlasnych" type="ddk:TKolekcjePolWlasnych" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Zbiór pól własnych dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KursWalutyDokumentu" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs waluty dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KursWalutyVAT" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs waluty tabeli VAT dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KursWalutyVATPrzedKorekta" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs waluty tabeli VAT pzed korektą dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TransakcjaHandlowa" type="ddk:TGuid" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Identyfikator transakcji handlowej dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DokumentyZakupu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Dokument(y) zakupu dla faktury VAT marża.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="DokumentZakupu" type="TDokumentZakupuDokumentuSprzedazy" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Dokument zakupu dla faktury VAT marża.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Konfiguracja" type="ddk:TGuid" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator konfiguracji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Numer" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Numer dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataWprowadzenia" type="xs:date" use="required">
+			<xs:annotation>
+				<xs:documentation>Data wprowadzenia dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataDostawy" type="xs:date" use="required">
+			<xs:annotation>
+				<xs:documentation>Data dostawy dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KwotaDoZaplaty" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Kwota do zapłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Zysk" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Zysk dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KosztMagazynowy" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Całkowity koszt magazynowy dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KosztGratisow" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Całkowity koszt gratisów dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KosztEwidencyjny" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Całkowity koszt ewidencyjny dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscOpakowanWydanych" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Suma wartości opakowań wydanych na dokumencie handlowym.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscOpakowanPrzyjetych" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Suma wartości opakowań przyjętych na dokumencie handlowym.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNPONettoPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Suma wartości netto na pozycjach ze stawką NPO na dokumencie handlowym.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNettoPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto po rabacie dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscBruttoPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto po rabacie dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscVATPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT po rabacie dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="MetodaKasowa" type="xs:boolean" use="required">
+			<xs:annotation>
+				<xs:documentation>Czy dokument rozliczany jest metodą kasową.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="MetodaKasowaPIT" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Czy dokument rozliczany jest metodą kasową PIT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="MiejsceSprzedazy" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Miejsce sprzedaży dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Magazyn" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator magazynu dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OdbiorcaDokumentu" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator odbiorcy dokumentu handlowego (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OdbiorcaDokumentuPrzedKorekta" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator odbiorcy dokumentu handlowego przed korektą (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OdbiorcaDokumentuAdresPrzedKorekta" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu odbiorcy dokumentu handlowego przed korektą (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Nabywca" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator nabywcy dokumentu handlowego (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NabywcaPrzedKoreka" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator nabywcy dokumentu handlowego przed korektą (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NabywcaAdres" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu nabywcy dokumentu handlowego (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NabywcaAdresPrzedKorekta" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu nabywcy dokumentu handlowego przed korektą (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaPrzedplat" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma wartości przedpłat dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaPrzedplatWWalucieDokumentu" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma wartości przedpłat w walucie dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaZaplacono" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Zapłacono (suma).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaZaplaconoWWalucieDokumentu" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Zapłacono (suma) w walucie dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaPozostalo" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Pozostało do zapłaty (suma).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Sprzedawca" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator sprzedawcy na dokumencie handlowym (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SprzedawcaAdres" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu sprzedawcy na dokumencie handlowym.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Dostawca" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator dostawcy na dokumencie handlowym (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerZewnetrzny" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer zewnętrzny dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataWydaniaWystawienia" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data wydania lub wystawienia dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KategoriaDokumentu" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator kategorii dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaOdpisowNaFunduszePromocji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma odpisow na fundusze promocji na fakturze VAT Zakupu RR.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="RodzajProceduryMarzy" type="ddk:TPositiveInt" use="optional">
+			<xs:annotation>
+				<xs:documentation>
+					Rodzaj procedury marży na fakturze VAT marża:
+					1 - Dla biur podróży,
+					2 - Towary używane,
+					3 - Dzieła sztuki,
+					4 - Przedmioty kolekcjonerskie i antyki.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaWartosciNabycia" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma wartości nabycia na pozycjach faktury VAT marża.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PozostaloZaliczki" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość zaliczki pozostałej do zapłaty na fakturze VAT zaliczkowej cząstkowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaNettoFsZalK" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Transakcja netto faktury VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaBruttoFsZalK" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Transakcja brutto faktury VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaVatFsZalK" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>VAT od transakcji faktury VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiNetto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma zaliczek netto wpłaconych na rzecz poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiBrutto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma zaliczek brutto wpłaconych na rzecz poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiVat" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma wartości VAT od zaliczek wpłaconych na rzecz poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerKorygowanego" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer dokumentu korygowanego na korektach dokumentów handlowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="UrzadzenieZewnetrzne" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Kasa fiskalna przypisana do paragonu fiskalnego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="IdentyfikatorKontrahentaFU" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>NIP lub PESEL klienta na fakturze uproszczonej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="RodzajIdentyfikatoraFU" type="xs:unsignedByte" use="optional">
+			<xs:annotation>
+				<xs:documentation>Typ identyfikatora klienta na fakturze uproszczonej (1 - wskazany podmiot, 2 - NIP, 3 - PESEL).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Tytul" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Tytuł dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Podtytul" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Podtytuł dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieFakturyZaliczkowe" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Lista numerów poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Zafiskalizowany" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Czy dokument sprzedaży zsotał zafiskalizowany.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="StatusDokumentu" type="ddk:TPositiveInt" use="optional">
+			<xs:annotation>
+				<xs:documentation>Status dokumentu (identyfikator ze słownika statusów dokumentów).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TerminPlatnosci" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Termin płatności dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SposobWyliczaniaVAT" type="ddk:TGuid" use="optional">
+			<xs:annotation>
+				<xs:documentation>
+					Sposób wylicznia VAT:
+					* 1A2B199C-38D5-4E2D-94AC-9D9F63D2CD12 - od netto
+					* 7995085B-2B24-4020-8607-6085D018B509 - od brutto
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaKosztowDodatkowych" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma kosztów dodatkowych dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TytulemZRozrachunku" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Tytułem z rozrachunku.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DokumentZSubiekt123" type="xs:boolean" use="required">
+			<xs:annotation>
+				<xs:documentation>Czy dokument pochodzi z Subiekt 123.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Uwagi" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Uwagi z dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WystawionyPrzezJednostkePodrzedna" type="xs:boolean" use="required">
+			<xs:annotation>
+				<xs:documentation>Czy dokument został wystawiony przez jednostke podrzędną.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="JednostkaNadrzedna" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator jednostki nadrzędnej dokumentu handlowego (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Platnik" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator płatnika dokumentu handlowego (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PlatnikPrzedKorekta" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator płatnika dokumentu handlowego przed korektą (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PlatnikAdresPrzedKorekta" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu płatnika dokumentu handlowego przed korektą (identyfikator wpisu historycznego).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NaliczonoPomniejszenie" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Czy naliczono pomniejszczenie sprzedaży fiskalnej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerOryginaluKorygowanego" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer oryginału dokumentu korygowanego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DoDokumentuFW" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer\y dokumentu\ów do doktórych wystawiona faktura wewnętrzna.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DokumentMagazynowy" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numery powiązanych dokumentów magazynowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaOplatDodatkowych" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma opłat dodatkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaOplatRecyklingowych" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma opłat recyklingowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaOplatOdOpakowanPlastikowych" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma opłat od opakowań plastikowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataMagazynowa" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data magazynowa dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WystawionyNaFirme" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Określa czy dokument został wystawiony na czynnego podatnika VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WymagaPodzielonejPlatnosci" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Określa czy dokument wymaga podzielonej płatności.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="GrupyAsortymentuJPK" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Grupy asortymentu na potrzeby JPK_V7</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ProceduryJPK" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Procedury na potrzeby JPK_V7</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TypDokumentuJPK" type="xs:unsignedByte" use="required">
+			<xs:annotation>
+				<xs:documentation>Typ dokumentu na potrzeby JPK_V7</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="RodzajIdentyfikatoraPodatkowegoPodmiotu" type="xs:unsignedByte" use="required">
+			<xs:annotation>
+				<xs:documentation>Rodzaj identyfikatora podatkowego podmiotu. 0 = wg transakcji VAT, 1 = NIP, 2 = VATIN, 3 = SME.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerNadanyPrzezUrzadzenieFiskalne" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer nadany przez urządzenie fiskalne</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerUnikatowyUrzadzeniaFiskalnego" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer unikatowy urządzenia fiskalnego</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OplataCukrowa" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wysokość podatku cukrowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OplataKofeinowa" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wysokość podatku kofeinowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PanstwoRozpoczeciaWysylki" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>e-Commerce: państwo rozpoczęcia wysyłki.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PanstwoKonsumpcji" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>e-Commerce: państwo konsumpcji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DodatkoweInformacje" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>e-Commerce: dodatkowe informacje.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="RodzajDatyUjeciaKorekty" type="xs:unsignedByte" use="optional">
+			<xs:annotation>
+				<xs:documentation>Określenie sposobu wyznaczania daty ujęcia korekty. (1 - data faktury pierwotnej, 2 - data wystawienia korekty, 3 - inna).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataUjeciaKorekty" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data ujęcia korekty.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="FormaPlatnosciOdroczonej" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator formy płatności odroczonej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="VATPodlegaOdliczeniu" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Określa czy VAT na dokumencie zakupu podlega odliczeniu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="RodzajFakturyZaliczkowej" type="xs:unsignedByte" use="optional">
+			<xs:annotation>
+				<xs:documentation>Rodzaj faktury zaliczkowej (0 - faktura zaliczkowa częściowa, 1 - faktura zaliczkowa końcowa, 2 - faktura zaliczkowa do wydań)</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ButelkiKaucjonowaneKwotaPobranychKaucji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Butelki kaucjonowane - kwota pobranej kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ButelkiKaucjonowaneLiczbaPobranychKaucji" type="xs:int" use="optional">
+			<xs:annotation>
+				<xs:documentation>Butelki kaucjonowane - liczba pobranych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PETKaucjonowaneKwotaPobranychKaucji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>PET kaucjonowane - kwota pobranej kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PETKaucjonowaneLiczbaPobranychKaucji" type="xs:int" use="optional">
+			<xs:annotation>
+				<xs:documentation>PET kaucjonowane - liczba pobranych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PuszkiKaucjonowaneKwotaPobranychKaucji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Puszki kaucjonowane - kwota pobranej kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PuszkiKaucjonowaneLiczbaPobranychKaucji" type="xs:int" use="optional">
+			<xs:annotation>
+				<xs:documentation>Puszki kaucjonowane - liczba pobranych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ButelkiKaucjonowaneKwotaZwroconychKaucji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Butelki kaucjonowane - kwota zwróconej kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="ButelkiKaucjonowaneLiczbaZwroconychKaucji" type="xs:int" use="optional">
+			<xs:annotation>
+				<xs:documentation>Butelki kaucjonowane - liczba zwróconych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PETKaucjonowaneKwotaZwroconychKaucji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>PET kaucjonowane - kwota zwróconej kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PETKaucjonowaneLiczbaZwroconychKaucji" type="xs:int" use="optional">
+			<xs:annotation>
+				<xs:documentation>PET kaucjonowane - liczba zwróconych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PuszkiKaucjonowaneKwotaZwroconychKaucji" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Puszki kaucjonowane - kwota zwróconej kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PuszkiKaucjonowaneLiczbaZwroconychKaucji" type="xs:int" use="optional">
+			<xs:annotation>
+				<xs:documentation>Puszki kaucjonowane - liczba zwróconych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="FakturaKorygujacaCzesciowa" type="xs:boolean" use="optional">
+			<xs:annotation>
+				<xs:documentation>Puszki kaucjonowane - liczba zwróconych kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscKaucjiZNieznanaStawka" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość kaucji z nieznaną stawką VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TAsortymentPozycjiDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Dane towaru wstawionego na pozycję dokumentu handlowego.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Cechy" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Cechy asortymentu.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Cecha" type="ddk:TPositiveInt" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Identyfikatory cech asortymentu.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Symbol" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Symbol towaru.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Nazwa" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Nazwa towaru.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Typ" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Typ towaru.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Rodzaj" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Rodzaj towaru (1 - usługa, 2 - towar, 3 - opakowanie, 4 - komplet).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Grupa" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Grupa towaru.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TWartoscPozycjiDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Aspekt wartości pozycji dokumentu handlowego.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="NettoPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto po rabacie pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="BruttoPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto po rabacie pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="VATPoRabacie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT po rabacie pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NettoPrzedRabatem" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto przed rabatem pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="BruttoPrzedRabatem" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto przed rabatem pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="VATPrzedRabatem" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT przed rabatem pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPlatnoscNatychmiastowaDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Pozycja płatności na dokumencie handlowym.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Kurs" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs płatności natychmiastowej dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="FormaPlatnosci" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator formy płatności.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Kwota" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Kwota płatności dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta płatności dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PodmiotCesjiWskazany" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Podmiot cesyjnej formy płatności wymagającej wskazania podmiotu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Data" type="xs:dateTime" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data płatności.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="IdentyfikatorPlatnosci" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator płatności.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPlatnoscOdroczonaDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Pozycja płatności odroczonej na dokumencie handlowym.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="FormaPlatnosci" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator formy płatności odroczonej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Kwota" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Kwota płatności odroczonej dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TerminPlatnosci" type="xs:dateTime" use="required">
+			<xs:annotation>
+				<xs:documentation>Termin płatności płatności dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TerminPlatnosciDni" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Dni terminu płatności płatności dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta płatności odroczonej dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Data" type="xs:dateTime" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data płatności odroczonej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPrzedplataDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Pozycja przedpłaty na dokumencie handlowym.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Kurs" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs przedpłaty dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="TypDokumentu" type="xs:unsignedByte" use="required">
+			<xs:annotation>
+				<xs:documentation>Typ dokumentu przedpłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Data" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data dokumentu przedpłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Numer" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer dokumentu przedpłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="FormaPlatnosci" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator formy płatnosci przedpłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Kwota" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Kwota przedpłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta przedpłaty dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PodmiotCesjiWskazany" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Podmiot cesyjnej formy płatności wymagającej wskazania podmiotu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TDokumentZakupuDokumentuSprzedazy">
+		<xs:annotation>
+			<xs:documentation>Dokumenty zakupu źródłowe dla pozycji faktury VAT marża.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="Numer" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Numer dokumentu zakupu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPozycjaDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Pozycja dokumentu handlowego.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Typ" type="xs:int" nillable="true">
+				<xs:annotation>
+					<xs:documentation>
+						Typ towaru pozycji dokumentu handlowego:
+						0 - Towar,
+						1 - Opakowanie,
+						2 - Komplet
+					</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Asortyment" type="TAsortymentPozycjiDokumentuHandlowego" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Asortyment pozycji dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Wartosc" type="TWartoscPozycjiDokumentuHandlowego" minOccurs="1" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Aspekt wartości pozycji dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KursWalutyVAT" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs waluty VAT pozycji dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="KursWalutyPozycji" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs waluty pozycji dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DokumentyZakupu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Dokumenty zakupu będące przyjęciami towaru dla danej pozycji.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="DokumentZakupu" type="TDokumentZakupuDokumentuSprzedazy" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Dokument zakupu.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="Index" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Indeks pozycji na potrzeby opisu księgowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="LP" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Liczba porządkowa pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Ilosc" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Ilość.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="JednostkaMiary" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Jednostka miary.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="StawkaVAT" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator stawki VAT pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Magazyn" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator magazynu pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KosztMagazynowy" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Koszt magazynowy pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KosztEwidencyjny" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Koszt ewidencyjny pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNabycia" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość nabycia towaru na pozycji faktury VAT marża w walucie dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNabyciaWWalucieSystemowej" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość nabycia towaru na pozycji faktury VAT marża w walucie systemowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Pozostalo" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Pozostała zaliczka dla pozycji faktury VAT zaliczkowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WalutaKosztow" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Waluta kosztów pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WalutaPozycji" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Waluta pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Opis" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Opis pozycji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="KosztyDodatkowe" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Koszty dodatkowe pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="GrupyAsortymentuJPK" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Grupy asortymentu pozycji na potrzeby JPK_V7.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OplataCukrowa" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wysokość podatku cukrowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="OplataKofeinowa" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wysokość podatku kofeinowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiNetto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma zaliczek netto wpłaconych na rzecz poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiBrutto" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma zaliczek brutto wpłaconych na rzecz poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiVat" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma wartości VAT od zaliczek wpłaconych na rzecz poprzednich faktur VAT zaliczkowych cząstkowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="StawkaRyczaltowa" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator stawki ryczałtu pozycji dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TTabelaVatDokumentuHandlowego">
+		<xs:annotation>
+			<xs:documentation>Pozycja tabeli VAT dokumentu handlowego.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="Index" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Liczba porządkowa pozycji VAT dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="StawkaVAT" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator stawki VAT pozycji VAT dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNetto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto (lub marża netto w przypadku faktury VAT marża, lub zaliczka netto w przypadku faktury VAT zaliczkowej końcowej) w danej stawce VAT (kwota w walucie systemowej).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscBrutto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto (lub marża brutto w przypadku faktury VAT marża, lub zaliczka brutto w przypadku faktury VAT zaliczkowej końcowej) w danej stawce VAT (kwota w walucie systemowej).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscVAT" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT (lub VAT od marży w przypadku faktury VAT marża, lub VAT od zaliczki w przypadku faktury VAT zaliczkowej końcowej) w danej stawce VAT (kwota w walucie systemowej).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNettoWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość netto (lub marża netto w przypadku faktury VAT marża, lub zaliczka netto w przypadku faktury VAT zaliczkowej końcowej) w danej stawce VAT (kwota w walucie).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscBruttoWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto (lub marża brutto w przypadku faktury VAT marża, lub zaliczka brutto w przypadku faktury VAT zaliczkowej końcowej) w danej stawce VAT (kwota w walucie).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscVATWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT (lub VAT od marży w przypadku faktury VAT marża, lub VAT od zaliczki w przypadku faktury VAT zaliczkowej końcowej) w danej stawce VAT (kwota w walucie).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta pozycji VAT dokumentu handlowego.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscSprzedazyWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość sprzedaży w danej stawce VAT (kwota w walucie). Tylko dla faktur VAT marża.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscNabycia" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Wartość nabycia towarów w walucie systemowej w danej stawce VAT faktury VAT marża.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaNettoTabeliVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Całkowita wartość netto w danej stawce VAT towarów na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaVatTabeliVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Całkowita wartość VAT w danej stawce VAT towarów na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaBruttoTabeliVATWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Całkowita wartość brutto w walucie w danej stawce VAT towarów na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaNettoTabeliVATWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Całkowita wartość netto w walucie w danej stawce VAT towarów na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaVatTabeliVATWWalucie" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Całkowita wartość VAT w walucie w danej stawce VAT towarów na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TransakcjaBruttoTabeliVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Całkowita wartość brutto w danej stawce VAT towarów na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiNettoTabeliVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma poprzednich zaliczek netto w danej stawce VAT na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiVatTabeliVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma wartości VAT od poprzednich zaliczek w danej stawce VAT na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="PoprzednieZaliczkiBruttoTabeliVAT" type="xs:decimal" use="optional">
+			<xs:annotation>
+				<xs:documentation>Suma poprzednich zaliczek brutto w danej stawce VAT na fakturze VAT zaliczkowej końcowej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TKursWalutyDokumentu">
+		<xs:annotation>
+			<xs:documentation>Aspekt kursu waluty.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="Kurs" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość kursu waluty.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="LiczbaJednostek" type="xs:int" use="required">
+			<xs:annotation>
+				<xs:documentation>Liczba jednostek waluty przeliczanej.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPozycjaFunduszuPromocji">
+		<xs:annotation>
+			<xs:documentation>Pozycja funduszu promocji na fakturze zakupu RR.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="FunduszPromocji" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator fundusz promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Oplata" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Opłata pobrana na rzecz funduszu promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="WartoscCalkowita" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość całkowita towarów będąca podstawą naliczenia opłaty na rzecz funduszu promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="IloscCalkowita" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Ilość całkowita towarów będąca podstawą naliczenia opłaty na rzecz funduszu promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Podmiot" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator podmiotu będącego funduszem promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Adres" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu podmiotu będącego funduszem promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TDostawaMarzowa">
+		<xs:annotation>
+			<xs:documentation>Dostawa marżowa.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Kurs" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="DataWystawienia" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data wystawienia.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataZakonczeniaDostawy" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data zakończenia dostawy.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataOtrzymania" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data otrzymania.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TypDokumentu" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Typ dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerOryginalny" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer oryginalny dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Podmiot" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator podmiotu będącego funduszem promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Adres" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Identyfikator adresu podmiotu będącego funduszem promocji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="SumaWartosciZakupowMarzowych" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Suma wartości zakupów marżowych.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TStawkaVATKaucji">
+		<xs:attribute name="StawkaVAT" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Identyfikator stawki VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="RodzajSymbol" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Symbol rodzaju kaucji.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Wartosc" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Ilosc" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Ilość.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TPoprzedniaZaliczka">
+		<xs:sequence>
+			<xs:element name="Kurs" type="TKursWalutyDokumentu" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Kurs.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+		<xs:attribute name="NumerDokumentu" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Numer dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataWystawienia" type="xs:dateTime" use="required">
+			<xs:annotation>
+				<xs:documentation>Data wystawienia dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Netto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Vat" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Brutto" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NettoWWalucie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość netto w walucie.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="VatWWalucie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość VAT w walucie.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="BruttoWWalucie" type="xs:decimal" use="required">
+			<xs:annotation>
+				<xs:documentation>Wartość brutto w walucie.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Waluta" type="xs:string" use="required">
+			<xs:annotation>
+				<xs:documentation>Waluta.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TDokumentHandlowy">
+		<xs:annotation>
+			<xs:documentation>Dokument handlowy.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Wersja" type="xs:string" nillable="false" fixed="2025_5">
+				<xs:annotation>
+					<xs:documentation>Wersja schematu.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Naglowek" type="TNaglowekDokumentuHandlowego" nillable="false">
+				<xs:annotation>
+					<xs:documentation>Nagłówek dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Pozycje" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Pozycja" type="TPozycjaDokumentuHandlowego" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja dokumentu handlowego.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="TabeleVAT" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje VAT dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="TabelaVAT" type="TTabelaVatDokumentuHandlowego" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja VAT dokumentu handlowego.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="PlatnosciNatychmiastowe" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje płatności dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="PlatnoscNatychmiastowa" type="TPlatnoscNatychmiastowaDokumentuHandlowego" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja płatności dokumentu handlowego.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="PlatnosciOdroczone" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje płatności odroczonych dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="PlatnoscOdroczona" type="TPlatnoscOdroczonaDokumentuHandlowego" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja płatności odroczonych dokumentu handlowego.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="Przedplaty" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje przedpłat dokumentu handlowego.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="Przedplata" type="TPrzedplataDokumentuHandlowego" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja przedpłaty dokumentu handlowego.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="FunduszePromocji" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje odpisów na fundusze promocji faktury zakupu RR.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="PozycjaFunduszuPromocji" type="TPozycjaFunduszuPromocji" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Pozycja odpisu na fundusz promocji faktury zakupu RR.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="DostawyMarzowe" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Pozycje dostaw marżowych.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="DostawaMarzowa" type="TDostawaMarzowa" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Dostawa marżowa.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="StawkiVATKaucji" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Stawki VAT kaucji.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="StawkaVATKaucji" type="TStawkaVATKaucji" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Stawka VAT kaucji.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="PoprzednieZaliczki" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Poprzednie zaliczki.</xs:documentation>
+				</xs:annotation>
+				<xs:complexType>
+					<xs:sequence>
+						<xs:element name="PoprzedniaZaliczka" type="TPoprzedniaZaliczka" minOccurs="0" maxOccurs="unbounded">
+							<xs:annotation>
+								<xs:documentation>Poprzednia zaliczka.</xs:documentation>
+							</xs:annotation>
+						</xs:element>
+					</xs:sequence>
+				</xs:complexType>
+			</xs:element>
+			<xs:element name="DokumentElektroniczny" type="TDokumentElektroniczny" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Główny węzeł opakowujący dokument elektroniczny.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:complexType name="TDokumentElektroniczny">
+		<xs:annotation>
+			<xs:documentation>Dokument handlowy wraz z wersją schematu. UWAGA: w nexo 57 i wcześniejszych nie wykorzystywana.</xs:documentation>
+		</xs:annotation>
+		<xs:attribute name="NumerDokumentu" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer dokumentu.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="NumerKSeF" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Numer KSeF.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="DataNadaniaNumeruKSeF" type="xs:date" use="optional">
+			<xs:annotation>
+				<xs:documentation>Data nadania numeru KSeF.</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="StatusPrzetworzenia" type="xs:unsignedByte" use="optional">
+			<xs:annotation>
+				<xs:documentation>
+					Zawartość zgodna z enumem {T:InsERT.Moria.Dokumenty.Logistyka.StatusPrzetworzeniaEFaktury}.
+					Status przetworzenia:
+					* 1 - Do przetworzenia tylko w księgowości.
+					Dla dokumentów odebranych oznacza, że dokument nie podlega przetwarzaniu w Subiekcie (np. dla faktur kosztowych).
+					Dla dokumentów utworzonych (wystawionych faktur) nie jest używany.
+					* 2 - Do przetworzenia w Subiekcie.
+					Dla dokumentów odebranych oznacza, że dokument ma zostać przetworzony na dokument Subiekta (dokument zakupu). Dla dokumentów utworzonych (wystawionych faktur) oznacza, że dokument oczekuje na wystawienie go w KSeF.
+					* 3 - Do przetworzenia w księgowości (przetworzona w Subiekcie)
+					Dla dokumentów odebranych oznacza, że dokument został przetworzony na dokument Subiekta (dokument zakupu). Dla dokumentów utworzonych (wystawionych faktur) oznacza, że dokument został przekazany do KSeF i został mu nadany numer KSeF.
+					* 4 - Do przetworzenia w księgowości (ręcznie przetworzona w Subiekcie)
+					Dla dokumentów odebranych oznacza, że dokument został ręcznie przetworzony na dokument Subiekta (ręcznie powiązany z dokumentem zakupu). Dla dokumentów utworzonych (wystawionych faktur) oznacza, że numer KSeF został wprowadzony ręcznie.
+					* 5 - Nieokreślony
+					Użytkownik nie określił czy dokument ma być przetwarzany w Subiekcie czy tylko w księgowości.
+					* 6 - Odrzucona
+					Faktura nie będzie przetwarzana ani w Subiekcie ani w księgowości gdyż jest wystawiona omyłkowo (np. potencjalna próba oszustwa).
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="TrybWystawienia" type="xs:unsignedByte" use="optional">
+			<xs:annotation>
+				<xs:documentation>
+					Zawartość zgodna z enumem {T:InsERT.Moria.Narzedzia.EPP.Typy.TrybDokumentuKSeFEpp}.
+					Tryb w jakim wystawiona została faktura:
+					* 0 - Normalna (wysłana/odebrana z KSeF posiadająca nr KSeF),
+					* 1 - Awaryjna – wystawiona w trybie awaryjnym bez względu na to czy posiada nr KSeF,
+					* 2 - OFFLINE – wystawiona w trybie OFFLINE24 bez względu na to czy posiada nr KSeF,
+					* 3 - ONLINE – faktura przeznaczona do wysłania do KSeF. Funkcjonalność Subiektów nexo i GT.
+				</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+		<xs:attribute name="Hash" type="xs:string" use="optional">
+			<xs:annotation>
+				<xs:documentation>Skrót dokumentu (hash).</xs:documentation>
+			</xs:annotation>
+		</xs:attribute>
+	</xs:complexType>
+
+	<xs:complexType name="TDokumentHandlowoElektroniczny">
+		<xs:annotation>
+			<xs:documentation>Dokument handlowy i/lub elektroniczny wraz z wersją schematu.</xs:documentation>
+		</xs:annotation>
+		<xs:sequence>
+			<xs:element name="Wersja" type="xs:string" nillable="false" fixed="2025_5">
+				<xs:annotation>
+					<xs:documentation>Wersja schematu.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DokumentHandlowy" type="TDokumentHandlowy" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Główny węzeł opakowujący dokument handlowy.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DokumentElektroniczny" type="TDokumentElektroniczny" minOccurs="0" maxOccurs="1">
+				<xs:annotation>
+					<xs:documentation>Główny węzeł opakowujący dokument elektroniczny. UWAGA: w nexo 57 i wcześniejszych nie wykorzystywana.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+
+	<xs:element name="Dokument" type="TDokumentHandlowoElektroniczny">
+		<xs:annotation>
+			<xs:documentation>Główny węzeł opakowujący dokument handlowy i/lub elektroniczny.</xs:documentation>
+		</xs:annotation>
+	</xs:element>
+</xs:schema>

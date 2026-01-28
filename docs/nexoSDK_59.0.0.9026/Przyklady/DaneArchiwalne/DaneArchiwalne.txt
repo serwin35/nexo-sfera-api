@@ -1,0 +1,41 @@
+﻿DaneArchiwalne
+~~~~~~~~~~~~~~
+
+Copyright © InsERT S.A. 2016
+
+Rozwiązania własne będące rozszerzeniami do InsERT nexo PRO.
+
+Aby zbudować przykład, należy w Project-Properties na zakładce Reference Paths
+dodać folder do binariów w SDK, np. C:\nexoSDK_11.0.0.1910\Bin
+
+------- DaneArchiwalne.DaneArchiwalneInsertGtMulti -------
+
+Zwraca informacje o dokumentach z archiwalnych baz danych pochodzących z systemu Subiekt GT.
+Zapewnia też podgląd dokumentów, analogiczny do opcji Przeglądaj (F9) z Subiekta GT.
+Przykład jest funkcjonalnie podobny do podglądu danych archiwalnych z Subiekta GT wbudowanych 
+w nexo od wersji 9 z tym, że dodano możliwość skonfigurowania parametrów połączenia do kilku 
+baz InsERT GT i dane z tych kilku baz są łącznie prezentowane w Subiekcie nexo.
+
+Rozszerzenie implementuje interfejs funkcji pobierania danych archiwalnych. 
+Do pobierania danych o dokumentach posługuje się zapytaniami SQL. Do wygenerowania podglądu 
+używa komponentu pochodzącego z InsERT GT oraz szablonów (definicja, transformacja) z bazy 
+InsERT GT. W tym celu nawiązuje połączenie za pomocą ADO.
+
+Wymagania:
+1. Licencja (może być wersja prezentacyjna): Subiekt nexo PRO.
+2. Zainstalowany InsERT GT w wersji co najmniej 1.14.
+3. Dostęp do bazy danych Subiekta GT.
+
+------- DaneArchiwalne.DaneArchiwalneInsertNexo -------
+
+Zwraca informacje o dokumentach z archiwalnej bazy danych Subiekta nexo.
+Zapewnia podgląd dokumentów, analogiczny do opcji Przeglądaj (F9) z Subiekta GT.
+
+Rozszerzenie implementuje interfejs funkcji pobierania danych archiwalnych. 
+Do pobierania danych o dokumentach posługuje się zapytaniami SQL. W celu ich wykonania
+nawiązywane jest połączenie ADO.NET. Przykład ten pokazuje również sposób wykonania 
+własnego podglądu dokumentów - za pomocą szablonu T4. 
+
+Wymagania:
+1. Licencja (może być wersja prezentacyjna): Subiekt nexo PRO.
+2. Dostęp do bazy danych Subiekta nexo.

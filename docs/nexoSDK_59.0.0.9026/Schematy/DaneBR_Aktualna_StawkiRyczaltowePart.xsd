@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema 
+  id="DaneBR_2014_StawkiRyczaltowePart"
+  elementFormDefault="qualified" 
+  xmlns="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  targetNamespace="http://schemas.insert.com.pl/2024/dokumentyDoKsiegowania"
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Dane o stawkach ryczałtowych biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+
+  <xs:complexType name="TStawkaRyczaltowa">
+    <xs:annotation>
+      <xs:documentation>Obiekt stawki ryczałtowej.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Nazwa" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Nazwa stawki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Stawka" type="xs:decimal" use="required">
+      <xs:annotation>
+        <xs:documentation>Wartość stawki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Aktywna" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Czy stawka aktywna.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Symbol" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Symbol stawki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Id" type="ddk2012:TGuid" use="required">
+      <xs:annotation>
+        <xs:documentation>Identyfikator stawki.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TStawkiRyczaltowe">
+    <xs:annotation>
+      <xs:documentation>Stawki ryczałtowe biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="StawkaRyczaltowa" type="TStawkaRyczaltowa" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Stawka ryczałtowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+</xs:schema>

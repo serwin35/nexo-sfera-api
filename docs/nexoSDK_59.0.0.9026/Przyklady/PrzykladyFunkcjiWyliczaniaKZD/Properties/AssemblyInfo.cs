@@ -1,0 +1,1 @@
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("Windows10.0.17763.0")]

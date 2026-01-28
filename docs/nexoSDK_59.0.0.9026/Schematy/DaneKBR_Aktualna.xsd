@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Uzyj xsd.exe do wygenerowania z tego kodu -->
+<xs:schema 
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania" 
+  xmlns:ddk2012="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" 
+  targetNamespace="http://schemas.insert.com.pl/2025/dokumentyDoKsiegowania" 
+  id="DaneKBR">
+  <xs:annotation>
+    <xs:documentation>Dane klienta biura rachunkowego.</xs:documentation>
+  </xs:annotation>
+  
+  <!-- xsd z definiowanymi typami danych -->
+  <xs:import id="TypyDanychPart" namespace="http://schemas.insert.com.pl/2012/dokumentyDoKsiegowania" schemaLocation="./TypyDanych_2012.xsd" />
+  <xs:include id="DokumentPart" schemaLocation="./DaneKBR_Aktualna_DokumentPart.xsd" />
+  <xs:include id="SlownikiPart" schemaLocation="./DaneKBR_Aktualna_SlownikiPart.xsd" />
+  <xs:include id="DaneNadawcyPart" schemaLocation="./DaneKBR_Aktualna_Nadawca.xsd" />
+  
+  <xs:complexType name="TDaneKlientaBiuraRachunkowego">
+    <xs:annotation>
+      <xs:documentation>Dane klienta biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Wersja" type="xs:string" fixed="2025">
+        <xs:annotation>
+          <xs:documentation>Wersja schematu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nadawca" type="TNadawca" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Informacje o nadawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dokumenty" type="TDokumenty" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja przesyłanych dokumentów do dekretacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DokumentyUsuniete" type="ddk2012:TListaGuid" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Kolekcja identyfikatorów usuniętych dokumentów do dekretacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Slowniki" type="TSlowniki" minOccurs="0" maxOccurs="1">
+        <xs:annotation>
+          <xs:documentation>Słowniki klienta biura rachunkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <!-- Dokumenty do księgowania obiekt xml -->
+  <xs:element name="Dane" type="TDaneKlientaBiuraRachunkowego">
+    <xs:annotation>
+      <xs:documentation>Główny węzeł opakowujący dane klienta biura rachunkowego.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>
