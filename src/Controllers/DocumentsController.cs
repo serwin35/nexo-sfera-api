@@ -3025,105 +3025,35 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
-                // Handle historical documents - change status to avoid TworzDokumentyAutomatyczne issues
+                // Handle historical documents - NOTE: For receipts, status manipulation might not be supported
+                // Receipts (paragons) typically don't support the same status management as invoices
+                // The SDK example doesn't set any status - it just creates and saves the receipt
+                // Setting status directly via StatusDokumentuId can put the document in an invalid state
                 bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                 if (isHistoricalDoc)
                 {
-                    _logger.LogInformation("[PA] Historical document detected - attempting to set status without auto-doc creation");
+                    _logger.LogWarning("[PA] Historical document detected (date: {Date}). Note: Receipts may not fully support historical dates like invoices do.", 
+                        request.IssueDate.Value.ToString("yyyy-MM-dd"));
+                    
+                    // For receipts, we'll try a minimal approach - just set PominAutomatyczny if available
+                    // This tells the SDK not to create automatic documents (though receipts typically don't have those anyway)
                     try
                     {
-                        int targetStatusId = 4; // "Bez rezerwacji" - no automatic document creation
-                        var paragonType = ((object)paragon).GetType();
-                        var ustawStatusMethod = paragonType.GetMethod("UstawStatus");
-
-                        if (ustawStatusMethod != null)
+                        if (DynamicPropertyHelper.TrySetProperty(paragon, "PominAutomatyczny", true))
                         {
-                            var statusyManager = _sferaService.GetManager("StatusyDokumentow");
-                            if (statusyManager != null)
-                            {
-                                var statusyDane = statusyManager.Dane;
-                                if (statusyDane != null)
-                                {
-                                    var wszystkie = statusyDane.Wszystkie();
-                                    if (wszystkie != null)
-                                    {
-                                        dynamic? targetStatus = null;
-                                        foreach (var status in (System.Collections.IEnumerable)wszystkie)
-                                        {
-                                            int? id = DynamicPropertyHelper.GetInt(status, "Id");
-                                            if (id == targetStatusId)
-                                            {
-                                                targetStatus = status;
-                                                string? nazwa = DynamicPropertyHelper.GetString(status, "Nazwa");
-                                                _logger.LogInformation("[PA] Found target status: Id={Id}, Nazwa={Nazwa}", (object)id, (object)(nazwa ?? "?"));
-                                                break;
-                                            }
-                                        }
-
-                                        if (targetStatus != null)
-                                        {
-                                            var parameters = ustawStatusMethod.GetParameters();
-                                            _logger.LogInformation("[PA] Calling paragon.UstawStatus with {Count} parameters", parameters.Length);
-
-                                            if (parameters.Length == 2)
-                                            {
-                                                ustawStatusMethod.Invoke(paragon, new object?[] { targetStatus, null });
-                                                _logger.LogInformation("[PA] UstawStatus called successfully");
-                                            }
-                                            else if (parameters.Length == 3)
-                                            {
-                                                ustawStatusMethod.Invoke(paragon, new object?[] { targetStatus, null, null });
-                                                _logger.LogInformation("[PA] UstawStatus (3 params) called successfully");
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            _logger.LogInformation("[PA] PominAutomatyczny set to true");
                         }
-                        else
-                        {
-                            // Fallback: try setting StatusDokumentuId (FK) directly
-                            _logger.LogInformation("[PA] UstawStatus not found, trying StatusDokumentuId assignment");
-                            try
-                            {
-                                // Method 1: Set StatusDokumentuId (the FK property)
-                                if (DynamicPropertyHelper.TrySetProperty(dane, "StatusDokumentuId", targetStatusId))
-                                {
-                                    _logger.LogInformation("[PA] StatusDokumentuId set to {Id}", (object)targetStatusId);
-                                }
-                                else
-                                {
-                                    // Method 2: Try reflection on Dokument property
-                                    var dokument = DynamicPropertyHelper.GetProperty(paragon, "Dokument");
-                                    if (dokument != null)
-                                    {
-                                        DynamicPropertyHelper.TrySetProperty(dokument, "StatusDokumentuId", targetStatusId);
-                                        _logger.LogInformation("[PA] Dokument.StatusDokumentuId set to {Id}", (object)targetStatusId);
-                                    }
-                                }
-                            }
-                            catch (Exception fkEx)
-                            {
-                                _logger.LogWarning("[PA] StatusDokumentuId assignment failed: {Msg}", (object)fkEx.Message);
-                            }
-
-                            // Also try PominAutomatyczny like FS does
-                            try
-                            {
-                                if (DynamicPropertyHelper.TrySetProperty(paragon, "PominAutomatyczny", true))
-                                {
-                                    _logger.LogInformation("[PA] PominAutomatyczny set to true");
-                                }
-                                DynamicPropertyHelper.TrySetProperty(paragon, "WylaczKontroleRealizacji", true);
-                                DynamicPropertyHelper.TrySetProperty(paragon, "WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa", true);
-                            }
-                            catch { }
-                        }
+                        // These flags might help with historical documents
+                        DynamicPropertyHelper.TrySetProperty(paragon, "WylaczKontroleRealizacji", true);
+                        DynamicPropertyHelper.TrySetProperty(paragon, "WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa", true);
                     }
-                    catch (Exception statusEx)
+                    catch (Exception flagEx)
                     {
-                        _logger.LogWarning("[PA] Could not set status for historical document: {Msg}", statusEx.Message);
+                        _logger.LogDebug("[PA] Could not set historical document flags: {Msg}", flagEx.Message);
                     }
+                    
+                    // DO NOT try to set StatusDokumentuId directly - this can invalidate the document
+                    // If you need different statuses for receipts, use the UstawStatus method (if available)
                 }
 
                 // Check if document is ready to save (like sales invoice does)
@@ -4587,10 +4517,21 @@ public class DocumentsController : ControllerBase
     /// </summary>
     private void AddReceiptItemsById(dynamic paragon, List<CreateDocumentItemRequest> items)
     {
-        if (items == null || !items.Any()) return;
+        if (items == null || !items.Any())
+        {
+            _logger.LogWarning("[PA] AddReceiptItemsById: No items provided");
+            return;
+        }
 
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
-        if (asortymentyManager == null) return;
+        if (asortymentyManager == null)
+        {
+            _logger.LogError("[PA] AddReceiptItemsById: Failed to get Asortymenty manager");
+            return;
+        }
+
+        _logger.LogInformation("[PA] AddReceiptItemsById: Adding {Count} items to receipt", items.Count);
+        int addedCount = 0;
 
         foreach (var item in items)
         {
@@ -4606,6 +4547,10 @@ public class DocumentsController : ControllerBase
                         break;
                     }
                 }
+                if (asortyment == null)
+                {
+                    _logger.LogWarning("[PA] Product with ID {Id} not found", item.ProductId.Value);
+                }
             }
             else if (!string.IsNullOrEmpty(item.ProductSymbol))
             {
@@ -4617,17 +4562,26 @@ public class DocumentsController : ControllerBase
                         break;
                     }
                 }
+                if (asortyment == null)
+                {
+                    _logger.LogWarning("[PA] Product with Symbol '{Symbol}' not found", item.ProductSymbol);
+                }
             }
 
             if (asortyment != null)
             {
                 int towarId = DynamicPropertyHelper.GetId(asortyment);
+                string? symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol");
+                _logger.LogDebug("[PA] Adding product {Symbol} (ID: {Id}) to receipt", symbol ?? "(unknown)", towarId);
+                
                 // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
                 var pozycja = paragon.Pozycje.Dodaj(towarId);
 
                 if (pozycja != null)
                 {
                     pozycja.Ilosc = item.Quantity;
+                    addedCount++;
+                    _logger.LogInformation("[PA] Added position: Product={Symbol}, Qty={Qty}", symbol ?? "(unknown)", item.Quantity);
 
                     // Set price - try multiple property names as they vary by document type
                     if (item.PriceNet.HasValue)
@@ -4681,8 +4635,14 @@ public class DocumentsController : ControllerBase
                         DynamicPropertyHelper.TrySetProperty(pozycja, "RabatProcent", item.DiscountPercent.Value);
                     }
                 }
+                else
+                {
+                    _logger.LogError("[PA] Pozycje.Dodaj() returned null for product {Symbol} (ID: {Id})", symbol ?? "(unknown)", towarId);
+                }
             }
         }
+        
+        _logger.LogInformation("[PA] AddReceiptItemsById: Successfully added {Added} out of {Total} items", addedCount, items.Count);
     }
 
     private void AddCorrectionItems(dynamic korekta, List<CreateCorrectionItemRequest> items, bool usePurchaseUnit = false)
@@ -5457,36 +5417,80 @@ public class DocumentsController : ControllerBase
 
             foreach (var encjaZBledami in invalidData)
             {
+                // Get the type name for better error messages
+                string typeName = "(unknown)";
+                try
+                {
+                    typeName = ((object)encjaZBledami).GetType().Name;
+                }
+                catch { }
+
+                // Extract entity-level errors (Errors property)
                 var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
                 if (entityErrors != null)
                 {
                     foreach (var blad in entityErrors)
                     {
-                        errors.Add(blad?.ToString() ?? "Unknown error");
+                        string errorMsg = blad?.ToString() ?? "Unknown error";
+                        errors.Add($"{typeName}: {errorMsg}");
                     }
                 }
 
+                // Extract field-level errors (MemberErrors property)
+                // MemberErrors is IEnumerable<IGrouping<string, string>> where Key = error message, Value = field names
                 var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
                 if (memberErrors != null)
                 {
-                    foreach (var bladNaPolach in memberErrors)
+                    try
                     {
-                        try
+                        // MemberErrors is a collection of IGrouping where Key is the error message
+                        foreach (var errorGroup in memberErrors)
                         {
-                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
-                            errors.Add($"{key}: {bladNaPolach}");
+                            try
+                            {
+                                // Get the error message (Key of the grouping)
+                                string? errorMessage = null;
+                                var keyProp = ((object)errorGroup).GetType().GetProperty("Key");
+                                if (keyProp != null)
+                                {
+                                    errorMessage = keyProp.GetValue(errorGroup)?.ToString();
+                                }
+
+                                // Get the field names (items in the grouping)
+                                List<string> fieldNames = new();
+                                foreach (var fieldName in errorGroup)
+                                {
+                                    if (fieldName != null)
+                                    {
+                                        fieldNames.Add(fieldName.ToString() ?? "");
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    string fieldsStr = fieldNames.Any() 
+                                        ? $" on fields: {string.Join(", ", fieldNames.Select(f => $"{typeName}.{f}"))}"
+                                        : "";
+                                    errors.Add($"{errorMessage}{fieldsStr}");
+                                }
+                            }
+                            catch (Exception groupEx)
+                            {
+                                // Fallback if we can't parse the grouping
+                                errors.Add($"{typeName}: {errorGroup?.ToString() ?? "Unknown field error"}");
+                            }
                         }
-                        catch
-                        {
-                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
-                        }
+                    }
+                    catch (Exception memberEx)
+                    {
+                        errors.Add($"{typeName}: Could not parse MemberErrors - {memberEx.Message}");
                     }
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            errors.Add("Could not retrieve error details");
+            errors.Add($"Could not retrieve error details: {ex.Message}");
         }
         return errors;
     }
