@@ -140,7 +140,7 @@ public class StockValidationHelper
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to check if product is a service");
+            _logger.LogWarning(ex, "Failed to check if product is a service - defaulting to non-service");
             return false;
         }
     }
@@ -297,7 +297,7 @@ public class StockValidationHelper
             // Skip stock validation for services
             if (IsService(productLookup.Product))
             {
-                _logger.LogDebug("Skipping stock validation for service product '{Symbol}' (ID: {Id})", kvp.Value.Symbol, kvp.Key);
+                _logger.LogInformation("Skipping stock validation for service product '{Symbol}' (ID: {Id})", kvp.Value.Symbol, kvp.Key);
                 var serviceResult = new StockValidationItemResult
                 {
                     HasSufficientStock = true, // Services always have "stock"
@@ -349,7 +349,7 @@ public class StockValidationHelper
         // Services always have sufficient "stock"
         if (IsService(lookup.Product))
         {
-            _logger.LogDebug("Skipping stock check for service product ID {Id} - services always pass validation", productId);
+            _logger.LogInformation("Skipping stock check for service product ID {Id} - services always pass validation", productId);
             return true;
         }
 
@@ -368,7 +368,7 @@ public class StockValidationHelper
         // Services always have sufficient "stock"
         if (IsService(lookup.Product))
         {
-            _logger.LogDebug("Skipping stock check for service product '{Symbol}' - services always pass validation", productSymbol);
+            _logger.LogInformation("Skipping stock check for service product '{Symbol}' - services always pass validation", productSymbol);
             return true;
         }
 
