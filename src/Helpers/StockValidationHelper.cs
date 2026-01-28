@@ -254,7 +254,7 @@ public class StockValidationHelper
             var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "(unknown)";
             var productId = DynamicPropertyHelper.GetId(product);
 
-            // 1. Najpewniejsze: Rodzaj_Id
+            // 1. Most reliable: Rodzaj_Id
             // In Nexo Sfera SDK:
             // - Rodzaj_Id = 1 means Service (Usługa)
             // - Rodzaj_Id = 2 means Product (Towar)
@@ -263,10 +263,23 @@ public class StockValidationHelper
             if (rodzajId.HasValue)
             {
                 bool isService = rodzajId.Value == 1;
-                if (isService && logger != null)
+                if (logger != null)
                 {
-                    logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via Rodzaj_Id={RodzajId}", 
-                        (object)productSymbol, (object)productId, (object)rodzajId.Value);
+                    if (isService)
+                    {
+                        logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via Rodzaj_Id={RodzajId}", 
+                            (object)productSymbol, (object)productId, (object)rodzajId.Value);
+                    }
+                    else if (rodzajId.Value == 2)
+                    {
+                        logger.LogDebug("Product '{Symbol}' (ID: {Id}) is a Product (Rodzaj_Id=2)", 
+                            (object)productSymbol, (object)productId);
+                    }
+                    else if (rodzajId.Value == 3)
+                    {
+                        logger.LogDebug("Product '{Symbol}' (ID: {Id}) is a Set/Bundle (Rodzaj_Id=3)", 
+                            (object)productSymbol, (object)productId);
+                    }
                 }
                 return isService;
             }
@@ -297,7 +310,7 @@ public class StockValidationHelper
                 return true;
             }
 
-            // 4. Heurystyka na nazwie/symbolu - fallback when metadata is missing
+            // 4. Heuristic based on name/symbol - fallback when metadata is missing
             // This is used as a safety net for cases where Rodzaj_Id is not set correctly
             foreach (var pattern in ServiceNamePatterns)
             {
@@ -326,7 +339,7 @@ public class StockValidationHelper
         }
         catch (Exception ex)
         {
-            // Ignoruj wyjątki, traktuj jako nie-usługa
+            // Ignore exceptions, treat as non-service
             // It's safer to require stock validation for unknown types
             if (logger != null)
             {

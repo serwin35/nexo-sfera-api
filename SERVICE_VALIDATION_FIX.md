@@ -16,7 +16,7 @@ warn: NexoSferaApi.Controllers.DocumentsController[0]
 
 The `IsService()` method in `src/Helpers/StockValidationHelper.cs` was using direct dynamic property access instead of the `DynamicPropertyHelper` class:
 
-**Problematic code (lines 247 & 251):**
+**Problematic code (original version before fix):**
 ```csharp
 // 2. GrupaTowaru
 if (product.GrupaTowaru != null && product.GrupaTowaru == "US")
