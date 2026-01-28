@@ -3025,105 +3025,35 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
-                // Handle historical documents - change status to avoid TworzDokumentyAutomatyczne issues
+                // Handle historical documents - NOTE: For receipts, status manipulation might not be supported
+                // Receipts (paragons) typically don't support the same status management as invoices
+                // The SDK example doesn't set any status - it just creates and saves the receipt
+                // Setting status directly via StatusDokumentuId can put the document in an invalid state
                 bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                 if (isHistoricalDoc)
                 {
-                    _logger.LogInformation("[PA] Historical document detected - attempting to set status without auto-doc creation");
+                    _logger.LogWarning("[PA] Historical document detected (date: {Date}). Note: Receipts may not fully support historical dates like invoices do.", 
+                        request.IssueDate.Value.ToString("yyyy-MM-dd"));
+                    
+                    // For receipts, we'll try a minimal approach - just set PominAutomatyczny if available
+                    // This tells the SDK not to create automatic documents (though receipts typically don't have those anyway)
                     try
                     {
-                        int targetStatusId = 4; // "Bez rezerwacji" - no automatic document creation
-                        var paragonType = ((object)paragon).GetType();
-                        var ustawStatusMethod = paragonType.GetMethod("UstawStatus");
-
-                        if (ustawStatusMethod != null)
+                        if (DynamicPropertyHelper.TrySetProperty(paragon, "PominAutomatyczny", true))
                         {
-                            var statusyManager = _sferaService.GetManager("StatusyDokumentow");
-                            if (statusyManager != null)
-                            {
-                                var statusyDane = statusyManager.Dane;
-                                if (statusyDane != null)
-                                {
-                                    var wszystkie = statusyDane.Wszystkie();
-                                    if (wszystkie != null)
-                                    {
-                                        dynamic? targetStatus = null;
-                                        foreach (var status in (System.Collections.IEnumerable)wszystkie)
-                                        {
-                                            int? id = DynamicPropertyHelper.GetInt(status, "Id");
-                                            if (id == targetStatusId)
-                                            {
-                                                targetStatus = status;
-                                                string? nazwa = DynamicPropertyHelper.GetString(status, "Nazwa");
-                                                _logger.LogInformation("[PA] Found target status: Id={Id}, Nazwa={Nazwa}", (object)id, (object)(nazwa ?? "?"));
-                                                break;
-                                            }
-                                        }
-
-                                        if (targetStatus != null)
-                                        {
-                                            var parameters = ustawStatusMethod.GetParameters();
-                                            _logger.LogInformation("[PA] Calling paragon.UstawStatus with {Count} parameters", parameters.Length);
-
-                                            if (parameters.Length == 2)
-                                            {
-                                                ustawStatusMethod.Invoke(paragon, new object?[] { targetStatus, null });
-                                                _logger.LogInformation("[PA] UstawStatus called successfully");
-                                            }
-                                            else if (parameters.Length == 3)
-                                            {
-                                                ustawStatusMethod.Invoke(paragon, new object?[] { targetStatus, null, null });
-                                                _logger.LogInformation("[PA] UstawStatus (3 params) called successfully");
-                                            }
-                                        }
-                                    }
-                                }
-                            }
+                            _logger.LogInformation("[PA] PominAutomatyczny set to true");
                         }
-                        else
-                        {
-                            // Fallback: try setting StatusDokumentuId (FK) directly
-                            _logger.LogInformation("[PA] UstawStatus not found, trying StatusDokumentuId assignment");
-                            try
-                            {
-                                // Method 1: Set StatusDokumentuId (the FK property)
-                                if (DynamicPropertyHelper.TrySetProperty(dane, "StatusDokumentuId", targetStatusId))
-                                {
-                                    _logger.LogInformation("[PA] StatusDokumentuId set to {Id}", (object)targetStatusId);
-                                }
-                                else
-                                {
-                                    // Method 2: Try reflection on Dokument property
-                                    var dokument = DynamicPropertyHelper.GetProperty(paragon, "Dokument");
-                                    if (dokument != null)
-                                    {
-                                        DynamicPropertyHelper.TrySetProperty(dokument, "StatusDokumentuId", targetStatusId);
-                                        _logger.LogInformation("[PA] Dokument.StatusDokumentuId set to {Id}", (object)targetStatusId);
-                                    }
-                                }
-                            }
-                            catch (Exception fkEx)
-                            {
-                                _logger.LogWarning("[PA] StatusDokumentuId assignment failed: {Msg}", (object)fkEx.Message);
-                            }
-
-                            // Also try PominAutomatyczny like FS does
-                            try
-                            {
-                                if (DynamicPropertyHelper.TrySetProperty(paragon, "PominAutomatyczny", true))
-                                {
-                                    _logger.LogInformation("[PA] PominAutomatyczny set to true");
-                                }
-                                DynamicPropertyHelper.TrySetProperty(paragon, "WylaczKontroleRealizacji", true);
-                                DynamicPropertyHelper.TrySetProperty(paragon, "WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa", true);
-                            }
-                            catch { }
-                        }
+                        // These flags might help with historical documents
+                        DynamicPropertyHelper.TrySetProperty(paragon, "WylaczKontroleRealizacji", true);
+                        DynamicPropertyHelper.TrySetProperty(paragon, "WylaczBlokowanieStanowPrzezRezerwacjeIlosciowa", true);
                     }
-                    catch (Exception statusEx)
+                    catch (Exception flagEx)
                     {
-                        _logger.LogWarning("[PA] Could not set status for historical document: {Msg}", statusEx.Message);
+                        _logger.LogDebug("[PA] Could not set historical document flags: {Msg}", flagEx.Message);
                     }
+                    
+                    // DO NOT try to set StatusDokumentuId directly - this can invalidate the document
+                    // If you need different statuses for receipts, use the UstawStatus method (if available)
                 }
 
                 // Check if document is ready to save (like sales invoice does)
