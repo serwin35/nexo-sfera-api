@@ -5487,36 +5487,80 @@ public class DocumentsController : ControllerBase
 
             foreach (var encjaZBledami in invalidData)
             {
+                // Get the type name for better error messages
+                string typeName = "(unknown)";
+                try
+                {
+                    typeName = ((object)encjaZBledami).GetType().Name;
+                }
+                catch { }
+
+                // Extract entity-level errors (Errors property)
                 var entityErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "Errors");
                 if (entityErrors != null)
                 {
                     foreach (var blad in entityErrors)
                     {
-                        errors.Add(blad?.ToString() ?? "Unknown error");
+                        string errorMsg = blad?.ToString() ?? "Unknown error";
+                        errors.Add($"{typeName}: {errorMsg}");
                     }
                 }
 
+                // Extract field-level errors (MemberErrors property)
+                // MemberErrors is IEnumerable<IGrouping<string, string>> where Key = error message, Value = field names
                 var memberErrors = DynamicPropertyHelper.GetProperty(encjaZBledami, "MemberErrors");
                 if (memberErrors != null)
                 {
-                    foreach (var bladNaPolach in memberErrors)
+                    try
                     {
-                        try
+                        // MemberErrors is a collection of IGrouping where Key is the error message
+                        foreach (var errorGroup in memberErrors)
                         {
-                            var key = DynamicPropertyHelper.GetProperty(bladNaPolach, "Key");
-                            errors.Add($"{key}: {bladNaPolach}");
+                            try
+                            {
+                                // Get the error message (Key of the grouping)
+                                string? errorMessage = null;
+                                var keyProp = ((object)errorGroup).GetType().GetProperty("Key");
+                                if (keyProp != null)
+                                {
+                                    errorMessage = keyProp.GetValue(errorGroup)?.ToString();
+                                }
+
+                                // Get the field names (items in the grouping)
+                                List<string> fieldNames = new();
+                                foreach (var fieldName in errorGroup)
+                                {
+                                    if (fieldName != null)
+                                    {
+                                        fieldNames.Add(fieldName.ToString() ?? "");
+                                    }
+                                }
+
+                                if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    string fieldsStr = fieldNames.Any() 
+                                        ? $" on fields: {string.Join(", ", fieldNames.Select(f => $"{typeName}.{f}"))}"
+                                        : "";
+                                    errors.Add($"{errorMessage}{fieldsStr}");
+                                }
+                            }
+                            catch (Exception groupEx)
+                            {
+                                // Fallback if we can't parse the grouping
+                                errors.Add($"{typeName}: {errorGroup?.ToString() ?? "Unknown field error"}");
+                            }
                         }
-                        catch
-                        {
-                            errors.Add(bladNaPolach?.ToString() ?? "Unknown error");
-                        }
+                    }
+                    catch (Exception memberEx)
+                    {
+                        errors.Add($"{typeName}: Could not parse MemberErrors - {memberEx.Message}");
                     }
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            errors.Add("Could not retrieve error details");
+            errors.Add($"Could not retrieve error details: {ex.Message}");
         }
         return errors;
     }
