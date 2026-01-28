@@ -285,15 +285,46 @@ public class StockValidationHelper
                 _logger.LogDebug(navEx, "IsService: Could not navigate to Rodzaj property");
             }
             
+            // PRIORITY 3: Use heuristics based on product name/symbol patterns
+            // Some service items might not have Rodzaj_Id set properly
+            var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "";
+            var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "";
+            
+            // Common service name patterns (case-insensitive)
+            var serviceNamePatterns = new[]
+            {
+                "usługa", "uslugi", "service",
+                "koszt przesyłki", "shipping", "dostawa", "delivery",
+                "obsługa", "handling", "obsługi",
+                "montaż", "instalacja", "installation",
+                "transport", "przewóz",
+                "opłata", "fee", "charge"
+            };
+            
+            foreach (var pattern in serviceNamePatterns)
+            {
+                if (productName.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                    productSymbol.Contains(pattern, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("IsService: Detected service by name/symbol pattern '{Pattern}' in '{Name}' (Symbol: {Symbol})",
+                        (object)pattern, (object)productName, (object)productSymbol);
+                    return true;
+                }
+            }
+            
             // If we can't determine the product type, log a warning and assume it's NOT a service
             // This is safer - we prefer to validate stock for unknown types
-            _logger.LogWarning("IsService: Could not determine product type - assuming it's not a service");
+            _logger.LogWarning("IsService: Could not determine product type for '{Name}' (Symbol: {Symbol}) - assuming it's not a service",
+                (object)productName, (object)productSymbol);
             return false;
         }
         catch (Exception ex)
         {
             // Unexpected exception - log and assume not a service (safer)
-            _logger.LogWarning(ex, "IsService: Exception while checking if product is a service");
+            var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "(unknown)";
+            var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "(unknown)";
+            _logger.LogWarning(ex, "IsService: Exception while checking if product '{Name}' (Symbol: {Symbol}) is a service",
+                (object)productName, (object)productSymbol);
             return false;
         }
     }
