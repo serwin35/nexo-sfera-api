@@ -231,6 +231,47 @@ public class StockValidationHelper
         return total;
     }
 
+    public static bool IsService(dynamic product)
+    {
+        if (product == null)
+            return false;
+
+        try
+        {
+            // 1. Najpewniejsze: Rodzaj_Id
+            var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
+            if (rodzajId.HasValue)
+                return rodzajId.Value == 1;
+
+            // 2. GrupaTowaru
+            if (product.GrupaTowaru != null && product.GrupaTowaru == "US")
+                return true;
+
+            // 3. TypTowaru
+            if (product.TypTowaru != null && (int)product.TypTowaru == 2)
+                return true;
+
+            // 4. Heurystyka na nazwie/symbolu
+            var productName = DynamicPropertyHelper.GetString(product, "Nazwa") ?? "";
+            var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "";
+            foreach (var pattern in ServiceNamePatterns)
+            {
+                if (productName.StartsWith(pattern, StringComparison.OrdinalIgnoreCase) ||
+                    productSymbol.StartsWith(pattern, StringComparison.OrdinalIgnoreCase) ||
+                    (pattern.Contains(' ') && (productName.Contains(pattern, StringComparison.OrdinalIgnoreCase) ||
+                                               productSymbol.Contains(pattern, StringComparison.OrdinalIgnoreCase))))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // Ignoruj wyjątki, traktuj jako nie-usługa
+        }
+        return false;
+    }
+
     /// <summary>
     /// Checks if a product is a service type (Rodzaj_Id = 1).
     /// Services don't require stock validation as they are not physical items.
@@ -239,7 +280,7 @@ public class StockValidationHelper
     /// - Rodzaj_Id = 2 means Product (Towar)
     /// - Rodzaj_Id = 3 means Set (Komplet)
     /// </summary>
-    public bool IsService(dynamic product)
+    public bool IsService__old-methods(dynamic product)
     {
         if (product == null)
         {
