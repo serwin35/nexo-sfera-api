@@ -4587,10 +4587,21 @@ public class DocumentsController : ControllerBase
     /// </summary>
     private void AddReceiptItemsById(dynamic paragon, List<CreateDocumentItemRequest> items)
     {
-        if (items == null || !items.Any()) return;
+        if (items == null || !items.Any())
+        {
+            _logger.LogWarning("[PA] AddReceiptItemsById: No items provided");
+            return;
+        }
 
         var asortymentyManager = _sferaService.GetManager("Asortymenty");
-        if (asortymentyManager == null) return;
+        if (asortymentyManager == null)
+        {
+            _logger.LogError("[PA] AddReceiptItemsById: Failed to get Asortymenty manager");
+            return;
+        }
+
+        _logger.LogInformation("[PA] AddReceiptItemsById: Adding {Count} items to receipt", items.Count);
+        int addedCount = 0;
 
         foreach (var item in items)
         {
@@ -4606,6 +4617,10 @@ public class DocumentsController : ControllerBase
                         break;
                     }
                 }
+                if (asortyment == null)
+                {
+                    _logger.LogWarning("[PA] Product with ID {Id} not found", item.ProductId.Value);
+                }
             }
             else if (!string.IsNullOrEmpty(item.ProductSymbol))
             {
@@ -4617,17 +4632,26 @@ public class DocumentsController : ControllerBase
                         break;
                     }
                 }
+                if (asortyment == null)
+                {
+                    _logger.LogWarning("[PA] Product with Symbol '{Symbol}' not found", item.ProductSymbol);
+                }
             }
 
             if (asortyment != null)
             {
                 int towarId = DynamicPropertyHelper.GetId(asortyment);
+                string? symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol");
+                _logger.LogDebug("[PA] Adding product {Symbol} (ID: {Id}) to receipt", symbol ?? "(unknown)", towarId);
+                
                 // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
                 var pozycja = paragon.Pozycje.Dodaj(towarId);
 
                 if (pozycja != null)
                 {
                     pozycja.Ilosc = item.Quantity;
+                    addedCount++;
+                    _logger.LogInformation("[PA] Added position: Product={Symbol}, Qty={Qty}", symbol ?? "(unknown)", item.Quantity);
 
                     // Set price - try multiple property names as they vary by document type
                     if (item.PriceNet.HasValue)
@@ -4681,8 +4705,14 @@ public class DocumentsController : ControllerBase
                         DynamicPropertyHelper.TrySetProperty(pozycja, "RabatProcent", item.DiscountPercent.Value);
                     }
                 }
+                else
+                {
+                    _logger.LogError("[PA] Pozycje.Dodaj() returned null for product {Symbol} (ID: {Id})", symbol ?? "(unknown)", towarId);
+                }
             }
         }
+        
+        _logger.LogInformation("[PA] AddReceiptItemsById: Successfully added {Added} out of {Total} items", addedCount, items.Count);
     }
 
     private void AddCorrectionItems(dynamic korekta, List<CreateCorrectionItemRequest> items, bool usePurchaseUnit = false)
