@@ -2989,6 +2989,42 @@ public class DocumentsController : ControllerBase
                 // Add items using product ID
                 AddReceiptItemsById(paragon, request.Items);
 
+                // CRITICAL: Recalculate document totals after adding items (required by SDK)
+                _logger.LogInformation("[PA] Calling Przelicz() to recalculate document totals...");
+                try
+                {
+                    paragon.Przelicz();
+                    _logger.LogInformation("[PA] Przelicz() completed successfully");
+                }
+                catch (Exception przeliczEx)
+                {
+                    _logger.LogWarning("[PA] Przelicz() failed: {Msg}", przeliczEx.Message);
+                }
+
+                // CRITICAL: Add default payment for receipt (required by SDK for receipts)
+                // SDK pattern: paragon.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()
+                _logger.LogInformation("[PA] Adding default immediate payment...");
+                try
+                {
+                    paragon.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
+                    _logger.LogInformation("[PA] Called Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
+                }
+                catch (Exception platEx)
+                {
+                    _logger.LogDebug("[PA] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", platEx.Message);
+
+                    // Try alternative payment method
+                    try
+                    {
+                        paragon.Platnosci.DodajPlatnosciDomyslne();
+                        _logger.LogInformation("[PA] Called Platnosci.DodajPlatnosciDomyslne() successfully");
+                    }
+                    catch (Exception platEx2)
+                    {
+                        _logger.LogDebug("[PA] Platnosci.DodajPlatnosciDomyslne() also failed: {Msg}", platEx2.Message);
+                    }
+                }
+
                 // Handle historical documents - change status to avoid TworzDokumentyAutomatyczne issues
                 bool isHistoricalDoc = request.IssueDate.HasValue && request.IssueDate.Value.Date < DateTime.Today.AddDays(-30);
                 if (isHistoricalDoc)
