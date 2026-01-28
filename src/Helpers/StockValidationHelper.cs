@@ -244,9 +244,10 @@ public class StockValidationHelper
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // If we can't determine, assume it's not a service (safer to validate stock)
+            // Log exception but continue - if we can't determine, assume it's not a service (safer to validate stock)
+            _logger.LogDebug("Could not determine if product is a service: {Message}", ex.Message);
         }
         
         return false;
@@ -304,15 +305,15 @@ public class StockValidationHelper
         // Now validate stock for aggregated quantities
         foreach (var kvp in itemsByProduct)
         {
-            var productLookup = FindProduct(kvp.Key, null, null);
-            if (!productLookup.Found)
+            var product = kvp.Value.Product;
+            if (product == null)
             {
                 // Shouldn't happen, but handle it
                 continue;
             }
 
             // Skip stock validation for services - they don't have physical inventory
-            if (IsService(productLookup.Product))
+            if (IsService(product))
             {
                 _logger.LogDebug("Skipping stock validation for service: {Symbol} (Rodzaj_Id=1)", kvp.Value.Symbol);
                 
@@ -329,7 +330,7 @@ public class StockValidationHelper
                 continue;
             }
 
-            var available = GetAvailableStock(productLookup.Product!, warehouseSymbol);
+            var available = GetAvailableStock(product, warehouseSymbol);
             var requested = kvp.Value.Quantity;
             var hasStock = available >= requested;
 
@@ -358,11 +359,19 @@ public class StockValidationHelper
 
     /// <summary>
     /// Simple stock check for a single product.
+    /// Automatically returns true for service items (Rodzaj_Id = 1).
     /// </summary>
     public bool HasSufficientStock(int productId, string warehouseSymbol, decimal requiredQuantity)
     {
         var lookup = FindProduct(productId, null, null);
         if (!lookup.Found) return false;
+
+        // Services don't require stock validation
+        if (IsService(lookup.Product!))
+        {
+            _logger.LogDebug("Skipping stock check for service product ID {ProductId}", productId);
+            return true;
+        }
 
         var available = GetAvailableStock(lookup.Product!, warehouseSymbol);
         return available >= requiredQuantity;
@@ -370,11 +379,19 @@ public class StockValidationHelper
 
     /// <summary>
     /// Simple stock check for a single product by symbol.
+    /// Automatically returns true for service items (Rodzaj_Id = 1).
     /// </summary>
     public bool HasSufficientStockBySymbol(string productSymbol, string warehouseSymbol, decimal requiredQuantity)
     {
         var lookup = FindProduct(null, productSymbol, null);
         if (!lookup.Found) return false;
+
+        // Services don't require stock validation
+        if (IsService(lookup.Product!))
+        {
+            _logger.LogDebug("Skipping stock check for service product {ProductSymbol}", productSymbol);
+            return true;
+        }
 
         var available = GetAvailableStock(lookup.Product!, warehouseSymbol);
         return available >= requiredQuantity;
