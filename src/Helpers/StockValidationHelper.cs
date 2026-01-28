@@ -265,7 +265,7 @@ public class StockValidationHelper
         catch (Exception ex)
         {
             // Log exception but continue - if we can't determine, assume it's not a service (safer to validate stock)
-            _logger.LogWarning(ex, "Could not determine if product is a service: {Message}", ex.Message);
+            _logger.LogWarning(ex, "Could not determine if product is a service");
         }
         
         return false;
