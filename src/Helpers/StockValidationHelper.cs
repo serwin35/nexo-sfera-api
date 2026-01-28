@@ -219,6 +219,10 @@ public class StockValidationHelper
     /// <summary>
     /// Checks if a product is a service type (Rodzaj_Id = 1).
     /// Services don't require stock validation as they are not physical items.
+    /// In Nexo Sfera SDK:
+    /// - Rodzaj_Id = 1 means Service (Usługa)
+    /// - Rodzaj_Id = 2 means Product (Towar)
+    /// - Rodzaj_Id = 3 means Set (Komplet)
     /// </summary>
     public bool IsService(dynamic product)
     {
@@ -230,45 +234,68 @@ public class StockValidationHelper
         
         try
         {
-            // Check Rodzaj_Id property - 1 = Service (Usluga)
+            // PRIORITY 1: Check Rodzaj_Id property (FK) - most reliable
+            // This is a direct foreign key and won't cause navigation issues
             var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
             if (rodzajId.HasValue)
             {
-                _logger.LogDebug("IsService: Rodzaj_Id = {RodzajId}", (object)rodzajId.Value);
-                if (rodzajId.Value == 1)
-                {
-                    _logger.LogInformation("Product is a service (Rodzaj_Id = 1)");
-                    return true;
-                }
-            }
-            else
-            {
-                _logger.LogDebug("IsService: Rodzaj_Id not found or null");
+                bool isService = (rodzajId.Value == 1);
+                _logger.LogDebug("IsService: Rodzaj_Id = {RodzajId}, isService = {IsService}", 
+                    (object)rodzajId.Value, (object)isService);
+                return isService;
             }
             
-            // Alternative: check Rodzaj.Symbol if available using safe two-level navigation
-            var rodzajSymbol = DynamicPropertyHelper.GetString(product, "Rodzaj", "Symbol");
-            if (!string.IsNullOrEmpty(rodzajSymbol))
+            _logger.LogDebug("IsService: Rodzaj_Id is null, trying alternative methods");
+            
+            // PRIORITY 2: Try to check Rodzaj navigation property
+            // This may be null if not loaded, so handle carefully
+            try
             {
-                _logger.LogDebug("IsService: Rodzaj.Symbol = {Symbol}", (object)rodzajSymbol);
-                if (rodzajSymbol == "Usluga" || rodzajSymbol == "U")
+                var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
+                if (rodzaj != null)
                 {
-                    _logger.LogInformation("Product is a service (Rodzaj.Symbol = {Symbol})", (object)rodzajSymbol);
-                    return true;
+                    // Check Symbol on the loaded Rodzaj entity
+                    var rodzajSymbol = DynamicPropertyHelper.GetString(rodzaj, "Symbol");
+                    if (!string.IsNullOrEmpty(rodzajSymbol))
+                    {
+                        bool isService = (rodzajSymbol.Equals("Usluga", StringComparison.OrdinalIgnoreCase) || 
+                                        rodzajSymbol.Equals("U", StringComparison.OrdinalIgnoreCase));
+                        _logger.LogDebug("IsService: Rodzaj.Symbol = {Symbol}, isService = {IsService}", 
+                            (object)rodzajSymbol, (object)isService);
+                        return isService;
+                    }
+                    
+                    // Check Id on the loaded Rodzaj entity
+                    var rodzajEntityId = DynamicPropertyHelper.GetNullableInt(rodzaj, "Id");
+                    if (rodzajEntityId.HasValue)
+                    {
+                        bool isService = (rodzajEntityId.Value == 1);
+                        _logger.LogDebug("IsService: Rodzaj.Id = {Id}, isService = {IsService}", 
+                            (object)rodzajEntityId.Value, (object)isService);
+                        return isService;
+                    }
+                }
+                else
+                {
+                    _logger.LogDebug("IsService: Rodzaj navigation property is null (not loaded)");
                 }
             }
-            else
+            catch (Exception navEx)
             {
-                _logger.LogDebug("IsService: Rodzaj.Symbol not found or null");
+                _logger.LogDebug(navEx, "IsService: Could not navigate to Rodzaj property");
             }
+            
+            // If we can't determine the product type, log a warning and assume it's NOT a service
+            // This is safer - we prefer to validate stock for unknown types
+            _logger.LogWarning("IsService: Could not determine product type - assuming it's not a service");
+            return false;
         }
         catch (Exception ex)
         {
-            // Log exception but continue - if we can't determine, assume it's not a service (safer to validate stock)
-            _logger.LogWarning(ex, "Could not determine if product is a service");
+            // Unexpected exception - log and assume not a service (safer)
+            _logger.LogWarning(ex, "IsService: Exception while checking if product is a service");
+            return false;
         }
-        
-        return false;
     }
 
     /// <summary>
