@@ -306,7 +306,7 @@ public class StockValidationHelper
             var quantityParam = getQuantity(item);
             
             _logger.LogDebug("Validating stock for item: ProductId={ProductId}, Symbol={Symbol}, EAN={EAN}, Qty={Qty}",
-                productIdParam, productSymbolParam ?? "(null)", productEanParam ?? "(null)", (object)quantityParam);
+                productIdParam, productSymbolParam ?? "(null)", productEanParam ?? "(null)", quantityParam);
             
             var lookup = FindProduct(productIdParam, productSymbolParam, productEanParam);
 
@@ -326,7 +326,7 @@ public class StockValidationHelper
             }
 
             _logger.LogDebug("Product found: ID={ProductId}, Symbol={Symbol}, Name={Name}",
-                (object)lookup.ProductId, lookup.ProductSymbol ?? "(null)", lookup.ProductName ?? "(null)");
+                lookup.ProductId, lookup.ProductSymbol ?? "(null)", lookup.ProductName ?? "(null)");
 
             // Aggregate quantities for the same product
             if (itemsByProduct.ContainsKey(lookup.ProductId))
@@ -372,7 +372,7 @@ public class StockValidationHelper
             var hasStock = available >= requested;
 
             _logger.LogDebug("Stock check for '{Symbol}' (ID: {ProductId}): requested={Requested}, available={Available}, hasStock={HasStock}",
-                kvp.Value.Symbol, (object)kvp.Key, (object)requested, (object)available, (object)hasStock);
+                (object?)(kvp.Value.Symbol ?? "(null)"), kvp.Key, (object)requested, (object)available, (object)hasStock);
 
             var itemResult = new StockValidationItemResult
             {
