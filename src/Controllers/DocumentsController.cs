@@ -1161,22 +1161,18 @@ public class DocumentsController : ControllerBase
                     // Set payment method
                     SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
 
-                    // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                    if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(request.Type))
+                    // Set notes (uwagi) - transfer notes to invoice
+                    if (!string.IsNullOrEmpty(request.Notes))
                     {
                         try
                         {
                             dane.Uwagi = request.Notes;
-                            _logger.LogDebug("Notes set successfully");
+                            _logger.LogDebug("[FS] Notes set: {Notes}", request.Notes);
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Failed to set notes: {Message}", ex.Message);
+                            _logger.LogWarning(ex, "[FS] Failed to set notes: {Message}", ex.Message);
                         }
-                    }
-                    else if (!string.IsNullOrEmpty(request.Notes) && ShouldSkipImportRemarks(request.Type))
-                    {
-                        _logger.LogInformation("Skipping notes for {DocumentType} (invoices and receipts should not have import remarks)", request.Type);
                     }
 
                     // Add items to sales invoice - use specialized method for better diagnostics
@@ -3035,14 +3031,18 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
-                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("Receipt"))
+                // Set notes (uwagi) - transfer notes to receipt
+                if (!string.IsNullOrEmpty(request.Notes))
                 {
-                    dane.Uwagi = request.Notes;
-                }
-                else if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    _logger.LogInformation("Skipping notes for Receipt (receipts should not have import remarks)");
+                    try
+                    {
+                        dane.Uwagi = request.Notes;
+                        _logger.LogInformation("[PA] Notes set: {Notes}", request.Notes);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "[PA] Failed to set notes: {Message}", ex.Message);
+                    }
                 }
 
                 // Set payment method
