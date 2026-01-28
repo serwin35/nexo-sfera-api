@@ -234,10 +234,9 @@ public class StockValidationHelper
     /// <summary>
     /// Checks if a product is a service type.
     /// Services don't require stock validation as they are not physical items.
-    /// In Nexo Sfera SDK:
-    /// - Rodzaj_Id = 1 means Service (Usługa)
-    /// - Rodzaj_Id = 2 means Product (Towar)
-    /// - Rodzaj_Id = 3 means Set (Komplet)
+    /// In Nexo Sfera SDK, services are identified by:
+    /// - Rodzaj.StanyMagazynowe = false (no stock tracking = service)
+    /// - Rodzaj.StanyMagazynowe = true (has stock tracking = physical product)
     /// Alternative markers: GrupaTowaru = "US", TypTowaru = 2
     /// </summary>
     /// <param name="product">Product object to check</param>
@@ -254,34 +253,32 @@ public class StockValidationHelper
             var productSymbol = DynamicPropertyHelper.GetString(product, "Symbol") ?? "(unknown)";
             var productId = DynamicPropertyHelper.GetId(product);
 
-            // 1. Most reliable: Rodzaj_Id
-            // In Nexo Sfera SDK:
-            // - Rodzaj_Id = 1 means Service (Usługa)
-            // - Rodzaj_Id = 2 means Product (Towar)
-            // - Rodzaj_Id = 3 means Set (Komplet)
-            var rodzajId = DynamicPropertyHelper.GetNullableInt(product, "Rodzaj_Id");
-            if (rodzajId.HasValue)
+            // 1. Most reliable: Rodzaj.StanyMagazynowe
+            // In Nexo Sfera SDK, services are identified by NOT having stock tracking:
+            // - StanyMagazynowe = false means Service (no stock tracking)
+            // - StanyMagazynowe = true means Product with stock (Towar/Komplet/Opakowanie)
+            var rodzaj = DynamicPropertyHelper.GetProperty(product, "Rodzaj");
+            if (rodzaj != null)
             {
-                bool isService = rodzajId.Value == 1;
-                if (logger != null)
+                var stanyMagazynowe = DynamicPropertyHelper.GetNullableBool(rodzaj, "StanyMagazynowe");
+                if (stanyMagazynowe.HasValue)
                 {
-                    if (isService)
+                    bool isService = !stanyMagazynowe.Value;
+                    if (logger != null)
                     {
-                        logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via Rodzaj_Id={RodzajId}", 
-                            (object)productSymbol, (object)productId, (object)rodzajId.Value);
+                        if (isService)
+                        {
+                            logger.LogDebug("Product '{Symbol}' (ID: {Id}) detected as service via Rodzaj.StanyMagazynowe=false", 
+                                (object)productSymbol, (object)productId);
+                        }
+                        else
+                        {
+                            logger.LogDebug("Product '{Symbol}' (ID: {Id}) is a physical product (Rodzaj.StanyMagazynowe=true)", 
+                                (object)productSymbol, (object)productId);
+                        }
                     }
-                    else if (rodzajId.Value == 2)
-                    {
-                        logger.LogDebug("Product '{Symbol}' (ID: {Id}) is a Product (Rodzaj_Id=2)", 
-                            (object)productSymbol, (object)productId);
-                    }
-                    else if (rodzajId.Value == 3)
-                    {
-                        logger.LogDebug("Product '{Symbol}' (ID: {Id}) is a Set/Bundle (Rodzaj_Id=3)", 
-                            (object)productSymbol, (object)productId);
-                    }
+                    return isService;
                 }
-                return isService;
             }
 
             // 2. GrupaTowaru - alternative check for service type
@@ -311,7 +308,7 @@ public class StockValidationHelper
             }
 
             // 4. Heuristic based on name/symbol - fallback when metadata is missing
-            // This is used as a safety net for cases where Rodzaj_Id is not set correctly
+            // This is used as a safety net for cases where Rodzaj is not available
             foreach (var pattern in ServiceNamePatterns)
             {
                 if (productName.StartsWith(pattern, StringComparison.OrdinalIgnoreCase) ||
@@ -331,10 +328,10 @@ public class StockValidationHelper
             // Not a service - log for debugging
             if (logger != null)
             {
-                var rodzajIdStr = rodzajId.HasValue ? rodzajId.Value.ToString() : "(null)";
+                var rodzajInfo = rodzaj != null ? "present but StanyMagazynowe unavailable" : "(null)";
                 var typTowaruStr = typTowaru.HasValue ? typTowaru.Value.ToString() : "(null)";
-                logger.LogDebug("Product '{Symbol}' (ID: {Id}) is NOT a service (Rodzaj_Id={RodzajId}, GrupaTowaru={GrupaTowaru}, TypTowaru={TypTowaru})", 
-                    (object)productSymbol, (object)productId, (object)rodzajIdStr, (object)(grupaTowaru ?? "(null)"), (object)typTowaruStr);
+                logger.LogDebug("Product '{Symbol}' (ID: {Id}) is NOT a service (Rodzaj={Rodzaj}, GrupaTowaru={GrupaTowaru}, TypTowaru={TypTowaru})", 
+                    (object)productSymbol, (object)productId, (object)rodzajInfo, (object)(grupaTowaru ?? "(null)"), (object)typTowaruStr);
             }
         }
         catch (Exception ex)
