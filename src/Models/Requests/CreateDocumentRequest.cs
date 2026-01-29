@@ -102,6 +102,62 @@ public class CreateDocumentItemRequest
     public string? WarehouseSymbol { get; set; }
 }
 
+/// <summary>
+/// Request for updating an existing document
+/// </summary>
+public class UpdateDocumentRequest
+{
+    /// <summary>
+    /// Person who issued/created the document (text field - appears on printouts)
+    /// </summary>
+    [MaxLength(100)]
+    public string? Wystawil { get; set; }
+
+    /// <summary>
+    /// ID of the employee (Pracownik) who issued the document
+    /// </summary>
+    public int? WystawilaOsobaId { get; set; }
+
+    /// <summary>
+    /// Person who received the document (for warehouse documents)
+    /// </summary>
+    [MaxLength(100)]
+    public string? Odebral { get; set; }
+
+    /// <summary>
+    /// Notes/remarks
+    /// </summary>
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
+
+    /// <summary>
+    /// External document number (e.g., supplier invoice number for FZ)
+    /// </summary>
+    [MaxLength(50)]
+    public string? ExternalNumber { get; set; }
+
+    /// <summary>
+    /// Due date for payment
+    /// </summary>
+    public DateTime? DueDate { get; set; }
+
+    /// <summary>
+    /// Sale date
+    /// </summary>
+    public DateTime? SaleDate { get; set; }
+
+    /// <summary>
+    /// Status ID
+    /// </summary>
+    public int? StatusId { get; set; }
+
+    /// <summary>
+    /// Description/title
+    /// </summary>
+    [MaxLength(500)]
+    public string? Description { get; set; }
+}
+
 public class DocumentQueryRequest
 {
     /// <summary>
