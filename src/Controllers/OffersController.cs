@@ -380,9 +380,17 @@ public class OffersController : ControllerBase
 
                     oferta.Dane.Podmiot = podmiot;
 
-                    // CRITICAL: Reserve number BEFORE adding items
-                    oferta.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved offer number: {Number}", (string?)oferta.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Reserve number - only if ReserveNumber flag is true
+                    // Otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        oferta.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved offer number: {Number}", (string?)oferta.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Offer number will be auto-assigned during save (preview: {Number})", (string?)oferta.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     // Set validity dates
                     if (request.ValidFrom.HasValue)

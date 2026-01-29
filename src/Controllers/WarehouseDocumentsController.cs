@@ -271,8 +271,16 @@ public class WarehouseDocumentsController : ControllerBase
                     }
 
                     // Reserve number AFTER setting date (number format includes year/month)
-                    wz.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved WZ number: {Number}", (string?)wz.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        wz.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved WZ number: {Number}", (string?)wz.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("WZ number will be auto-assigned during save (preview: {Number})", (string?)wz.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
@@ -520,8 +528,16 @@ public class WarehouseDocumentsController : ControllerBase
                     }
 
                     // Reserve number AFTER setting date (number format includes year/month)
-                    pz.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved PZ number: {Number}", (string?)pz.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        pz.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved PZ number: {Number}", (string?)pz.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("PZ number will be auto-assigned during save (preview: {Number})", (string?)pz.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     if (!string.IsNullOrEmpty(request.RelatedDocumentNumber))
                     {
@@ -776,8 +792,16 @@ public class WarehouseDocumentsController : ControllerBase
                     }
 
                     // Reserve number AFTER setting date (number format includes year/month)
-                    rw.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved RW number: {Number}", (string?)rw.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        rw.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved RW number: {Number}", (string?)rw.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("RW number will be auto-assigned during save (preview: {Number})", (string?)rw.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
@@ -999,8 +1023,16 @@ public class WarehouseDocumentsController : ControllerBase
                     }
 
                     // Reserve number AFTER setting date (number format includes year/month)
-                    pw.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved PW number: {Number}", (string?)pw.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        pw.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved PW number: {Number}", (string?)pw.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("PW number will be auto-assigned during save (preview: {Number})", (string?)pw.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     if (!string.IsNullOrEmpty(request.Notes))
                     {
@@ -1158,9 +1190,17 @@ public class WarehouseDocumentsController : ControllerBase
                         }
                     }
 
-                    // CRITICAL: Reserve number BEFORE adding items
-                    mm.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved MM number: {Number}", (string?)mm.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Reserve number - only if ReserveNumber flag is true
+                    // Otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        mm.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved MM number: {Number}", (string?)mm.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("MM number will be auto-assigned during save (preview: {Number})", (string?)mm.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     // Set dates - MM may use different property names
                     if (request.IssueDate.HasValue)
