@@ -1146,8 +1146,16 @@ public class DocumentsController : ControllerBase
                     catch { }
 
                     // Reserve number AFTER setting date (number depends on date!)
-                    faktura.ZarezerwujNumer();
-                    _logger.LogInformation("[FS-v2] Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        faktura.ZarezerwujNumer();
+                        _logger.LogInformation("[FS-v2] Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("[FS-v2] Invoice number will be auto-assigned during save (preview: {Number})", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     // Set due date - property name may vary by document type
                     if (request.DueDate.HasValue)
@@ -2446,8 +2454,16 @@ public class DocumentsController : ControllerBase
                     }
 
                     // CRITICAL: Reserve number AFTER setting dates - number depends on date
-                    zamowienie.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved customer order number: {Number}", (string?)zamowienie.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        zamowienie.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved customer order number: {Number}", (string?)zamowienie.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Customer order number will be auto-assigned during save (preview: {Number})", (string?)zamowienie.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
                     if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(request.Type))
@@ -2570,8 +2586,16 @@ public class DocumentsController : ControllerBase
                     }
 
                     // Reserve number AFTER setting date (number depends on date!)
-                    faktura.ZarezerwujNumer();
-                    _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
+                    // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                    if (request.ReserveNumber)
+                    {
+                        faktura.ZarezerwujNumer();
+                        _logger.LogInformation("Reserved purchase invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Purchase invoice number will be auto-assigned during save (preview: {Number})", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                    }
 
                     // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
                     if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(request.Type))
@@ -2987,10 +3011,18 @@ public class DocumentsController : ControllerBase
                 }
 
                 // CRITICAL: Reserve number AFTER setting dates - number depends on date
-                paragon.ZarezerwujNumer();
-                _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
+                // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
+                if (request.ReserveNumber)
+                {
+                    paragon.ZarezerwujNumer();
+                    _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
+                }
+                else
+                {
+                    _logger.LogInformation("[PA] Receipt number will be auto-assigned during save (preview: {Number})", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "Auto");
+                }
 
-                // IMPORTANT: Verify and re-set date AFTER ZarezerwujNumer if needed
+                // IMPORTANT: Verify and re-set date AFTER ZarezerwujNumer if needed (only if number was reserved)
                 // WARNING: Some SDK operations may reset the date to current date during number reservation.
                 // If this happens, restoring the historical date may create a mismatch between the document
                 // number (which may include year/month from current date) and the actual document date.

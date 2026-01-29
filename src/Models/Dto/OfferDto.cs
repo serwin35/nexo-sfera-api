@@ -111,6 +111,13 @@ public class CreateOfferRequest
     public int? DaysToRealization { get; set; }
     public string? Description { get; set; }
     public List<CreateOfferItemRequest> Items { get; set; } = new();
+
+    /// <summary>
+    /// Whether to reserve document number before saving.
+    /// If true: calls ZarezerwujNumer() before Zapisz() - number is reserved immediately, may create gaps if save fails.
+    /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
+    /// </summary>
+    public bool ReserveNumber { get; set; } = false;
 }
 
 /// <summary>
