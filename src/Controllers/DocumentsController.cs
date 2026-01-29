@@ -1211,6 +1211,60 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
+                    // Set calculation mode (from gross or from net)
+                    if (request.CalculatePricesFromGross)
+                    {
+                        _logger.LogInformation("[FS-v2] Setting document to calculate prices from gross (brutto)");
+                        bool calcModeSet = false;
+
+                        // Try various ways to set the calculation mode
+                        // Method 1: CzyLiczenieOdBrutto property
+                        if (DynamicPropertyHelper.TrySetProperty(dane, "CzyLiczenieOdBrutto", true))
+                        {
+                            calcModeSet = true;
+                            _logger.LogDebug("[FS-v2] Set dane.CzyLiczenieOdBrutto = true");
+                        }
+                        // Method 2: LiczOdBrutto property
+                        else if (DynamicPropertyHelper.TrySetProperty(dane, "LiczOdBrutto", true))
+                        {
+                            calcModeSet = true;
+                            _logger.LogDebug("[FS-v2] Set dane.LiczOdBrutto = true");
+                        }
+                        // Method 3: SposobLiczenia property with enum value
+                        else
+                        {
+                            try
+                            {
+                                // Try to find and set SposobLiczeniaDokumentu enum
+                                var sposobType = Type.GetType("InsERT.Moria.Klienci.SposobLiczeniaDokumentu, InsERT.Moria.API") ??
+                                                Type.GetType("InsERT.Moria.Klienci.SposobLiczeniaDokumentu, InsERT.Moria");
+                                if (sposobType != null)
+                                {
+                                    var odBruttoValue = Enum.Parse(sposobType, "OdBrutto");
+                                    if (DynamicPropertyHelper.TrySetProperty(dane, "SposobLiczenia", odBruttoValue))
+                                    {
+                                        calcModeSet = true;
+                                        _logger.LogDebug("[FS-v2] Set dane.SposobLiczenia = OdBrutto");
+                                    }
+                                    else if (DynamicPropertyHelper.TrySetProperty(faktura.Dokument, "SposobLiczenia", odBruttoValue))
+                                    {
+                                        calcModeSet = true;
+                                        _logger.LogDebug("[FS-v2] Set Dokument.SposobLiczenia = OdBrutto");
+                                    }
+                                }
+                            }
+                            catch (Exception enumEx)
+                            {
+                                _logger.LogDebug("[FS-v2] Could not set SposobLiczenia enum: {Msg}", enumEx.Message);
+                            }
+                        }
+
+                        if (!calcModeSet)
+                        {
+                            _logger.LogWarning("[FS-v2] Could not set calculation mode to 'from gross' - prices may be calculated from net");
+                        }
+                    }
+
                     // Check if Oddzial is already set from context (Sfera sets it during initialization)
                     try
                     {
@@ -5198,12 +5252,48 @@ public class DocumentsController : ControllerBase
                         _logger.LogWarning("[FS-v2] No warehouse available for position - this may cause save failure");
                     }
 
-                    // Set price if provided
-                    if (item.PriceNet.HasValue)
+                    // Set price if provided - prefer gross price if document is calculated from brutto
+                    if (item.PriceGross.HasValue)
                     {
                         bool priceSet = false;
 
-                        // Try nested Cena object
+                        // Try nested Cena object for gross price
+                        try
+                        {
+                            var cenaObj = pozycja.Cena;
+                            if (cenaObj != null)
+                            {
+                                if (DynamicPropertyHelper.TrySetProperty(cenaObj, "BruttoPrzedRabatem", item.PriceGross.Value))
+                                {
+                                    priceSet = true;
+                                    _logger.LogDebug("[FS-v2] Set Cena.BruttoPrzedRabatem = {Price}", item.PriceGross.Value);
+                                }
+                                else if (DynamicPropertyHelper.TrySetProperty(cenaObj, "Brutto", item.PriceGross.Value))
+                                {
+                                    priceSet = true;
+                                    _logger.LogDebug("[FS-v2] Set Cena.Brutto = {Price}", item.PriceGross.Value);
+                                }
+                            }
+                        }
+                        catch { }
+
+                        if (!priceSet)
+                        {
+                            if (DynamicPropertyHelper.TrySetProperty(pozycja, "CenaBrutto", item.PriceGross.Value))
+                            {
+                                _logger.LogDebug("[FS-v2] Set CenaBrutto = {Price}", item.PriceGross.Value);
+                            }
+                            else if (DynamicPropertyHelper.TrySetProperty(pozycja, "CenaJednostkowaBrutto", item.PriceGross.Value))
+                            {
+                                _logger.LogDebug("[FS-v2] Set CenaJednostkowaBrutto = {Price}", item.PriceGross.Value);
+                            }
+                        }
+                    }
+                    else if (item.PriceNet.HasValue)
+                    {
+                        bool priceSet = false;
+
+                        // Try nested Cena object for net price
                         try
                         {
                             var cenaObj = pozycja.Cena;
