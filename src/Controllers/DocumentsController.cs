@@ -4125,6 +4125,342 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Realize customer orders (ZK) to sales document (FS, PA, PAi, or advance invoice)
+    /// </summary>
+    /// <remarks>
+    /// This endpoint converts one or more customer orders (ZK - Zamówienie od Klienta) into a sales document.
+    ///
+    /// Supported target document types:
+    /// - FS (0): Sales Invoice (Faktura sprzedaży)
+    /// - PA (1): Receipt (Paragon)
+    /// - PAi (2): Named Receipt (Paragon imienny)
+    /// - FZ_Zaliczka (3): Advance Invoice (Faktura zaliczkowa)
+    ///
+    /// Consolidation methods:
+    /// - NoConsolidation (0): Each order position becomes a separate line
+    /// - ConsolidateByUnit (1): Consolidate positions with same product and unit
+    /// - ConsolidateIgnoreUnit (2): Consolidate all positions for same product regardless of unit
+    /// - ConsolidateByUnitAndPrice (3): Consolidate only if unit and price match
+    ///
+    /// Payment transfer options:
+    /// - TransferImmediatePayments: Transfer immediate payments from orders (default: true)
+    /// - TransferPrepayments: Transfer prepayments from orders (default: true)
+    /// </remarks>
+    [HttpPost("realize-orders")]
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> RealizeOrders([FromBody] RealizeOrderRequest request)
+    {
+        try
+        {
+            if (request.OrderIds == null || !request.OrderIds.Any())
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error("At least one order ID is required"));
+            }
+
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
+            {
+                // Switch to the operator specified in API key (if configured)
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
+                }
+
+                // Get managers
+                var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowieniaManager == null)
+                {
+                    return (false, null, "Failed to get ZamowieniaOdKlientow manager", new List<string>());
+                }
+
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentySprzedazy == null)
+                {
+                    return (false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
+                }
+
+                // Fetch orders
+                var orders = new List<dynamic>();
+                dynamic? mainOrder = null;
+
+                foreach (int orderId in request.OrderIds)
+                {
+                    dynamic? order = null;
+                    foreach (var zk in zamowieniaManager.Dane.Wszystkie())
+                    {
+                        if (DynamicPropertyHelper.GetId(zk) == orderId)
+                        {
+                            order = zk;
+                            break;
+                        }
+                    }
+
+                    if (order == null)
+                    {
+                        return (false, null, $"Order with ID {orderId} not found", new List<string>());
+                    }
+
+                    orders.Add(order);
+                    if (mainOrder == null)
+                    {
+                        mainOrder = order;
+                    }
+                }
+
+                _logger.LogInformation("Realizing {Count} orders to {DocumentType}", orders.Count, request.TargetDocumentType);
+
+                // Create target document based on type
+                dynamic dokument;
+                string documentTypeName;
+
+                try
+                {
+                    switch (request.TargetDocumentType)
+                    {
+                        case RealizeTargetDocumentType.FS:
+                            dokument = dokumentySprzedazy.UtworzFaktureSprzedazy();
+                            documentTypeName = "Sales Invoice (FS)";
+                            break;
+                        case RealizeTargetDocumentType.PA:
+                            dokument = dokumentySprzedazy.UtworzParagon();
+                            documentTypeName = "Receipt (PA)";
+                            break;
+                        case RealizeTargetDocumentType.PAi:
+                            dokument = dokumentySprzedazy.UtworzParagonImienny();
+                            documentTypeName = "Named Receipt (PAi)";
+                            break;
+                        case RealizeTargetDocumentType.FZ_Zaliczka:
+                            dokument = dokumentySprzedazy.UtworzFaktureZaliczkowa();
+                            documentTypeName = "Advance Invoice (FZ)";
+                            break;
+                        default:
+                            return (false, null, $"Unsupported target document type: {request.TargetDocumentType}", new List<string>());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to create target document of type {Type}", request.TargetDocumentType);
+                    return (false, null, $"Failed to create {request.TargetDocumentType} document: {ex.Message}", new List<string>());
+                }
+
+                using (dokument)
+                {
+                    dynamic dane = dokument.Dane;
+
+                    // Set warehouse if specified
+                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                    {
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
+                        {
+                            foreach (var m in magazyny.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    dokument.Dokument.Magazyn = m;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Set dates if specified
+                    if (request.IssueDate.HasValue)
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        }
+                    }
+
+                    if (request.SaleDate.HasValue)
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataSprzedazy", request.SaleDate.Value);
+                    }
+
+                    // Reserve number if requested
+                    if (request.ReserveNumber)
+                    {
+                        try
+                        {
+                            dokument.ZarezerwujNumer();
+                            _logger.LogInformation("Reserved document number: {Number}", (string?)dokument.PodajPodgladNumeru()?.ToString() ?? "");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to reserve number, continuing with auto-assignment");
+                        }
+                    }
+
+                    // Build ParametryGrupowaniaDS using reflection
+                    try
+                    {
+                        // Get the ParametryGrupowaniaDS type from the SDK
+                        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+                        Type? parametryType = null;
+                        Type? metodaGrupowaniaType = null;
+                        Type? przenoszeniePlatnosciType = null;
+                        Type? przenoszeniePrzedplatType = null;
+
+                        foreach (var asm in assemblies)
+                        {
+                            if (asm.FullName?.Contains("InsERT.Moria") == true)
+                            {
+                                parametryType ??= asm.GetType("InsERT.Moria.Dokumenty.Logistyka.ParametryGrupowaniaDS");
+                                metodaGrupowaniaType ??= asm.GetType("InsERT.Moria.Dokumenty.Logistyka.MetodaGrupowaniaPozycji");
+                                przenoszeniePlatnosciType ??= asm.GetType("InsERT.Moria.Dokumenty.Logistyka.PrzenoszeniePlatnosciNatychmiastowych");
+                                przenoszeniePrzedplatType ??= asm.GetType("InsERT.Moria.Dokumenty.Logistyka.PrzenoszeniePrzedplat");
+                            }
+                        }
+
+                        if (parametryType == null)
+                        {
+                            _logger.LogWarning("Could not find ParametryGrupowaniaDS type, using default realization");
+                            // Fallback: realize without parameters
+                            foreach (var order in orders)
+                            {
+                                foreach (var pozycja in order.Pozycje)
+                                {
+                                    dokument.WypelnijNaPodstawieZK(pozycja);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            // Create ParametryGrupowaniaDS instance
+                            dynamic parametry = Activator.CreateInstance(parametryType)!;
+
+                            // Set MetodaGrupowaniaPozycji
+                            if (metodaGrupowaniaType != null)
+                            {
+                                string metodaName = request.ConsolidationMethod switch
+                                {
+                                    PositionConsolidationMethod.NoConsolidation => "BezKonsolidacji",
+                                    PositionConsolidationMethod.ConsolidateByUnit => "KonsolidacjaWJednostceMiary",
+                                    PositionConsolidationMethod.ConsolidateIgnoreUnit => "KonsolidacjaBezWzgleduNaJednostkeMiary",
+                                    PositionConsolidationMethod.ConsolidateByUnitAndPrice => "KonsolidacjaWJednostceMiaryICenie",
+                                    _ => "BezKonsolidacji"
+                                };
+
+                                var metodaValue = Enum.Parse(metodaGrupowaniaType, metodaName);
+                                var metodaProp = parametryType.GetProperty("MetodaGrupowaniaPozycji");
+                                metodaProp?.SetValue(parametry, metodaValue);
+                            }
+
+                            // Set PrzeniesNatychmiastowe (immediate payments transfer)
+                            if (przenoszeniePlatnosciType != null)
+                            {
+                                string przeniesName = request.TransferImmediatePayments ? "Przepisz" : "Brak";
+                                var przeniesValue = Enum.Parse(przenoszeniePlatnosciType, przeniesName);
+                                var przeniesNatProp = parametryType.GetProperty("PrzeniesNatychmiastowe");
+                                przeniesNatProp?.SetValue(parametry, przeniesValue);
+                            }
+
+                            // Set PrzeniesPrzedplaty (prepayments transfer)
+                            if (przenoszeniePrzedplatType != null)
+                            {
+                                string przeniesPrzedName = request.TransferPrepayments ? "Przepisz" : "Brak";
+                                var przeniesPrzedValue = Enum.Parse(przenoszeniePrzedplatType, przeniesPrzedName);
+                                var przeniesPrzedProp = parametryType.GetProperty("PrzeniesPrzedplaty");
+                                przeniesPrzedProp?.SetValue(parametry, przeniesPrzedValue);
+                            }
+
+                            _logger.LogInformation("Calling WypelnijNaPodstawieZK with {Count} orders, consolidation: {Method}",
+                                orders.Count, request.ConsolidationMethod);
+
+                            // Handle partial realization (specific positions) or full realization
+                            if (request.PositionIds != null && request.PositionIds.Any())
+                            {
+                                // Partial realization - specific positions
+                                var pozycje = new List<dynamic>();
+                                foreach (var order in orders)
+                                {
+                                    foreach (var pozycja in order.Pozycje)
+                                    {
+                                        int pozId = DynamicPropertyHelper.GetId(pozycja);
+                                        if (request.PositionIds.Contains(pozId))
+                                        {
+                                            pozycje.Add(pozycja);
+                                        }
+                                    }
+                                }
+
+                                if (!pozycje.Any())
+                                {
+                                    return (false, null, "No matching positions found for the specified position IDs", new List<string>());
+                                }
+
+                                _logger.LogInformation("Partial realization: {Count} positions", pozycje.Count);
+
+                                // Convert to array for the SDK call
+                                var pozycjeArray = pozycje.ToArray();
+                                dokument.WypelnijNaPodstawieZK(pozycjeArray, mainOrder, parametry);
+                            }
+                            else
+                            {
+                                // Full realization - all orders
+                                var ordersArray = orders.ToArray();
+                                dokument.WypelnijNaPodstawieZK(ordersArray, mainOrder, parametry);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error during WypelnijNaPodstawieZK call");
+                        return (false, null, $"Error filling document from orders: {ex.Message}", new List<string> { ex.ToString() });
+                    }
+
+                    // Set notes if provided
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "Uwagi", request.Notes);
+                    }
+
+                    // Recalculate before saving
+                    try
+                    {
+                        dokument.Przelicz();
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Przelicz failed, continuing with save");
+                    }
+
+                    // Save the document
+                    bool saved = (bool)dokument.Zapisz();
+                    if (saved)
+                    {
+                        string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                        _logger.LogInformation("Created {DocumentType} {Number} from {OrderCount} orders",
+                            documentTypeName, fullNumber, orders.Count);
+
+                        return (true, MapSalesDocumentToDto(dane), $"{documentTypeName} created successfully from {orders.Count} order(s)", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(dokument);
+                        _logger.LogWarning("Failed to save realized document. Errors: {Errors}", string.Join("; ", errors));
+                        return (false, null, $"Failed to create {documentTypeName}", errors);
+                    }
+                }
+            });
+
+            if (result.Success)
+            {
+                return Ok(ApiResponse<DocumentDto>.Ok(result.Data!, result.Message));
+            }
+            else
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error realizing orders");
+            return StatusCode(500, ApiResponse<DocumentDto>.Error("Error realizing orders", new List<string> { ex.Message }));
+        }
+    }
+
     #region Helper Methods
 
     private void SetCustomerOnDocument(dynamic dokumentDane, int? customerId, string? customerNIP)
