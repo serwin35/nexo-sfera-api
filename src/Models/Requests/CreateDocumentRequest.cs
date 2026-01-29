@@ -261,3 +261,100 @@ public class DocumentQueryRequest
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;
 }
+
+/// <summary>
+/// Request for realizing customer orders (ZK) to sales documents (FS, PA)
+/// </summary>
+public class RealizeOrderRequest
+{
+    /// <summary>
+    /// Target document type: FS (invoice), PA (receipt), PAi (named receipt)
+    /// </summary>
+    [Required]
+    public RealizeTargetDocumentType TargetDocumentType { get; set; }
+
+    /// <summary>
+    /// Order IDs to realize (at least one required)
+    /// </summary>
+    [Required]
+    [MinLength(1)]
+    public List<int> OrderIds { get; set; } = new();
+
+    /// <summary>
+    /// Optional: specific position IDs to realize (partial realization).
+    /// If empty, all positions from orders will be realized.
+    /// </summary>
+    public List<int>? PositionIds { get; set; }
+
+    /// <summary>
+    /// Position consolidation method
+    /// </summary>
+    public PositionConsolidationMethod ConsolidationMethod { get; set; } = PositionConsolidationMethod.NoConsolidation;
+
+    /// <summary>
+    /// Whether to transfer immediate payments from orders
+    /// </summary>
+    public bool TransferImmediatePayments { get; set; } = true;
+
+    /// <summary>
+    /// Whether to transfer prepayments from orders
+    /// </summary>
+    public bool TransferPrepayments { get; set; } = true;
+
+    /// <summary>
+    /// Warehouse symbol (optional, defaults to order's warehouse)
+    /// </summary>
+    [MaxLength(20)]
+    public string? WarehouseSymbol { get; set; }
+
+    /// <summary>
+    /// Issue date (optional, defaults to today)
+    /// </summary>
+    public DateTime? IssueDate { get; set; }
+
+    /// <summary>
+    /// Sale date (optional, defaults to IssueDate)
+    /// </summary>
+    public DateTime? SaleDate { get; set; }
+
+    /// <summary>
+    /// Additional notes
+    /// </summary>
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
+
+    /// <summary>
+    /// Whether to reserve document number before saving
+    /// </summary>
+    public bool ReserveNumber { get; set; } = false;
+}
+
+/// <summary>
+/// Target document type for order realization
+/// </summary>
+public enum RealizeTargetDocumentType
+{
+    /// <summary>Faktura sprzedaży - Sales Invoice</summary>
+    FS = 0,
+    /// <summary>Paragon - Receipt</summary>
+    PA = 1,
+    /// <summary>Paragon imienny - Named Receipt</summary>
+    PAi = 2,
+    /// <summary>Faktura zaliczkowa - Advance Invoice</summary>
+    FZ_Zaliczka = 3
+}
+
+/// <summary>
+/// Position consolidation method for document realization
+/// </summary>
+public enum PositionConsolidationMethod
+{
+    /// <summary>No consolidation - each position separately</summary>
+    NoConsolidation = 0,
+    /// <summary>Consolidate by unit of measure</summary>
+    ConsolidateByUnit = 1,
+    /// <summary>Consolidate regardless of unit</summary>
+    ConsolidateIgnoreUnit = 2,
+    /// <summary>Consolidate by unit and price</summary>
+    ConsolidateByUnitAndPrice = 3
+}
