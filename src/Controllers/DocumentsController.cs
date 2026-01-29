@@ -548,6 +548,326 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Update an existing document
+    /// </summary>
+    /// <remarks>
+    /// Allows updating editable fields on a document such as:
+    /// - Wystawil (person who issued the document - text)
+    /// - WystawilaOsobaId (employee ID reference)
+    /// - Odebral (person who received - for warehouse documents)
+    /// - Notes (remarks/uwagi)
+    /// - ExternalNumber (external document number)
+    /// - DueDate (payment due date)
+    /// - SaleDate
+    /// - StatusId
+    /// - Description
+    ///
+    /// Note: Some fields may not be editable depending on document type and status.
+    /// </remarks>
+    [HttpPatch("{id}")]
+    [ProducesResponseType(typeof(ApiResponse<DocumentDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<DocumentDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<DocumentDto>), StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> UpdateDocument(int id, [FromBody] UpdateDocumentRequest request)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
+            {
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager == null)
+                {
+                    return (false, null, "Failed to get Dokumenty manager", new List<string>());
+                }
+
+                // Find the document
+                dynamic? encja = null;
+                foreach (var d in dokumentyManager.Dane.Wszystkie())
+                {
+                    if (DynamicPropertyHelper.GetId(d) == id)
+                    {
+                        encja = d;
+                        break;
+                    }
+                }
+
+                if (encja == null)
+                {
+                    return (false, null, $"Document with ID {id} not found", new List<string>());
+                }
+
+                // Open for editing
+                dynamic dokument;
+                try
+                {
+                    dokument = dokumentyManager.Edytuj(encja);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to open document {Id} for editing", id);
+                    return (false, null, $"Cannot edit document: {ex.Message}", new List<string> { ex.Message });
+                }
+
+                var updateErrors = new List<string>();
+
+                // Update Wystawil (text field - person who issued)
+                if (request.Wystawil != null)
+                {
+                    try
+                    {
+                        dokument.Dokument.Wystawil = request.Wystawil;
+                        _logger.LogInformation("Updated Wystawil to: {Value}", request.Wystawil);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set Wystawil");
+                        updateErrors.Add($"Failed to update Wystawil: {ex.Message}");
+                    }
+                }
+
+                // Update WystawilaOsobaId (employee reference)
+                if (request.WystawilaOsobaId.HasValue)
+                {
+                    try
+                    {
+                        // First, get the Pracownik (employee) by ID
+                        var pracownicyManager = _sferaService.GetManager("Pracownicy");
+                        if (pracownicyManager != null)
+                        {
+                            dynamic? pracownik = null;
+                            foreach (var p in pracownicyManager.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetId(p) == request.WystawilaOsobaId.Value)
+                                {
+                                    pracownik = p;
+                                    break;
+                                }
+                            }
+
+                            if (pracownik != null)
+                            {
+                                dokument.Dokument.WystawilaOsoba = pracownik;
+                                _logger.LogInformation("Updated WystawilaOsoba to employee ID: {Id}", request.WystawilaOsobaId.Value);
+                            }
+                            else
+                            {
+                                updateErrors.Add($"Employee with ID {request.WystawilaOsobaId.Value} not found");
+                            }
+                        }
+                        else
+                        {
+                            updateErrors.Add("Cannot access Pracownicy manager");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set WystawilaOsoba");
+                        updateErrors.Add($"Failed to update WystawilaOsoba: {ex.Message}");
+                    }
+                }
+
+                // Update Odebral (person who received)
+                if (request.Odebral != null)
+                {
+                    try
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dokument.Dokument, "Odebral", request.Odebral))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dokument.Dane, "Odebral", request.Odebral);
+                        }
+                        _logger.LogInformation("Updated Odebral to: {Value}", request.Odebral);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set Odebral");
+                        updateErrors.Add($"Failed to update Odebral: {ex.Message}");
+                    }
+                }
+
+                // Update Notes/Uwagi
+                if (request.Notes != null)
+                {
+                    try
+                    {
+                        dokument.Dane.Uwagi = request.Notes;
+                        _logger.LogInformation("Updated Notes");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set Notes");
+                        updateErrors.Add($"Failed to update Notes: {ex.Message}");
+                    }
+                }
+
+                // Update ExternalNumber
+                if (request.ExternalNumber != null)
+                {
+                    try
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dokument.Dane, "NumerZewnetrzny", request.ExternalNumber))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dokument.Dane, "NumerOryginalny", request.ExternalNumber);
+                        }
+                        _logger.LogInformation("Updated ExternalNumber to: {Value}", request.ExternalNumber);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set ExternalNumber");
+                        updateErrors.Add($"Failed to update ExternalNumber: {ex.Message}");
+                    }
+                }
+
+                // Update DueDate
+                if (request.DueDate.HasValue)
+                {
+                    try
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dokument.Dane, "TerminPlatnosci", request.DueDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dokument.Dane, "DataPlatnosci", request.DueDate.Value);
+                        }
+                        _logger.LogInformation("Updated DueDate to: {Value}", request.DueDate.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set DueDate");
+                        updateErrors.Add($"Failed to update DueDate: {ex.Message}");
+                    }
+                }
+
+                // Update SaleDate
+                if (request.SaleDate.HasValue)
+                {
+                    try
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dokument.Dane, "DataSprzedazy", request.SaleDate.Value))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dokument.Dane, "DataOperacji", request.SaleDate.Value);
+                        }
+                        _logger.LogInformation("Updated SaleDate to: {Value}", request.SaleDate.Value);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set SaleDate");
+                        updateErrors.Add($"Failed to update SaleDate: {ex.Message}");
+                    }
+                }
+
+                // Update StatusId
+                if (request.StatusId.HasValue)
+                {
+                    try
+                    {
+                        // Get status from dictionary
+                        var statusyManager = _sferaService.GetManager("StatusyDokumentow");
+                        if (statusyManager != null)
+                        {
+                            dynamic? status = null;
+                            foreach (var s in statusyManager.Dane.Wszystkie())
+                            {
+                                if (DynamicPropertyHelper.GetId(s) == request.StatusId.Value)
+                                {
+                                    status = s;
+                                    break;
+                                }
+                            }
+
+                            if (status != null)
+                            {
+                                dokument.Dane.Status = status;
+                                _logger.LogInformation("Updated StatusId to: {Value}", request.StatusId.Value);
+                            }
+                            else
+                            {
+                                updateErrors.Add($"Status with ID {request.StatusId.Value} not found");
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set Status");
+                        updateErrors.Add($"Failed to update Status: {ex.Message}");
+                    }
+                }
+
+                // Update Description
+                if (request.Description != null)
+                {
+                    try
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dokument.Dane, "Opis", request.Description))
+                        {
+                            DynamicPropertyHelper.TrySetProperty(dokument.Dane, "Tytul", request.Description);
+                        }
+                        _logger.LogInformation("Updated Description");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to set Description");
+                        updateErrors.Add($"Failed to update Description: {ex.Message}");
+                    }
+                }
+
+                // Save the document
+                try
+                {
+                    bool saved = (bool)dokument.Zapisz();
+                    if (!saved)
+                    {
+                        // Try to get validation errors
+                        var errors = GetBusinessObjectErrors(dokument);
+                        if (errors.Any())
+                        {
+                            updateErrors.AddRange(errors);
+                        }
+                        return (false, null, "Failed to save document changes", updateErrors);
+                    }
+
+                    _logger.LogInformation("Successfully updated document {Id}", id);
+
+                    // Return updated document
+                    var updatedDto = MapDocumentToDto(dokument.Dokument);
+                    return (true, updatedDto, "Document updated successfully", updateErrors);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error saving document {Id}", id);
+                    updateErrors.Add(ex.Message);
+                    return (false, null, $"Error saving document: {ex.Message}", updateErrors);
+                }
+            });
+
+            if (!result.Success)
+            {
+                if (result.Message.Contains("not found"))
+                {
+                    return NotFound(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+                }
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+
+            var response = ApiResponse<DocumentDto>.Ok(result.Data!, result.Message);
+            if (result.Errors.Any())
+            {
+                // Include warnings in response
+                response = new ApiResponse<DocumentDto>
+                {
+                    Success = true,
+                    Data = result.Data,
+                    Message = result.Message + " (with some warnings)",
+                    Errors = result.Errors
+                };
+            }
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating document {Id}", id);
+            return StatusCode(500, ApiResponse<DocumentDto>.Error("Error updating document", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
     /// Get document by number
     /// </summary>
     [HttpGet("by-number/{number}")]
