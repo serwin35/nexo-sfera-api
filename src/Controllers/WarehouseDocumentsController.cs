@@ -308,7 +308,20 @@ public class WarehouseDocumentsController : ControllerBase
                         bool saved = dokument.Zapisz();
                         if (!saved)
                         {
-                            var errors = BusinessObjectHelper.ExtractErrors(dokument);
+                            var errors = new List<string>();
+                            try
+                            {
+                                var bledy = dokument.PobierzBledy();
+                                if (bledy != null)
+                                {
+                                    foreach (var b in bledy)
+                                    {
+                                        errors.Add(b?.ToString() ?? "Unknown error");
+                                    }
+                                }
+                            }
+                            catch { }
+                            if (errors.Count == 0) errors.Add("Save failed without specific error message");
                             _logger.LogWarning("Failed to save warehouse document updates. Errors: {Errors}", string.Join("; ", errors));
                             return (false, null, "Failed to save document updates", errors);
                         }
@@ -332,10 +345,10 @@ public class WarehouseDocumentsController : ControllerBase
                                     Number = DynamicPropertyHelper.GetString(dokument.Dane, "NumerWewnetrzny") ?? "",
                                     Type = managerName switch
                                     {
-                                        "RozchodyWewnetrzne" => "RW",
-                                        "PrzychodyWewnetrzne" => "PW",
-                                        "PrzesunieciaMiedzymagazynowe" => "MM",
-                                        _ => "Unknown"
+                                        "RozchodyWewnetrzne" => WarehouseDocumentType.RW,
+                                        "PrzychodyWewnetrzne" => WarehouseDocumentType.PW,
+                                        "PrzesunieciaMiedzymagazynowe" => WarehouseDocumentType.MM,
+                                        _ => WarehouseDocumentType.WZ
                                     },
                                     IssueDate = DynamicPropertyHelper.GetDateTime(dokument.Dane, "DataWystawienia"),
                                     Notes = DynamicPropertyHelper.GetString(dokument.Dane, "Uwagi")
