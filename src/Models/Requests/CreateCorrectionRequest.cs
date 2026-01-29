@@ -60,6 +60,13 @@ public class CreateCorrectionRequest
     [Required]
     [MinLength(1)]
     public List<CreateCorrectionItemRequest> Items { get; set; } = new();
+
+    /// <summary>
+    /// Whether to reserve document number before saving.
+    /// If true: calls ZarezerwujNumer() before Zapisz() - number is reserved immediately, may create gaps if save fails.
+    /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
+    /// </summary>
+    public bool ReserveNumber { get; set; } = false;
 }
 
 /// <summary>
@@ -162,6 +169,13 @@ public class CreateReceiptRequest
     [Required]
     [MinLength(1)]
     public List<CreateDocumentItemRequest> Items { get; set; } = new();
+
+    /// <summary>
+    /// Whether to reserve document number before saving.
+    /// If true: calls ZarezerwujNumer() before Zapisz() - number is reserved immediately, may create gaps if save fails.
+    /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
+    /// </summary>
+    public bool ReserveNumber { get; set; } = false;
 }
 
 public enum ReceiptType
@@ -235,6 +249,13 @@ public class CreateProformaRequest
     [Required]
     [MinLength(1)]
     public List<CreateDocumentItemRequest> Items { get; set; } = new();
+
+    /// <summary>
+    /// Whether to reserve document number before saving.
+    /// If true: calls ZarezerwujNumer() before Zapisz() - number is reserved immediately, may create gaps if save fails.
+    /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
+    /// </summary>
+    public bool ReserveNumber { get; set; } = false;
 }
 
 /// <summary>
@@ -308,4 +329,11 @@ public class CreateAdvanceInvoiceRequest
     /// Items (required if no OrderId)
     /// </summary>
     public List<CreateDocumentItemRequest>? Items { get; set; }
+
+    /// <summary>
+    /// Whether to reserve document number before saving.
+    /// If true: calls ZarezerwujNumer() before Zapisz() - number is reserved immediately, may create gaps if save fails.
+    /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
+    /// </summary>
+    public bool ReserveNumber { get; set; } = false;
 }
