@@ -4439,7 +4439,7 @@ public class DocumentsController : ControllerBase
                     else
                     {
                         var errors = GetBusinessObjectErrors(dokument);
-                        _logger.LogWarning("Failed to save realized document. Errors: {Errors}", string.Join("; ", errors));
+                        _logger.LogWarning("Failed to save realized document. Errors: {Errors}", (object)string.Join("; ", errors));
                         return (false, null, $"Failed to create {documentTypeName}", errors);
                     }
                 }
