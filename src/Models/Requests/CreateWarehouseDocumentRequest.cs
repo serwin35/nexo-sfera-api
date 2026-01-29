@@ -305,6 +305,52 @@ public class CreateCommercialOfferRequest
 }
 
 /// <summary>
+/// Request for updating an existing warehouse document
+/// </summary>
+public class UpdateWarehouseDocumentRequest
+{
+    /// <summary>
+    /// Person who issued/created the document (text field - appears on printouts)
+    /// </summary>
+    [MaxLength(100)]
+    public string? Wystawil { get; set; }
+
+    /// <summary>
+    /// ID of the employee (Pracownik) who issued the document
+    /// </summary>
+    public int? WystawilaOsobaId { get; set; }
+
+    /// <summary>
+    /// Person who received the document
+    /// </summary>
+    [MaxLength(100)]
+    public string? Odebral { get; set; }
+
+    /// <summary>
+    /// Notes/remarks
+    /// </summary>
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
+
+    /// <summary>
+    /// External document number (e.g., supplier document number for PZ)
+    /// </summary>
+    [MaxLength(50)]
+    public string? ExternalNumber { get; set; }
+
+    /// <summary>
+    /// External document date
+    /// </summary>
+    public DateTime? ExternalDocumentDate { get; set; }
+
+    /// <summary>
+    /// Description
+    /// </summary>
+    [MaxLength(500)]
+    public string? Description { get; set; }
+}
+
+/// <summary>
 /// Query parameters for warehouse documents
 /// </summary>
 public class WarehouseDocumentQueryRequest
