@@ -186,6 +186,196 @@ public class WarehouseDocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Update an existing warehouse document
+    /// </summary>
+    /// <param name="id">Document ID</param>
+    /// <param name="request">Fields to update</param>
+    /// <returns>Updated document</returns>
+    [HttpPatch("{id}")]
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> UpdateWarehouseDocument(int id, [FromBody] UpdateWarehouseDocumentRequest request)
+    {
+        try
+        {
+            var operatorCredentials = GetOperatorCredentialsFromClaims();
+
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
+            {
+                if (!SwitchToRequestOperator(operatorCredentials))
+                {
+                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
+                }
+
+                // Try to find the document in different managers
+                string[] managerNames = { "WydaniaZewnetrzne", "PrzyjeciaZewnetrzne", "RozchodyWewnetrzne", "PrzychodyWewnetrzne", "PrzesunieciaMiedzymagazynowe" };
+
+                foreach (var managerName in managerNames)
+                {
+                    var manager = _sferaService.GetManager(managerName);
+                    if (manager == null) continue;
+
+                    dynamic? encja = null;
+                    try
+                    {
+                        encja = manager.Dane.Wszystkie().FirstOrDefault((Func<dynamic, bool>)(d => (int)d.Id == id));
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+
+                    if (encja == null) continue;
+
+                    // Found the document - open for editing
+                    _logger.LogInformation("Found warehouse document {Id} in {Manager}, opening for edit", (object)id, (object)managerName);
+
+                    dynamic dokument;
+                    try
+                    {
+                        dokument = manager.Edytuj(encja);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Failed to open warehouse document {Id} for editing", (object)id);
+                        return (false, null, $"Failed to open document for editing: {ex.Message}", new List<string> { ex.Message });
+                    }
+
+                    try
+                    {
+                        // Update fields if provided
+                        if (!string.IsNullOrEmpty(request.Wystawil))
+                        {
+                            dokument.Dane.Wystawil = request.Wystawil;
+                            _logger.LogDebug("Updated Wystawil to: {Wystawil}", (object)request.Wystawil);
+                        }
+
+                        if (request.WystawilaOsobaId.HasValue)
+                        {
+                            var pracownicyManager = _sferaService.GetManager("Pracownicy");
+                            if (pracownicyManager != null)
+                            {
+                                dynamic? pracownik = null;
+                                foreach (var p in pracownicyManager.Dane.Wszystkie())
+                                {
+                                    if ((int)p.Id == request.WystawilaOsobaId.Value)
+                                    {
+                                        pracownik = p;
+                                        break;
+                                    }
+                                }
+                                if (pracownik != null)
+                                {
+                                    dokument.Dane.WystawilaOsoba = pracownik;
+                                    _logger.LogDebug("Updated WystawilaOsoba to employee ID: {Id}", (object)request.WystawilaOsobaId.Value);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Employee with ID {Id} not found", (object)request.WystawilaOsobaId.Value);
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrEmpty(request.Odebral))
+                        {
+                            dokument.Dane.Odebral = request.Odebral;
+                            _logger.LogDebug("Updated Odebral to: {Odebral}", (object)request.Odebral);
+                        }
+
+                        if (!string.IsNullOrEmpty(request.Notes))
+                        {
+                            dokument.Dane.Uwagi = request.Notes;
+                            _logger.LogDebug("Updated Uwagi (Notes)");
+                        }
+
+                        if (!string.IsNullOrEmpty(request.ExternalNumber))
+                        {
+                            dokument.Dane.NumerZewnetrzny = request.ExternalNumber;
+                            _logger.LogDebug("Updated NumerZewnetrzny to: {Number}", (object)request.ExternalNumber);
+                        }
+
+                        if (request.ExternalDocumentDate.HasValue)
+                        {
+                            dokument.Dane.DataDokumentuZewnetrznego = request.ExternalDocumentDate.Value;
+                            _logger.LogDebug("Updated DataDokumentuZewnetrznego to: {Date}", (object)request.ExternalDocumentDate.Value);
+                        }
+
+                        if (!string.IsNullOrEmpty(request.Description))
+                        {
+                            dokument.Dane.Opis = request.Description;
+                            _logger.LogDebug("Updated Opis (Description)");
+                        }
+
+                        // Save changes
+                        bool saved = dokument.Zapisz();
+                        if (!saved)
+                        {
+                            var errors = BusinessObjectHelper.ExtractErrors(dokument);
+                            _logger.LogWarning("Failed to save warehouse document updates. Errors: {Errors}", string.Join("; ", errors));
+                            return (false, null, "Failed to save document updates", errors);
+                        }
+
+                        _logger.LogInformation("Successfully updated warehouse document {Id}", (object)id);
+
+                        // Map to DTO based on document type
+                        WarehouseDocumentDto dto;
+                        switch (managerName)
+                        {
+                            case "WydaniaZewnetrzne":
+                                dto = MapWZToDto(dokument.Dane);
+                                break;
+                            case "PrzyjeciaZewnetrzne":
+                                dto = MapPZToDto(dokument.Dane);
+                                break;
+                            default:
+                                dto = new WarehouseDocumentDto
+                                {
+                                    Id = (int)dokument.Dane.Id,
+                                    Number = DynamicPropertyHelper.GetString(dokument.Dane, "NumerWewnetrzny") ?? "",
+                                    Type = managerName switch
+                                    {
+                                        "RozchodyWewnetrzne" => "RW",
+                                        "PrzychodyWewnetrzne" => "PW",
+                                        "PrzesunieciaMiedzymagazynowe" => "MM",
+                                        _ => "Unknown"
+                                    },
+                                    IssueDate = DynamicPropertyHelper.GetDateTime(dokument.Dane, "DataWystawienia"),
+                                    Notes = DynamicPropertyHelper.GetString(dokument.Dane, "Uwagi")
+                                };
+                                break;
+                        }
+
+                        return (true, dto, "Document updated successfully", new List<string>());
+                    }
+                    finally
+                    {
+                        if (dokument is IDisposable disposable)
+                        {
+                            disposable.Dispose();
+                        }
+                    }
+                }
+
+                return (false, null, $"Warehouse document with ID {id} not found", new List<string>());
+            });
+
+            if (!result.Success)
+            {
+                if (result.Message.Contains("not found"))
+                {
+                    return NotFound(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+                }
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+            }
+
+            return Ok(ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating warehouse document {Id}", (object)id);
+            return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Error updating warehouse document", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
     /// Create external release (WZ - Wydanie zewnętrzne)
     /// </summary>
     /// <remarks>
