@@ -58,6 +58,14 @@ public class CreateDocumentRequest
     /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
     /// </summary>
     public bool ReserveNumber { get; set; } = false;
+
+    /// <summary>
+    /// Whether to calculate document prices from gross (brutto) values.
+    /// If true: prices are calculated starting from gross values (priceGross in items).
+    /// If false (default): prices are calculated starting from net values (priceNet in items).
+    /// This affects how VAT is calculated - from net or to gross.
+    /// </summary>
+    public bool CalculatePricesFromGross { get; set; } = false;
 }
 
 public class CreateDocumentItemRequest
