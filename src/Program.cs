@@ -167,6 +167,7 @@ builder.Services.AddSingleton<ISferaService, SferaService>();
 
 // Register helpers
 builder.Services.AddSingleton<StockValidationHelper>();
+builder.Services.AddSingleton<ProductSymbolService>();
 
 // Add CORS if needed
 builder.Services.AddCors(options =>
