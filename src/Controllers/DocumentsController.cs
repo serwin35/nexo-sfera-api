@@ -1540,8 +1540,8 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // Set payment method
-                    SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
+                    // Set payment method using SDK pattern
+                    SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId, faktura, request.IsDeferredPayment);
 
                     // Set notes (uwagi) - transfer notes to invoice
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -3451,8 +3451,8 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
-                // Set payment method
-                SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
+                // Set payment method using SDK pattern
+                SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId, paragon, request.IsDeferredPayment);
 
                 // Add items using product ID
                 AddReceiptItemsById(paragon, request.Items);
@@ -4603,11 +4603,12 @@ public class DocumentsController : ControllerBase
 
     /// <summary>
     /// Sets payment method on a document by symbol or ID.
+    /// Uses SDK pattern: faktura.Platnosci.DodajPlatnoscNatychmiastowa/Odroczona for proper payment handling.
     /// </summary>
-    private void SetPaymentMethodOnDocument(dynamic dokumentDane, string? paymentMethodSymbol, int? paymentMethodId)
+    private void SetPaymentMethodOnDocument(dynamic dokumentDane, string? paymentMethodSymbol, int? paymentMethodId, dynamic? dokumentBO = null, bool isDeferred = false)
     {
-        _logger.LogDebug("SetPaymentMethodOnDocument called with Symbol={Symbol}, Id={Id}",
-            (object?)paymentMethodSymbol ?? "(null)", (object?)paymentMethodId?.ToString() ?? "(null)");
+        _logger.LogDebug("SetPaymentMethodOnDocument called with Symbol={Symbol}, Id={Id}, IsDeferred={IsDeferred}",
+            (object?)paymentMethodSymbol ?? "(null)", (object?)paymentMethodId?.ToString() ?? "(null)", isDeferred);
 
         if (string.IsNullOrEmpty(paymentMethodSymbol) && !paymentMethodId.HasValue)
         {
@@ -4708,11 +4709,50 @@ public class DocumentsController : ControllerBase
 
             if (formaPlatnosci != null)
             {
-                dokumentDane.FormaPlatnosci = formaPlatnosci;
                 int? id = DynamicPropertyHelper.GetId(formaPlatnosci);
                 string? symbol = DynamicPropertyHelper.GetString(formaPlatnosci, "Symbol");
                 string? nazwa = DynamicPropertyHelper.GetString(formaPlatnosci, "Nazwa");
-                _logger.LogInformation("Set payment method: [{Id}] {Symbol} ({Nazwa})", (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
+
+                bool paymentSet = false;
+
+                // Try SDK pattern first: use Platnosci interface for proper payment handling
+                if (dokumentBO != null)
+                {
+                    try
+                    {
+                        var platnosci = dokumentBO.Platnosci;
+                        if (platnosci != null)
+                        {
+                            if (isDeferred)
+                            {
+                                // Deferred payment (przelew)
+                                platnosci.DodajPlatnoscOdroczona(formaPlatnosci);
+                                _logger.LogInformation("Added deferred payment via Platnosci.DodajPlatnoscOdroczona: [{Id}] {Symbol} ({Nazwa})",
+                                    (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
+                            }
+                            else
+                            {
+                                // Immediate payment (gotówka, karta)
+                                platnosci.DodajPlatnoscNatychmiastowa(formaPlatnosci);
+                                _logger.LogInformation("Added immediate payment via Platnosci.DodajPlatnoscNatychmiastowa: [{Id}] {Symbol} ({Nazwa})",
+                                    (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
+                            }
+                            paymentSet = true;
+                        }
+                    }
+                    catch (Exception platEx)
+                    {
+                        _logger.LogDebug("SDK Platnosci pattern failed: {Msg}. Falling back to dane.FormaPlatnosci", platEx.Message);
+                    }
+                }
+
+                // Fallback: Set FormaPlatnosci directly on dane (legacy approach)
+                if (!paymentSet)
+                {
+                    dokumentDane.FormaPlatnosci = formaPlatnosci;
+                    _logger.LogInformation("Set payment method via dane.FormaPlatnosci: [{Id}] {Symbol} ({Nazwa})",
+                        (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
+                }
             }
             else
             {
