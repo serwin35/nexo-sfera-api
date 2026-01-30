@@ -33,6 +33,15 @@ public class CreateDocumentRequest
     /// </summary>
     public int? PaymentMethodId { get; set; }
 
+    /// <summary>
+    /// Whether the payment is deferred (e.g., bank transfer/przelew) or immediate (e.g., cash/gotówka, card/karta).
+    /// If true: uses DodajPlatnoscOdroczona (creates receivable/należność)
+    /// If false (default): uses DodajPlatnoscNatychmiastowa (marks as paid immediately)
+    /// Set to true for: PRZELEW, bank transfer, credit
+    /// Set to false for: GOTOWKA, KARTA, cash, card payments
+    /// </summary>
+    public bool IsDeferredPayment { get; set; } = false;
+
     [MaxLength(3)]
     public string Currency { get; set; } = "PLN";
 
