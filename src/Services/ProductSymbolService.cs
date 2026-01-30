@@ -142,7 +142,7 @@ public class ProductSymbolService
                 result.Gaps = allPossible.Except(usedNumbers).OrderBy(n => n).ToList();
 
                 // Next available is first gap or next after max
-                result.NextAvailable = result.Gaps.Count > 0 ? result.Gaps.First() : result.NextAfterMax;
+                result.NextAvailable = result.Gaps.Count > 0 ? result.Gaps.First() : result.NextAfterMax ?? 1;
             }
 
             _logger.LogInformation(
