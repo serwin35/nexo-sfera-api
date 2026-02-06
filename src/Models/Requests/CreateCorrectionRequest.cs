@@ -164,6 +164,12 @@ public class CreateReceiptRequest
     public int? PaymentMethodId { get; set; }
 
     /// <summary>
+    /// Whether this is a deferred payment (platnosc odroczona).
+    /// When true, the payment term is set on the document.
+    /// </summary>
+    public bool IsDeferredPayment { get; set; } = false;
+
+    /// <summary>
     /// Receipt items
     /// </summary>
     [Required]
