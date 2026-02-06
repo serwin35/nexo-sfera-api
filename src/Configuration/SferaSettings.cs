@@ -15,4 +15,9 @@ public class SferaSettings
     public string? DefaultWarehouse { get; set; } // e.g., "MAG"
     public string? DefaultBranch { get; set; } // e.g., "CENTRALA"
     public string? DefaultCashRegister { get; set; } // e.g., "CENTR"
+
+    // SDK synchronization settings
+    public string? NexoInstallPath { get; set; }     // Path to nexo installation directory
+    public bool AutoSyncSdk { get; set; } = true;    // Auto-sync SDK DLLs on startup
+    public bool SyncSdkSource { get; set; } = false;  // Also update lib/nexo-sdk/ source dir
 }

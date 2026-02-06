@@ -8,4 +8,12 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #509 | 10:35 AM | 🟣 | Sfera connection configuration model created with dual authentication support | ~439 |
+
+### Feb 7, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4875 | 12:34 AM | 🔵 | SferaSettings configuration structure with context defaults | ~466 |
+| #4858 | 12:30 AM | 🔵 | SferaService implements dedicated STA thread architecture for SDK compatibility | ~747 |
+| #4838 | 12:29 AM | ⚖️ | EF6 Provider Factory Registration Strategy | ~482 |
 </claude-mem-context>

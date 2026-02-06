@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
+using NexoSferaApi.Configuration;
+using NexoSferaApi.Models;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 
@@ -16,11 +19,13 @@ public class HealthController : ControllerBase
 {
     private readonly ISferaService _sferaService;
     private readonly ILogger<HealthController> _logger;
+    private readonly SferaSettings _settings;
 
-    public HealthController(ISferaService sferaService, ILogger<HealthController> logger)
+    public HealthController(ISferaService sferaService, ILogger<HealthController> logger, IOptions<SferaSettings> settings)
     {
         _sferaService = sferaService;
         _logger = logger;
+        _settings = settings.Value;
     }
 
     /// <summary>
@@ -100,6 +105,33 @@ public class HealthController : ControllerBase
             _logger.LogError(ex, "Error reconnecting to Sfera");
             return StatusCode(500, ApiResponse<bool>.Error("Failed to reconnect to Sfera", new List<string> { ex.Message }));
         }
+    }
+
+    /// <summary>
+    /// Get the result of the SDK synchronization that ran on startup
+    /// </summary>
+    [HttpGet("sdk-sync")]
+    public ActionResult<ApiResponse<SdkSyncResult>> GetSdkSyncResult()
+    {
+        var result = NexoSdkSynchronizer.LastSyncResult;
+        if (result == null)
+        {
+            return Ok(ApiResponse<SdkSyncResult>.Ok(
+                new SdkSyncResult { Status = SdkSyncStatus.NotRun, Message = "SDK sync has not run." }));
+        }
+
+        return Ok(ApiResponse<SdkSyncResult>.Ok(result));
+    }
+
+    /// <summary>
+    /// Live check comparing current SDK version with nexo installation version.
+    /// Reports whether a restart is needed to pick up updated DLLs.
+    /// </summary>
+    [HttpGet("sdk-version-check")]
+    public ActionResult<ApiResponse<SdkSyncResult>> CheckSdkVersion()
+    {
+        var result = NexoSdkSynchronizer.CheckVersions(_settings.NexoInstallPath, AppContext.BaseDirectory);
+        return Ok(ApiResponse<SdkSyncResult>.Ok(result));
     }
 }
 

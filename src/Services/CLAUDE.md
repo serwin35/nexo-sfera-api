@@ -17,4 +17,11 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #1079 | 12:07 AM | 🔴 | Compilation Errors Fixed in Phase 1 Controllers and SDK Integration | ~536 |
+
+### Feb 7, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #4858 | 12:30 AM | 🔵 | SferaService implements dedicated STA thread architecture for SDK compatibility | ~747 |
+| #4832 | 12:29 AM | 🔵 | ISferaService Interface Design | ~473 |
 </claude-mem-context>
