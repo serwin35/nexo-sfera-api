@@ -6,6 +6,41 @@ using NexoSferaApi.Middleware;
 using NexoSferaApi.Authentication;
 using NexoSferaApi.Helpers;
 
+// Synchronize SDK DLLs from nexo installation before loading any assemblies
+try
+{
+    var tempConfig = new ConfigurationBuilder()
+        .SetBasePath(AppContext.BaseDirectory)
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddEnvironmentVariables()
+        .Build();
+
+    var autoSync = tempConfig.GetValue("Sfera:AutoSyncSdk", true);
+    if (autoSync)
+    {
+        using var loggerFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+        var syncLogger = loggerFactory.CreateLogger("NexoSdkSync");
+
+        var installPath = tempConfig["Sfera:NexoInstallPath"]
+            ?? Environment.GetEnvironmentVariable("NEXO_INSTALL_PATH");
+        var syncSource = tempConfig.GetValue("Sfera:SyncSdkSource", false);
+
+        string? sourceLibDir = null;
+        if (syncSource)
+        {
+            // Resolve lib/nexo-sdk/ relative to project root (two levels up from bin output)
+            var projectRoot = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", ".."));
+            sourceLibDir = Path.Combine(projectRoot, "lib", "nexo-sdk");
+        }
+
+        NexoSdkSynchronizer.Synchronize(installPath, AppContext.BaseDirectory, syncLogger, syncSource, sourceLibDir);
+    }
+}
+catch (Exception ex)
+{
+    Console.Error.WriteLine($"[SDK Sync] Non-fatal error: {ex.Message}");
+}
+
 // Initialize Entity Framework 6 for .NET 8 compatibility
 // Must be called before any EF6/Sfera operations
 EF6Initializer.Initialize();
@@ -242,6 +277,8 @@ static void MapEnvironmentToConfiguration(ConfigurationManager config)
         { "SFERA_NEXO_LOGIN", "Sfera:NexoLogin" },
         { "SFERA_NEXO_PASSWORD", "Sfera:NexoPassword" },
         { "SFERA_PRODUCT", "Sfera:Product" },
+        { "SFERA_NEXO_INSTALL_PATH", "Sfera:NexoInstallPath" },
+        { "SFERA_AUTO_SYNC_SDK", "Sfera:AutoSyncSdk" },
         { "API_KEY", "ApiKeys:Keys:0:Key" },
         { "API_PORT", "Kestrel:Endpoints:Http:Url" }
     };
