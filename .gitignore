@@ -12,10 +12,6 @@ out/
 # macOS
 .DS_Store
 
-# Nexo SDK - full installation (too large for repo)
-nexoSDK_58.0.2.8985/
-
-# Note: src/lib/nexo-sdk/*.dll are INCLUDED in repo for easy builds
 
 # Environment files (contain secrets)
 .env
