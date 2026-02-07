@@ -167,20 +167,91 @@ public static class NexoSdkSynchronizer
                 return registryPath;
         }
 
-        // 4. Default paths
-        var defaultPaths = new[]
+        // 4. Build search paths list — Program Files + AppData\Local
+        var searchPaths = new List<string>
         {
             @"C:\Program Files (x86)\InsERT\nexo",
-            @"C:\Program Files\InsERT\nexo"
+            @"C:\Program Files\InsERT\nexo",
+            @"C:\Program Files (x86)\InsERT\nexo PRO",
+            @"C:\Program Files\InsERT\nexo PRO",
+            @"C:\Program Files (x86)\InsERT\Subiekt nexo PRO",
+            @"C:\Program Files\InsERT\Subiekt nexo PRO",
+            @"C:\Program Files (x86)\InsERT",
+            @"C:\Program Files\InsERT"
         };
 
-        foreach (var path in defaultPaths)
+        // Add AppData\Local paths (nexo often deploys via ClickOnce to user profile)
+        try
         {
-            if (Directory.Exists(path))
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (!string.IsNullOrEmpty(localAppData))
             {
-                logger?.LogDebug("[SDK Sync] Using default path: {Path}", path);
+                searchPaths.Add(Path.Combine(localAppData, "InsERT"));
+                searchPaths.Add(Path.Combine(localAppData, "InsERT", "nexo"));
+                searchPaths.Add(Path.Combine(localAppData, "InsERT", "nexo PRO"));
+                searchPaths.Add(Path.Combine(localAppData, "Programs", "InsERT"));
+                searchPaths.Add(Path.Combine(localAppData, "Apps", "InsERT"));
+            }
+
+            // Also check ProgramData
+            var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+            if (!string.IsNullOrEmpty(programData))
+            {
+                searchPaths.Add(Path.Combine(programData, "InsERT"));
+                searchPaths.Add(Path.Combine(programData, "InsERT", "nexo"));
+            }
+        }
+        catch { /* ignore */ }
+
+        // Search all paths — recurse into subdirectories looking for the DLL
+        var searchRoots = new List<string>();
+        foreach (var path in searchPaths)
+        {
+            if (!Directory.Exists(path)) continue;
+
+            // Direct match
+            if (File.Exists(Path.Combine(path, SferaDllName)))
+            {
+                logger?.LogDebug("[SDK Sync] Found {Dll} at: {Path}", SferaDllName, path);
                 return path;
             }
+
+            // Collect roots for recursive search
+            var root = path;
+            if (!searchRoots.Any(r => root.StartsWith(r, StringComparison.OrdinalIgnoreCase)))
+                searchRoots.Add(root);
+        }
+
+        // Recursive search through unique roots
+        foreach (var root in searchRoots)
+        {
+            try
+            {
+                logger?.LogDebug("[SDK Sync] Searching recursively in: {Root}", root);
+                var found = Directory.GetFiles(root, SferaDllName, SearchOption.AllDirectories);
+                if (found.Length > 0)
+                {
+                    var dir = Path.GetDirectoryName(found[0])!;
+                    logger?.LogInformation("[SDK Sync] Found {Dll} by recursive search: {Path}", SferaDllName, dir);
+                    return dir;
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogDebug("[SDK Sync] Error searching {Root}: {Error}", root, ex.Message);
+            }
+        }
+
+        // Log what we found for diagnostics
+        foreach (var path in searchPaths)
+        {
+            if (!Directory.Exists(path)) continue;
+            try
+            {
+                var entries = Directory.GetFileSystemEntries(path).Select(Path.GetFileName).Take(20);
+                logger?.LogDebug("[SDK Sync] Contents of {Path}: {Entries}", path, string.Join(", ", entries));
+            }
+            catch { /* ignore */ }
         }
 
         return null;
@@ -246,6 +317,28 @@ public static class NexoSdkSynchronizer
         {
             logger?.LogDebug("[SDK Sync] Error searching subdirectories: {Error}", ex.Message);
         }
+
+        // Log what IS in the directory for diagnostics
+        try
+        {
+            var subdirs = Directory.GetDirectories(installPath);
+            logger?.LogDebug("[SDK Sync] Subdirectories in {Path}: {Dirs}",
+                installPath, string.Join(", ", subdirs.Select(Path.GetFileName)));
+
+            var dllFiles = Directory.GetFiles(installPath, "*.dll");
+            if (dllFiles.Length > 0)
+            {
+                logger?.LogDebug("[SDK Sync] DLLs in {Path}: {Files}",
+                    installPath, string.Join(", ", dllFiles.Select(Path.GetFileName).Take(10)));
+            }
+            else
+            {
+                var allFiles = Directory.GetFiles(installPath);
+                logger?.LogDebug("[SDK Sync] Files in {Path} (no DLLs): {Files}",
+                    installPath, string.Join(", ", allFiles.Select(Path.GetFileName).Take(10)));
+            }
+        }
+        catch { /* ignore */ }
 
         return null;
     }
