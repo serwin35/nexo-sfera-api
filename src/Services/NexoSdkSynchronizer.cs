@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using NexoSferaApi.Models;
 
 namespace NexoSferaApi.Services;
@@ -30,66 +31,59 @@ public static class NexoSdkSynchronizer
         {
             logger?.LogInformation("[SDK Sync] Starting SDK version check...");
 
-            // Resolve nexo installation path
-            var installPath = ResolveInstallPath(configuredInstallPath, logger);
-            if (installPath == null)
-            {
-                result.Status = SdkSyncStatus.Skipped;
-                result.Message = "Nexo installation directory not found. SDK sync skipped.";
-                logger?.LogWarning("[SDK Sync] {Message}", result.Message);
-                _lastSyncResult = result;
-                return result;
-            }
-
-            logger?.LogInformation("[SDK Sync] Nexo installation found at: {Path}", installPath);
-
-            // Find the actual directory containing SDK DLLs (may be in a subdirectory)
-            var dllDir = FindDllDirectory(installPath, logger);
+            // Find the directory containing the newest SDK DLLs
+            var dllDir = FindNewestSdkDirectory(configuredInstallPath, logger);
             if (dllDir == null)
             {
                 result.Status = SdkSyncStatus.Skipped;
-                result.Message = $"{SferaDllName} not found in nexo installation directory or subdirectories: {installPath}";
+                result.Message = "Nexo SDK DLLs not found on this system. SDK sync skipped.";
                 logger?.LogWarning("[SDK Sync] {Message}", result.Message);
                 _lastSyncResult = result;
                 return result;
             }
 
             result.DetectedInstallPath = dllDir;
-            logger?.LogInformation("[SDK Sync] SDK DLLs found in: {Path}", dllDir);
+            logger?.LogInformation("[SDK Sync] SDK DLLs source: {Path}", dllDir);
 
-            // Compare versions using FileVersionInfo (reads PE header, doesn't load assembly)
+            // Compare the Sfera DLL between local (runtime) and source (deployment)
             var localDllPath = Path.Combine(runtimeDir, SferaDllName);
-            var installedDllPath = Path.Combine(dllDir, SferaDllName);
+            var sourceDllPath = Path.Combine(dllDir, SferaDllName);
 
-            var installedVersion = FileVersionInfo.GetVersionInfo(installedDllPath);
-            result.InstalledVersion = installedVersion.FileVersion;
+            // Get version info for reporting (may be 1.0.0.0 due to obfuscation)
+            var sourceVersionInfo = FileVersionInfo.GetVersionInfo(sourceDllPath);
+            result.InstalledVersion = sourceVersionInfo.ProductVersion ?? sourceVersionInfo.FileVersion;
 
             if (File.Exists(localDllPath))
             {
-                var localVersion = FileVersionInfo.GetVersionInfo(localDllPath);
-                result.LocalVersion = localVersion.FileVersion;
-                logger?.LogInformation("[SDK Sync] Local SDK version: {Local}, Installed nexo version: {Installed}",
-                    result.LocalVersion, result.InstalledVersion);
+                var localVersionInfo = FileVersionInfo.GetVersionInfo(localDllPath);
+                result.LocalVersion = localVersionInfo.ProductVersion ?? localVersionInfo.FileVersion;
 
-                if (result.LocalVersion == result.InstalledVersion)
+                // Compare by file hash since FileVersion is often 1.0.0.0 (obfuscated DLLs)
+                var localHash = ComputeFileHash(localDllPath);
+                var sourceHash = ComputeFileHash(sourceDllPath);
+
+                logger?.LogInformation("[SDK Sync] Local: {Version} (hash: {Hash}), Source: {SrcVersion} (hash: {SrcHash})",
+                    result.LocalVersion, localHash[..8], result.InstalledVersion, sourceHash[..8]);
+
+                if (localHash == sourceHash)
                 {
                     result.Status = SdkSyncStatus.AlreadyCurrent;
-                    result.Message = $"SDK is already up to date (version {result.LocalVersion}).";
+                    result.Message = $"SDK is already up to date (hash match).";
                     logger?.LogInformation("[SDK Sync] {Message}", result.Message);
                     _lastSyncResult = result;
                     return result;
                 }
+
+                logger?.LogInformation("[SDK Sync] DLL hash mismatch — syncing...");
             }
             else
             {
                 result.LocalVersion = null;
-                logger?.LogWarning("[SDK Sync] Local {Dll} not found, will copy from installation.", SferaDllName);
+                logger?.LogWarning("[SDK Sync] Local {Dll} not found, will copy from deployment.", SferaDllName);
             }
 
-            // Versions differ — copy DLLs
-            logger?.LogInformation("[SDK Sync] Version mismatch detected. Syncing DLLs from {Source} to {Dest}...",
-                dllDir, runtimeDir);
-
+            // Copy DLLs
+            logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", dllDir, runtimeDir);
             CopyDlls(dllDir, runtimeDir, result, logger);
 
             // Optionally sync to lib/nexo-sdk/ source directory
@@ -118,7 +112,7 @@ public static class NexoSdkSynchronizer
             else
             {
                 result.Status = SdkSyncStatus.Synchronized;
-                result.Message = $"Synced {result.FilesCopied} DLLs from nexo {result.InstalledVersion} (was {result.LocalVersion ?? "missing"}). {result.FilesSkipped} unchanged.";
+                result.Message = $"Synced {result.FilesCopied} DLLs from deployment. {result.FilesSkipped} unchanged.";
             }
 
             logger?.LogInformation("[SDK Sync] {Message}", result.Message);
@@ -136,123 +130,177 @@ public static class NexoSdkSynchronizer
     }
 
     /// <summary>
-    /// Resolves the nexo installation path from config, env var, registry, or default paths.
+    /// Finds the deployment directory containing the newest InsERT.Moria.Sfera.dll.
+    /// Searches configured path, env vars, registry, Program Files, and AppData deployments.
+    /// When multiple deployment folders exist, picks the one with the newest DLL.
     /// </summary>
-    public static string? ResolveInstallPath(string? configuredPath, ILogger? logger)
+    private static string? FindNewestSdkDirectory(string? configuredPath, ILogger? logger)
     {
-        // 1. Explicit configuration
-        if (!string.IsNullOrEmpty(configuredPath))
+        // 1. Explicit configuration — points directly to a directory with DLLs
+        if (!string.IsNullOrEmpty(configuredPath) && Directory.Exists(configuredPath))
         {
-            if (Directory.Exists(configuredPath))
+            if (File.Exists(Path.Combine(configuredPath, SferaDllName)))
             {
-                logger?.LogDebug("[SDK Sync] Using configured install path: {Path}", configuredPath);
+                logger?.LogDebug("[SDK Sync] Using configured path: {Path}", configuredPath);
                 return configuredPath;
             }
-            logger?.LogWarning("[SDK Sync] Configured path does not exist: {Path}", configuredPath);
+            // Search subdirectories of configured path
+            var found = FindAllSferaDlls(configuredPath, logger);
+            if (found.Count > 0)
+                return PickNewest(found, logger);
         }
 
         // 2. Environment variable
         var envPath = Environment.GetEnvironmentVariable("NEXO_INSTALL_PATH");
         if (!string.IsNullOrEmpty(envPath) && Directory.Exists(envPath))
         {
-            logger?.LogDebug("[SDK Sync] Using NEXO_INSTALL_PATH env var: {Path}", envPath);
-            return envPath;
+            if (File.Exists(Path.Combine(envPath, SferaDllName)))
+                return envPath;
+            var found = FindAllSferaDlls(envPath, logger);
+            if (found.Count > 0)
+                return PickNewest(found, logger);
         }
 
-        // 3. Windows Registry (only on Windows)
+        // 3. Windows Registry
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
         {
-            var registryPath = TryGetFromRegistry(logger);
-            if (registryPath != null)
-                return registryPath;
+            var regPath = TryGetFromRegistry(logger);
+            if (regPath != null)
+            {
+                if (File.Exists(Path.Combine(regPath, SferaDllName)))
+                    return regPath;
+                var found = FindAllSferaDlls(regPath, logger);
+                if (found.Count > 0)
+                    return PickNewest(found, logger);
+            }
         }
 
-        // 4. Build search paths list — Program Files + AppData\Local
-        var searchPaths = new List<string>
-        {
-            @"C:\Program Files (x86)\InsERT\nexo",
-            @"C:\Program Files\InsERT\nexo",
-            @"C:\Program Files (x86)\InsERT\nexo PRO",
-            @"C:\Program Files\InsERT\nexo PRO",
-            @"C:\Program Files (x86)\InsERT\Subiekt nexo PRO",
-            @"C:\Program Files\InsERT\Subiekt nexo PRO",
-            @"C:\Program Files (x86)\InsERT",
-            @"C:\Program Files\InsERT"
-        };
+        // 4. Search known locations
+        var searchRoots = new List<string>();
 
-        // Add AppData\Local paths — InsERT uses ClickOnce-style deployments
+        // Program Files locations
+        foreach (var pf in new[] { @"C:\Program Files (x86)\InsERT", @"C:\Program Files\InsERT" })
+        {
+            if (Directory.Exists(pf))
+                searchRoots.Add(pf);
+        }
+
+        // AppData\Local — InsERT Deployments (primary location for updated DLLs)
         try
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (!string.IsNullOrEmpty(localAppData))
             {
-                // Primary: InsERT Deployments directory (contains per-entity deployment folders)
-                searchPaths.Add(Path.Combine(localAppData, "InsERT", "Deployments", "Nexo"));
-                searchPaths.Add(Path.Combine(localAppData, "InsERT", "Deployments"));
-                searchPaths.Add(Path.Combine(localAppData, "InsERT"));
+                var deploymentsNexo = Path.Combine(localAppData, "InsERT", "Deployments", "Nexo");
+                if (Directory.Exists(deploymentsNexo))
+                    searchRoots.Insert(0, deploymentsNexo); // Prioritize deployments
+                else
+                {
+                    var insertLocal = Path.Combine(localAppData, "InsERT");
+                    if (Directory.Exists(insertLocal))
+                        searchRoots.Insert(0, insertLocal);
+                }
             }
 
-            // Also check ProgramData
             var programData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
             if (!string.IsNullOrEmpty(programData))
             {
-                searchPaths.Add(Path.Combine(programData, "InsERT"));
+                var insertPD = Path.Combine(programData, "InsERT");
+                if (Directory.Exists(insertPD))
+                    searchRoots.Add(insertPD);
             }
         }
         catch { /* ignore */ }
 
-        // Search all paths — recurse into subdirectories looking for the DLL
-        var searchRoots = new List<string>();
-        foreach (var path in searchPaths)
-        {
-            if (!Directory.Exists(path)) continue;
-
-            // Direct match
-            if (File.Exists(Path.Combine(path, SferaDllName)))
-            {
-                logger?.LogDebug("[SDK Sync] Found {Dll} at: {Path}", SferaDllName, path);
-                return path;
-            }
-
-            // Collect roots for recursive search
-            var root = path;
-            if (!searchRoots.Any(r => root.StartsWith(r, StringComparison.OrdinalIgnoreCase)))
-                searchRoots.Add(root);
-        }
-
-        // Recursive search through unique roots
+        // Collect ALL found DLLs across all search roots
+        var allFound = new List<string>();
         foreach (var root in searchRoots)
         {
+            logger?.LogDebug("[SDK Sync] Searching: {Root}", root);
+            var found = FindAllSferaDlls(root, logger);
+            allFound.AddRange(found);
+        }
+
+        if (allFound.Count > 0)
+            return PickNewest(allFound, logger);
+
+        logger?.LogWarning("[SDK Sync] {Dll} not found in any known location.", SferaDllName);
+        return null;
+    }
+
+    /// <summary>
+    /// Finds all InsERT.Moria.Sfera.dll files under a root directory.
+    /// </summary>
+    private static List<string> FindAllSferaDlls(string root, ILogger? logger)
+    {
+        try
+        {
+            return Directory.GetFiles(root, SferaDllName, SearchOption.AllDirectories).ToList();
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug("[SDK Sync] Error searching {Root}: {Error}", root, ex.Message);
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// From multiple DLL paths, picks the directory containing the newest version.
+    /// Uses last write time since InsERT DLLs have obfuscated FileVersion (1.0.0.0).
+    /// </summary>
+    private static string? PickNewest(List<string> dllPaths, ILogger? logger)
+    {
+        if (dllPaths.Count == 0) return null;
+        if (dllPaths.Count == 1)
+        {
+            var dir = Path.GetDirectoryName(dllPaths[0])!;
+            logger?.LogDebug("[SDK Sync] Single DLL found in: {Dir}", dir);
+            return dir;
+        }
+
+        logger?.LogDebug("[SDK Sync] Found {Count} copies, selecting newest by write time...", dllPaths.Count);
+
+        string? bestPath = null;
+        DateTime bestTime = DateTime.MinValue;
+
+        foreach (var dllPath in dllPaths)
+        {
             try
             {
-                logger?.LogDebug("[SDK Sync] Searching recursively in: {Root}", root);
-                var found = Directory.GetFiles(root, SferaDllName, SearchOption.AllDirectories);
-                if (found.Length > 0)
+                var info = new FileInfo(dllPath);
+                var dir = Path.GetDirectoryName(dllPath)!;
+                var dirName = Path.GetFileName(dir);
+                var parentName = Path.GetFileName(Path.GetDirectoryName(dir) ?? "");
+
+                logger?.LogDebug("[SDK Sync]   {Parent}/{Dir}: size={Size}, modified={Time}",
+                    parentName, dirName, info.Length, info.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"));
+
+                if (info.LastWriteTimeUtc > bestTime)
                 {
-                    var dir = Path.GetDirectoryName(found[0])!;
-                    logger?.LogInformation("[SDK Sync] Found {Dll} by recursive search: {Path}", SferaDllName, dir);
-                    return dir;
+                    bestTime = info.LastWriteTimeUtc;
+                    bestPath = dllPath;
                 }
             }
-            catch (Exception ex)
-            {
-                logger?.LogDebug("[SDK Sync] Error searching {Root}: {Error}", root, ex.Message);
-            }
+            catch { /* skip unreadable */ }
         }
 
-        // Log what we found for diagnostics
-        foreach (var path in searchPaths)
+        if (bestPath != null)
         {
-            if (!Directory.Exists(path)) continue;
-            try
-            {
-                var entries = Directory.GetFileSystemEntries(path).Select(Path.GetFileName).Take(20);
-                logger?.LogDebug("[SDK Sync] Contents of {Path}: {Entries}", path, string.Join(", ", entries));
-            }
-            catch { /* ignore */ }
+            var result = Path.GetDirectoryName(bestPath)!;
+            logger?.LogInformation("[SDK Sync] Selected newest deployment: {Dir} (modified {Time})",
+                result, bestTime.ToString("yyyy-MM-dd HH:mm:ss"));
+            return result;
         }
 
-        return null;
+        return Path.GetDirectoryName(dllPaths[0])!;
+    }
+
+    private static string ComputeFileHash(string filePath)
+    {
+        using var sha = SHA256.Create();
+        using var stream = File.OpenRead(filePath);
+        var hash = sha.ComputeHash(stream);
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     private static string? TryGetFromRegistry(ILogger? logger)
@@ -285,85 +333,6 @@ public static class NexoSdkSynchronizer
         {
             logger?.LogDebug("[SDK Sync] Registry lookup failed: {Error}", ex.Message);
         }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Finds the directory containing InsERT.Moria.Sfera.dll within the nexo installation.
-    /// Checks the root directory first, then searches subdirectories up to 2 levels deep.
-    /// </summary>
-    private static string? FindDllDirectory(string installPath, ILogger? logger)
-    {
-        // Check root directory first
-        if (File.Exists(Path.Combine(installPath, SferaDllName)))
-            return installPath;
-
-        // Search subdirectories — InsERT uses deployment folders per entity
-        // (e.g., Deployments/Nexo/DMservice4b8a0986.../InsERT.Moria.Sfera.dll)
-        try
-        {
-            var found = Directory.GetFiles(installPath, SferaDllName, SearchOption.AllDirectories);
-            if (found.Length > 0)
-            {
-                if (found.Length == 1)
-                {
-                    var dir = Path.GetDirectoryName(found[0])!;
-                    logger?.LogDebug("[SDK Sync] Found {Dll} in: {Dir}", SferaDllName, dir);
-                    return dir;
-                }
-
-                // Multiple copies found — pick the one with the highest file version
-                logger?.LogDebug("[SDK Sync] Found {Count} copies of {Dll}, selecting newest version...",
-                    found.Length, SferaDllName);
-
-                string? bestDir = null;
-                Version? bestVersion = null;
-
-                foreach (var dllPath in found)
-                {
-                    try
-                    {
-                        var info = FileVersionInfo.GetVersionInfo(dllPath);
-                        var version = Version.TryParse(info.FileVersion, out var v) ? v : null;
-                        var dir = Path.GetDirectoryName(dllPath)!;
-
-                        logger?.LogDebug("[SDK Sync]   {Dir} -> version {Version}",
-                            Path.GetFileName(Path.GetDirectoryName(dllPath)), info.FileVersion);
-
-                        if (version != null && (bestVersion == null || version > bestVersion))
-                        {
-                            bestVersion = version;
-                            bestDir = dir;
-                        }
-                    }
-                    catch { /* skip unreadable */ }
-                }
-
-                if (bestDir != null)
-                {
-                    logger?.LogInformation("[SDK Sync] Selected deployment with version {Version}: {Dir}",
-                        bestVersion, bestDir);
-                    return bestDir;
-                }
-
-                // Fallback: return directory of first found
-                return Path.GetDirectoryName(found[0])!;
-            }
-        }
-        catch (Exception ex)
-        {
-            logger?.LogDebug("[SDK Sync] Error searching subdirectories: {Error}", ex.Message);
-        }
-
-        // Log what IS in the directory for diagnostics
-        try
-        {
-            var subdirs = Directory.GetDirectories(installPath);
-            logger?.LogDebug("[SDK Sync] Subdirectories in {Path}: {Dirs}",
-                installPath, string.Join(", ", subdirs.Select(Path.GetFileName)));
-        }
-        catch { /* ignore */ }
 
         return null;
     }
@@ -413,7 +382,7 @@ public static class NexoSdkSynchronizer
     }
 
     /// <summary>
-    /// Performs a live version check comparing the loaded assembly version with the nexo installation.
+    /// Performs a live version check comparing current SDK DLLs with the deployment.
     /// </summary>
     public static SdkSyncResult CheckVersions(string? configuredInstallPath, string runtimeDir)
     {
@@ -421,18 +390,23 @@ public static class NexoSdkSynchronizer
 
         try
         {
-            var installPath = ResolveInstallPath(configuredInstallPath, null);
-            var dllDir = installPath != null ? FindDllDirectory(installPath, null) : null;
-            result.DetectedInstallPath = dllDir ?? installPath;
+            var dllDir = FindNewestSdkDirectory(configuredInstallPath, null);
+            result.DetectedInstallPath = dllDir;
 
             var localDllPath = Path.Combine(runtimeDir, SferaDllName);
-            var installedDllPath = dllDir != null ? Path.Combine(dllDir, SferaDllName) : null;
+            var sourceDllPath = dllDir != null ? Path.Combine(dllDir, SferaDllName) : null;
 
             if (File.Exists(localDllPath))
-                result.LocalVersion = FileVersionInfo.GetVersionInfo(localDllPath).FileVersion;
+            {
+                var info = FileVersionInfo.GetVersionInfo(localDllPath);
+                result.LocalVersion = info.ProductVersion ?? info.FileVersion;
+            }
 
-            if (installedDllPath != null && File.Exists(installedDllPath))
-                result.InstalledVersion = FileVersionInfo.GetVersionInfo(installedDllPath).FileVersion;
+            if (sourceDllPath != null && File.Exists(sourceDllPath))
+            {
+                var info = FileVersionInfo.GetVersionInfo(sourceDllPath);
+                result.InstalledVersion = info.ProductVersion ?? info.FileVersion;
+            }
 
             if (result.LocalVersion == null)
             {
@@ -442,17 +416,24 @@ public static class NexoSdkSynchronizer
             else if (result.InstalledVersion == null)
             {
                 result.Status = SdkSyncStatus.Skipped;
-                result.Message = "Nexo installation not found — cannot compare versions.";
-            }
-            else if (result.LocalVersion == result.InstalledVersion)
-            {
-                result.Status = SdkSyncStatus.AlreadyCurrent;
-                result.Message = $"Versions match ({result.LocalVersion}). No restart needed.";
+                result.Message = "Nexo deployment not found — cannot compare.";
             }
             else
             {
-                result.Status = SdkSyncStatus.NotRun;
-                result.Message = $"Version mismatch: running {result.LocalVersion}, installed {result.InstalledVersion}. Restart recommended.";
+                // Compare by hash since FileVersion is often 1.0.0.0
+                var localHash = ComputeFileHash(localDllPath);
+                var sourceHash = ComputeFileHash(sourceDllPath!);
+
+                if (localHash == sourceHash)
+                {
+                    result.Status = SdkSyncStatus.AlreadyCurrent;
+                    result.Message = $"DLLs match (hash identical). No restart needed.";
+                }
+                else
+                {
+                    result.Status = SdkSyncStatus.NotRun;
+                    result.Message = $"DLL mismatch detected. Restart recommended to sync with deployment.";
+                }
             }
         }
         catch (Exception ex)
