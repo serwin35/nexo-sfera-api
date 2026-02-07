@@ -290,9 +290,9 @@ public class SferaService : ISferaService, IDisposable
                 "GrupyCech" => _sfera.GrupyCech(),
                 // InsERT.Moria.Klienci
                 "Podmioty" => _sfera.Podmioty(),
-                // GrupyKontrahentow/GrupyPodmiotow - access via Podmioty manager
-                "GrupyKontrahentow" => _sfera.Podmioty(), // Groups accessible via Podmioty
-                "GrupyPodmiotow" => _sfera.Podmioty(), // Alias for contractor groups
+                "Grupy" => _sfera.Grupy(), // InsERT.Moria.Klienci.IGrupy
+                "GrupyKontrahentow" => _sfera.Grupy(), // Alias for contractor groups
+                "GrupyPodmiotow" => _sfera.Grupy(), // Alias for contractor groups
                 // InsERT.Moria.Dokumenty
                 "Dokumenty" => _sfera.Dokumenty(),
                 "DokumentySprzedazy" => _sfera.DokumentySprzedazy(),
