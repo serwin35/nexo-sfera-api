@@ -41,21 +41,25 @@ public static class NexoSdkSynchronizer
                 return result;
             }
 
-            result.DetectedInstallPath = installPath;
             logger?.LogInformation("[SDK Sync] Nexo installation found at: {Path}", installPath);
 
-            // Compare versions using FileVersionInfo (reads PE header, doesn't load assembly)
-            var localDllPath = Path.Combine(runtimeDir, SferaDllName);
-            var installedDllPath = Path.Combine(installPath, SferaDllName);
-
-            if (!File.Exists(installedDllPath))
+            // Find the actual directory containing SDK DLLs (may be in a subdirectory)
+            var dllDir = FindDllDirectory(installPath, logger);
+            if (dllDir == null)
             {
                 result.Status = SdkSyncStatus.Skipped;
-                result.Message = $"{SferaDllName} not found in nexo installation directory: {installPath}";
+                result.Message = $"{SferaDllName} not found in nexo installation directory or subdirectories: {installPath}";
                 logger?.LogWarning("[SDK Sync] {Message}", result.Message);
                 _lastSyncResult = result;
                 return result;
             }
+
+            result.DetectedInstallPath = dllDir;
+            logger?.LogInformation("[SDK Sync] SDK DLLs found in: {Path}", dllDir);
+
+            // Compare versions using FileVersionInfo (reads PE header, doesn't load assembly)
+            var localDllPath = Path.Combine(runtimeDir, SferaDllName);
+            var installedDllPath = Path.Combine(dllDir, SferaDllName);
 
             var installedVersion = FileVersionInfo.GetVersionInfo(installedDllPath);
             result.InstalledVersion = installedVersion.FileVersion;
@@ -84,16 +88,16 @@ public static class NexoSdkSynchronizer
 
             // Versions differ — copy DLLs
             logger?.LogInformation("[SDK Sync] Version mismatch detected. Syncing DLLs from {Source} to {Dest}...",
-                installPath, runtimeDir);
+                dllDir, runtimeDir);
 
-            CopyDlls(installPath, runtimeDir, result, logger);
+            CopyDlls(dllDir, runtimeDir, result, logger);
 
             // Optionally sync to lib/nexo-sdk/ source directory
             if (alsoSyncSource && !string.IsNullOrEmpty(sourceLibDir) && Directory.Exists(sourceLibDir))
             {
                 logger?.LogInformation("[SDK Sync] Also syncing to source lib directory: {Dir}", sourceLibDir);
                 var sourceResult = new SdkSyncResult();
-                CopyDlls(installPath, sourceLibDir, sourceResult, logger);
+                CopyDlls(dllDir, sourceLibDir, sourceResult, logger);
                 result.FilesCopied += sourceResult.FilesCopied;
                 result.FilesSkipped += sourceResult.FilesSkipped;
                 result.FilesFailed += sourceResult.FilesFailed;
@@ -216,6 +220,36 @@ public static class NexoSdkSynchronizer
         return null;
     }
 
+    /// <summary>
+    /// Finds the directory containing InsERT.Moria.Sfera.dll within the nexo installation.
+    /// Checks the root directory first, then searches subdirectories up to 2 levels deep.
+    /// </summary>
+    private static string? FindDllDirectory(string installPath, ILogger? logger)
+    {
+        // Check root directory first
+        if (File.Exists(Path.Combine(installPath, SferaDllName)))
+            return installPath;
+
+        // Search subdirectories (nexo often has DLLs in product-specific subdirs)
+        try
+        {
+            var found = Directory.GetFiles(installPath, SferaDllName, SearchOption.AllDirectories);
+            if (found.Length > 0)
+            {
+                var dir = Path.GetDirectoryName(found[0])!;
+                if (found.Length > 1)
+                    logger?.LogDebug("[SDK Sync] Multiple {Dll} found, using: {Dir}", SferaDllName, dir);
+                return dir;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug("[SDK Sync] Error searching subdirectories: {Error}", ex.Message);
+        }
+
+        return null;
+    }
+
     private static void CopyDlls(string sourceDir, string destDir, SdkSyncResult result, ILogger? logger)
     {
         var dllFiles = Directory.GetFiles(sourceDir, "*.dll");
@@ -270,10 +304,11 @@ public static class NexoSdkSynchronizer
         try
         {
             var installPath = ResolveInstallPath(configuredInstallPath, null);
-            result.DetectedInstallPath = installPath;
+            var dllDir = installPath != null ? FindDllDirectory(installPath, null) : null;
+            result.DetectedInstallPath = dllDir ?? installPath;
 
             var localDllPath = Path.Combine(runtimeDir, SferaDllName);
-            var installedDllPath = installPath != null ? Path.Combine(installPath, SferaDllName) : null;
+            var installedDllPath = dllDir != null ? Path.Combine(dllDir, SferaDllName) : null;
 
             if (File.Exists(localDllPath))
                 result.LocalVersion = FileVersionInfo.GetVersionInfo(localDllPath).FileVersion;
