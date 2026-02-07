@@ -34,17 +34,13 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
             }
 
-            var allGrupy = new List<dynamic>();
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                allGrupy.Add(g);
-            }
+            var allGrupy = DynamicPropertyHelper.SafeGetAll(grupy);
 
             // Apply filters
             var filteredList = new List<dynamic>();
@@ -148,21 +144,15 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<List<ContractorGroupTreeDto>>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<List<ContractorGroupTreeDto>>.Error("Failed to get Grupy manager"));
             }
 
-            var allGrupy = new List<dynamic>();
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
-                if (!isDeleted)
-                {
-                    allGrupy.Add(g);
-                }
-            }
+            var allGrupy = DynamicPropertyHelper.SafeGetAll(grupy)
+                .Where(g => !(DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false))
+                .ToList();
 
             // Build tree
             var groupMap = new Dictionary<int, ContractorGroupTreeDto>();
@@ -225,22 +215,13 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            dynamic? grupa = null;
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupa = g;
-                    break;
-                }
-            }
-
+            var grupa = DynamicPropertyHelper.FindById(grupy, id);
             if (grupa == null)
             {
                 return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with ID {id} not found"));
@@ -263,14 +244,14 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
             dynamic? grupa = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
                 {
@@ -301,14 +282,14 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<List<ContractorGroupListItemDto>>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<List<ContractorGroupListItemDto>>.Error("Failed to get Grupy manager"));
             }
 
             var children = new List<ContractorGroupListItemDto>();
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
                 var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
@@ -340,23 +321,14 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
             }
 
             // Verify group exists
-            dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
+            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
             if (grupaDane == null)
             {
                 return NotFound(ApiResponse<object>.Error($"Contractor group with ID {id} not found"));
@@ -369,7 +341,7 @@ public class ContractorGroupsController : ControllerBase
             }
 
             var contractors = new List<dynamic>();
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
                 if (grupa != null && DynamicPropertyHelper.GetId(grupa) == id)
@@ -424,14 +396,14 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
             // Check if symbol already exists
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
                 {
@@ -453,15 +425,7 @@ public class ContractorGroupsController : ControllerBase
                 // Set parent
                 if (request.ParentId.HasValue)
                 {
-                    dynamic? rodzic = null;
-                    foreach (var g in grupy.Dane.Wszystkie())
-                    {
-                        if (DynamicPropertyHelper.GetId(g) == request.ParentId.Value)
-                        {
-                            rodzic = g;
-                            break;
-                        }
-                    }
+                    var rodzic = DynamicPropertyHelper.FindById(grupy, request.ParentId.Value);
                     if (rodzic != null)
                     {
                         dane.Rodzic = rodzic;
@@ -474,13 +438,10 @@ public class ContractorGroupsController : ControllerBase
                     var sposobyPlatnosci = _sferaService.GetManager("SposobyPlatnosci");
                     if (sposobyPlatnosci != null)
                     {
-                        foreach (var sp in sposobyPlatnosci.Dane.Wszystkie())
+                        var sp = DynamicPropertyHelper.FindById(sposobyPlatnosci, request.DefaultPaymentMethodId.Value);
+                        if (sp != null)
                         {
-                            if (DynamicPropertyHelper.GetId(sp) == request.DefaultPaymentMethodId.Value)
-                            {
-                                try { dane.DomyslnySposobPlatnosci = sp; } catch { }
-                                break;
-                            }
+                            try { dane.DomyslnySposobPlatnosci = sp; } catch { }
                         }
                     }
                 }
@@ -503,13 +464,10 @@ public class ContractorGroupsController : ControllerBase
                     var cenniki = _sferaService.GetManager("Cenniki");
                     if (cenniki != null)
                     {
-                        foreach (var c in cenniki.Dane.Wszystkie())
+                        var c = DynamicPropertyHelper.FindById(cenniki, request.DefaultPriceLevelId.Value);
+                        if (c != null)
                         {
-                            if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
-                            {
-                                try { dane.DomyslnyPoziomCen = c; } catch { }
-                                break;
-                            }
+                            try { dane.DomyslnyPoziomCen = c; } catch { }
                         }
                     }
                 }
@@ -550,22 +508,13 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
+            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
             if (grupaDane == null)
             {
                 return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with ID {id} not found"));
@@ -595,13 +544,10 @@ public class ContractorGroupsController : ControllerBase
                     var sposobyPlatnosci = _sferaService.GetManager("SposobyPlatnosci");
                     if (sposobyPlatnosci != null)
                     {
-                        foreach (var sp in sposobyPlatnosci.Dane.Wszystkie())
+                        var sp = DynamicPropertyHelper.FindById(sposobyPlatnosci, request.DefaultPaymentMethodId.Value);
+                        if (sp != null)
                         {
-                            if (DynamicPropertyHelper.GetId(sp) == request.DefaultPaymentMethodId.Value)
-                            {
-                                try { dane.DomyslnySposobPlatnosci = sp; } catch { }
-                                break;
-                            }
+                            try { dane.DomyslnySposobPlatnosci = sp; } catch { }
                         }
                     }
                 }
@@ -621,13 +567,10 @@ public class ContractorGroupsController : ControllerBase
                     var cenniki = _sferaService.GetManager("Cenniki");
                     if (cenniki != null)
                     {
-                        foreach (var c in cenniki.Dane.Wszystkie())
+                        var c = DynamicPropertyHelper.FindById(cenniki, request.DefaultPriceLevelId.Value);
+                        if (c != null)
                         {
-                            if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
-                            {
-                                try { dane.DomyslnyPoziomCen = c; } catch { }
-                                break;
-                            }
+                            try { dane.DomyslnyPoziomCen = c; } catch { }
                         }
                     }
                 }
@@ -669,22 +612,13 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<bool>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<bool>.Error("Failed to get Grupy manager"));
             }
 
-            dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
+            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
             if (grupaDane == null)
             {
                 return NotFound(ApiResponse<bool>.Error($"Contractor group with ID {id} not found"));
@@ -724,22 +658,13 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Grupy manager"));
             }
 
-            dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
+            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
             if (grupaDane == null)
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor group with ID {id} not found"));
@@ -751,16 +676,7 @@ public class ContractorGroupsController : ControllerBase
                 return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Podmioty manager"));
             }
 
-            dynamic? podmiotDane = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(p) == request.ContractorId)
-                {
-                    podmiotDane = p;
-                    break;
-                }
-            }
-
+            var podmiotDane = DynamicPropertyHelper.FindById(podmioty, request.ContractorId);
             if (podmiotDane == null)
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor with ID {request.ContractorId} not found"));
@@ -814,22 +730,13 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyPodmiotow");
+            var grupy = _sferaService.GetManager("Grupy");
             if (grupy == null)
             {
-                return StatusCode(500, ApiResponse<int>.Error("Failed to get GrupyPodmiotow manager"));
+                return StatusCode(500, ApiResponse<int>.Error("Failed to get Grupy manager"));
             }
 
-            dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
+            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
             if (grupaDane == null)
             {
                 return NotFound(ApiResponse<int>.Error($"Contractor group with ID {id} not found"));
@@ -844,16 +751,7 @@ public class ContractorGroupsController : ControllerBase
             int addedCount = 0;
             foreach (var contractorId in request.ContractorIds)
             {
-                dynamic? podmiotDane = null;
-                foreach (var p in podmioty.Dane.Wszystkie())
-                {
-                    if (DynamicPropertyHelper.GetId(p) == contractorId)
-                    {
-                        podmiotDane = p;
-                        break;
-                    }
-                }
-
+                var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
                 if (podmiotDane != null)
                 {
                     try
@@ -901,16 +799,7 @@ public class ContractorGroupsController : ControllerBase
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
             }
 
-            dynamic? podmiotDane = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
-            {
-                if (DynamicPropertyHelper.GetId(p) == contractorId)
-                {
-                    podmiotDane = p;
-                    break;
-                }
-            }
-
+            var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
             if (podmiotDane == null)
             {
                 return NotFound(ApiResponse<bool>.Error($"Contractor with ID {contractorId} not found"));
@@ -959,7 +848,7 @@ public class ContractorGroupsController : ControllerBase
             if (podmioty == null) return 0;
 
             int count = 0;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
                 if (grupa != null && DynamicPropertyHelper.GetId(grupa) == groupId)
@@ -1000,7 +889,7 @@ public class ContractorGroupsController : ControllerBase
 
         // Count children
         int childCount = 0;
-        foreach (var g in grupy.Dane.Wszystkie())
+        foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
         {
             var p = DynamicPropertyHelper.GetProperty(g, "Rodzic");
             if (p != null && DynamicPropertyHelper.GetId(p) == groupId)
