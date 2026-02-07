@@ -110,11 +110,16 @@ public class ContractorGroupsController : ControllerBase
                 }
 
                 // Check if has children
-                dto.HasChildren = allGrupy.Any(child =>
+                dto.HasChildren = false;
+                foreach (var child in allGrupy)
                 {
                     var parent = DynamicPropertyHelper.GetProperty(child, "Rodzic");
-                    return parent != null && DynamicPropertyHelper.GetId(parent) == dto.Id;
-                });
+                    if (parent != null && DynamicPropertyHelper.GetId(parent) == dto.Id)
+                    {
+                        dto.HasChildren = true;
+                        break;
+                    }
+                }
 
                 items.Add(dto);
             }
@@ -150,9 +155,15 @@ public class ContractorGroupsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<ContractorGroupTreeDto>>.Error("Failed to get Grupy manager"));
             }
 
-            var allGrupy = DynamicPropertyHelper.SafeGetAll(grupy)
-                .Where(g => !(DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false))
-                .ToList();
+            var allGrupyRaw = DynamicPropertyHelper.SafeGetAll(grupy);
+            var allGrupy = new List<dynamic>();
+            foreach (var g in allGrupyRaw)
+            {
+                if (!(DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false))
+                {
+                    allGrupy.Add(g);
+                }
+            }
 
             // Build tree
             var groupMap = new Dictionary<int, ContractorGroupTreeDto>();
