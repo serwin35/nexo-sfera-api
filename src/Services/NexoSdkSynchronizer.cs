@@ -180,17 +180,16 @@ public static class NexoSdkSynchronizer
             @"C:\Program Files\InsERT"
         };
 
-        // Add AppData\Local paths (nexo often deploys via ClickOnce to user profile)
+        // Add AppData\Local paths — InsERT uses ClickOnce-style deployments
         try
         {
             var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
             if (!string.IsNullOrEmpty(localAppData))
             {
+                // Primary: InsERT Deployments directory (contains per-entity deployment folders)
+                searchPaths.Add(Path.Combine(localAppData, "InsERT", "Deployments", "Nexo"));
+                searchPaths.Add(Path.Combine(localAppData, "InsERT", "Deployments"));
                 searchPaths.Add(Path.Combine(localAppData, "InsERT"));
-                searchPaths.Add(Path.Combine(localAppData, "InsERT", "nexo"));
-                searchPaths.Add(Path.Combine(localAppData, "InsERT", "nexo PRO"));
-                searchPaths.Add(Path.Combine(localAppData, "Programs", "InsERT"));
-                searchPaths.Add(Path.Combine(localAppData, "Apps", "InsERT"));
             }
 
             // Also check ProgramData
@@ -198,7 +197,6 @@ public static class NexoSdkSynchronizer
             if (!string.IsNullOrEmpty(programData))
             {
                 searchPaths.Add(Path.Combine(programData, "InsERT"));
-                searchPaths.Add(Path.Combine(programData, "InsERT", "nexo"));
             }
         }
         catch { /* ignore */ }
@@ -301,16 +299,56 @@ public static class NexoSdkSynchronizer
         if (File.Exists(Path.Combine(installPath, SferaDllName)))
             return installPath;
 
-        // Search subdirectories (nexo often has DLLs in product-specific subdirs)
+        // Search subdirectories — InsERT uses deployment folders per entity
+        // (e.g., Deployments/Nexo/DMservice4b8a0986.../InsERT.Moria.Sfera.dll)
         try
         {
             var found = Directory.GetFiles(installPath, SferaDllName, SearchOption.AllDirectories);
             if (found.Length > 0)
             {
-                var dir = Path.GetDirectoryName(found[0])!;
-                if (found.Length > 1)
-                    logger?.LogDebug("[SDK Sync] Multiple {Dll} found, using: {Dir}", SferaDllName, dir);
-                return dir;
+                if (found.Length == 1)
+                {
+                    var dir = Path.GetDirectoryName(found[0])!;
+                    logger?.LogDebug("[SDK Sync] Found {Dll} in: {Dir}", SferaDllName, dir);
+                    return dir;
+                }
+
+                // Multiple copies found — pick the one with the highest file version
+                logger?.LogDebug("[SDK Sync] Found {Count} copies of {Dll}, selecting newest version...",
+                    found.Length, SferaDllName);
+
+                string? bestDir = null;
+                Version? bestVersion = null;
+
+                foreach (var dllPath in found)
+                {
+                    try
+                    {
+                        var info = FileVersionInfo.GetVersionInfo(dllPath);
+                        var version = Version.TryParse(info.FileVersion, out var v) ? v : null;
+                        var dir = Path.GetDirectoryName(dllPath)!;
+
+                        logger?.LogDebug("[SDK Sync]   {Dir} -> version {Version}",
+                            Path.GetFileName(Path.GetDirectoryName(dllPath)), info.FileVersion);
+
+                        if (version != null && (bestVersion == null || version > bestVersion))
+                        {
+                            bestVersion = version;
+                            bestDir = dir;
+                        }
+                    }
+                    catch { /* skip unreadable */ }
+                }
+
+                if (bestDir != null)
+                {
+                    logger?.LogInformation("[SDK Sync] Selected deployment with version {Version}: {Dir}",
+                        bestVersion, bestDir);
+                    return bestDir;
+                }
+
+                // Fallback: return directory of first found
+                return Path.GetDirectoryName(found[0])!;
             }
         }
         catch (Exception ex)
@@ -324,19 +362,6 @@ public static class NexoSdkSynchronizer
             var subdirs = Directory.GetDirectories(installPath);
             logger?.LogDebug("[SDK Sync] Subdirectories in {Path}: {Dirs}",
                 installPath, string.Join(", ", subdirs.Select(Path.GetFileName)));
-
-            var dllFiles = Directory.GetFiles(installPath, "*.dll");
-            if (dllFiles.Length > 0)
-            {
-                logger?.LogDebug("[SDK Sync] DLLs in {Path}: {Files}",
-                    installPath, string.Join(", ", dllFiles.Select(Path.GetFileName).Take(10)));
-            }
-            else
-            {
-                var allFiles = Directory.GetFiles(installPath);
-                logger?.LogDebug("[SDK Sync] Files in {Path} (no DLLs): {Files}",
-                    installPath, string.Join(", ", allFiles.Select(Path.GetFileName).Take(10)));
-            }
         }
         catch { /* ignore */ }
 
