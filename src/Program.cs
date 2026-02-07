@@ -18,7 +18,7 @@ try
     var autoSync = tempConfig.GetValue("Sfera:AutoSyncSdk", true);
     if (autoSync)
     {
-        using var loggerFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+        using var loggerFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
         var syncLogger = loggerFactory.CreateLogger("NexoSdkSync");
 
         var installPath = tempConfig["Sfera:NexoInstallPath"]
