@@ -488,4 +488,52 @@ public static class DynamicPropertyHelper
             return false;
         }
     }
+
+    /// <summary>
+    /// Safely gets all items from a manager's Dane.Wszystkie() collection.
+    /// Returns empty list if Dane is null (prevents RuntimeBinderException).
+    /// </summary>
+    public static List<dynamic> SafeGetAll(dynamic manager)
+    {
+        var result = new List<dynamic>();
+        if (manager == null) return result;
+        try
+        {
+            var dane = manager.Dane;
+            if (dane == null) return result;
+            foreach (var item in dane.Wszystkie())
+            {
+                result.Add(item);
+            }
+        }
+        catch
+        {
+            // Return empty list on any error
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Finds an entity by ID in a manager's Dane.Wszystkie() collection.
+    /// Returns null if not found or if Dane is null.
+    /// </summary>
+    public static dynamic? FindById(dynamic manager, int id)
+    {
+        if (manager == null) return null;
+        try
+        {
+            var dane = manager.Dane;
+            if (dane == null) return null;
+            foreach (var item in dane.Wszystkie())
+            {
+                if (GetId(item) == id)
+                    return item;
+            }
+        }
+        catch
+        {
+            // Return null on any error
+        }
+        return null;
+    }
 }
