@@ -626,7 +626,7 @@ public class AssemblyController : ControllerBase
 
                     if (zleceniaManager != null)
                     {
-                        foreach (var zpm in DynamicPropertyHelper.SafeGetAll(zleceniaManager))
+                        foreach (var zpm in DynamicPropertyHelper.SafeGetAll((object)zleceniaManager))
                         {
                             // Apply filters
                             if (dateFrom.HasValue)
@@ -699,7 +699,7 @@ public class AssemblyController : ControllerBase
 
                     if (zprManager != null)
                     {
-                        foreach (var zpr in DynamicPropertyHelper.SafeGetAll(zprManager))
+                        foreach (var zpr in DynamicPropertyHelper.SafeGetAll((object)zprManager))
                         {
                             if (dateFrom.HasValue)
                             {
@@ -803,7 +803,7 @@ public class AssemblyController : ControllerBase
 
                 if (zleceniaManager != null)
                 {
-                    foreach (var zpm in DynamicPropertyHelper.SafeGetAll(zleceniaManager))
+                    foreach (var zpm in DynamicPropertyHelper.SafeGetAll((object)zleceniaManager))
                     {
                         if (DynamicPropertyHelper.GetId(zpm) == id)
                         {
@@ -823,7 +823,7 @@ public class AssemblyController : ControllerBase
 
                 if (zprManager != null)
                 {
-                    foreach (var zpr in DynamicPropertyHelper.SafeGetAll(zprManager))
+                    foreach (var zpr in DynamicPropertyHelper.SafeGetAll((object)zprManager))
                     {
                         if (DynamicPropertyHelper.GetId(zpr) == id)
                         {
@@ -874,7 +874,7 @@ public class AssemblyController : ControllerBase
         }
 
         // Fallback to iteration
-        foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+        foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
         {
             if (id.HasValue && DynamicPropertyHelper.GetId(a) == id.Value)
             {
@@ -900,7 +900,7 @@ public class AssemblyController : ControllerBase
         var magazynyManager = _sferaService.GetManager("Magazyny");
         if (magazynyManager == null) return null;
 
-        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazynyManager))
+        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
         {
             if (DynamicPropertyHelper.GetString(m, "Symbol") == symbol)
             {

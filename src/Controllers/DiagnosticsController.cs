@@ -2156,7 +2156,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                 var konfiguracje = _sferaService.GetManager("Konfiguracje");
                 if (konfiguracje?.Dane != null)
                 {
-                    foreach (var config in DynamicPropertyHelper.SafeGetAll(konfiguracje))
+                    foreach (var config in DynamicPropertyHelper.SafeGetAll((object)konfiguracje))
                     {
                         try
                         {
@@ -2967,7 +2967,7 @@ WHERE Symbol = 'PZ'",
                 try
                 {
                     // Try to get all configurations
-                    foreach (var config in DynamicPropertyHelper.SafeGetAll(konfiguracje))
+                    foreach (var config in DynamicPropertyHelper.SafeGetAll((object)konfiguracje))
                     {
                         try
                         {

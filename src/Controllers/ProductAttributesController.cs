@@ -40,14 +40,14 @@ public class ProductAttributesController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get CechyAsortymentu manager"));
             }
 
-            var allCechy = new List<dynamic>();
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            var allCechy = new List<object>();
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 allCechy.Add(c);
             }
 
             // Apply filters
-            var filteredList = new List<dynamic>();
+            var filteredList = new List<object>();
             foreach (var c in allCechy)
             {
                 // Deleted filter
@@ -139,7 +139,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cecha = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -177,7 +177,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cecha = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetString(c, "Symbol") == symbol)
                 {
@@ -215,7 +215,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             // Check if symbol already exists
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetString(c, "Symbol") == request.Symbol)
                 {
@@ -310,7 +310,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -417,7 +417,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -472,7 +472,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cecha = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -487,7 +487,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             var values = new List<ProductAttributeValueDto>();
-            var wartosci = DynamicPropertyHelper.GetCollection(cecha, "Wartosci");
+            var wartosci = DynamicPropertyHelper.GetCollection((object)cecha, "Wartosci");
             foreach (var w in wartosci)
             {
                 values.Add(new ProductAttributeValueDto
@@ -525,7 +525,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -601,7 +601,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? asortymentDane = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
             {
                 if (DynamicPropertyHelper.GetId(a) == request.ProductId)
                 {
@@ -622,7 +622,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
+            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == request.AttributeId)
                 {
@@ -709,7 +709,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             var groups = new List<AttributeGroupDto>();
-            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupyCech))
+            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupyCech))
             {
                 groups.Add(new AttributeGroupDto
                 {
@@ -731,7 +731,7 @@ public class ProductAttributesController : ControllerBase
 
     private static ProductAttributeListItemDto MapToListItemDto(dynamic cecha)
     {
-        var wartosci = DynamicPropertyHelper.GetCollection(cecha, "Wartosci");
+        var wartosci = DynamicPropertyHelper.GetCollection((object)cecha, "Wartosci");
         int valueCount = 0;
         foreach (var _ in wartosci) valueCount++;
 
@@ -789,7 +789,7 @@ public class ProductAttributesController : ControllerBase
         if (includeValues)
         {
             dto.Values = new List<ProductAttributeValueDto>();
-            var wartosci = DynamicPropertyHelper.GetCollection(cecha, "Wartosci");
+            var wartosci = DynamicPropertyHelper.GetCollection((object)cecha, "Wartosci");
             foreach (var w in wartosci)
             {
                 dto.Values.Add(new ProductAttributeValueDto

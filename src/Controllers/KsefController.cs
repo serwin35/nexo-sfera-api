@@ -57,8 +57,8 @@ public class KsefController : ControllerBase
 
             int? statusFilter = !string.IsNullOrEmpty(status) ? GetStatusValue(status) : null;
 
-            var allDokumenty = new List<dynamic>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            var allDokumenty = new List<object>();
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 bool include = true;
 
@@ -134,7 +134,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetId(d) == id)
                 {
@@ -175,7 +175,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetString(d, "NumerKSeF") == ksefNumber)
                 {
@@ -221,7 +221,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetId(d) == documentId)
                 {
@@ -252,7 +252,7 @@ public class KsefController : ControllerBase
             var wyniki = generator.WygenerujEFaktury(new[] { dokument }, parametry);
 
             dynamic? wynik = null;
-            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            foreach (var w in (IEnumerable<object>)wyniki)
             {
                 wynik = w;
                 break;
@@ -297,8 +297,8 @@ public class KsefController : ControllerBase
                 return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error("Failed to get DokumentyHandlowe manager"));
             }
 
-            var dokumenty = new List<dynamic>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            var dokumenty = new List<object>();
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (documentIds.Contains(DynamicPropertyHelper.GetId(d)))
                 {
@@ -327,7 +327,7 @@ public class KsefController : ControllerBase
             var wyniki = generator.WygenerujEFaktury(dokumenty.ToArray(), parametry);
 
             var results = new List<EInvoiceGenerationResultDto>();
-            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            foreach (var w in (IEnumerable<object>)wyniki)
             {
                 var docId = DynamicPropertyHelper.GetInt(w, "DokumentId");
                 string? docNumber = null;
@@ -379,7 +379,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetId(d) == electronicDocumentId)
                 {
@@ -402,7 +402,7 @@ public class KsefController : ControllerBase
             var wyniki = koordynator.PrzekazDoWysylki(new[] { dokument }, null);
 
             dynamic? wynik = null;
-            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            foreach (var w in (IEnumerable<object>)wyniki)
             {
                 wynik = w;
                 break;
@@ -440,8 +440,8 @@ public class KsefController : ControllerBase
                 return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            var dokumenty = new List<dynamic>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            var dokumenty = new List<object>();
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
                 {
@@ -463,7 +463,7 @@ public class KsefController : ControllerBase
             var wyniki = koordynator.PrzekazDoWysylki(dokumenty.ToArray(), null);
 
             var results = new List<KsefSendResultDto>();
-            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            foreach (var w in (IEnumerable<object>)wyniki)
             {
                 var docNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu");
                 int? elecDocId = null;
@@ -515,7 +515,7 @@ public class KsefController : ControllerBase
             var statusy = koordynator.SprawdzStatus();
 
             var results = new List<KsefStatusResultDto>();
-            foreach (var s in (IEnumerable<dynamic>)statusy)
+            foreach (var s in (IEnumerable<object>)statusy)
             {
                 results.Add(new KsefStatusResultDto
                 {
@@ -553,8 +553,8 @@ public class KsefController : ControllerBase
                 return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            var dokumenty = new List<dynamic>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            var dokumenty = new List<object>();
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
                 {
@@ -576,7 +576,7 @@ public class KsefController : ControllerBase
             var statusy = koordynator.SprawdzStatus(dokumenty.ToArray());
 
             var results = new List<KsefStatusResultDto>();
-            foreach (var s in (IEnumerable<dynamic>)statusy)
+            foreach (var s in (IEnumerable<object>)statusy)
             {
                 results.Add(new KsefStatusResultDto
                 {
@@ -618,8 +618,8 @@ public class KsefController : ControllerBase
                 return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            var dokumenty = new List<dynamic>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            var dokumenty = new List<object>();
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)) &&
                     DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef)
@@ -642,7 +642,7 @@ public class KsefController : ControllerBase
             var wyniki = koordynator.PobierzUpo(dokumenty.ToArray());
 
             var results = new List<KsefUpoResultDto>();
-            foreach (var w in (IEnumerable<dynamic>)wyniki)
+            foreach (var w in (IEnumerable<object>)wyniki)
             {
                 results.Add(new KsefUpoResultDto
                 {
@@ -681,8 +681,8 @@ public class KsefController : ControllerBase
                 return StatusCode(500, ApiResponse<KsefSummaryDto>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            var dokumenty = new List<dynamic>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
+            var dokumenty = new List<object>();
+            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
             {
                 dokumenty.Add(d);
             }

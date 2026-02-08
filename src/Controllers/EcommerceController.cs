@@ -41,7 +41,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<List<IntegrationAccountDto>>.Error("Failed to get KontaIntegracji manager"));
             }
 
-            var allAccounts = DynamicPropertyHelper.SafeGetAll(manager);
+            var allAccounts = DynamicPropertyHelper.SafeGetAll((object)manager);
             var items = new List<IntegrationAccountDto>();
 
             foreach (var acc in allAccounts)
@@ -82,7 +82,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<IntegrationAccountDto>.Error("Failed to get KontaIntegracji manager"));
             }
 
-            var allAccounts = DynamicPropertyHelper.SafeGetAll(manager);
+            var allAccounts = DynamicPropertyHelper.SafeGetAll((object)manager);
             var account = allAccounts.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
 
             if (account == null)
@@ -132,7 +132,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyInternetowe manager"));
             }
 
-            var allOffers = DynamicPropertyHelper.SafeGetAll(manager);
+            var allOffers = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by status
             if (!string.IsNullOrEmpty(status))
@@ -213,7 +213,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<OnlineOfferDto>.Error("Failed to get OfertyInternetowe manager"));
             }
 
-            var allOffers = DynamicPropertyHelper.SafeGetAll(manager);
+            var allOffers = DynamicPropertyHelper.SafeGetAll((object)manager);
             var offer = allOffers.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
 
             if (offer == null)
@@ -268,7 +268,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<List<OfferGroupDto>>.Error("Failed to get GrupyOfert manager"));
             }
 
-            var allGroups = DynamicPropertyHelper.SafeGetAll(manager);
+            var allGroups = DynamicPropertyHelper.SafeGetAll((object)manager);
             var items = new List<OfferGroupDto>();
 
             foreach (var g in allGroups)
@@ -318,7 +318,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ListyWysylkowe manager"));
             }
 
-            var allLists = DynamicPropertyHelper.SafeGetAll(manager);
+            var allLists = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by date range
             if (dateFrom.HasValue)
@@ -404,7 +404,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get PaczkiWysylkowe manager"));
             }
 
-            var allPackages = DynamicPropertyHelper.SafeGetAll(manager);
+            var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by shipping list
             if (shippingListId.HasValue)
@@ -483,7 +483,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<ShippingPackageDto>.Error("Failed to get PaczkiWysylkowe manager"));
             }
 
-            var allPackages = DynamicPropertyHelper.SafeGetAll(manager);
+            var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
             var package = allPackages.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
             if (package == null)
@@ -533,7 +533,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<ShippingPackageDto>.Error("Failed to get PaczkiWysylkowe manager"));
             }
 
-            var allPackages = DynamicPropertyHelper.SafeGetAll(manager);
+            var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
             var package = allPackages.FirstOrDefault(p =>
             {
                 var tracking = DynamicPropertyHelper.GetString(p, "NumerSledzenia");
@@ -588,7 +588,7 @@ public class EcommerceController : ControllerBase
                 return StatusCode(500, ApiResponse<List<PackageDimensionDto>>.Error("Failed to get GabarytyPaczki manager"));
             }
 
-            var allDimensions = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDimensions = DynamicPropertyHelper.SafeGetAll((object)manager);
             var items = new List<PackageDimensionDto>();
 
             foreach (var d in allDimensions)

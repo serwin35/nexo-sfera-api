@@ -47,7 +47,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by year
             if (year.HasValue)
@@ -137,7 +137,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<IntrastatDeclarationDto>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
             var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
             if (deklaracja == null)
@@ -174,7 +174,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
             var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
             if (deklaracja == null)
@@ -182,7 +182,7 @@ public class IntrastatController : ControllerBase
                 return NotFound(ApiResponse<object>.Error($"Intrastat declaration with ID {id} not found"));
             }
 
-            var pozycje = DynamicPropertyHelper.GetCollection(deklaracja, "Pozycje");
+            var pozycje = DynamicPropertyHelper.GetCollection((object)deklaracja, "Pozycje");
             var items = new List<IntrastatItemDto>();
 
             foreach (var p in pozycje)
@@ -239,7 +239,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<IntrastatSummaryDto>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by year
             allDeklaracje = allDeklaracje.Where(d =>
@@ -280,7 +280,7 @@ public class IntrastatController : ControllerBase
                 var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
                 bool isArrival = typ == 0;
 
-                var pozycje = DynamicPropertyHelper.GetCollection(d, "Pozycje");
+                var pozycje = DynamicPropertyHelper.GetCollection((object)d, "Pozycje");
                 foreach (var p in pozycje)
                 {
                     var wartosc = DynamicPropertyHelper.GetDecimal(p, "WartoscStatystyczna");
@@ -347,7 +347,7 @@ public class IntrastatController : ControllerBase
     private static IntrastatDeclarationDto MapIntrastatDeclaration(dynamic d, bool includeItems)
     {
         var numerWewnetrzny = DynamicPropertyHelper.GetProperty(d, "NumerWewnetrzny");
-        var pozycje = DynamicPropertyHelper.GetCollection(d, "Pozycje");
+        var pozycje = DynamicPropertyHelper.GetCollection((object)d, "Pozycje");
 
         var dto = new IntrastatDeclarationDto
         {

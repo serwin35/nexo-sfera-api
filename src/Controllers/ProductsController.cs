@@ -41,7 +41,7 @@ public class ProductsController : ControllerBase
             }
 
             dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
             {
                 if (DynamicPropertyHelper.GetId(a) == id)
                 {
@@ -129,8 +129,8 @@ public class ProductsController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
             }
 
-            var allAsortymenty = new List<dynamic>();
-            var sourceData = activeOnly == true ? asortymentyManager.Dane.WszystkieDostepne() : DynamicPropertyHelper.SafeGetAll(asortymentyManager);
+            var allAsortymenty = new List<object>();
+            var sourceData = activeOnly == true ? asortymentyManager.Dane.WszystkieDostepne() : DynamicPropertyHelper.SafeGetAll((object)asortymentyManager);
             foreach (var a in sourceData)
             {
                 allAsortymenty.Add(a);
@@ -193,7 +193,7 @@ public class ProductsController : ControllerBase
             }
 
             dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
             {
                 if (DynamicPropertyHelper.GetId(a) == id)
                 {
@@ -260,7 +260,7 @@ public class ProductsController : ControllerBase
             }
 
             dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
             {
                 if (DynamicPropertyHelper.GetString(a, "EAN") == ean)
                 {
@@ -315,7 +315,7 @@ public class ProductsController : ControllerBase
                     if (szablonyManager != null)
                     {
                         dynamic? szablon = null;
-                        foreach (var s in DynamicPropertyHelper.SafeGetAll(szablonyManager))
+                        foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablonyManager))
                         {
                             if (DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol)
                             {
@@ -418,7 +418,7 @@ public class ProductsController : ControllerBase
             }
 
             dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
             {
                 if (DynamicPropertyHelper.GetId(a) == id)
                 {
@@ -515,7 +515,7 @@ public class ProductsController : ControllerBase
             }
 
             dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
             {
                 if (DynamicPropertyHelper.GetId(a) == id)
                 {
@@ -562,7 +562,7 @@ public class ProductsController : ControllerBase
         var jednostkiManager = _sferaService.GetManagerByType("InsERT.Moria.ModelDanych", "InsERT.Moria.ModelDanych.Jednostki");
         if (jednostkiManager == null) return null;
 
-        foreach (var j in DynamicPropertyHelper.SafeGetAll(jednostkiManager))
+        foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostkiManager))
         {
             if (DynamicPropertyHelper.GetString(j, "Symbol") == symbol)
             {

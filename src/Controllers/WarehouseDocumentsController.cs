@@ -82,8 +82,8 @@ public class WarehouseDocumentsController : ControllerBase
                 var wzManager = _sferaService.GetManager("WydaniaZewnetrzne");
                 if (wzManager != null)
                 {
-                    var allWz = new List<dynamic>();
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll(wzManager))
+                    var allWz = new List<object>();
+                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)wzManager))
                     {
                         bool include = true;
 
@@ -128,8 +128,8 @@ public class WarehouseDocumentsController : ControllerBase
                 var pzManager = _sferaService.GetManager("PrzyjeciaZewnetrzne");
                 if (pzManager != null)
                 {
-                    var allPz = new List<dynamic>();
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll(pzManager))
+                    var allPz = new List<object>();
+                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)pzManager))
                     {
                         bool include = true;
 
@@ -216,7 +216,7 @@ public class WarehouseDocumentsController : ControllerBase
                     dynamic? encja = null;
                     try
                     {
-                        encja = DynamicPropertyHelper.SafeGetAll(manager).FirstOrDefault((Func<dynamic, bool>)(d => (int)d.Id == id));
+                        encja = DynamicPropertyHelper.SafeGetAll((object)manager).FirstOrDefault((Func<dynamic, bool>)(d => (int)d.Id == id));
                     }
                     catch
                     {
@@ -254,7 +254,7 @@ public class WarehouseDocumentsController : ControllerBase
                             if (pracownicyManager != null)
                             {
                                 dynamic? pracownik = null;
-                                foreach (var p in DynamicPropertyHelper.SafeGetAll(pracownicyManager))
+                                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)pracownicyManager))
                                 {
                                     if ((int)p.Id == request.WystawilaOsobaId.Value)
                                     {
@@ -450,7 +450,7 @@ public class WarehouseDocumentsController : ControllerBase
                     if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazynyManager))
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
                         {
                             if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
                             {
@@ -707,7 +707,7 @@ public class WarehouseDocumentsController : ControllerBase
                     if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazynyManager))
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
                         {
                             if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
                             {
@@ -923,7 +923,7 @@ public class WarehouseDocumentsController : ControllerBase
                     if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazynyManager))
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
                         {
                             if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
                             {
@@ -1154,7 +1154,7 @@ public class WarehouseDocumentsController : ControllerBase
                     if (magazynyManager != null && !string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazynyManager))
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
                         {
                             if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
                             {
@@ -1367,7 +1367,7 @@ public class WarehouseDocumentsController : ControllerBase
                     {
                         dynamic? magazynZrodlowy = null;
                         dynamic? magazynDocelowy = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazynyManager))
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
                         {
                             var symbol = DynamicPropertyHelper.GetString(m, "Symbol");
                             if (symbol == request.WarehouseSymbol)
@@ -1509,7 +1509,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     try
                     {
-                        foreach (var d in DynamicPropertyHelper.SafeGetAll(manager))
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)manager))
                         {
                             if (DynamicPropertyHelper.GetId(d) == id)
                             {
@@ -1539,7 +1539,7 @@ public class WarehouseDocumentsController : ControllerBase
 
                     try
                     {
-                        foreach (var d in DynamicPropertyHelper.SafeGetAll(manager))
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)manager))
                         {
                             if (DynamicPropertyHelper.GetId(d) == request.TargetDocumentId)
                             {
@@ -1680,7 +1680,7 @@ public class WarehouseDocumentsController : ControllerBase
         dynamic? podmiot = null;
         if (contractorId.HasValue)
         {
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmiotyManager))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
             {
                 if (DynamicPropertyHelper.GetId(p) == contractorId.Value)
                 {
@@ -1691,7 +1691,7 @@ public class WarehouseDocumentsController : ControllerBase
         }
         else if (!string.IsNullOrEmpty(contractorNIP))
         {
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmiotyManager))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
             {
                 if (DynamicPropertyHelper.GetString(p, "NIP") == contractorNIP)
                 {
@@ -1750,7 +1750,7 @@ public class WarehouseDocumentsController : ControllerBase
             var podmiotyManager = _sferaService.GetManager("Podmioty");
             if (podmiotyManager != null)
             {
-                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmiotyManager))
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
                 {
                     if (DynamicPropertyHelper.GetId(p) == contractorId.Value)
                     {
@@ -1839,7 +1839,7 @@ public class WarehouseDocumentsController : ControllerBase
             var podmiotyManager = _sferaService.GetManager("Podmioty");
             if (podmiotyManager != null)
             {
-                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmiotyManager))
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
                 {
                     if (DynamicPropertyHelper.GetId(p) == contractorId.Value)
                     {
@@ -2134,7 +2134,7 @@ public class WarehouseDocumentsController : ControllerBase
 
     private static dynamic? FindAsortyment(dynamic asortymentyManager, int? productId, string? productSymbol, string? productEan)
     {
-        foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+        foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
         {
             if (productId.HasValue)
             {
@@ -2179,7 +2179,7 @@ public class WarehouseDocumentsController : ControllerBase
             Items = new List<WarehouseDocumentItemDto>()
         };
 
-        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        var pozycje = DynamicPropertyHelper.GetCollection((object)dokument, "Pozycje");
         int lineNum = 1;
         foreach (var poz in pozycje)
         {
@@ -2231,7 +2231,7 @@ public class WarehouseDocumentsController : ControllerBase
             Items = new List<WarehouseDocumentItemDto>()
         };
 
-        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        var pozycje = DynamicPropertyHelper.GetCollection((object)dokument, "Pozycje");
         int lineNum = 1;
         foreach (var poz in pozycje)
         {
@@ -2279,7 +2279,7 @@ public class WarehouseDocumentsController : ControllerBase
             Items = new List<WarehouseDocumentItemDto>()
         };
 
-        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        var pozycje = DynamicPropertyHelper.GetCollection((object)dokument, "Pozycje");
         int lineNum = 1;
         foreach (var poz in pozycje)
         {

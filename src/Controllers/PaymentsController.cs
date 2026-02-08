@@ -46,7 +46,7 @@ public class PaymentsController : ControllerBase
             var operacjeManager = _sferaService.GetManager("OperacjeKasowe");
             if (operacjeManager == null) return StatusCode(500, ApiResponse<object>.Error("OperacjeKasowe manager not available"));
 
-            var allOperations = DynamicPropertyHelper.SafeGetAll(operacjeManager);
+            var allOperations = DynamicPropertyHelper.SafeGetAll((object)operacjeManager);
 
             // Apply filters
             if (contractorId.HasValue)
@@ -149,7 +149,7 @@ public class PaymentsController : ControllerBase
             var operacjeManager = _sferaService.GetManager("OperacjeKasowe");
             if (operacjeManager == null) return StatusCode(500, ApiResponse<object>.Error("OperacjeKasowe manager not available"));
 
-            var allOperations = DynamicPropertyHelper.SafeGetAll(operacjeManager);
+            var allOperations = DynamicPropertyHelper.SafeGetAll((object)operacjeManager);
             var operacja = allOperations.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
 
             if (operacja == null)
@@ -209,7 +209,7 @@ public class PaymentsController : ControllerBase
                     var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
                     if (stanowiskaManager != null)
                     {
-                        var stanowiska = DynamicPropertyHelper.SafeGetAll(stanowiskaManager);
+                        var stanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
 
                         if (request.CashRegisterId.HasValue)
                         {
@@ -236,7 +236,7 @@ public class PaymentsController : ControllerBase
                         var podmiotyManager = _sferaService.GetManager("Podmioty");
                         if (podmiotyManager != null)
                         {
-                            var podmioty = DynamicPropertyHelper.SafeGetAll(podmiotyManager);
+                            var podmioty = DynamicPropertyHelper.SafeGetAll((object)podmiotyManager);
 
                             dynamic? podmiot = null;
                             if (request.ContractorId.HasValue)
@@ -257,7 +257,7 @@ public class PaymentsController : ControllerBase
 
                     // Set operation type (Rodzaj)
                     var rodzajeManager = _sferaService.GetManager("RodzajeOperacjiKasowych");
-                    var rodzaje = rodzajeManager != null ? DynamicPropertyHelper.SafeGetAll(rodzajeManager) : new List<dynamic>();
+                    var rodzaje = rodzajeManager != null ? DynamicPropertyHelper.SafeGetAll((object)rodzajeManager) : new List<object>();
                     var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)typ);
 
                     if (rodzaj != null)
@@ -338,7 +338,7 @@ public class PaymentsController : ControllerBase
             var operacjeManager = _sferaService.GetManager("OperacjeBankowe");
             if (operacjeManager == null) return StatusCode(500, ApiResponse<object>.Error("OperacjeBankowe manager not available"));
 
-            var allOperations = DynamicPropertyHelper.SafeGetAll(operacjeManager);
+            var allOperations = DynamicPropertyHelper.SafeGetAll((object)operacjeManager);
 
             // Apply filters
             if (contractorId.HasValue)
@@ -433,7 +433,7 @@ public class PaymentsController : ControllerBase
             var operacjeManager = _sferaService.GetManager("OperacjeBankowe");
             if (operacjeManager == null) return StatusCode(500, ApiResponse<PaymentDto>.Error("OperacjeBankowe manager not available"));
 
-            var allOperations = DynamicPropertyHelper.SafeGetAll(operacjeManager);
+            var allOperations = DynamicPropertyHelper.SafeGetAll((object)operacjeManager);
             var operacja = allOperations.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
 
             if (operacja == null)
@@ -493,7 +493,7 @@ public class PaymentsController : ControllerBase
                     var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
                     if (rachunkiManager != null)
                     {
-                        var rachunki = DynamicPropertyHelper.SafeGetAll(rachunkiManager);
+                        var rachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
 
                         if (request.BankAccountId.HasValue)
                         {
@@ -520,7 +520,7 @@ public class PaymentsController : ControllerBase
                         var podmiotyManager = _sferaService.GetManager("Podmioty");
                         if (podmiotyManager != null)
                         {
-                            var podmioty = DynamicPropertyHelper.SafeGetAll(podmiotyManager);
+                            var podmioty = DynamicPropertyHelper.SafeGetAll((object)podmiotyManager);
 
                             dynamic? podmiot = null;
                             if (request.ContractorId.HasValue)
@@ -541,7 +541,7 @@ public class PaymentsController : ControllerBase
 
                     // Set operation type (Rodzaj)
                     var rodzajeManager = _sferaService.GetManager("RodzajeOperacjiBankowych");
-                    var rodzaje = rodzajeManager != null ? DynamicPropertyHelper.SafeGetAll(rodzajeManager) : new List<dynamic>();
+                    var rodzaje = rodzajeManager != null ? DynamicPropertyHelper.SafeGetAll((object)rodzajeManager) : new List<object>();
                     var rodzaj = rodzaje.FirstOrDefault(r => DynamicPropertyHelper.GetInt(r, "Typ") == (int)TypOperacjiBankowejEnum.Przelew);
 
                     if (rodzaj != null)
@@ -626,7 +626,7 @@ public class PaymentsController : ControllerBase
             var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
             if (rozrachunkiManager == null) return StatusCode(500, ApiResponse<object>.Error("Rozrachunki manager not available"));
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager);
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
 
             // Apply filters
             if (contractorId.HasValue)
@@ -753,7 +753,7 @@ public class PaymentsController : ControllerBase
             var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
             if (rozrachunkiManager == null) return StatusCode(500, ApiResponse<object>.Error("Rozrachunki manager not available"));
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager);
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
             var rozrachunek = allRozrachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
             if (rozrachunek == null)
@@ -783,7 +783,7 @@ public class PaymentsController : ControllerBase
             if (rozrachunkiManager == null || podmiotyManager == null)
                 return StatusCode(500, ApiResponse<ContractorBalanceDto>.Error("Required managers not available"));
 
-            var podmioty = DynamicPropertyHelper.SafeGetAll(podmiotyManager);
+            var podmioty = DynamicPropertyHelper.SafeGetAll((object)podmiotyManager);
             var kontrahent = podmioty.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == contractorId);
 
             if (kontrahent == null)
@@ -791,7 +791,7 @@ public class PaymentsController : ControllerBase
                 return NotFound(ApiResponse<ContractorBalanceDto>.Error($"Contractor with ID {contractorId} not found"));
             }
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager)
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager)
                 .Where(r =>
                 {
                     var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
@@ -800,8 +800,8 @@ public class PaymentsController : ControllerBase
                 .ToList();
 
             var today = DateTime.Today;
-            var receivables = new List<dynamic>();
-            var payables = new List<dynamic>();
+            var receivables = new List<object>();
+            var payables = new List<object>();
             foreach (var r in allRozrachunki)
             {
                 var typ = DynamicPropertyHelper.GetInt(r, "Typ");
@@ -890,7 +890,7 @@ public class PaymentsController : ControllerBase
             if (rozrachunkiManager == null) return StatusCode(500, ApiResponse<object>.Error("Rozrachunki manager not available"));
 
             var today = DateTime.Today;
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager)
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager)
                 .Where(r =>
                 {
                     var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
