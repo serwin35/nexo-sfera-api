@@ -206,32 +206,33 @@ public class CustomerOrdersController : ControllerBase
     /// Get customer order by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<CustomerOrderDto>> GetCustomerOrder(int id)
+    public async Task<ActionResult<ApiResponse<CustomerOrderDto>>> GetCustomerOrder(int id)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<CustomerOrderDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (CustomerOrderDto?)null;
 
-            dynamic? zamowienie = null;
-            foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-            {
-                if (DynamicPropertyHelper.GetId(z) == id)
+                dynamic? zamowienie = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
                 {
-                    zamowienie = z;
-                    break;
+                    if (DynamicPropertyHelper.GetId(z) == id)
+                    {
+                        zamowienie = z;
+                        break;
+                    }
                 }
-            }
 
-            if (zamowienie == null)
-            {
+                if (zamowienie == null) return (CustomerOrderDto?)null;
+                return (CustomerOrderDto?)MapToDto(zamowienie);
+            });
+
+            if (result == null)
                 return NotFound(ApiResponse<CustomerOrderDto>.Error($"Customer order with ID {id} not found"));
-            }
 
-            return Ok(ApiResponse<CustomerOrderDto>.Ok(MapToDto(zamowienie)));
+            return Ok(ApiResponse<CustomerOrderDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -937,9 +938,19 @@ public class CustomerOrdersController : ControllerBase
         int lineNum = 1;
         foreach (var poz in pozycje)
         {
-            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
-            var stawkaVat = DynamicPropertyHelper.GetProperty(poz, "StawkaVat");
+            var dane = DynamicPropertyHelper.GetDane(poz);
+            var asortyment = DynamicPropertyHelper.GetProperty(dane, "Asortyment")
+                          ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(dane, "Jednostka")
+                         ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+            var stawkaVat = DynamicPropertyHelper.GetProperty(dane, "StawkaVat")
+                         ?? DynamicPropertyHelper.GetProperty(poz, "StawkaVat");
+
+            var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
+            var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena");
+            var priceGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto");
+            var valueNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc");
+            var valueGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto");
 
             dto.Items.Add(new CustomerOrderItemDto
             {
@@ -948,25 +959,27 @@ public class CustomerOrdersController : ControllerBase
                 ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
                 ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
                 ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
-                Name = DynamicPropertyHelper.GetString(poz, "Nazwa") ?? "",
-                Description = DynamicPropertyHelper.GetString(poz, "Opis"),
-                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
-                QuantityRealized = DynamicPropertyHelper.GetDecimal(poz, "IloscZrealizowana"),
-                QuantityRemaining = DynamicPropertyHelper.GetDecimal(poz, "Ilosc") - DynamicPropertyHelper.GetDecimal(poz, "IloscZrealizowana"),
-                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                Name = DynamicPropertyHelper.GetString(dane, "Nazwa")
+                    ?? DynamicPropertyHelper.GetString(poz, "Nazwa") ?? "",
+                Description = DynamicPropertyHelper.GetString(dane, "Opis")
+                           ?? DynamicPropertyHelper.GetString(poz, "Opis"),
+                Quantity = quantity,
+                QuantityRealized = DynamicPropertyHelper.GetDecimal(dane, "IloscZrealizowana"),
+                QuantityRemaining = quantity - DynamicPropertyHelper.GetDecimal(dane, "IloscZrealizowana"),
+                Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
                 UnitId = jednostka != null ? DynamicPropertyHelper.GetId(jednostka) : null,
-                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
-                PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
-                DiscountPercent = DynamicPropertyHelper.GetDecimal(poz, "RabatProcent"),
-                DiscountValue = DynamicPropertyHelper.GetDecimal(poz, "RabatWartosc"),
+                PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
+                PriceGross = priceGross != 0 ? priceGross : (valueGross != 0 && quantity != 0 ? valueGross / quantity : 0),
+                DiscountPercent = DynamicPropertyHelper.GetDecimal(dane, "RabatProcent"),
+                DiscountValue = DynamicPropertyHelper.GetDecimal(dane, "RabatWartosc"),
                 VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
                 VatRateId = stawkaVat != null ? DynamicPropertyHelper.GetId(stawkaVat) : null,
-                VatPercent = DynamicPropertyHelper.GetDecimal(poz, "StawkaVatProcent"),
-                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
-                ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
-                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto"),
-                IsReserved = DynamicPropertyHelper.GetNullableBool(poz, "Zarezerwowana") ?? false,
-                ReservedQuantity = DynamicPropertyHelper.GetDecimal(poz, "IloscZarezerwowana")
+                VatPercent = DynamicPropertyHelper.GetDecimal(dane, "StawkaVatProcent"),
+                ValueNet = valueNet,
+                ValueVat = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
+                ValueGross = valueGross,
+                IsReserved = DynamicPropertyHelper.GetNullableBool(dane, "Zarezerwowana") ?? false,
+                ReservedQuantity = DynamicPropertyHelper.GetDecimal(dane, "IloscZarezerwowana")
             });
         }
 

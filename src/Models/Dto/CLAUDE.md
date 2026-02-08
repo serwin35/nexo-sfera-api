@@ -10,4 +10,13 @@
 | #514 | 10:36 AM | 🟣 | Document DTO models created supporting comprehensive business document types with line items | ~586 |
 | #513 | " | 🟣 | Product DTO models created mapping Asortyment SDK entity with pricing and inventory data | ~500 |
 | #512 | " | 🟣 | Customer DTO models created mapping Kontrahent SDK entity to API contract | ~474 |
+
+### Jan 23, 2026
+
+| ID | Time | T | Title | Read |
+|----|------|---|-------|------|
+| #1114 | 12:18 AM | 🔵 | INSERT Document Types - FS, PA, ZPA Support via DocumentType Enum | ~590 |
+| #1112 | 12:17 AM | 🔵 | INSERT Product Model Structure - Variant System Using ModelId | ~593 |
+| #1111 | " | 🔵 | INSERT Product Template Structure - SzablonAsortymentu for Product Defaults | ~494 |
+| #1109 | " | 🔵 | INSERT Warehouse Document Structure - RW, PW, WZ, PZ, MM Support | ~579 |
 </claude-mem-context>

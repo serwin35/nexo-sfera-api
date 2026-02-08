@@ -175,6 +175,176 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Debug: Discover all properties and their values on line items (Pozycje) of a document.
+    /// Searches across all document managers (FS, FZ, ZK, ZD, WZ, PZ, Oferty, etc.)
+    /// Use this to find the correct property names for item mapping.
+    /// </summary>
+    [HttpGet("debug/item-properties/{id}")]
+    public async Task<ActionResult<object>> GetDocumentItemProperties(int id, [FromQuery] string? manager = null)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                // Search across all manager types to find the document
+                var managerNames = !string.IsNullOrEmpty(manager)
+                    ? new[] { manager }
+                    : new[] { "DokumentySprzedazy", "DokumentyZakupu", "ZamowieniaOdKlientow",
+                              "ZamowieniaDoDostawcow", "Oferty", "WydaniaZewnetrzne",
+                              "PrzyjeciaZewnetrzne", "RozchodyWewnetrzne", "PrzychodyWewnetrzne",
+                              "WydaniaMiedzymagazynowe" };
+
+                dynamic? dokument = null;
+                string? foundInManager = null;
+
+                foreach (var mgrName in managerNames)
+                {
+                    try
+                    {
+                        var mgr = _sferaService.GetManager(mgrName);
+                        if (mgr == null) continue;
+                        var found = DynamicPropertyHelper.FindById((object)mgr, id);
+                        if (found != null)
+                        {
+                            dokument = found;
+                            foundInManager = mgrName;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (dokument == null)
+                    return (object)new { Error = $"Document {id} not found in any manager", NotFound = true };
+
+                // Get Pozycje collection
+                var pozycje = DynamicPropertyHelper.GetCollection((object)dokument, "Pozycje");
+                if (pozycje.Count == 0)
+                    return new { Id = id, Manager = foundInManager, ItemCount = 0, Message = "No line items found", NotFound = false };
+
+                // Inspect first item's properties with values
+                var firstItem = pozycje[0];
+                Type itemType = firstItem.GetType();
+                var props = new Dictionary<string, object>();
+
+                // Check direct properties
+                foreach (var prop in itemType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(firstItem);
+                        var valueType = value?.GetType().Name ?? "null";
+
+                        if (value == null)
+                        {
+                            props[prop.Name] = new { Type = prop.PropertyType.Name, Value = (string?)null, Source = "direct" };
+                        }
+                        else if (value.GetType().Name.Contains("Collection"))
+                        {
+                            try
+                            {
+                                int count = 0;
+                                foreach (var _ in (dynamic)value) count++;
+                                props[prop.Name] = new { Type = valueType, Count = count, Source = "direct" };
+                            }
+                            catch
+                            {
+                                props[prop.Name] = new { Type = valueType, Value = "Collection (error)", Source = "direct" };
+                            }
+                        }
+                        else if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string)
+                                 || prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(DateTime?)
+                                 || prop.PropertyType == typeof(decimal) || prop.PropertyType == typeof(decimal?)
+                                 || prop.PropertyType == typeof(Guid) || prop.PropertyType.IsEnum)
+                        {
+                            props[prop.Name] = new { Type = valueType, Value = value.ToString(), Source = "direct" };
+                        }
+                        else
+                        {
+                            // For complex objects, try to extract useful sub-properties
+                            var subProps = new Dictionary<string, string?>();
+                            try
+                            {
+                                var subType = value.GetType();
+                                foreach (var subProp in subType.GetProperties())
+                                {
+                                    if (subProp.PropertyType.IsPrimitive || subProp.PropertyType == typeof(string)
+                                        || subProp.PropertyType == typeof(decimal) || subProp.PropertyType == typeof(decimal?)
+                                        || subProp.PropertyType == typeof(DateTime) || subProp.PropertyType == typeof(DateTime?)
+                                        || subProp.PropertyType.IsEnum || subProp.PropertyType == typeof(Guid))
+                                    {
+                                        try
+                                        {
+                                            var subVal = subProp.GetValue(value);
+                                            subProps[subProp.Name] = subVal?.ToString();
+                                        }
+                                        catch { subProps[subProp.Name] = "(error)"; }
+                                    }
+                                }
+                            }
+                            catch { }
+
+                            props[prop.Name] = new { Type = valueType, SubProperties = subProps, Source = "direct" };
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        props[prop.Name] = new { Error = ex.Message, Source = "direct" };
+                    }
+                }
+
+                // Also check .Dane sub-object properties
+                var daneProps = new Dictionary<string, object>();
+                try
+                {
+                    var daneObj = DynamicPropertyHelper.GetProperty(firstItem, "Dane");
+                    if (daneObj != null)
+                    {
+                        Type daneType = ((object)daneObj).GetType();
+                        foreach (var prop in daneType.GetProperties())
+                        {
+                            try
+                            {
+                                var value = prop.GetValue(daneObj);
+                                if (value != null && (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string)
+                                    || prop.PropertyType == typeof(decimal) || prop.PropertyType == typeof(decimal?)
+                                    || prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(DateTime?)
+                                    || prop.PropertyType.IsEnum))
+                                {
+                                    daneProps[prop.Name] = new { Type = value.GetType().Name, Value = value.ToString() };
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                catch { }
+
+                return (object)new
+                {
+                    DocumentId = id,
+                    Manager = foundInManager,
+                    ItemCount = pozycje.Count,
+                    FirstItemType = itemType.FullName,
+                    PropertyCount = props.Count,
+                    Properties = props.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value),
+                    DaneProperties = daneProps.Count > 0 ? daneProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value) : null,
+                    NotFound = false
+                };
+            });
+
+            if (result is { } r && DynamicPropertyHelper.GetBool(r, "NotFound"))
+                return NotFound(result);
+
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+        }
+    }
+
+    /// <summary>
     /// Get documents with filtering (lightweight list view)
     /// </summary>
     [HttpGet]
@@ -513,32 +683,36 @@ public class DocumentsController : ControllerBase
     /// Get document by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<DocumentDto>> GetDocument(int id)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> GetDocument(int id)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Dokumenty manager"));
-            }
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager == null)
+                    return (DocumentDto?)null;
 
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(d) == id)
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
                 {
-                    dokument = d;
-                    break;
+                    if (DynamicPropertyHelper.GetId(d) == id)
+                    {
+                        dokument = d;
+                        break;
+                    }
                 }
-            }
 
-            if (dokument == null)
-            {
+                if (dokument == null)
+                    return (DocumentDto?)null;
+
+                return (DocumentDto?)MapDocumentToDto(dokument);
+            });
+
+            if (result == null)
                 return NotFound(ApiResponse<DocumentDto>.Error($"Document with ID {id} not found"));
-            }
 
-            return Ok(ApiResponse<DocumentDto>.Ok(MapDocumentToDto(dokument)));
+            return Ok(ApiResponse<DocumentDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -871,33 +1045,37 @@ public class DocumentsController : ControllerBase
     /// Get document by number
     /// </summary>
     [HttpGet("by-number/{number}")]
-    public ActionResult<ApiResponse<DocumentDto>> GetDocumentByNumber(string number)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> GetDocumentByNumber(string number)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Dokumenty manager"));
-            }
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager == null)
+                    return (DocumentDto?)null;
 
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                var fullNum = DynamicPropertyHelper.GetString(d, "NumerWewnetrzny", "PelnaSygnatura");
-                if (fullNum != null && fullNum.Contains(number))
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
                 {
-                    dokument = d;
-                    break;
+                    var fullNum = DynamicPropertyHelper.GetString(d, "NumerWewnetrzny", "PelnaSygnatura");
+                    if (fullNum != null && fullNum.Contains(number))
+                    {
+                        dokument = d;
+                        break;
+                    }
                 }
-            }
 
-            if (dokument == null)
-            {
+                if (dokument == null)
+                    return (DocumentDto?)null;
+
+                return (DocumentDto?)MapDocumentToDto(dokument);
+            });
+
+            if (result == null)
                 return NotFound(ApiResponse<DocumentDto>.Error($"Document with number {number} not found"));
-            }
 
-            return Ok(ApiResponse<DocumentDto>.Ok(MapDocumentToDto(dokument)));
+            return Ok(ApiResponse<DocumentDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -6226,53 +6404,87 @@ public class DocumentsController : ControllerBase
 
     private static DocumentItemDto MapDocumentItemToDto(dynamic poz, int lineNum)
     {
+        // Get the effective data object (.Dane if available, otherwise the object itself)
+        var dane = DynamicPropertyHelper.GetDane(poz);
+
         var dto = new DocumentItemDto
         {
             Id = DynamicPropertyHelper.GetId(poz),
             LineNumber = lineNum,
 
-            // Product reference
-            ProductId = DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id") ??
-                        DynamicPropertyHelper.GetNullableInt(poz, "AsortymentWybranyId"),
-            ProductSymbol = DynamicPropertyHelper.GetString(poz, "Asortyment", "Symbol"),
-            ProductName = DynamicPropertyHelper.GetString(poz, "Asortyment", "Nazwa"),
+            // Product reference - try multiple paths
+            ProductId = DynamicPropertyHelper.GetNullableInt(dane, "Asortyment", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(dane, "AsortymentId") ??
+                        DynamicPropertyHelper.GetNullableInt(dane, "AsortymentWybranyId"),
+            ProductSymbol = DynamicPropertyHelper.GetString(dane, "Asortyment", "Symbol")
+                         ?? DynamicPropertyHelper.GetString(poz, "Asortyment", "Symbol")
+                         ?? DynamicPropertyHelper.GetString(dane, "SymbolAsortymentu"),
+            ProductName = DynamicPropertyHelper.GetString(dane, "Asortyment", "Nazwa")
+                       ?? DynamicPropertyHelper.GetString(poz, "Asortyment", "Nazwa")
+                       ?? DynamicPropertyHelper.GetString(dane, "NazwaAsortymentu")
+                       ?? DynamicPropertyHelper.GetString(dane, "NazwaTowaru"),
 
             // Item details
-            Name = DynamicPropertyHelper.GetString(poz, "Nazwa") ?? "",
-            Description = DynamicPropertyHelper.GetString(poz, "Opis"),
+            Name = DynamicPropertyHelper.GetString(dane, "Nazwa")
+                ?? DynamicPropertyHelper.GetString(poz, "Nazwa") ?? "",
+            Description = DynamicPropertyHelper.GetString(dane, "Opis")
+                       ?? DynamicPropertyHelper.GetString(poz, "Opis"),
 
             // Quantity and unit
-            Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
-            Unit = DynamicPropertyHelper.GetString(poz, "Jednostka", "Symbol") ?? "szt.",
-            UnitSymbol = DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Symbol"),
-            UnitName = DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Nazwa"),
-            UnitId = DynamicPropertyHelper.GetNullableInt(poz, "JednostkaMiaryAsId"),
+            Quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek"),
+            Unit = DynamicPropertyHelper.GetString(dane, "Jednostka", "Symbol")
+                ?? DynamicPropertyHelper.GetString(poz, "Jednostka", "Symbol")
+                ?? DynamicPropertyHelper.GetString(dane, "JednostkaMiary", "Symbol") ?? "szt.",
+            UnitSymbol = DynamicPropertyHelper.GetString(dane, "JednostkaMiary", "Symbol")
+                      ?? DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Symbol"),
+            UnitName = DynamicPropertyHelper.GetString(dane, "JednostkaMiary", "Nazwa")
+                    ?? DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Nazwa"),
+            UnitId = DynamicPropertyHelper.GetNullableInt(dane, "JednostkaMiaryAsId"),
 
-            // Prices
-            PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
-            PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
-            OriginalPriceNet = DynamicPropertyHelper.GetNullableDecimal(poz, "CenaNettoOryginalna"),
+            // Prices - try multiple property names
+            PriceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena"),
+            PriceGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto"),
+            OriginalPriceNet = DynamicPropertyHelper.GetNullableDecimal(dane, "CenaNettoOryginalna")
+                            ?? DynamicPropertyHelper.GetNullableDecimal(dane, "CenaNettoKatalogowa"),
 
             // Discount
-            DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(poz, "RabatProcent"),
-            DiscountValue = DynamicPropertyHelper.GetNullableDecimal(poz, "RabatKwota"),
+            DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "RabatProcent")
+                           ?? DynamicPropertyHelper.GetNullableDecimal(poz, "RabatProcent"),
+            DiscountValue = DynamicPropertyHelper.GetNullableDecimal(dane, "RabatKwota")
+                         ?? DynamicPropertyHelper.GetNullableDecimal(dane, "RabatWartosc"),
 
             // VAT
-            VatRate = DynamicPropertyHelper.GetString(poz, "StawkaVat", "Symbol") ?? "23%",
-            VatRateId = DynamicPropertyHelper.GetNullableInt(poz, "StawkaVat", "Id"),
-            VatPercent = DynamicPropertyHelper.GetNullableDecimal(poz, "StawkaVat", "Wartosc"),
+            VatRate = DynamicPropertyHelper.GetString(dane, "StawkaVat", "Symbol")
+                   ?? DynamicPropertyHelper.GetString(poz, "StawkaVat", "Symbol") ?? "23%",
+            VatRateId = DynamicPropertyHelper.GetNullableInt(dane, "StawkaVat", "Id")
+                     ?? DynamicPropertyHelper.GetNullableInt(poz, "StawkaVat", "Id"),
+            VatPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "StawkaVat", "Wartosc")
+                      ?? DynamicPropertyHelper.GetNullableDecimal(dane, "StawkaVatProcent"),
 
-            // Values
-            ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
-            ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
-            ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto"),
+            // Values - try multiple property names
+            ValueNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc"),
+            ValueVat = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
+            ValueGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto"),
 
             // Cost and margin
-            Cost = DynamicPropertyHelper.GetNullableDecimal(poz, "KosztEwidencyjny"),
-            CostValue = DynamicPropertyHelper.GetNullableDecimal(poz, "KosztMagazynowy"),
-            Margin = DynamicPropertyHelper.GetNullableDecimal(poz, "Marza"),
-            MarginPercent = DynamicPropertyHelper.GetNullableDecimal(poz, "MarzaProcent")
+            Cost = DynamicPropertyHelper.GetNullableDecimal(dane, "KosztEwidencyjny")
+                ?? DynamicPropertyHelper.GetNullableDecimal(poz, "KosztEwidencyjny"),
+            CostValue = DynamicPropertyHelper.GetNullableDecimal(dane, "KosztMagazynowy")
+                     ?? DynamicPropertyHelper.GetNullableDecimal(poz, "KosztMagazynowy"),
+            Margin = DynamicPropertyHelper.GetNullableDecimal(dane, "Marza"),
+            MarginPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "MarzaProcent")
         };
+
+        // Fallback: if PriceNet is still 0, try to calculate from ValueNet / Quantity
+        if (dto.PriceNet == 0 && dto.ValueNet != 0 && dto.Quantity != 0)
+        {
+            dto.PriceNet = dto.ValueNet / dto.Quantity;
+        }
+        if (dto.PriceGross == 0 && dto.ValueGross != 0 && dto.Quantity != 0)
+        {
+            dto.PriceGross = dto.ValueGross / dto.Quantity;
+        }
 
         // Calculate discount if not available
         if (dto.DiscountPercent == null && dto.DiscountValue == null && dto.OriginalPriceNet.HasValue)

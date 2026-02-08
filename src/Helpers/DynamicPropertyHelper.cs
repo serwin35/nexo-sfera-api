@@ -9,15 +9,35 @@ public static class DynamicPropertyHelper
 {
     /// <summary>
     /// Gets a property value from a dynamic object using reflection.
+    /// Automatically tries through .Dane sub-object if property not found directly
+    /// (Nexo SDK entities often wrap data in a .Dane property).
     /// </summary>
     public static dynamic? GetProperty(dynamic obj, string propertyName)
     {
         if (obj == null) return null;
         try
         {
-            var type = obj.GetType();
+            object objRef = (object)obj;
+            var type = objRef.GetType();
             var prop = type.GetProperty(propertyName);
-            return prop?.GetValue(obj);
+            if (prop != null)
+                return prop.GetValue(objRef);
+
+            // Fallback: try through .Dane sub-object (Nexo SDK pattern)
+            var daneProp = type.GetProperty("Dane");
+            if (daneProp != null)
+            {
+                var dane = daneProp.GetValue(objRef);
+                if (dane != null)
+                {
+                    var daneType = dane.GetType();
+                    var dProp = daneType.GetProperty(propertyName);
+                    if (dProp != null)
+                        return dProp.GetValue(dane);
+                }
+            }
+
+            return null;
         }
         catch
         {
@@ -487,6 +507,56 @@ public static class DynamicPropertyHelper
         {
             return false;
         }
+    }
+
+    /// <summary>
+    /// Gets a decimal value trying multiple property names in order.
+    /// Returns the first non-zero value found, or 0 if none found.
+    /// </summary>
+    public static decimal GetDecimalFirstOf(dynamic obj, params string[] propertyNames)
+    {
+        foreach (var name in propertyNames)
+        {
+            var val = GetDecimal(obj, name);
+            if (val != 0) return val;
+        }
+        return 0;
+    }
+
+    /// <summary>
+    /// Gets a string value trying multiple property name paths in order.
+    /// Returns the first non-null value found.
+    /// </summary>
+    public static string? GetStringFirstOf(dynamic obj, params (string prop1, string? prop2)[] paths)
+    {
+        foreach (var (prop1, prop2) in paths)
+        {
+            var val = GetString(obj, prop1, prop2);
+            if (val != null) return val;
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the effective data object from an SDK entity.
+    /// Nexo SDK business objects wrap data in a .Dane property.
+    /// Returns .Dane if available, otherwise returns the object itself.
+    /// </summary>
+    public static dynamic GetDane(dynamic obj)
+    {
+        if (obj == null) return obj;
+        try
+        {
+            object objRef = (object)obj;
+            var daneProp = objRef.GetType().GetProperty("Dane");
+            if (daneProp != null)
+            {
+                var dane = daneProp.GetValue(objRef);
+                if (dane != null) return dane;
+            }
+        }
+        catch { }
+        return obj;
     }
 
     /// <summary>

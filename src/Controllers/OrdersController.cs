@@ -534,8 +534,17 @@ public class OrdersController : ControllerBase
         int lineNum = 1;
         foreach (var poz in pozycje)
         {
-            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+            var dane = DynamicPropertyHelper.GetDane(poz);
+            var asortyment = DynamicPropertyHelper.GetProperty(dane, "Asortyment")
+                          ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(dane, "Jednostka")
+                         ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena");
+            var priceGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto");
+            var valueNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc");
+            var valueGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto");
+            var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
 
             dto.Items.Add(new DocumentItemDto
             {
@@ -543,14 +552,14 @@ public class OrdersController : ControllerBase
                 LineNumber = lineNum++,
                 ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
                 ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
-                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
-                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
-                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
-                PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
-                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
-                ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
-                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+                Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = quantity,
+                Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
+                PriceGross = priceGross != 0 ? priceGross : (valueGross != 0 && quantity != 0 ? valueGross / quantity : 0),
+                ValueNet = valueNet,
+                ValueVat = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
+                ValueGross = valueGross
             });
         }
 
@@ -584,8 +593,17 @@ public class OrdersController : ControllerBase
         int lineNum = 1;
         foreach (var poz in pozycje)
         {
-            var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-            var jednostka = DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+            var dane = DynamicPropertyHelper.GetDane(poz);
+            var asortyment = DynamicPropertyHelper.GetProperty(dane, "Asortyment")
+                          ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+            var jednostka = DynamicPropertyHelper.GetProperty(dane, "Jednostka")
+                         ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+
+            var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena");
+            var priceGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto");
+            var valueNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc");
+            var valueGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto");
+            var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
 
             dto.Items.Add(new DocumentItemDto
             {
@@ -593,14 +611,14 @@ public class OrdersController : ControllerBase
                 LineNumber = lineNum++,
                 ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
                 ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                Name = DynamicPropertyHelper.GetString(poz, "Nazwa"),
-                Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
-                Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
-                PriceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
-                PriceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
-                ValueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
-                ValueVat = DynamicPropertyHelper.GetDecimal(poz, "WartoscVat"),
-                ValueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto")
+                Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
+                Quantity = quantity,
+                Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
+                PriceGross = priceGross != 0 ? priceGross : (valueGross != 0 && quantity != 0 ? valueGross / quantity : 0),
+                ValueNet = valueNet,
+                ValueVat = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
+                ValueGross = valueGross
             });
         }
 
