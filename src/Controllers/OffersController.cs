@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 
@@ -610,7 +611,6 @@ public class OffersController : ControllerBase
                 using (var oferta = ofertyManager.Znajdz(ofertaDane))
                 {
                     oferta.Dane.Zamkniety = true;
-using NexoSferaApi.Helpers;
                     oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;
 
                     if (oferta.Zapisz())
