@@ -258,7 +258,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -333,7 +333,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -381,7 +381,7 @@ public class CustomersController : ControllerBase
             }
 
             // Check Adresy collection
-            var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
+            var adresy = DynamicPropertyHelper.GetCollection((object)podmiot, "Adresy");
             var adresyList = new List<object>();
             foreach (var adr in adresy)
             {
@@ -439,7 +439,7 @@ public class CustomersController : ControllerBase
 
             // First find the entity
             dynamic? podmiotDane = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -591,7 +591,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -720,7 +720,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -797,14 +797,14 @@ public class CustomersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
             }
 
-            var allPodmioty = new List<dynamic>();
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            var allPodmioty = new List<object>();
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 allPodmioty.Add(p);
             }
 
             // Apply filters using foreach to avoid LINQ issues with dynamic types
-            var filteredList = new List<dynamic>();
+            var filteredList = new List<object>();
 
             foreach (var p in allPodmioty)
             {
@@ -914,7 +914,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -953,7 +953,7 @@ public class CustomersController : ControllerBase
 
             var cleanNip = nip.Replace("-", "").Replace(" ", "");
             dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 var podmiotNip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
                 if (podmiotNip == cleanNip || podmiotNip == nip)
@@ -996,7 +996,7 @@ public class CustomersController : ControllerBase
 
                 // Check if symbol already exists
                 dynamic? existing = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
                     if (DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol)
                     {
@@ -1152,7 +1152,7 @@ public class CustomersController : ControllerBase
                 }
 
                 dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
                     if (DynamicPropertyHelper.GetId(p) == id)
                     {
@@ -1250,7 +1250,7 @@ public class CustomersController : ControllerBase
                 }
 
                 dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
                     if (DynamicPropertyHelper.GetId(p) == id)
                     {
@@ -1438,7 +1438,7 @@ public class CustomersController : ControllerBase
         // Fallback: try first from Adresy collection
         if (adresPodmiotu == null)
         {
-            var adresy = DynamicPropertyHelper.GetCollection(podmiot, "Adresy");
+            var adresy = DynamicPropertyHelper.GetCollection((object)podmiot, "Adresy");
             foreach (var adr in adresy)
             {
                 adresPodmiotu = adr;
@@ -1493,7 +1493,7 @@ public class CustomersController : ControllerBase
         }
 
         // Map contacts from Kontakty collection
-        var kontakty = DynamicPropertyHelper.GetCollection(podmiot, "Kontakty");
+        var kontakty = DynamicPropertyHelper.GetCollection((object)podmiot, "Kontakty");
         foreach (var kontakt in kontakty)
         {
             var typ = DynamicPropertyHelper.GetNullableInt(kontakt, "Typ");
@@ -1510,7 +1510,7 @@ public class CustomersController : ControllerBase
         }
 
         // Map bank account from Rachunki collection
-        var rachunki = DynamicPropertyHelper.GetCollection(podmiot, "Rachunki");
+        var rachunki = DynamicPropertyHelper.GetCollection((object)podmiot, "Rachunki");
         dynamic? glownyRachunek = null;
         foreach (var r in rachunki)
         {

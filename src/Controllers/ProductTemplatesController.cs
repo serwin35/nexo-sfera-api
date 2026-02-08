@@ -40,14 +40,14 @@ public class ProductTemplatesController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get SzablonyAsortymentu manager"));
             }
 
-            var allSzablony = new List<dynamic>();
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            var allSzablony = new List<object>();
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 allSzablony.Add(s);
             }
 
             // Apply filters
-            var filteredList = new List<dynamic>();
+            var filteredList = new List<object>();
             foreach (var s in allSzablony)
             {
                 // Deleted filter
@@ -123,7 +123,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             dynamic? szablon = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 if (DynamicPropertyHelper.GetId(s) == id)
                 {
@@ -161,7 +161,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             dynamic? szablon = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 if (DynamicPropertyHelper.GetString(s, "Symbol") == symbol)
                 {
@@ -199,7 +199,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             // Check if symbol already exists
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 if (DynamicPropertyHelper.GetString(s, "Symbol") == request.Symbol)
                 {
@@ -225,7 +225,7 @@ public class ProductTemplatesController : ControllerBase
                     var jednostki = _sferaService.GetManager("Jednostki");
                     if (jednostki != null)
                     {
-                        foreach (var j in DynamicPropertyHelper.SafeGetAll(jednostki))
+                        foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostki))
                         {
                             if (DynamicPropertyHelper.GetId(j) == request.UnitId.Value)
                             {
@@ -240,7 +240,7 @@ public class ProductTemplatesController : ControllerBase
                     var jednostki = _sferaService.GetManager("Jednostki");
                     if (jednostki != null)
                     {
-                        foreach (var j in DynamicPropertyHelper.SafeGetAll(jednostki))
+                        foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostki))
                         {
                             if (DynamicPropertyHelper.GetString(j, "Symbol") == request.UnitSymbol)
                             {
@@ -257,7 +257,7 @@ public class ProductTemplatesController : ControllerBase
                     var stawkiVat = _sferaService.GetManager("StawkiVat");
                     if (stawkiVat != null)
                     {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll(stawkiVat))
+                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
                         {
                             if (DynamicPropertyHelper.GetId(sv) == request.VatRateId.Value)
                             {
@@ -272,7 +272,7 @@ public class ProductTemplatesController : ControllerBase
                     var stawkiVat = _sferaService.GetManager("StawkiVat");
                     if (stawkiVat != null)
                     {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll(stawkiVat))
+                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
                         {
                             if (DynamicPropertyHelper.GetString(sv, "Symbol") == request.VatRateSymbol)
                             {
@@ -320,7 +320,7 @@ public class ProductTemplatesController : ControllerBase
                     var asortymenty = _sferaService.GetManager("Asortymenty");
                     if (asortymenty != null)
                     {
-                        foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+                        foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
                         {
                             if (DynamicPropertyHelper.GetId(a) == request.ReferenceProductId.Value)
                             {
@@ -368,7 +368,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             dynamic? szablonDane = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 if (DynamicPropertyHelper.GetId(s) == id)
                 {
@@ -407,7 +407,7 @@ public class ProductTemplatesController : ControllerBase
                     var stawkiVat = _sferaService.GetManager("StawkiVat");
                     if (stawkiVat != null)
                     {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll(stawkiVat))
+                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
                         {
                             if (DynamicPropertyHelper.GetId(sv) == request.VatRateId.Value)
                             {
@@ -422,7 +422,7 @@ public class ProductTemplatesController : ControllerBase
                     var stawkiVat = _sferaService.GetManager("StawkiVat");
                     if (stawkiVat != null)
                     {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll(stawkiVat))
+                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
                         {
                             if (DynamicPropertyHelper.GetString(sv, "Symbol") == request.VatRateSymbol)
                             {
@@ -505,7 +505,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             dynamic? szablonDane = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 if (DynamicPropertyHelper.GetId(s) == id)
                 {
@@ -560,7 +560,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             dynamic? szablonDane = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll(szablony))
+            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
             {
                 if (DynamicPropertyHelper.GetId(s) == id)
                 {
@@ -581,7 +581,7 @@ public class ProductTemplatesController : ControllerBase
             }
 
             // Check if symbol already exists
-            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
             {
                 if (DynamicPropertyHelper.GetString(a, "Symbol") == request.Symbol)
                 {
@@ -643,7 +643,7 @@ public class ProductTemplatesController : ControllerBase
                     var grupy = _sferaService.GetManager("GrupyAsortymentu");
                     if (grupy != null)
                     {
-                        foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
+                        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                         {
                             if (DynamicPropertyHelper.GetId(g) == request.GroupId.Value)
                             {

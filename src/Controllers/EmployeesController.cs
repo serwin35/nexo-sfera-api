@@ -40,7 +40,7 @@ public class EmployeesController : ControllerBase
         {
             var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
 
             if (activeOnly == true)
             {
@@ -112,7 +112,7 @@ public class EmployeesController : ControllerBase
         {
             var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
             var pracownik = allPracownicy.FirstOrDefault(p =>
             {
                 var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
@@ -147,7 +147,7 @@ public class EmployeesController : ControllerBase
         {
             var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
             var pracownik = allPracownicy.FirstOrDefault(p =>
                 DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
 
@@ -178,7 +178,7 @@ public class EmployeesController : ControllerBase
         {
             var podmioty = _sferaService.GetManager("Podmioty");
             if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<dynamic>)podmioty.Dane.WszyscyPracownicy()).ToList();
+            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
             var pracownik = allPracownicy.FirstOrDefault(p =>
             {
                 var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
@@ -206,7 +206,7 @@ public class EmployeesController : ControllerBase
     {
         var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
         var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
-        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty");
+        var kontakty = DynamicPropertyHelper.GetCollection((object)p, "Kontakty");
 
         var primaryEmail = GetContactByType(kontakty, "email");
         var primaryPhone = GetContactByType(kontakty, "telefon");
@@ -231,7 +231,7 @@ public class EmployeesController : ControllerBase
     {
         var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
         var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
-        var kontakty = DynamicPropertyHelper.GetCollection(p, "Kontakty");
+        var kontakty = DynamicPropertyHelper.GetCollection((object)p, "Kontakty");
 
         var primaryEmail = GetContactByType(kontakty, "email");
         var primaryPhone = GetContactByType(kontakty, "telefon");
@@ -297,7 +297,7 @@ public class EmployeesController : ControllerBase
         return dto;
     }
 
-    private static string? GetContactByType(List<dynamic> kontakty, string typeName)
+    private static string? GetContactByType(List<object> kontakty, string typeName)
     {
         // First try to find primary contact of given type
         var primary = kontakty.FirstOrDefault(k =>

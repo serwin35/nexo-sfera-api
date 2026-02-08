@@ -50,15 +50,15 @@ public class OffersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Oferty manager"));
             }
 
-            var oferty = new List<dynamic>();
-            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
+            var oferty = new List<object>();
+            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 oferty.Add(o);
             }
 
             if (customerId.HasValue)
             {
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try { if (o.Podmiot?.Id == customerId.Value) filtered.Add(o); }
@@ -69,7 +69,7 @@ public class OffersController : ControllerBase
 
             if (dateFrom.HasValue)
             {
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try { if ((DateTime?)o.DataWystawienia >= dateFrom.Value) filtered.Add(o); }
@@ -80,7 +80,7 @@ public class OffersController : ControllerBase
 
             if (dateTo.HasValue)
             {
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try { if ((DateTime?)o.DataWystawienia <= dateTo.Value) filtered.Add(o); }
@@ -91,7 +91,7 @@ public class OffersController : ControllerBase
 
             if (closedOnly.HasValue && closedOnly.Value)
             {
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try { if ((bool?)o.Zamkniety == true) filtered.Add(o); }
@@ -102,7 +102,7 @@ public class OffersController : ControllerBase
 
             if (acceptedOnly.HasValue && acceptedOnly.Value)
             {
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try { if ((bool?)o.Zaakceptowany == true) filtered.Add(o); }
@@ -114,7 +114,7 @@ public class OffersController : ControllerBase
             if (validOnly.HasValue && validOnly.Value)
             {
                 var now = DateTime.Now;
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try
@@ -185,7 +185,7 @@ public class OffersController : ControllerBase
             }
 
             dynamic? oferta = null;
-            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
+            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 if ((int)o.Id == id)
                 {
@@ -226,7 +226,7 @@ public class OffersController : ControllerBase
             }
 
             dynamic? oferta = null;
-            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
+            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 try
                 {
@@ -272,8 +272,8 @@ public class OffersController : ControllerBase
                 return StatusCode(500, ApiResponse<List<OfferSummaryDto>>.Error("Failed to get Oferty manager"));
             }
 
-            var oferty = new List<dynamic>();
-            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
+            var oferty = new List<object>();
+            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
                 catch { }
@@ -282,7 +282,7 @@ public class OffersController : ControllerBase
             if (validOnly.HasValue && validOnly.Value)
             {
                 var now = DateTime.Now;
-                var filtered = new List<dynamic>();
+                var filtered = new List<object>();
                 foreach (var o in oferty)
                 {
                     try
@@ -364,7 +364,7 @@ public class OffersController : ControllerBase
                     dynamic? podmiot = null;
                     if (podmiotyManager != null)
                     {
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll(podmiotyManager))
+                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
                         {
                             if ((int)p.Id == request.CustomerId)
                             {
@@ -422,7 +422,7 @@ public class OffersController : ControllerBase
                         foreach (var item in request.Items)
                         {
                             dynamic? asortyment = null;
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                             {
                                 if ((int)a.Id == item.ProductId)
                                 {
@@ -516,7 +516,7 @@ public class OffersController : ControllerBase
                 }
 
                 dynamic? ofertaDane = null;
-                foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
+                foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
                     if ((int)o.Id == id)
                     {
@@ -594,7 +594,7 @@ public class OffersController : ControllerBase
                 }
 
                 dynamic? ofertaDane = null;
-                foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
+                foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
                     if ((int)o.Id == id)
                     {

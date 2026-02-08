@@ -47,7 +47,7 @@ public class JPKController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get JednolitePlikiKontrolne manager"));
             }
 
-            var allJpk = DynamicPropertyHelper.SafeGetAll(manager);
+            var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by type
             if (!string.IsNullOrEmpty(type))
@@ -133,7 +133,7 @@ public class JPKController : ControllerBase
                 return StatusCode(500, ApiResponse<JpkFileDto>.Error("Failed to get JednolitePlikiKontrolne manager"));
             }
 
-            var allJpk = DynamicPropertyHelper.SafeGetAll(manager);
+            var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
             var jpk = allJpk.FirstOrDefault(j => DynamicPropertyHelper.GetId(j) == id);
 
             if (jpk == null)
@@ -166,7 +166,7 @@ public class JPKController : ControllerBase
                 return StatusCode(500, ApiResponse<JpkStatusDto>.Error("Failed to get JednolitePlikiKontrolne manager"));
             }
 
-            var allJpk = DynamicPropertyHelper.SafeGetAll(manager);
+            var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
             var jpk = allJpk.FirstOrDefault(j => DynamicPropertyHelper.GetId(j) == id);
 
             if (jpk == null)
@@ -243,7 +243,7 @@ public class JPKController : ControllerBase
                 return Ok(ApiResponse<List<JpkVersionDto>>.Ok(defaultVersions));
             }
 
-            var allVersions = DynamicPropertyHelper.SafeGetAll(manager);
+            var allVersions = DynamicPropertyHelper.SafeGetAll((object)manager);
             var typeVersions = allVersions.Where(v =>
             {
                 var typ = DynamicPropertyHelper.GetString(v, "TypJPK");
@@ -294,7 +294,7 @@ public class JPKController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get PaczkiJednolitychPlikowKontrolnych manager"));
             }
 
-            var allPaczki = DynamicPropertyHelper.SafeGetAll(manager);
+            var allPaczki = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             if (!string.IsNullOrEmpty(status))
             {
@@ -349,7 +349,7 @@ public class JPKController : ControllerBase
                 return StatusCode(500, ApiResponse<JpkPackageDto>.Error("Failed to get PaczkiJednolitychPlikowKontrolnych manager"));
             }
 
-            var allPaczki = DynamicPropertyHelper.SafeGetAll(manager);
+            var allPaczki = DynamicPropertyHelper.SafeGetAll((object)manager);
             var paczka = allPaczki.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
 
             if (paczka == null)

@@ -78,7 +78,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<SalesSummaryReportDto>.Error("Failed to get DokumentySprzedazy manager"));
             }
 
-            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -159,7 +159,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<ProductSalesDto>>.Error("Failed to get DokumentySprzedazy manager"));
             }
 
-            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -175,7 +175,7 @@ public class ReportsController : ControllerBase
                 var pozycje = DynamicPropertyHelper.GetProperty(doc, "Pozycje");
                 if (pozycje == null) continue;
 
-                foreach (var poz in (IEnumerable<dynamic>)pozycje)
+                foreach (var poz in (IEnumerable<object>)pozycje)
                 {
                     var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
                     if (asortyment == null) continue;
@@ -243,7 +243,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<CustomerSalesDto>>.Error("Failed to get DokumentySprzedazy manager"));
             }
 
-            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -321,7 +321,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<PurchaseSummaryReportDto>.Error("Failed to get DokumentyZakupu manager"));
             }
 
-            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
+            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -411,7 +411,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<InventoryTurnoverDto>>.Error("Failed to get Asortymenty manager"));
             }
 
-            var allProducts = DynamicPropertyHelper.SafeGetAll(productManager);
+            var allProducts = DynamicPropertyHelper.SafeGetAll((object)productManager);
 
             var result = new List<InventoryTurnoverDto>();
 
@@ -422,7 +422,7 @@ public class ReportsController : ControllerBase
 
                 if (stanyMagazynowe != null)
                 {
-                    foreach (var stan in (IEnumerable<dynamic>)stanyMagazynowe)
+                    foreach (var stan in (IEnumerable<object>)stanyMagazynowe)
                     {
                         if (warehouseId.HasValue)
                         {

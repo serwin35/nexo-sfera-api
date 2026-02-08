@@ -45,9 +45,9 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
             }
 
-            var allZamowienia = DynamicPropertyHelper.SafeGetAll(zamowienia);
+            var allZamowienia = DynamicPropertyHelper.SafeGetAll((object)zamowienia);
 
-            var filteredList = new List<dynamic>();
+            var filteredList = new List<object>();
             foreach (var z in allZamowienia)
             {
                 if (supplierId.HasValue)
@@ -155,7 +155,7 @@ public class OrdersController : ControllerBase
                 if (request.SupplierId.HasValue && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                     {
                         if (DynamicPropertyHelper.GetId(p) == request.SupplierId.Value)
                         {
@@ -171,7 +171,7 @@ public class OrdersController : ControllerBase
                 else if (!string.IsNullOrEmpty(request.SupplierNIP) && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                     {
                         if (DynamicPropertyHelper.GetString(p, "NIP") == request.SupplierNIP)
                         {
@@ -192,7 +192,7 @@ public class OrdersController : ControllerBase
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
                         {
                             if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
                             {
@@ -227,7 +227,7 @@ public class OrdersController : ControllerBase
                     {
                         if (item.ProductId.HasValue)
                         {
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
                                 {
@@ -238,7 +238,7 @@ public class OrdersController : ControllerBase
                         }
                         else if (!string.IsNullOrEmpty(item.ProductSymbol))
                         {
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
                                 {
@@ -307,9 +307,9 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
             }
 
-            var allOferty = DynamicPropertyHelper.SafeGetAll(oferty);
+            var allOferty = DynamicPropertyHelper.SafeGetAll((object)oferty);
 
-            var filteredList = new List<dynamic>();
+            var filteredList = new List<object>();
             foreach (var o in allOferty)
             {
                 if (customerId.HasValue)
@@ -388,7 +388,7 @@ public class OrdersController : ControllerBase
                 if (request.CustomerId.HasValue && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                     {
                         if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
                         {
@@ -404,7 +404,7 @@ public class OrdersController : ControllerBase
                 else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                     {
                         if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
                         {
@@ -443,7 +443,7 @@ public class OrdersController : ControllerBase
                     {
                         if (item.ProductId.HasValue)
                         {
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
                                 {
@@ -454,7 +454,7 @@ public class OrdersController : ControllerBase
                         }
                         else if (!string.IsNullOrEmpty(item.ProductSymbol))
                         {
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
                                 {
@@ -530,7 +530,7 @@ public class OrdersController : ControllerBase
             Items = new List<DocumentItemDto>()
         };
 
-        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        var pozycje = DynamicPropertyHelper.GetCollection((object)dokument, "Pozycje");
         int lineNum = 1;
         foreach (var poz in pozycje)
         {
@@ -580,7 +580,7 @@ public class OrdersController : ControllerBase
             Items = new List<DocumentItemDto>()
         };
 
-        var pozycje = DynamicPropertyHelper.GetCollection(dokument, "Pozycje");
+        var pozycje = DynamicPropertyHelper.GetCollection((object)dokument, "Pozycje");
         int lineNum = 1;
         foreach (var poz in pozycje)
         {

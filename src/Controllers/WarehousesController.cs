@@ -40,7 +40,7 @@ public class WarehousesController : ControllerBase
             }
 
             var items = new List<WarehouseDto>();
-            foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
+            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
             {
                 items.Add(new WarehouseDto
                 {
@@ -76,7 +76,7 @@ public class WarehousesController : ControllerBase
             }
 
             dynamic? magazyn = null;
-            foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
+            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
             {
                 if (DynamicPropertyHelper.GetString(m, "Symbol") == symbol)
                 {
@@ -132,7 +132,7 @@ public class WarehousesController : ControllerBase
 
             // Get stock from all warehouses
             dynamic dane = asortyment.Dane;
-            var stanyMagazynowe = DynamicPropertyHelper.GetCollection(dane, "StanyMagazynowe");
+            var stanyMagazynowe = DynamicPropertyHelper.GetCollection((object)dane, "StanyMagazynowe");
 
             foreach (var stan in stanyMagazynowe)
             {

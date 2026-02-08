@@ -42,7 +42,7 @@ public class DiscountsController : ControllerBase
         {
             var rabatyManager = _sferaService.GetManager("Rabaty");
             if (rabatyManager == null) return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll(rabatyManager);
+            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
 
             if (activeOnly == true)
             {
@@ -98,7 +98,7 @@ public class DiscountsController : ControllerBase
         {
             var rabatyManager = _sferaService.GetManager("Rabaty");
             if (rabatyManager == null) return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll(rabatyManager);
+            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
             var rabat = allRabaty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
             if (rabat == null)
@@ -128,7 +128,7 @@ public class DiscountsController : ControllerBase
         {
             var rabatyManager = _sferaService.GetManager("Rabaty");
             if (rabatyManager == null) return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll(rabatyManager);
+            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
             var rabat = allRabaty.FirstOrDefault(r =>
                 DynamicPropertyHelper.GetString(r, "Symbol") == symbol);
 
@@ -159,7 +159,7 @@ public class DiscountsController : ControllerBase
             // Verify contractor exists
             var kontrahenciManager = _sferaService.GetManager("Podmioty");
             if (kontrahenciManager == null) return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Podmioty manager not available"));
-            var allKontrahenci = DynamicPropertyHelper.SafeGetAll(kontrahenciManager);
+            var allKontrahenci = DynamicPropertyHelper.SafeGetAll((object)kontrahenciManager);
             var kontrahent = allKontrahenci.FirstOrDefault(k => DynamicPropertyHelper.GetId(k) == contractorId);
 
             if (kontrahent == null)
@@ -169,7 +169,7 @@ public class DiscountsController : ControllerBase
 
             var rabatyManager = _sferaService.GetManager("Rabaty");
             if (rabatyManager == null) return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll(rabatyManager);
+            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
 
             if (activeOnly == true)
             {
@@ -188,7 +188,7 @@ public class DiscountsController : ControllerBase
                 })
                 .Where(r =>
                 {
-                    var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty");
+                    var podmioty = DynamicPropertyHelper.GetCollection((object)r, "Podmioty");
                     // No subjects = applies to all, OR contractor is in the list
                     if (!podmioty.Any()) return true;
                     foreach (var p in podmioty)
@@ -251,7 +251,7 @@ public class DiscountsController : ControllerBase
 
         if (includeDetails)
         {
-            var podmioty = DynamicPropertyHelper.GetCollection(r, "Podmioty");
+            var podmioty = DynamicPropertyHelper.GetCollection((object)r, "Podmioty");
             if (podmioty.Count > 0)
             {
                 dto.Subjects = new List<DiscountSubjectDto>();

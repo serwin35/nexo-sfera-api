@@ -40,10 +40,10 @@ public class ContractorGroupsController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
             }
 
-            var allGrupy = DynamicPropertyHelper.SafeGetAll(grupy);
+            var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupy);
 
             // Apply filters
-            var filteredList = new List<dynamic>();
+            var filteredList = new List<object>();
             foreach (var g in allGrupy)
             {
                 // Deleted filter
@@ -155,8 +155,8 @@ public class ContractorGroupsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<ContractorGroupTreeDto>>.Error("Failed to get Grupy manager"));
             }
 
-            var allGrupyRaw = DynamicPropertyHelper.SafeGetAll(grupy);
-            var allGrupy = new List<dynamic>();
+            var allGrupyRaw = DynamicPropertyHelper.SafeGetAll((object)grupy);
+            var allGrupy = new List<object>();
             foreach (var g in allGrupyRaw)
             {
                 if (!(DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false))
@@ -262,7 +262,7 @@ public class ContractorGroupsController : ControllerBase
             }
 
             dynamic? grupa = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
+            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
             {
                 if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
                 {
@@ -300,7 +300,7 @@ public class ContractorGroupsController : ControllerBase
             }
 
             var children = new List<ContractorGroupListItemDto>();
-            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
+            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
             {
                 var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
                 var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
@@ -351,8 +351,8 @@ public class ContractorGroupsController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
             }
 
-            var contractors = new List<dynamic>();
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            var contractors = new List<object>();
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
                 if (grupa != null && DynamicPropertyHelper.GetId(grupa) == id)
@@ -414,7 +414,7 @@ public class ContractorGroupsController : ControllerBase
             }
 
             // Check if symbol already exists
-            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
+            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
             {
                 if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
                 {
@@ -859,7 +859,7 @@ public class ContractorGroupsController : ControllerBase
             if (podmioty == null) return 0;
 
             int count = 0;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
+            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
                 var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
                 if (grupa != null && DynamicPropertyHelper.GetId(grupa) == groupId)
@@ -900,7 +900,7 @@ public class ContractorGroupsController : ControllerBase
 
         // Count children
         int childCount = 0;
-        foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
+        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
         {
             var p = DynamicPropertyHelper.GetProperty(g, "Rodzic");
             if (p != null && DynamicPropertyHelper.GetId(p) == groupId)

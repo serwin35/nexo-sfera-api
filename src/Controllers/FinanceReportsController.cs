@@ -38,11 +38,11 @@ public class FinanceReportsController : ControllerBase
         {
             var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
             if (stanowiskaManager == null) return StatusCode(500, ApiResponse<List<CashRegisterDto>>.Error("StanowiskaKasowe manager not available"));
-            var allStanowiska = DynamicPropertyHelper.SafeGetAll(stanowiskaManager);
+            var allStanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
 
             if (activeOnly == true)
             {
-                var filteredStanowiska = new List<dynamic>();
+                var filteredStanowiska = new List<object>();
                 foreach (var s in allStanowiska)
                 {
                     if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
@@ -99,7 +99,7 @@ public class FinanceReportsController : ControllerBase
         {
             var raportyManager = _sferaService.GetManager("RaportyKasowe");
             if (raportyManager == null) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
-            var allRaporty = DynamicPropertyHelper.SafeGetAll(raportyManager);
+            var allRaporty = DynamicPropertyHelper.SafeGetAll((object)raportyManager);
 
             if (!string.IsNullOrEmpty(cashRegisterSymbol))
             {
@@ -170,7 +170,7 @@ public class FinanceReportsController : ControllerBase
         {
             var raportyManager = _sferaService.GetManager("RaportyKasowe");
             if (raportyManager == null) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
-            var allRaporty = DynamicPropertyHelper.SafeGetAll(raportyManager);
+            var allRaporty = DynamicPropertyHelper.SafeGetAll((object)raportyManager);
             var raport = allRaporty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
             if (raport == null)
@@ -248,11 +248,11 @@ public class FinanceReportsController : ControllerBase
         {
             var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
             if (rachunkiManager == null) return StatusCode(500, ApiResponse<List<BankAccountDto>>.Error("RachunkiBankowe manager not available"));
-            var allRachunki = DynamicPropertyHelper.SafeGetAll(rachunkiManager);
+            var allRachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
 
             if (activeOnly == true)
             {
-                var filteredRachunki = new List<dynamic>();
+                var filteredRachunki = new List<object>();
                 foreach (var r in allRachunki)
                 {
                     if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
@@ -312,7 +312,7 @@ public class FinanceReportsController : ControllerBase
         {
             var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
             if (wyciagiManager == null) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
-            var allWyciagi = DynamicPropertyHelper.SafeGetAll(wyciagiManager);
+            var allWyciagi = DynamicPropertyHelper.SafeGetAll((object)wyciagiManager);
 
             if (!string.IsNullOrEmpty(bankAccountSymbol))
             {
@@ -383,7 +383,7 @@ public class FinanceReportsController : ControllerBase
         {
             var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
             if (wyciagiManager == null) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
-            var allWyciagi = DynamicPropertyHelper.SafeGetAll(wyciagiManager);
+            var allWyciagi = DynamicPropertyHelper.SafeGetAll((object)wyciagiManager);
             var wyciag = allWyciagi.FirstOrDefault(w => DynamicPropertyHelper.GetId(w) == id);
 
             if (wyciag == null)
@@ -479,7 +479,7 @@ public class FinanceReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Rozrachunki manager"));
             }
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager);
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
 
             // Filter by type (receivable/payable)
             if (!string.IsNullOrEmpty(type))
@@ -579,7 +579,7 @@ public class FinanceReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<SettlementDto>.Error("Failed to get Rozrachunki manager"));
             }
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager);
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
             var rozrachunek = allRozrachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
             if (rozrachunek == null)
@@ -677,7 +677,7 @@ public class FinanceReportsController : ControllerBase
             var referenceDate = asOfDate ?? DateTime.Today;
             var isReceivable = type == "receivable";
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll(rozrachunkiManager);
+            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
 
             // Filter by type
             allRozrachunki = allRozrachunki.Where(r =>
@@ -805,8 +805,8 @@ public class FinanceReportsController : ControllerBase
             // Get cash register balances
             var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
             if (stanowiskaManager == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("StanowiskaKasowe manager not available"));
-            var allStanowiska = DynamicPropertyHelper.SafeGetAll(stanowiskaManager);
-            var stanowiska = new List<dynamic>();
+            var allStanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
+            var stanowiska = new List<object>();
             foreach (var s in allStanowiska)
             {
                 if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
@@ -833,8 +833,8 @@ public class FinanceReportsController : ControllerBase
             // Get bank account balances
             var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
             if (rachunkiManager == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("RachunkiBankowe manager not available"));
-            var allRachunki = DynamicPropertyHelper.SafeGetAll(rachunkiManager);
-            var rachunki = new List<dynamic>();
+            var allRachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
+            var rachunki = new List<object>();
             foreach (var r in allRachunki)
             {
                 if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
