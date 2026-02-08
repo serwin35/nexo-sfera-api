@@ -12,6 +12,9 @@
     <EnableUnsafeBinaryFormatterSerialization>true</EnableUnsafeBinaryFormatterSerialization>
     <!-- Enable Windows targeting for cross-platform builds -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <!-- Force all NuGet deps to output dir - needed because MCP requires Microsoft.Extensions v10.x
+         which is higher than what .NET 8 shared framework provides -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 
   <!-- Runtime configuration matching Nexo SDK Importer settings -->
