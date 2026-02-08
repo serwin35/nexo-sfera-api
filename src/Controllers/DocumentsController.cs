@@ -4371,7 +4371,7 @@ public class DocumentsController : ControllerBase
                         {
                             _logger.LogWarning("Could not find ParametryGrupowaniaDS type, using default realization");
                             // Fallback: realize without parameters
-                            foreach (var order in orders)
+                            foreach (dynamic order in orders)
                             {
                                 foreach (var pozycja in order.Pozycje)
                                 {
@@ -4427,7 +4427,7 @@ public class DocumentsController : ControllerBase
                             {
                                 // Partial realization - specific positions
                                 var pozycje = new List<object>();
-                                foreach (var order in orders)
+                                foreach (dynamic order in orders)
                                 {
                                     foreach (var pozycja in order.Pozycje)
                                     {

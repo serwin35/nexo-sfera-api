@@ -519,7 +519,7 @@ public class KsefController : ControllerBase
             {
                 results.Add(new KsefStatusResultDto
                 {
-                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId"),
+                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId") ?? 0,
                     DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
                     KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
                     ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
@@ -580,7 +580,7 @@ public class KsefController : ControllerBase
             {
                 results.Add(new KsefStatusResultDto
                 {
-                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId"),
+                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId") ?? 0,
                     DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
                     KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
                     ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
