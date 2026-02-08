@@ -287,7 +287,7 @@ public static class DynamicPropertyHelper
     /// <summary>
     /// Safely gets a collection as enumerable of dynamic objects.
     /// </summary>
-    public static List<object> GetCollection(dynamic obj, string collectionPropertyName)
+    public static List<object> GetCollection(object obj, string collectionPropertyName)
     {
         var result = new List<object>();
         try
@@ -493,13 +493,14 @@ public static class DynamicPropertyHelper
     /// Safely gets all items from a manager's Dane.Wszystkie() collection.
     /// Returns empty list if Dane is null (prevents RuntimeBinderException).
     /// </summary>
-    public static List<object> SafeGetAll(dynamic manager)
+    public static List<object> SafeGetAll(object manager)
     {
         var result = new List<object>();
         if (manager == null) return result;
         try
         {
-            var dane = manager.Dane;
+            dynamic dynManager = manager;
+            var dane = dynManager.Dane;
             if (dane == null) return result;
             foreach (var item in dane.Wszystkie())
             {
@@ -517,12 +518,13 @@ public static class DynamicPropertyHelper
     /// Finds an entity by ID in a manager's Dane.Wszystkie() collection.
     /// Returns null if not found or if Dane is null.
     /// </summary>
-    public static dynamic? FindById(dynamic manager, int id)
+    public static dynamic? FindById(object manager, int id)
     {
         if (manager == null) return null;
         try
         {
-            var dane = manager.Dane;
+            dynamic dynManager = manager;
+            var dane = dynManager.Dane;
             if (dane == null) return null;
             foreach (var item in dane.Wszystkie())
             {
