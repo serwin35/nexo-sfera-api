@@ -191,7 +191,7 @@
 
   <!-- Copy ALL SDK files to output directory -->
   <ItemGroup>
-    <ContentWithTargetPath Include="$(NexoSdkPath)\**\*.*" Exclude="$(NexoSdkPath)\**\*.xml">
+    <ContentWithTargetPath Include="$(NexoSdkPath)\**\*.*" Exclude="$(NexoSdkPath)\**\*.xml;$(NexoSdkPath)\Microsoft.Extensions.*.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <TargetPath>%(RecursiveDir)%(Filename)%(Extension)</TargetPath>
     </ContentWithTargetPath>
@@ -200,7 +200,7 @@
   <!-- Ensure SDK DLLs are copied even during publish -->
   <Target Name="CopySdkFiles" AfterTargets="Build">
     <ItemGroup>
-      <SdkFiles Include="$(NexoSdkPath)\**\*.*" Exclude="$(NexoSdkPath)\**\*.xml" />
+      <SdkFiles Include="$(NexoSdkPath)\**\*.*" Exclude="$(NexoSdkPath)\**\*.xml;$(NexoSdkPath)\Microsoft.Extensions.*.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(SdkFiles)" DestinationFolder="$(OutputPath)%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
