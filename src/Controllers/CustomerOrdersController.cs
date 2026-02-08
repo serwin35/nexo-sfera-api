@@ -818,8 +818,8 @@ public class CustomerOrdersController : ControllerBase
         var podmiot = DynamicPropertyHelper.GetProperty(zamowienie, "Podmiot");
         var magazyn = DynamicPropertyHelper.GetProperty(zamowienie, "Magazyn");
         var status = DynamicPropertyHelper.GetProperty(zamowienie, "Status");
-        var deadline = DynamicPropertyHelper.GetDateTime(zamowienie, "TerminRealizacji");
-        var isClosed = DynamicPropertyHelper.GetNullableBool(zamowienie, "Zamkniety") ?? false;
+        DateTime? deadline = DynamicPropertyHelper.GetDateTime(zamowienie, "TerminRealizacji");
+        bool isClosed = DynamicPropertyHelper.GetNullableBool(zamowienie, "Zamkniety") ?? false;
 
         return new CustomerOrderListItemDto
         {
