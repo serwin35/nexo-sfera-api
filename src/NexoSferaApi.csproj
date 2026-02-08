@@ -48,6 +48,10 @@
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" Version="0.8.0-preview.1" />
+    <!-- Explicit pins: MCP 0.8.0 pulls in 10.x Extensions which must be deployed alongside net8.0 app -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>
