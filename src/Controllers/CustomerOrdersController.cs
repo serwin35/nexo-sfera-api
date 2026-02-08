@@ -40,11 +40,7 @@ public class CustomerOrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
 
-            var allZamowienia = new List<dynamic>();
-            foreach (var z in zamowienia.Dane.Wszystkie())
-            {
-                allZamowienia.Add(z);
-            }
+            var allZamowienia = DynamicPropertyHelper.SafeGetAll(zamowienia);
 
             // Apply filters
             var filteredList = new List<dynamic>();
@@ -221,7 +217,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             dynamic? zamowienie = null;
-            foreach (var z in zamowienia.Dane.Wszystkie())
+            foreach (var z in DynamicPropertyHelper.SafeGetAll(zamowienia))
             {
                 if (DynamicPropertyHelper.GetId(z) == id)
                 {
@@ -259,7 +255,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             dynamic? zamowienie = null;
-            foreach (var z in zamowienia.Dane.Wszystkie())
+            foreach (var z in DynamicPropertyHelper.SafeGetAll(zamowienia))
             {
                 var numerWewn = DynamicPropertyHelper.GetProperty(z, "NumerWewnetrzny");
                 var fullNumber = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura") : null;
@@ -310,7 +306,7 @@ public class CustomerOrdersController : ControllerBase
                 if (request.CustomerId.HasValue && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
                         {
@@ -326,7 +322,7 @@ public class CustomerOrdersController : ControllerBase
                 else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
                         {
@@ -344,7 +340,7 @@ public class CustomerOrdersController : ControllerBase
                 if (request.RecipientId.HasValue && podmioty != null)
                 {
                     dynamic? odbiorca = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetId(p) == request.RecipientId.Value)
                         {
@@ -365,7 +361,7 @@ public class CustomerOrdersController : ControllerBase
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in magazyny.Dane.Wszystkie())
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
                         {
                             if (request.WarehouseId.HasValue && DynamicPropertyHelper.GetId(m) == request.WarehouseId.Value)
                             {
@@ -437,7 +433,7 @@ public class CustomerOrdersController : ControllerBase
                     if (cenniki != null)
                     {
                         dynamic? poziom = null;
-                        foreach (var c in cenniki.Dane.Wszystkie())
+                        foreach (var c in DynamicPropertyHelper.SafeGetAll(cenniki))
                         {
                             if (DynamicPropertyHelper.GetId(c) == request.PriceLevelId.Value)
                             {
@@ -462,7 +458,7 @@ public class CustomerOrdersController : ControllerBase
                     {
                         if (item.ProductId.HasValue)
                         {
-                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
                                 {
@@ -473,7 +469,7 @@ public class CustomerOrdersController : ControllerBase
                         }
                         else if (!string.IsNullOrEmpty(item.ProductSymbol))
                         {
-                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
                                 {
@@ -566,7 +562,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             dynamic? zamowienieDane = null;
-            foreach (var z in zamowienia.Dane.Wszystkie())
+            foreach (var z in DynamicPropertyHelper.SafeGetAll(zamowienia))
             {
                 if (DynamicPropertyHelper.GetId(z) == id)
                 {
@@ -648,7 +644,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             dynamic? zamowienieDane = null;
-            foreach (var z in zamowienia.Dane.Wszystkie())
+            foreach (var z in DynamicPropertyHelper.SafeGetAll(zamowienia))
             {
                 if (DynamicPropertyHelper.GetId(z) == id)
                 {
@@ -703,7 +699,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             dynamic? zamowienieDane = null;
-            foreach (var z in zamowienia.Dane.Wszystkie())
+            foreach (var z in DynamicPropertyHelper.SafeGetAll(zamowienia))
             {
                 if (DynamicPropertyHelper.GetId(z) == id)
                 {
@@ -767,7 +763,7 @@ public class CustomerOrdersController : ControllerBase
             }
 
             dynamic? zamowienie = null;
-            foreach (var z in zamowienia.Dane.Wszystkie())
+            foreach (var z in DynamicPropertyHelper.SafeGetAll(zamowienia))
             {
                 if (DynamicPropertyHelper.GetId(z) == id)
                 {

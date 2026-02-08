@@ -40,7 +40,7 @@ public class WarehousesController : ControllerBase
             }
 
             var items = new List<WarehouseDto>();
-            foreach (var m in magazyny.Dane.Wszystkie())
+            foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
             {
                 items.Add(new WarehouseDto
                 {
@@ -76,7 +76,7 @@ public class WarehousesController : ControllerBase
             }
 
             dynamic? magazyn = null;
-            foreach (var m in magazyny.Dane.Wszystkie())
+            foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
             {
                 if (DynamicPropertyHelper.GetString(m, "Symbol") == symbol)
                 {

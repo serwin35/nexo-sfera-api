@@ -78,7 +78,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<SalesSummaryReportDto>.Error("Failed to get DokumentySprzedazy manager"));
             }
 
-            var allDocs = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -159,7 +159,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<ProductSalesDto>>.Error("Failed to get DokumentySprzedazy manager"));
             }
 
-            var allDocs = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -243,7 +243,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<CustomerSalesDto>>.Error("Failed to get DokumentySprzedazy manager"));
             }
 
-            var allDocs = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -321,7 +321,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<PurchaseSummaryReportDto>.Error("Failed to get DokumentyZakupu manager"));
             }
 
-            var allDocs = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDocs = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by date range
             var filteredDocs = allDocs.Where(d =>
@@ -411,7 +411,7 @@ public class ReportsController : ControllerBase
                 return StatusCode(500, ApiResponse<List<InventoryTurnoverDto>>.Error("Failed to get Asortymenty manager"));
             }
 
-            var allProducts = ((IEnumerable<dynamic>)productManager.Dane.Wszystkie()).ToList();
+            var allProducts = DynamicPropertyHelper.SafeGetAll(productManager);
 
             var result = new List<InventoryTurnoverDto>();
 

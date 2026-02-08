@@ -47,7 +47,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by year
             if (year.HasValue)
@@ -137,7 +137,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<IntrastatDeclarationDto>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
             var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
             if (deklaracja == null)
@@ -174,7 +174,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
             var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
             if (deklaracja == null)
@@ -239,7 +239,7 @@ public class IntrastatController : ControllerBase
                 return StatusCode(500, ApiResponse<IntrastatSummaryDto>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by year
             allDeklaracje = allDeklaracje.Where(d =>

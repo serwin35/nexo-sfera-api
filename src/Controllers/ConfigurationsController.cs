@@ -184,7 +184,7 @@ public class ConfigurationsController : ControllerBase
                 return StatusCode(500, ApiResponse<VatConfigDto>.Error("Failed to get StawkiVat manager"));
             }
 
-            var allRates = ((IEnumerable<dynamic>)vatManager.Dane.Wszystkie()).ToList();
+            var allRates = DynamicPropertyHelper.SafeGetAll(vatManager);
             var rates = new List<VatRateConfigDto>();
 
             foreach (var rate in allRates)
@@ -236,7 +236,7 @@ public class ConfigurationsController : ControllerBase
                 return StatusCode(500, ApiResponse<CurrencyConfigDto>.Error("Failed to get Waluty manager"));
             }
 
-            var allCurrencies = ((IEnumerable<dynamic>)currencyManager.Dane.Wszystkie()).ToList();
+            var allCurrencies = DynamicPropertyHelper.SafeGetAll(currencyManager);
             var currencies = new List<CurrencyItemDto>();
 
             foreach (var curr in allCurrencies)
@@ -287,7 +287,7 @@ public class ConfigurationsController : ControllerBase
                 return StatusCode(500, ApiResponse<PaymentConfigDto>.Error("Failed to get FormyPlatnosci manager"));
             }
 
-            var allPayments = ((IEnumerable<dynamic>)paymentManager.Dane.Wszystkie()).ToList();
+            var allPayments = DynamicPropertyHelper.SafeGetAll(paymentManager);
             var methods = new List<PaymentMethodConfigDto>();
 
             foreach (var pm in allPayments)

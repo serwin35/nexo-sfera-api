@@ -41,7 +41,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<List<PrintHeaderDto>>.Error("Failed to get NaglowkiWydruku manager"));
             }
 
-            var allHeaders = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allHeaders = DynamicPropertyHelper.SafeGetAll(manager);
             var items = new List<PrintHeaderDto>();
 
             foreach (var h in allHeaders)
@@ -81,7 +81,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<PrintHeaderDto>.Error("Failed to get NaglowkiWydruku manager"));
             }
 
-            var allHeaders = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allHeaders = DynamicPropertyHelper.SafeGetAll(manager);
             var header = allHeaders.FirstOrDefault(h => DynamicPropertyHelper.GetId(h) == id);
 
             if (header == null)
@@ -122,7 +122,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<List<PrintFooterDto>>.Error("Failed to get StopkiWydruku manager"));
             }
 
-            var allFooters = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allFooters = DynamicPropertyHelper.SafeGetAll(manager);
             var items = new List<PrintFooterDto>();
 
             foreach (var f in allFooters)
@@ -162,7 +162,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<PrintFooterDto>.Error("Failed to get StopkiWydruku manager"));
             }
 
-            var allFooters = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allFooters = DynamicPropertyHelper.SafeGetAll(manager);
             var footer = allFooters.FirstOrDefault(f => DynamicPropertyHelper.GetId(f) == id);
 
             if (footer == null)
@@ -207,7 +207,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<List<PrintParameterDto>>.Error("Failed to get ParametryWydruku manager"));
             }
 
-            var allParams = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allParams = DynamicPropertyHelper.SafeGetAll(manager);
             var items = new List<PrintParameterDto>();
 
             foreach (var p in allParams)
@@ -254,7 +254,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get LogaWydruku manager"));
             }
 
-            var allLogs = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allLogs = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter by date range
             if (dateFrom.HasValue)
@@ -341,7 +341,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<List<LabelTemplateDto>>.Error("Failed to get SzablonyNaklejek manager"));
             }
 
-            var allTemplates = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allTemplates = DynamicPropertyHelper.SafeGetAll(manager);
             var items = new List<LabelTemplateDto>();
 
             foreach (var t in allTemplates)
@@ -382,7 +382,7 @@ public class PrintController : ControllerBase
                 return StatusCode(500, ApiResponse<LabelTemplateDto>.Error("Failed to get SzablonyNaklejek manager"));
             }
 
-            var allTemplates = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allTemplates = DynamicPropertyHelper.SafeGetAll(manager);
             var template = allTemplates.FirstOrDefault(t => DynamicPropertyHelper.GetId(t) == id);
 
             if (template == null)

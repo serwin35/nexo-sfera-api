@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
+using NexoSferaApi.Helpers;
 
 namespace NexoSferaApi.Controllers;
 

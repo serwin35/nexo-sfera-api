@@ -46,7 +46,7 @@ public class DeclarationsController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Deklaracje manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter VAT declarations only (type = VAT)
             allDeklaracje = allDeklaracje.Where(d =>
@@ -130,7 +130,7 @@ public class DeclarationsController : ControllerBase
                 return StatusCode(500, ApiResponse<VatDeclarationDto>.Error("Failed to get Deklaracje manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
             var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
             if (deklaracja == null)
@@ -162,7 +162,7 @@ public class DeclarationsController : ControllerBase
                 return StatusCode(500, ApiResponse<VatDeclarationSummaryDto>.Error("Failed to get Deklaracje manager"));
             }
 
-            var allDeklaracje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allDeklaracje = DynamicPropertyHelper.SafeGetAll(manager);
 
             // Filter VAT declarations for the specified year
             var yearDeklaracje = allDeklaracje.Where(d =>

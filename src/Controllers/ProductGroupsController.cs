@@ -41,7 +41,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             var allGrupy = new List<dynamic>();
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 allGrupy.Add(g);
             }
@@ -155,7 +155,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             var allGrupy = new List<dynamic>();
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
                 if (!isDeleted)
@@ -232,7 +232,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             dynamic? grupa = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetId(g) == id)
                 {
@@ -270,7 +270,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             dynamic? grupa = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
                 {
@@ -308,7 +308,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             var children = new List<ProductGroupListItemDto>();
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
                 var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
@@ -347,7 +347,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             // Check if symbol already exists
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
                 {
@@ -370,7 +370,7 @@ public class ProductGroupsController : ControllerBase
                 if (request.ParentId.HasValue)
                 {
                     dynamic? rodzic = null;
-                    foreach (var g in grupy.Dane.Wszystkie())
+                    foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
                     {
                         if (DynamicPropertyHelper.GetId(g) == request.ParentId.Value)
                         {
@@ -396,7 +396,7 @@ public class ProductGroupsController : ControllerBase
                     var cenniki = _sferaService.GetManager("Cenniki");
                     if (cenniki != null)
                     {
-                        foreach (var c in cenniki.Dane.Wszystkie())
+                        foreach (var c in DynamicPropertyHelper.SafeGetAll(cenniki))
                         {
                             if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
                             {
@@ -413,7 +413,7 @@ public class ProductGroupsController : ControllerBase
                     var stawkiVat = _sferaService.GetManager("StawkiVat");
                     if (stawkiVat != null)
                     {
-                        foreach (var sv in stawkiVat.Dane.Wszystkie())
+                        foreach (var sv in DynamicPropertyHelper.SafeGetAll(stawkiVat))
                         {
                             if (DynamicPropertyHelper.GetId(sv) == request.DefaultVatRateId.Value)
                             {
@@ -461,7 +461,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetId(g) == id)
                 {
@@ -504,7 +504,7 @@ public class ProductGroupsController : ControllerBase
                     var cenniki = _sferaService.GetManager("Cenniki");
                     if (cenniki != null)
                     {
-                        foreach (var c in cenniki.Dane.Wszystkie())
+                        foreach (var c in DynamicPropertyHelper.SafeGetAll(cenniki))
                         {
                             if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
                             {
@@ -520,7 +520,7 @@ public class ProductGroupsController : ControllerBase
                     var stawkiVat = _sferaService.GetManager("StawkiVat");
                     if (stawkiVat != null)
                     {
-                        foreach (var sv in stawkiVat.Dane.Wszystkie())
+                        foreach (var sv in DynamicPropertyHelper.SafeGetAll(stawkiVat))
                         {
                             if (DynamicPropertyHelper.GetId(sv) == request.DefaultVatRateId.Value)
                             {
@@ -570,7 +570,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetId(g) == id)
                 {
@@ -602,7 +602,7 @@ public class ProductGroupsController : ControllerBase
                 if (request.NewParentId.HasValue)
                 {
                     dynamic? nowyRodzic = null;
-                    foreach (var g in grupy.Dane.Wszystkie())
+                    foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
                     {
                         if (DynamicPropertyHelper.GetId(g) == request.NewParentId.Value)
                         {
@@ -655,7 +655,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetId(g) == id)
                 {
@@ -710,7 +710,7 @@ public class ProductGroupsController : ControllerBase
             }
 
             dynamic? grupaDane = null;
-            foreach (var g in grupy.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
             {
                 if (DynamicPropertyHelper.GetId(g) == id)
                 {
@@ -734,7 +734,7 @@ public class ProductGroupsController : ControllerBase
             foreach (var productId in request.ProductIds)
             {
                 dynamic? asortymentDane = null;
-                foreach (var a in asortymenty.Dane.Wszystkie())
+                foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                 {
                     if (DynamicPropertyHelper.GetId(a) == productId)
                     {
@@ -784,7 +784,7 @@ public class ProductGroupsController : ControllerBase
             if (asortymenty == null) return 0;
 
             int count = 0;
-            foreach (var a in asortymenty.Dane.Wszystkie())
+            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
             {
                 var grupa = DynamicPropertyHelper.GetProperty(a, "Grupa");
                 if (grupa != null && DynamicPropertyHelper.GetId(grupa) == groupId)
@@ -826,7 +826,7 @@ public class ProductGroupsController : ControllerBase
 
         // Count children
         int childCount = 0;
-        foreach (var g in grupy.Dane.Wszystkie())
+        foreach (var g in DynamicPropertyHelper.SafeGetAll(grupy))
         {
             var p = DynamicPropertyHelper.GetProperty(g, "Rodzic");
             if (p != null && DynamicPropertyHelper.GetId(p) == groupId)

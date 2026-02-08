@@ -258,7 +258,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -333,7 +333,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -439,7 +439,7 @@ public class CustomersController : ControllerBase
 
             // First find the entity
             dynamic? podmiotDane = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -591,7 +591,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -720,7 +720,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -798,7 +798,7 @@ public class CustomersController : ControllerBase
             }
 
             var allPodmioty = new List<dynamic>();
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 allPodmioty.Add(p);
             }
@@ -914,7 +914,7 @@ public class CustomersController : ControllerBase
             }
 
             dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 if (DynamicPropertyHelper.GetId(p) == id)
                 {
@@ -953,7 +953,7 @@ public class CustomersController : ControllerBase
 
             var cleanNip = nip.Replace("-", "").Replace(" ", "");
             dynamic? podmiot = null;
-            foreach (var p in podmioty.Dane.Wszystkie())
+            foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
             {
                 var podmiotNip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
                 if (podmiotNip == cleanNip || podmiotNip == nip)
@@ -996,7 +996,7 @@ public class CustomersController : ControllerBase
 
                 // Check if symbol already exists
                 dynamic? existing = null;
-                foreach (var p in podmioty.Dane.Wszystkie())
+                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                 {
                     if (DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol)
                     {
@@ -1152,7 +1152,7 @@ public class CustomersController : ControllerBase
                 }
 
                 dynamic? podmiot = null;
-                foreach (var p in podmioty.Dane.Wszystkie())
+                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                 {
                     if (DynamicPropertyHelper.GetId(p) == id)
                     {
@@ -1250,7 +1250,7 @@ public class CustomersController : ControllerBase
                 }
 
                 dynamic? podmiot = null;
-                foreach (var p in podmioty.Dane.Wszystkie())
+                foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                 {
                     if (DynamicPropertyHelper.GetId(p) == id)
                     {
