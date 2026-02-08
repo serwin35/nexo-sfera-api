@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "nexo-erp": {
+      "type": "sse",
+      "url": "http://localhost:5000/sse"
+    }
+  }
+}
