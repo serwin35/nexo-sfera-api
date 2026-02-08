@@ -243,7 +243,6 @@ public class SettingsController : ControllerBase
             result.Updated = false;
             result.RequiresRestart = true;
             result.Message = "In Production, update settings using environment variables and restart the service.";
-using NexoSferaApi.Helpers;
             result.EnvironmentVariables = new Dictionary<string, string>
             {
                 { "SFERA_SERVER", request.Server },
