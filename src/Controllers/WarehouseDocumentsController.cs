@@ -254,7 +254,7 @@ public class WarehouseDocumentsController : ControllerBase
                             if (pracownicyManager != null)
                             {
                                 dynamic? pracownik = null;
-                                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)pracownicyManager))
+                                foreach (dynamic p in DynamicPropertyHelper.SafeGetAll((object)pracownicyManager))
                                 {
                                     if ((int)p.Id == request.WystawilaOsobaId.Value)
                                     {

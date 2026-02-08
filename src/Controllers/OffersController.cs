@@ -51,7 +51,7 @@ public class OffersController : ControllerBase
             }
 
             var oferty = new List<object>();
-            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 oferty.Add(o);
             }
@@ -59,7 +59,7 @@ public class OffersController : ControllerBase
             if (customerId.HasValue)
             {
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try { if (o.Podmiot?.Id == customerId.Value) filtered.Add(o); }
                     catch { }
@@ -70,7 +70,7 @@ public class OffersController : ControllerBase
             if (dateFrom.HasValue)
             {
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try { if ((DateTime?)o.DataWystawienia >= dateFrom.Value) filtered.Add(o); }
                     catch { }
@@ -81,7 +81,7 @@ public class OffersController : ControllerBase
             if (dateTo.HasValue)
             {
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try { if ((DateTime?)o.DataWystawienia <= dateTo.Value) filtered.Add(o); }
                     catch { }
@@ -92,7 +92,7 @@ public class OffersController : ControllerBase
             if (closedOnly.HasValue && closedOnly.Value)
             {
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try { if ((bool?)o.Zamkniety == true) filtered.Add(o); }
                     catch { }
@@ -103,7 +103,7 @@ public class OffersController : ControllerBase
             if (acceptedOnly.HasValue && acceptedOnly.Value)
             {
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try { if ((bool?)o.Zaakceptowany == true) filtered.Add(o); }
                     catch { }
@@ -115,7 +115,7 @@ public class OffersController : ControllerBase
             {
                 var now = DateTime.Now;
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try
                     {
@@ -133,7 +133,7 @@ public class OffersController : ControllerBase
 
             // Sort by DataWystawienia descending
             var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
-            foreach (var o in oferty)
+            foreach (dynamic o in oferty)
             {
                 DateTime? data = null;
                 try { data = (DateTime?)o.DataWystawienia; } catch { }
@@ -185,7 +185,7 @@ public class OffersController : ControllerBase
             }
 
             dynamic? oferta = null;
-            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 if ((int)o.Id == id)
                 {
@@ -226,7 +226,7 @@ public class OffersController : ControllerBase
             }
 
             dynamic? oferta = null;
-            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 try
                 {
@@ -273,7 +273,7 @@ public class OffersController : ControllerBase
             }
 
             var oferty = new List<object>();
-            foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
             {
                 try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
                 catch { }
@@ -283,7 +283,7 @@ public class OffersController : ControllerBase
             {
                 var now = DateTime.Now;
                 var filtered = new List<object>();
-                foreach (var o in oferty)
+                foreach (dynamic o in oferty)
                 {
                     try
                     {
@@ -302,7 +302,7 @@ public class OffersController : ControllerBase
 
             // Sort by DataWystawienia descending
             var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
-            foreach (var o in oferty)
+            foreach (dynamic o in oferty)
             {
                 DateTime? data = null;
                 try { data = (DateTime?)o.DataWystawienia; } catch { }
@@ -364,7 +364,7 @@ public class OffersController : ControllerBase
                     dynamic? podmiot = null;
                     if (podmiotyManager != null)
                     {
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
+                        foreach (dynamic p in DynamicPropertyHelper.SafeGetAll((object)podmiotyManager))
                         {
                             if ((int)p.Id == request.CustomerId)
                             {
@@ -422,7 +422,7 @@ public class OffersController : ControllerBase
                         foreach (var item in request.Items)
                         {
                             dynamic? asortyment = null;
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                            foreach (dynamic a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                             {
                                 if ((int)a.Id == item.ProductId)
                                 {
@@ -516,7 +516,7 @@ public class OffersController : ControllerBase
                 }
 
                 dynamic? ofertaDane = null;
-                foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+                foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
                     if ((int)o.Id == id)
                     {
@@ -594,7 +594,7 @@ public class OffersController : ControllerBase
                 }
 
                 dynamic? ofertaDane = null;
-                foreach (var o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+                foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
                     if ((int)o.Id == id)
                     {
