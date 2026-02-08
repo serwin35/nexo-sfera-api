@@ -6412,15 +6412,15 @@ public class DocumentsController : ControllerBase
             Id = DynamicPropertyHelper.GetId(poz),
             LineNumber = lineNum,
 
-            // Product reference - AsortymentWybrany is the correct path for all document types
-            ProductId = DynamicPropertyHelper.GetNullableInt(dane, "AsortymentWybrany", "Id") ??
-                        DynamicPropertyHelper.GetNullableInt(dane, "Asortyment", "Id") ??
-                        DynamicPropertyHelper.GetNullableInt(poz, "AsortymentWybrany", "Id"),
-            ProductSymbol = DynamicPropertyHelper.GetString(dane, "AsortymentWybrany", "Symbol")
-                         ?? DynamicPropertyHelper.GetString(dane, "Asortyment", "Symbol")
+            // Product reference - base Asortyment first (matches Products API), AsortymentWybrany as fallback
+            ProductId = DynamicPropertyHelper.GetNullableInt(dane, "Asortyment", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(dane, "AsortymentId"),
+            ProductSymbol = DynamicPropertyHelper.GetString(dane, "Asortyment", "Symbol")
+                         ?? DynamicPropertyHelper.GetString(dane, "AsortymentWybrany", "Symbol")
                          ?? DynamicPropertyHelper.GetString(dane, "SymbolAsortymentu"),
-            ProductName = DynamicPropertyHelper.GetString(dane, "AsortymentWybrany", "Nazwa")
-                       ?? DynamicPropertyHelper.GetString(dane, "Asortyment", "Nazwa")
+            ProductName = DynamicPropertyHelper.GetString(dane, "Asortyment", "Nazwa")
+                       ?? DynamicPropertyHelper.GetString(dane, "AsortymentWybrany", "Nazwa")
                        ?? DynamicPropertyHelper.GetString(dane, "NazwaAsortymentu"),
 
             // Item details
