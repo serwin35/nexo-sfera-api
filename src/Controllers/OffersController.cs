@@ -722,25 +722,40 @@ public class OffersController : ControllerBase
                     int lineNum = 1;
                     foreach (var poz in pozycje)
                     {
+                        var dane = DynamicPropertyHelper.GetDane(poz);
+                        var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
+                        var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena");
+                        var priceGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto");
+                        var valueNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc");
+                        var valueGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto");
+
                         dto.Items.Add(new OfferItemDto
                         {
-                            Id = (int)poz.Id,
+                            Id = DynamicPropertyHelper.GetId(poz),
                             LineNumber = lineNum++,
-                            ProductId = GetDynamicNullableInt(poz, "Asortyment", "Id"),
-                            ProductSymbol = GetDynamicString(poz, "Asortyment", "Symbol"),
-                            ProductName = GetDynamicString(poz, "Nazwa"),
-                            ProductDescription = GetDynamicString(poz, "Asortyment", "Opis"),
-                            Quantity = GetDynamicDecimal(poz, "Ilosc"),
-                            UnitSymbol = GetDynamicString(poz, "Jednostka", "Symbol") ?? "szt.",
-                            UnitPriceNet = GetDynamicDecimal(poz, "CenaNetto"),
-                            UnitPriceGross = GetDynamicDecimal(poz, "CenaBrutto"),
-                            DiscountPercent = GetDynamicNullableDecimal(poz, "RabatProcent"),
-                            DiscountValue = GetDynamicDecimal(poz, "RabatWartosc"),
-                            NetValue = GetDynamicDecimal(poz, "WartoscNetto"),
-                            GrossValue = GetDynamicDecimal(poz, "WartoscBrutto"),
-                            TaxValue = GetDynamicDecimal(poz, "WartoscVat"),
-                            VatRateSymbol = GetDynamicString(poz, "StawkaVat", "Symbol"),
-                            VatRate = GetDynamicNullableDecimal(poz, "StawkaVat", "Stawka")
+                            ProductId = DynamicPropertyHelper.GetNullableInt(dane, "Asortyment", "Id")
+                                     ?? GetDynamicNullableInt(poz, "Asortyment", "Id"),
+                            ProductSymbol = DynamicPropertyHelper.GetString(dane, "Asortyment", "Symbol")
+                                         ?? GetDynamicString(poz, "Asortyment", "Symbol"),
+                            ProductName = DynamicPropertyHelper.GetString(dane, "Nazwa")
+                                       ?? GetDynamicString(poz, "Nazwa"),
+                            ProductDescription = DynamicPropertyHelper.GetString(dane, "Asortyment", "Opis")
+                                              ?? GetDynamicString(poz, "Asortyment", "Opis"),
+                            Quantity = quantity,
+                            UnitSymbol = DynamicPropertyHelper.GetString(dane, "Jednostka", "Symbol")
+                                      ?? GetDynamicString(poz, "Jednostka", "Symbol") ?? "szt.",
+                            UnitPriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
+                            UnitPriceGross = priceGross != 0 ? priceGross : (valueGross != 0 && quantity != 0 ? valueGross / quantity : 0),
+                            DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "RabatProcent")
+                                           ?? GetDynamicNullableDecimal(poz, "RabatProcent"),
+                            DiscountValue = DynamicPropertyHelper.GetDecimalFirstOf(dane, "RabatWartosc", "RabatKwota"),
+                            NetValue = valueNet,
+                            GrossValue = valueGross,
+                            TaxValue = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
+                            VatRateSymbol = DynamicPropertyHelper.GetString(dane, "StawkaVat", "Symbol")
+                                         ?? GetDynamicString(poz, "StawkaVat", "Symbol"),
+                            VatRate = DynamicPropertyHelper.GetNullableDecimal(dane, "StawkaVat", "Stawka")
+                                   ?? GetDynamicNullableDecimal(poz, "StawkaVat", "Stawka")
                         });
                     }
                 }

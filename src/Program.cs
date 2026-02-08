@@ -1,5 +1,6 @@
 using System.Reflection;
 using Microsoft.OpenApi.Models;
+using ModelContextProtocol.AspNetCore;
 using NexoSferaApi.Configuration;
 using NexoSferaApi.Services;
 using NexoSferaApi.Middleware;
@@ -204,6 +205,11 @@ builder.Services.AddSingleton<ISferaService, SferaService>();
 builder.Services.AddSingleton<StockValidationHelper>();
 builder.Services.AddSingleton<ProductSymbolService>();
 
+// Register MCP (Model Context Protocol) server for AI agent integration
+builder.Services.AddMcpServer()
+    .WithHttpTransport()
+    .WithToolsFromAssembly();
+
 // Add CORS if needed
 builder.Services.AddCors(options =>
 {
@@ -245,6 +251,9 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// MCP server endpoints: /sse (GET) and /messages (POST) for AI agent integration
+app.MapMcp();
 
 // Initialize Sfera connection on startup
 var sferaService = app.Services.GetRequiredService<ISferaService>();
