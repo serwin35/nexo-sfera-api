@@ -148,19 +148,23 @@ public class DocumentTools(ISferaService sferaService, ILogger<DocumentTools> lo
                     var pozycje = DynamicPropertyHelper.GetCollection((object)doc, "Pozycje");
                     foreach (var poz in pozycje)
                     {
+                        var pozDane = DynamicPropertyHelper.GetDane(poz);
+                        var cena = DynamicPropertyHelper.GetProperty(pozDane, "Cena");
+                        var wartosc = DynamicPropertyHelper.GetProperty(pozDane, "Wartosc");
+
                         items.Add(new
                         {
-                            productSymbol = DynamicPropertyHelper.GetString(poz, "Towar", "Symbol")
-                                ?? DynamicPropertyHelper.GetNestedString(poz, "Towar", "Symbol"),
-                            productName = DynamicPropertyHelper.GetString(poz, "Towar", "Nazwa")
-                                ?? DynamicPropertyHelper.GetNestedString(poz, "Towar", "Nazwa"),
-                            quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
-                            unit = DynamicPropertyHelper.GetString(poz, "Jednostka", "Symbol"),
-                            priceNet = DynamicPropertyHelper.GetDecimal(poz, "CenaNetto"),
-                            priceGross = DynamicPropertyHelper.GetDecimal(poz, "CenaBrutto"),
-                            valueNet = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto"),
-                            valueGross = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto"),
-                            vatRate = DynamicPropertyHelper.GetString(poz, "StawkaVat", "Wartosc"),
+                            productSymbol = DynamicPropertyHelper.GetString(pozDane, "AsortymentWybrany", "Symbol")
+                                ?? DynamicPropertyHelper.GetString(pozDane, "Asortyment", "Symbol"),
+                            productName = DynamicPropertyHelper.GetString(pozDane, "AsortymentWybrany", "Nazwa")
+                                ?? DynamicPropertyHelper.GetString(pozDane, "Asortyment", "Nazwa"),
+                            quantity = DynamicPropertyHelper.GetDecimal(pozDane, "Ilosc"),
+                            unit = DynamicPropertyHelper.GetString(pozDane, "Jednostka", "Symbol"),
+                            priceNet = DynamicPropertyHelper.GetDecimal(cena, "NettoPoRabacie"),
+                            priceGross = DynamicPropertyHelper.GetDecimal(cena, "BruttoPoRabacie"),
+                            valueNet = DynamicPropertyHelper.GetDecimal(wartosc, "NettoPoRabacie"),
+                            valueGross = DynamicPropertyHelper.GetDecimal(wartosc, "BruttoPoRabacie"),
+                            vatRate = DynamicPropertyHelper.GetString(pozDane, "StawkaVat", "Wartosc"),
                         });
                     }
                 }
