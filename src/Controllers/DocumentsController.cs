@@ -6412,18 +6412,16 @@ public class DocumentsController : ControllerBase
             Id = DynamicPropertyHelper.GetId(poz),
             LineNumber = lineNum,
 
-            // Product reference - try multiple paths
-            ProductId = DynamicPropertyHelper.GetNullableInt(dane, "Asortyment", "Id") ??
-                        DynamicPropertyHelper.GetNullableInt(poz, "Asortyment", "Id") ??
-                        DynamicPropertyHelper.GetNullableInt(dane, "AsortymentId") ??
-                        DynamicPropertyHelper.GetNullableInt(dane, "AsortymentWybranyId"),
-            ProductSymbol = DynamicPropertyHelper.GetString(dane, "Asortyment", "Symbol")
-                         ?? DynamicPropertyHelper.GetString(poz, "Asortyment", "Symbol")
+            // Product reference - AsortymentWybrany is the correct path for all document types
+            ProductId = DynamicPropertyHelper.GetNullableInt(dane, "AsortymentWybrany", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(dane, "Asortyment", "Id") ??
+                        DynamicPropertyHelper.GetNullableInt(poz, "AsortymentWybrany", "Id"),
+            ProductSymbol = DynamicPropertyHelper.GetString(dane, "AsortymentWybrany", "Symbol")
+                         ?? DynamicPropertyHelper.GetString(dane, "Asortyment", "Symbol")
                          ?? DynamicPropertyHelper.GetString(dane, "SymbolAsortymentu"),
-            ProductName = DynamicPropertyHelper.GetString(dane, "Asortyment", "Nazwa")
-                       ?? DynamicPropertyHelper.GetString(poz, "Asortyment", "Nazwa")
-                       ?? DynamicPropertyHelper.GetString(dane, "NazwaAsortymentu")
-                       ?? DynamicPropertyHelper.GetString(dane, "NazwaTowaru"),
+            ProductName = DynamicPropertyHelper.GetString(dane, "AsortymentWybrany", "Nazwa")
+                       ?? DynamicPropertyHelper.GetString(dane, "Asortyment", "Nazwa")
+                       ?? DynamicPropertyHelper.GetString(dane, "NazwaAsortymentu"),
 
             // Item details
             Name = DynamicPropertyHelper.GetString(dane, "Nazwa")
@@ -6442,11 +6440,15 @@ public class DocumentsController : ControllerBase
                     ?? DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Nazwa"),
             UnitId = DynamicPropertyHelper.GetNullableInt(dane, "JednostkaMiaryAsId"),
 
-            // Prices - try multiple property names
-            PriceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena"),
-            PriceGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto"),
-            OriginalPriceNet = DynamicPropertyHelper.GetNullableDecimal(dane, "CenaNettoOryginalna")
-                            ?? DynamicPropertyHelper.GetNullableDecimal(dane, "CenaNettoKatalogowa"),
+            // Prices - Cena sub-object has NettoPoRabacie/BruttoPoRabacie
+            PriceNet = DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "NettoPoRabacie") > 0
+                     ? DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "NettoPoRabacie")
+                     : DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "Cena"),
+            PriceGross = DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "BruttoPoRabacie") > 0
+                       ? DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "BruttoPoRabacie")
+                       : DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaBrutto", "CenaJednostkowaBrutto"),
+            OriginalPriceNet = DynamicPropertyHelper.GetNullableDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "NettoPrzedRabatem")
+                            ?? DynamicPropertyHelper.GetNullableDecimal(dane, "CenaNettoOryginalna"),
 
             // Discount
             DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "RabatProcent")
@@ -6462,10 +6464,16 @@ public class DocumentsController : ControllerBase
             VatPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "StawkaVat", "Wartosc")
                       ?? DynamicPropertyHelper.GetNullableDecimal(dane, "StawkaVatProcent"),
 
-            // Values - try multiple property names
-            ValueNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc"),
-            ValueVat = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
-            ValueGross = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto"),
+            // Values - Wartosc sub-object has NettoPoRabacie/BruttoPoRabacie/VatPoRabacie
+            ValueNet = DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Wartosc"), "NettoPoRabacie") > 0
+                     ? DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Wartosc"), "NettoPoRabacie")
+                     : DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscNetto", "Wartosc"),
+            ValueVat = DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Wartosc"), "VatPoRabacie") > 0
+                     ? DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Wartosc"), "VatPoRabacie")
+                     : DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
+            ValueGross = DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Wartosc"), "BruttoPoRabacie") > 0
+                       ? DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Wartosc"), "BruttoPoRabacie")
+                       : DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscBrutto"),
 
             // Cost and margin
             Cost = DynamicPropertyHelper.GetNullableDecimal(dane, "KosztEwidencyjny")
