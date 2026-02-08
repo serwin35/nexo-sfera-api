@@ -11,7 +11,7 @@ Serwer MCP (Model Context Protocol) wbudowany w Nexo Sfera API umożliwia agento
 ## Endpoint
 
 ```
-http://<adres-serwera>:5000/sse
+http://<adres-serwera>:5000/mcp
 ```
 
 Domyślnie API nasłuchuje na porcie `5000` (konfigurowalne w `appsettings.json`).
@@ -28,7 +28,7 @@ Plik: `%APPDATA%\Claude\claude_desktop_config.json` (Windows) lub `~/Library/App
 {
   "mcpServers": {
     "nexo-erp": {
-      "url": "http://localhost:5000/sse"
+      "url": "http://localhost:5000/mcp"
     }
   }
 }
@@ -43,7 +43,7 @@ Plik `.mcp.json` w katalogu projektu (już dołączony w repo):
   "mcpServers": {
     "nexo-erp": {
       "type": "sse",
-      "url": "http://localhost:5000/sse"
+      "url": "http://localhost:5000/mcp"
     }
   }
 }
@@ -54,11 +54,11 @@ Plik `.mcp.json` w katalogu projektu (już dołączony w repo):
 Settings > MCP Servers > Add:
 - Name: `nexo-erp`
 - Transport: `sse`
-- URL: `http://localhost:5000/sse`
+- URL: `http://localhost:5000/mcp`
 
 ### Windsurf / Continue.dev / inne
 
-Większość klientów MCP wspiera transport SSE. Podaj URL: `http://localhost:5000/sse`
+Większość klientów MCP wspiera transport SSE. Podaj URL: `http://localhost:5000/mcp`
 
 ### MCP Inspector (testowanie)
 
@@ -66,7 +66,7 @@ Większość klientów MCP wspiera transport SSE. Podaj URL: `http://localhost:5
 npx @modelcontextprotocol/inspector
 ```
 
-Wpisz URL: `http://localhost:5000/sse` - zobaczysz listę 18 dostępnych narzędzi.
+Wpisz URL: `http://localhost:5000/mcp` - zobaczysz listę 18 dostępnych narzędzi.
 
 ## Dostępne narzędzia (18)
 
