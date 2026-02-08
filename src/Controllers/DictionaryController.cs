@@ -41,7 +41,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<VatRateDto>>.Error("Failed to get StawkiVat manager"));
             }
-            var allStawki = ((IEnumerable<dynamic>)stawkiManager.Dane.Wszystkie()).ToList();
+            var allStawki = DynamicPropertyHelper.SafeGetAll(stawkiManager);
 
             if (activeOnly == true)
             {
@@ -92,7 +92,7 @@ public class DictionaryController : ControllerBase
         {
             var stawkiManager = _sferaService.GetManager("StawkiVat");
             if (stawkiManager == null) return StatusCode(500, ApiResponse<VatRateDto>.Error("Failed to get StawkiVat manager"));
-            var allStawki = ((IEnumerable<dynamic>)stawkiManager.Dane.Wszystkie()).ToList();
+            var allStawki = DynamicPropertyHelper.SafeGetAll(stawkiManager);
             var stawka = allStawki.FirstOrDefault(s =>
                 DynamicPropertyHelper.GetString(s, "Symbol") == symbol);
 
@@ -151,7 +151,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<UnitOfMeasureDto>>.Error("Failed to get JednostkiMiar manager"));
             }
-            var allJednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
+            var allJednostki = DynamicPropertyHelper.SafeGetAll(jednostkiManager);
 
             if (activeOnly == true)
             {
@@ -204,7 +204,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<UnitOfMeasureDto>.Error("Failed to get JednostkiMiar manager"));
             }
-            var allJednostki = ((IEnumerable<dynamic>)jednostkiManager.Dane.Wszystkie()).ToList();
+            var allJednostki = DynamicPropertyHelper.SafeGetAll(jednostkiManager);
             var jednostka = allJednostki.FirstOrDefault(j =>
                 DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
 
@@ -251,7 +251,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<ProductGroupDto>>.Error("Failed to get GrupyAsortymentu manager"));
             }
-            var allGrupy = ((IEnumerable<dynamic>)grupyManager.Dane.Wszystkie()).ToList();
+            var allGrupy = DynamicPropertyHelper.SafeGetAll(grupyManager);
 
             if (activeOnly == true)
             {
@@ -343,7 +343,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
             }
-            var allGrupy = ((IEnumerable<dynamic>)grupyManager.Dane.Wszystkie()).ToList();
+            var allGrupy = DynamicPropertyHelper.SafeGetAll(grupyManager);
             var grupa = allGrupy.FirstOrDefault(g =>
                 DynamicPropertyHelper.GetString(g, "Symbol") == symbol);
 
@@ -394,7 +394,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<PriceLevelDto>>.Error("Failed to get PoziomyCen manager"));
             }
-            var allPoziomy = ((IEnumerable<dynamic>)poziomyManager.Dane.Wszystkie()).ToList();
+            var allPoziomy = DynamicPropertyHelper.SafeGetAll(poziomyManager);
 
             if (activeOnly == true)
             {
@@ -449,7 +449,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<PriceLevelDto>.Error("Failed to get PoziomyCen manager"));
             }
-            var allPoziomy = ((IEnumerable<dynamic>)poziomyManager.Dane.Wszystkie()).ToList();
+            var allPoziomy = DynamicPropertyHelper.SafeGetAll(poziomyManager);
             var poziom = allPoziomy.FirstOrDefault(p =>
                 DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
 
@@ -496,7 +496,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<PriceListDto>>.Error("Failed to get Cenniki manager"));
             }
-            var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
+            var allCenniki = DynamicPropertyHelper.SafeGetAll(cennikiManager);
 
             if (activeOnly == true)
             {
@@ -556,7 +556,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<PriceListDto>.Error("Failed to get Cenniki manager"));
             }
-            var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
+            var allCenniki = DynamicPropertyHelper.SafeGetAll(cennikiManager);
             var cennik = allCenniki.FirstOrDefault(c =>
                 DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
 
@@ -610,7 +610,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Cenniki manager"));
             }
-            var allCenniki = ((IEnumerable<dynamic>)cennikiManager.Dane.Wszystkie()).ToList();
+            var allCenniki = DynamicPropertyHelper.SafeGetAll(cennikiManager);
             var cennik = allCenniki.FirstOrDefault(c =>
                 DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
 
@@ -711,7 +711,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<CurrencyDto>>.Error("Failed to get Waluty manager"));
             }
-            var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
+            var allWaluty = DynamicPropertyHelper.SafeGetAll(walutyManager);
 
             if (activeOnly == true)
             {
@@ -771,7 +771,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Failed to get Waluty manager"));
             }
-            var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
+            var allWaluty = DynamicPropertyHelper.SafeGetAll(walutyManager);
 
             var waluta = allWaluty.FirstOrDefault(w =>
                 DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
@@ -847,7 +847,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Failed to get Waluty manager"));
             }
-            var allWaluty = ((IEnumerable<dynamic>)walutyManager.Dane.Wszystkie()).ToList();
+            var allWaluty = DynamicPropertyHelper.SafeGetAll(walutyManager);
 
             var waluta = allWaluty.FirstOrDefault(w =>
                 DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
@@ -919,7 +919,7 @@ public class DictionaryController : ControllerBase
             {
                 return StatusCode(500, ApiResponse<List<PaymentMethodDto>>.Error("Failed to get FormyPlatnosci manager"));
             }
-            var allFormy = ((IEnumerable<dynamic>)formyManager.Dane.Wszystkie()).ToList();
+            var allFormy = DynamicPropertyHelper.SafeGetAll(formyManager);
 
             if (activeOnly == true)
             {
@@ -991,7 +991,7 @@ public class DictionaryController : ControllerBase
                 return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiKasowych manager"));
             }
 
-            var allRodzaje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allRodzaje = DynamicPropertyHelper.SafeGetAll(manager);
 
             if (activeOnly == true)
             {
@@ -1061,7 +1061,7 @@ public class DictionaryController : ControllerBase
                 return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiBankowych manager"));
             }
 
-            var allRodzaje = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allRodzaje = DynamicPropertyHelper.SafeGetAll(manager);
 
             if (activeOnly == true)
             {
@@ -1134,7 +1134,7 @@ public class DictionaryController : ControllerBase
                 return StatusCode(500, ApiResponse<List<CountryDto>>.Error("Failed to get Panstwa manager"));
             }
 
-            var allPanstwa = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allPanstwa = DynamicPropertyHelper.SafeGetAll(manager);
 
             if (activeOnly == true)
             {
@@ -1205,7 +1205,7 @@ public class DictionaryController : ControllerBase
                 return StatusCode(500, ApiResponse<CountryDto>.Error("Failed to get Panstwa manager"));
             }
 
-            var allPanstwa = ((IEnumerable<dynamic>)manager.Dane.Wszystkie()).ToList();
+            var allPanstwa = DynamicPropertyHelper.SafeGetAll(manager);
             var panstwo = allPanstwa.FirstOrDefault(p =>
                 DynamicPropertyHelper.GetString(p, "KodISO") == isoCode.ToUpper() ||
                 DynamicPropertyHelper.GetString(p, "KodISO3") == isoCode.ToUpper() ||

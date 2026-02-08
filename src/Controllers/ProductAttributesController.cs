@@ -41,7 +41,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             var allCechy = new List<dynamic>();
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 allCechy.Add(c);
             }
@@ -139,7 +139,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cecha = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -177,7 +177,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cecha = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetString(c, "Symbol") == symbol)
                 {
@@ -215,7 +215,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             // Check if symbol already exists
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetString(c, "Symbol") == request.Symbol)
                 {
@@ -310,7 +310,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -417,7 +417,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -472,7 +472,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cecha = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -525,7 +525,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == id)
                 {
@@ -601,7 +601,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? asortymentDane = null;
-            foreach (var a in asortymenty.Dane.Wszystkie())
+            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
             {
                 if (DynamicPropertyHelper.GetId(a) == request.ProductId)
                 {
@@ -622,7 +622,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             dynamic? cechaDane = null;
-            foreach (var c in cechy.Dane.Wszystkie())
+            foreach (var c in DynamicPropertyHelper.SafeGetAll(cechy))
             {
                 if (DynamicPropertyHelper.GetId(c) == request.AttributeId)
                 {
@@ -709,7 +709,7 @@ public class ProductAttributesController : ControllerBase
             }
 
             var groups = new List<AttributeGroupDto>();
-            foreach (var g in grupyCech.Dane.Wszystkie())
+            foreach (var g in DynamicPropertyHelper.SafeGetAll(grupyCech))
             {
                 groups.Add(new AttributeGroupDto
                 {

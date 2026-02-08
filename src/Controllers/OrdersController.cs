@@ -45,35 +45,32 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
             }
 
-            var allZamowienia = new List<dynamic>();
-            foreach (var z in zamowienia.Dane.Wszystkie())
-            {
-                allZamowienia.Add(z);
-            }
-            var dataQuery = allZamowienia.AsEnumerable();
+            var allZamowienia = DynamicPropertyHelper.SafeGetAll(zamowienia);
 
-            if (supplierId.HasValue)
+            var filteredList = new List<dynamic>();
+            foreach (var z in allZamowienia)
             {
-                dataQuery = dataQuery.Where(z =>
+                if (supplierId.HasValue)
                 {
                     var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == supplierId.Value;
-                });
-            }
+                    if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != supplierId.Value)
+                        continue;
+                }
 
-            if (dateFrom.HasValue)
-            {
-                dataQuery = dataQuery.Where(z =>
-                    DynamicPropertyHelper.GetDateTime(z, "DataWystawienia") >= dateFrom.Value);
-            }
+                if (dateFrom.HasValue)
+                {
+                    var date = DynamicPropertyHelper.GetDateTime(z, "DataWystawienia");
+                    if (date == null || date < dateFrom.Value) continue;
+                }
 
-            if (dateTo.HasValue)
-            {
-                dataQuery = dataQuery.Where(z =>
-                    DynamicPropertyHelper.GetDateTime(z, "DataWystawienia") <= dateTo.Value);
-            }
+                if (dateTo.HasValue)
+                {
+                    var date = DynamicPropertyHelper.GetDateTime(z, "DataWystawienia");
+                    if (date == null || date > dateTo.Value) continue;
+                }
 
-            var filteredList = dataQuery.ToList();
+                filteredList.Add(z);
+            }
             var totalCount = filteredList.Count;
             var items = filteredList
                 .OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"))
@@ -118,12 +115,7 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaDoDostawcow manager"));
             }
 
-            var allZamowienia = new List<dynamic>();
-            foreach (var z in zamowienia.Dane.Wszystkie())
-            {
-                allZamowienia.Add(z);
-            }
-            var zamowienie = allZamowienia.FirstOrDefault(z => DynamicPropertyHelper.GetId(z) == id);
+            dynamic? zamowienie = DynamicPropertyHelper.FindById(zamowienia, id);
             if (zamowienie == null)
             {
                 return NotFound(ApiResponse<SupplierOrderDto>.Error($"Supplier order with ID {id} not found"));
@@ -163,7 +155,7 @@ public class OrdersController : ControllerBase
                 if (request.SupplierId.HasValue && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetId(p) == request.SupplierId.Value)
                         {
@@ -179,7 +171,7 @@ public class OrdersController : ControllerBase
                 else if (!string.IsNullOrEmpty(request.SupplierNIP) && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetString(p, "NIP") == request.SupplierNIP)
                         {
@@ -200,7 +192,7 @@ public class OrdersController : ControllerBase
                     if (magazyny != null)
                     {
                         dynamic? magazyn = null;
-                        foreach (var m in magazyny.Dane.Wszystkie())
+                        foreach (var m in DynamicPropertyHelper.SafeGetAll(magazyny))
                         {
                             if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
                             {
@@ -235,7 +227,7 @@ public class OrdersController : ControllerBase
                     {
                         if (item.ProductId.HasValue)
                         {
-                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
                                 {
@@ -246,7 +238,7 @@ public class OrdersController : ControllerBase
                         }
                         else if (!string.IsNullOrEmpty(item.ProductSymbol))
                         {
-                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
                                 {
@@ -315,35 +307,32 @@ public class OrdersController : ControllerBase
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyDlaKlientow manager"));
             }
 
-            var allOferty = new List<dynamic>();
-            foreach (var o in oferty.Dane.Wszystkie())
-            {
-                allOferty.Add(o);
-            }
-            var dataQuery = allOferty.AsEnumerable();
+            var allOferty = DynamicPropertyHelper.SafeGetAll(oferty);
 
-            if (customerId.HasValue)
+            var filteredList = new List<dynamic>();
+            foreach (var o in allOferty)
             {
-                dataQuery = dataQuery.Where(o =>
+                if (customerId.HasValue)
                 {
                     var podmiot = DynamicPropertyHelper.GetProperty(o, "Podmiot");
-                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
-                });
-            }
+                    if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != customerId.Value)
+                        continue;
+                }
 
-            if (dateFrom.HasValue)
-            {
-                dataQuery = dataQuery.Where(o =>
-                    DynamicPropertyHelper.GetDateTime(o, "DataWystawienia") >= dateFrom.Value);
-            }
+                if (dateFrom.HasValue)
+                {
+                    var date = DynamicPropertyHelper.GetDateTime(o, "DataWystawienia");
+                    if (date == null || date < dateFrom.Value) continue;
+                }
 
-            if (dateTo.HasValue)
-            {
-                dataQuery = dataQuery.Where(o =>
-                    DynamicPropertyHelper.GetDateTime(o, "DataWystawienia") <= dateTo.Value);
-            }
+                if (dateTo.HasValue)
+                {
+                    var date = DynamicPropertyHelper.GetDateTime(o, "DataWystawienia");
+                    if (date == null || date > dateTo.Value) continue;
+                }
 
-            var filteredList = dataQuery.ToList();
+                filteredList.Add(o);
+            }
             var totalCount = filteredList.Count;
             var items = filteredList
                 .OrderByDescending(o => DynamicPropertyHelper.GetDateTime(o, "DataWystawienia"))
@@ -399,7 +388,7 @@ public class OrdersController : ControllerBase
                 if (request.CustomerId.HasValue && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
                         {
@@ -415,7 +404,7 @@ public class OrdersController : ControllerBase
                 else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
                 {
                     dynamic? podmiot = null;
-                    foreach (var p in podmioty.Dane.Wszystkie())
+                    foreach (var p in DynamicPropertyHelper.SafeGetAll(podmioty))
                     {
                         if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
                         {
@@ -454,7 +443,7 @@ public class OrdersController : ControllerBase
                     {
                         if (item.ProductId.HasValue)
                         {
-                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
                                 {
@@ -465,7 +454,7 @@ public class OrdersController : ControllerBase
                         }
                         else if (!string.IsNullOrEmpty(item.ProductSymbol))
                         {
-                            foreach (var a in asortymenty.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymenty))
                             {
                                 if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
                                 {

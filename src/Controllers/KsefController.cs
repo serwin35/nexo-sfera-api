@@ -58,7 +58,7 @@ public class KsefController : ControllerBase
             int? statusFilter = !string.IsNullOrEmpty(status) ? GetStatusValue(status) : null;
 
             var allDokumenty = new List<dynamic>();
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 bool include = true;
 
@@ -134,7 +134,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetId(d) == id)
                 {
@@ -175,7 +175,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetString(d, "NumerKSeF") == ksefNumber)
                 {
@@ -221,7 +221,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetId(d) == documentId)
                 {
@@ -298,7 +298,7 @@ public class KsefController : ControllerBase
             }
 
             var dokumenty = new List<dynamic>();
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (documentIds.Contains(DynamicPropertyHelper.GetId(d)))
                 {
@@ -379,7 +379,7 @@ public class KsefController : ControllerBase
             }
 
             dynamic? dokument = null;
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (DynamicPropertyHelper.GetId(d) == electronicDocumentId)
                 {
@@ -441,7 +441,7 @@ public class KsefController : ControllerBase
             }
 
             var dokumenty = new List<dynamic>();
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
                 {
@@ -554,7 +554,7 @@ public class KsefController : ControllerBase
             }
 
             var dokumenty = new List<dynamic>();
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
                 {
@@ -619,7 +619,7 @@ public class KsefController : ControllerBase
             }
 
             var dokumenty = new List<dynamic>();
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)) &&
                     DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef)
@@ -682,7 +682,7 @@ public class KsefController : ControllerBase
             }
 
             var dokumenty = new List<dynamic>();
-            foreach (var d in dokumentyManager.Dane.Wszystkie())
+            foreach (var d in DynamicPropertyHelper.SafeGetAll(dokumentyManager))
             {
                 dokumenty.Add(d);
             }

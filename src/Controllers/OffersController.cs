@@ -50,7 +50,7 @@ public class OffersController : ControllerBase
             }
 
             var oferty = new List<dynamic>();
-            foreach (var o in ofertyManager.Dane.Wszystkie())
+            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
             {
                 oferty.Add(o);
             }
@@ -184,7 +184,7 @@ public class OffersController : ControllerBase
             }
 
             dynamic? oferta = null;
-            foreach (var o in ofertyManager.Dane.Wszystkie())
+            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
             {
                 if ((int)o.Id == id)
                 {
@@ -225,7 +225,7 @@ public class OffersController : ControllerBase
             }
 
             dynamic? oferta = null;
-            foreach (var o in ofertyManager.Dane.Wszystkie())
+            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
             {
                 try
                 {
@@ -272,7 +272,7 @@ public class OffersController : ControllerBase
             }
 
             var oferty = new List<dynamic>();
-            foreach (var o in ofertyManager.Dane.Wszystkie())
+            foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
             {
                 try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
                 catch { }
@@ -363,7 +363,7 @@ public class OffersController : ControllerBase
                     dynamic? podmiot = null;
                     if (podmiotyManager != null)
                     {
-                        foreach (var p in podmiotyManager.Dane.Wszystkie())
+                        foreach (var p in DynamicPropertyHelper.SafeGetAll(podmiotyManager))
                         {
                             if ((int)p.Id == request.CustomerId)
                             {
@@ -421,7 +421,7 @@ public class OffersController : ControllerBase
                         foreach (var item in request.Items)
                         {
                             dynamic? asortyment = null;
-                            foreach (var a in asortymentyManager.Dane.Wszystkie())
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll(asortymentyManager))
                             {
                                 if ((int)a.Id == item.ProductId)
                                 {
@@ -515,7 +515,7 @@ public class OffersController : ControllerBase
                 }
 
                 dynamic? ofertaDane = null;
-                foreach (var o in ofertyManager.Dane.Wszystkie())
+                foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
                 {
                     if ((int)o.Id == id)
                     {
@@ -593,7 +593,7 @@ public class OffersController : ControllerBase
                 }
 
                 dynamic? ofertaDane = null;
-                foreach (var o in ofertyManager.Dane.Wszystkie())
+                foreach (var o in DynamicPropertyHelper.SafeGetAll(ofertyManager))
                 {
                     if ((int)o.Id == id)
                     {
@@ -610,6 +610,7 @@ public class OffersController : ControllerBase
                 using (var oferta = ofertyManager.Znajdz(ofertaDane))
                 {
                     oferta.Dane.Zamkniety = true;
+using NexoSferaApi.Helpers;
                     oferta.Dane.DataOstatniejZmianyStatusu = DateTime.Now;
 
                     if (oferta.Zapisz())
