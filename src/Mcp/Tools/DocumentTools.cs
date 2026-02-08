@@ -154,10 +154,12 @@ public class DocumentTools(ISferaService sferaService, ILogger<DocumentTools> lo
 
                         items.Add(new
                         {
-                            productSymbol = DynamicPropertyHelper.GetString(pozDane, "AsortymentWybrany", "Symbol")
-                                ?? DynamicPropertyHelper.GetString(pozDane, "Asortyment", "Symbol"),
-                            productName = DynamicPropertyHelper.GetString(pozDane, "AsortymentWybrany", "Nazwa")
-                                ?? DynamicPropertyHelper.GetString(pozDane, "Asortyment", "Nazwa"),
+                            productId = DynamicPropertyHelper.GetNullableInt(pozDane, "Asortyment", "Id")
+                                ?? DynamicPropertyHelper.GetNullableInt(pozDane, "AsortymentId"),
+                            productSymbol = DynamicPropertyHelper.GetString(pozDane, "Asortyment", "Symbol")
+                                ?? DynamicPropertyHelper.GetString(pozDane, "AsortymentWybrany", "Symbol"),
+                            productName = DynamicPropertyHelper.GetString(pozDane, "Asortyment", "Nazwa")
+                                ?? DynamicPropertyHelper.GetString(pozDane, "AsortymentWybrany", "Nazwa"),
                             quantity = DynamicPropertyHelper.GetDecimal(pozDane, "Ilosc"),
                             unit = DynamicPropertyHelper.GetString(pozDane, "Jednostka", "Symbol"),
                             priceNet = DynamicPropertyHelper.GetDecimal(cena, "NettoPoRabacie"),
