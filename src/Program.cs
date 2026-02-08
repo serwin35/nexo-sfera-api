@@ -252,8 +252,8 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// MCP server endpoints: /sse (GET) and /messages (POST) for AI agent integration
-app.MapMcp();
+// MCP server endpoints at /mcp for AI agent integration
+app.MapMcp("/mcp");
 
 // Initialize Sfera connection on startup
 var sferaService = app.Services.GetRequiredService<ISferaService>();
