@@ -221,7 +221,7 @@ public class ProductAttributesController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(bool, string, int, ProductAttributeDto?, List<string>)>(() =>
             {
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (false, "manager_null", 0, (ProductAttributeDto?)null, new List<string>());

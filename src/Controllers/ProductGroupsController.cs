@@ -389,7 +389,7 @@ public class ProductGroupsController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(string, ProductGroupDto?, List<string>?)>(() =>
             {
                 var grupy = _sferaService.GetManager("GrupyAsortymentu");
                 if (grupy == null)
@@ -513,7 +513,7 @@ public class ProductGroupsController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(string, ProductGroupDto?, List<string>?)>(() =>
             {
                 var grupy = _sferaService.GetManager("GrupyAsortymentu");
                 if (grupy == null)
@@ -636,7 +636,7 @@ public class ProductGroupsController : ControllerBase
 
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(string, ProductGroupDto?, List<string>?)>(() =>
             {
                 var grupy = _sferaService.GetManager("GrupyAsortymentu");
                 if (grupy == null)
@@ -881,7 +881,7 @@ public class ProductGroupsController : ControllerBase
                 if (grupa != null)
                 {
                     var groupId = DynamicPropertyHelper.GetId(grupa);
-                    cache.TryGetValue(groupId, out var current);
+                    cache.TryGetValue(groupId, out int current);
                     cache[groupId] = current + 1;
                 }
             }

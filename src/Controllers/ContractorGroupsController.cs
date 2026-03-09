@@ -451,17 +451,17 @@ public class ContractorGroupsController : ControllerBase
                 });
             });
 
-            if (result.managerNull)
+            if (result.Item1)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
             }
 
-            if (result.notFound)
+            if (result.Item2)
             {
                 return NotFound(ApiResponse<object>.Error($"Contractor group with ID {id} not found"));
             }
 
-            return Ok(result.response!);
+            return Ok(result.Item3!);
         }
         catch (Exception ex)
         {
@@ -478,12 +478,12 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(string, int, ContractorGroupDto?, List<string>?)>(() =>
             {
                 var grupy = _sferaService.GetManager("Grupy");
                 if (grupy == null)
                 {
-                    return (status: "managerNull", id: 0, dto: (ContractorGroupDto?)null, errors: (List<string>?)null);
+                    return ("managerNull", 0, (ContractorGroupDto?)null, (List<string>?)null);
                 }
 
                 // Check if symbol already exists
@@ -565,7 +565,7 @@ public class ContractorGroupsController : ControllerBase
                     if ((bool)grupa.Zapisz())
                     {
                         var newId = DynamicPropertyHelper.GetId(dane);
-                        return ("created", newId, MapToDto(dane, grupy), (List<string>?)null);
+                        return ("created", newId, (ContractorGroupDto?)MapToDto(dane, grupy), (List<string>?)null);
                     }
                     else
                     {
@@ -575,26 +575,26 @@ public class ContractorGroupsController : ControllerBase
                 }
             });
 
-            if (result.status == "managerNull")
+            if (result.Item1 == "managerNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            if (result.status == "symbolExists")
+            if (result.Item1 == "symbolExists")
             {
                 return BadRequest(ApiResponse<ContractorGroupDto>.Error($"Contractor group with symbol {request.Symbol} already exists"));
             }
 
-            if (result.status == "saveFailed")
+            if (result.Item1 == "saveFailed")
             {
-                return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to create contractor group", result.errors));
+                return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to create contractor group", result.Item4));
             }
 
             _logger.LogInformation("Created contractor group {Symbol}", request.Symbol);
             return CreatedAtAction(
                 nameof(GetContractorGroup),
-                new { id = result.id },
-                ApiResponse<ContractorGroupDto>.Ok(result.dto!, "Contractor group created successfully"));
+                new { id = result.Item2 },
+                ApiResponse<ContractorGroupDto>.Ok(result.Item3!, "Contractor group created successfully"));
         }
         catch (Exception ex)
         {
@@ -611,12 +611,12 @@ public class ContractorGroupsController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(string, ContractorGroupDto?, List<string>?)>(() =>
             {
                 var grupy = _sferaService.GetManager("Grupy");
                 if (grupy == null)
                 {
-                    return (status: "managerNull", dto: (ContractorGroupDto?)null, errors: (List<string>?)null);
+                    return ("managerNull", (ContractorGroupDto?)null, (List<string>?)null);
                 }
 
                 var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
@@ -692,7 +692,7 @@ public class ContractorGroupsController : ControllerBase
 
                     if ((bool)grupa.Zapisz())
                     {
-                        return ("ok", MapToDto(dane, grupy), (List<string>?)null);
+                        return ("ok", (ContractorGroupDto?)MapToDto(dane, grupy), (List<string>?)null);
                     }
                     else
                     {
@@ -702,23 +702,23 @@ public class ContractorGroupsController : ControllerBase
                 }
             });
 
-            if (result.status == "managerNull")
+            if (result.Item1 == "managerNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            if (result.status == "notFound")
+            if (result.Item1 == "notFound")
             {
                 return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.status == "saveFailed")
+            if (result.Item1 == "saveFailed")
             {
-                return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to update contractor group", result.errors));
+                return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to update contractor group", result.Item3));
             }
 
             _logger.LogInformation("Updated contractor group {Id}", id);
-            return Ok(ApiResponse<ContractorGroupDto>.Ok(result.dto!, "Contractor group updated successfully"));
+            return Ok(ApiResponse<ContractorGroupDto>.Ok(result.Item2!, "Contractor group updated successfully"));
         }
         catch (Exception ex)
         {
@@ -768,19 +768,19 @@ public class ContractorGroupsController : ControllerBase
                 }
             });
 
-            if (result.status == "managerNull")
+            if (result.Item1 == "managerNull")
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Grupy manager"));
             }
 
-            if (result.status == "notFound")
+            if (result.Item1 == "notFound")
             {
                 return NotFound(ApiResponse<bool>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.status == "deleteFailed")
+            if (result.Item1 == "deleteFailed")
             {
-                return BadRequest(ApiResponse<bool>.Error("Failed to delete contractor group", result.errors));
+                return BadRequest(ApiResponse<bool>.Error("Failed to delete contractor group", result.Item2));
             }
 
             _logger.LogInformation("Deleted contractor group {Id}", id);
@@ -860,33 +860,33 @@ public class ContractorGroupsController : ControllerBase
                 }
             });
 
-            if (result.status == "grupyNull")
+            if (result.Item1 == "grupyNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Grupy manager"));
             }
 
-            if (result.status == "groupNotFound")
+            if (result.Item1 == "groupNotFound")
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.status == "podmiotyNull")
+            if (result.Item1 == "podmiotyNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Podmioty manager"));
             }
 
-            if (result.status == "contractorNotFound")
+            if (result.Item1 == "contractorNotFound")
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor with ID {request.ContractorId} not found"));
             }
 
-            if (result.status == "saveFailed")
+            if (result.Item1 == "saveFailed")
             {
-                return BadRequest(ApiResponse<ContractorGroupMembershipDto>.Error("Failed to add contractor to group", result.errors));
+                return BadRequest(ApiResponse<ContractorGroupMembershipDto>.Error("Failed to add contractor to group", result.Item3));
             }
 
             _logger.LogInformation("Added contractor {ContractorId} to group {GroupId}", request.ContractorId, id);
-            return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(result.membership!, "Contractor added to group successfully"));
+            return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(result.Item2!, "Contractor added to group successfully"));
         }
         catch (Exception ex)
         {
@@ -953,23 +953,23 @@ public class ContractorGroupsController : ControllerBase
                 return ("ok", addedCount);
             });
 
-            if (result.status == "grupyNull")
+            if (result.Item1 == "grupyNull")
             {
                 return StatusCode(500, ApiResponse<int>.Error("Failed to get Grupy manager"));
             }
 
-            if (result.status == "groupNotFound")
+            if (result.Item1 == "groupNotFound")
             {
                 return NotFound(ApiResponse<int>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.status == "podmiotyNull")
+            if (result.Item1 == "podmiotyNull")
             {
                 return StatusCode(500, ApiResponse<int>.Error("Failed to get Podmioty manager"));
             }
 
-            _logger.LogInformation("Bulk added {Count} contractors to group {GroupId}", result.addedCount, id);
-            return Ok(ApiResponse<int>.Ok(result.addedCount, $"Added {result.addedCount} contractors to group"));
+            _logger.LogInformation("Bulk added {Count} contractors to group {GroupId}", result.Item2, id);
+            return Ok(ApiResponse<int>.Ok(result.Item2, $"Added {result.Item2} contractors to group"));
         }
         catch (Exception ex)
         {
@@ -1028,24 +1028,24 @@ public class ContractorGroupsController : ControllerBase
                 }
             });
 
-            if (result.status == "podmiotyNull")
+            if (result.Item1 == "podmiotyNull")
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
             }
 
-            if (result.status == "contractorNotFound")
+            if (result.Item1 == "contractorNotFound")
             {
                 return NotFound(ApiResponse<bool>.Error($"Contractor with ID {contractorId} not found"));
             }
 
-            if (result.status == "notInGroup")
+            if (result.Item1 == "notInGroup")
             {
                 return BadRequest(ApiResponse<bool>.Error("Contractor is not in this group"));
             }
 
-            if (result.status == "saveFailed")
+            if (result.Item1 == "saveFailed")
             {
-                return BadRequest(ApiResponse<bool>.Error("Failed to remove contractor from group", result.errors));
+                return BadRequest(ApiResponse<bool>.Error("Failed to remove contractor from group", result.Item2));
             }
 
             _logger.LogInformation("Removed contractor {ContractorId} from group {GroupId}", contractorId, id);
