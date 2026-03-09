@@ -1,0 +1,76 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/wyposazenie"
+           xmlns="http://schemas.insert.com.pl/2015/hop/wyposazenie"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Informacje o wyposażeniu.</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TElementWyposazenia">
+    <xs:annotation>
+      <xs:documentation>Dane elementu wyposażenia.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataNabycia" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data nabycia elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Wartość elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DokumentNabycia" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dokument nabycia elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerInwentarzowy" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer inwentarzowy elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerPozycji" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer pozycji w księdze elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataLikwidacji" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data likwidacji elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PrzyczynaLikwidacji" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Przyczyna likwidacji elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TWyposazenie">
+    <xs:annotation>
+      <xs:documentation>Dane elementów wyposażenia.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ElementWyposazenia" minOccurs="0" maxOccurs="unbounded" type="TElementWyposazenia">
+        <xs:annotation>
+          <xs:documentation>Dane elementu wyposażenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="Wyposazenie" type="TWyposazenie">
+    <xs:annotation>
+      <xs:documentation>Kolekcja elementów wyposażenia.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

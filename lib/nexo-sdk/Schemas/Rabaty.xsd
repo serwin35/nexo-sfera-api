@@ -1,0 +1,67 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2013/hop/rabaty"
+           xmlns="http://schemas.insert.com.pl/2013/hop/rabaty"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Słownik rabatów.</xs:documentation>
+  </xs:annotation>
+
+  <xs:simpleType name="RodzajRabatu">
+    <xs:annotation>
+      <xs:documentation>Rodzaj rabatu.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Procent">
+        <xs:annotation>
+          <xs:documentation>Rabat procentowy. Wartość rabatu podana jest w procentach.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kwota">
+        <xs:annotation>
+          <xs:documentation>Rabat kwotowy. Wartość rabatu jest kwotą udzielanego rabatu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TRabat">
+    <xs:annotation>
+      <xs:documentation>Pozycja słownika rabatów.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa rabatu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rodzaj" type="RodzajRabatu">
+        <xs:annotation>
+          <xs:documentation>Rodzaj rabatu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wielkość rabatu. Wartość podana jest w procentach lub kwocie w zależności od rodzaju.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Waluta" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Waluta kwoty rabatu. Istotna, jeśli rabat jest kwotowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="Rabaty">
+    <xs:annotation>
+      <xs:documentation>Elementy słownika rabatów.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" name="Rabat" type="TRabat"/>
+      </xs:sequence>
+    </xs:complexType>
+
+  </xs:element>
+</xs:schema>

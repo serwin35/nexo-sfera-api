@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/podpisywiadomosci"
+           xmlns="http://schemas.insert.com.pl/2014/hop/podpisywiadomosci"
+           xmlns:pkp="http://schemas.insert.com.pl/2015/hop/parametryklientapoczty"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import schemaLocation="ParametryKlientaPoczty.xsd" namespace="http://schemas.insert.com.pl/2015/hop/parametryklientapoczty" />
+  
+  <xs:complexType name="TPodpisWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Dane podpisu wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa podpisu wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Uzytkownik" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Sygnatura użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Format" type="pkp:TFormatWiadomosci">
+        <xs:annotation>
+          <xs:documentation>Format podpisu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Tresc" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Treść podpisu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="MiejscePodpisu">
+        <xs:annotation>
+          <xs:documentation>Miejsce, gdzie wstawi podpis przy odpowiadaniu.</xs:documentation>
+        </xs:annotation>
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="PonizejCytowania">
+              <xs:annotation>
+                <xs:documentation>Wstawia podpis poniżej treści cytowanej.</xs:documentation>
+              </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="PowyzejCytowania">
+              <xs:annotation>
+                <xs:documentation>Wstawia podpis powyżej treści cytowanej.</xs:documentation>
+              </xs:annotation>
+            </xs:enumeration>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element name="KontaPocztowe">
+        <xs:annotation>
+          <xs:documentation>Konta pocztowe z którymi powiązany jest podpis.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="Konto" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Nazwa konta pocztowego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="PodpisyWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Podpisy wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Podpis" type="TPodpisWiadomosci">
+          <xs:annotation>
+            <xs:documentation>Podpis wiadomości.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+</xs:schema>

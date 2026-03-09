@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2018/hop/celePrzetwarzania"
+           xmlns="http://schemas.insert.com.pl/2018/hop/celePrzetwarzania"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+
+  <xs:annotation>
+    <xs:documentation>Informacje o celach przetwarzania.</xs:documentation>
+  </xs:annotation>
+  
+  <xs:complexType name="TCelPrzetwarzania">
+    <xs:sequence>
+      <xs:element name="CelWbudowany" type="TCelWbudowany" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy jest to jeden z wbudowanych celów przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nazwa" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Nazwa celu przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NazwaSkrocona" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Nazwa skrócona celu przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Tresc" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Treść celu przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rodzaj" type="TRodzajCeluPrzetwarzania">
+        <xs:annotation>
+          <xs:documentation>Rodzaj celu przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataZakonczenia" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data zakończenia celu przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="CzasTrwania" type="TCzasTrwania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Czas trwania ważności zgód wyrażonych na ten cel.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Aktywny" type="xs:boolean" use="optional" default="true">
+      <xs:annotation>
+        <xs:documentation>Określa, czy cel przetwarzania jest aktywny (domyślnie importowany jako aktywny).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="DomyslnieDrukuj" type="xs:boolean" use="optional" default="true">
+      <xs:annotation>
+        <xs:documentation>Określa, czy cel przetwarzania ma być domyślnie drukowany.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NaPotrzebyBiura" type="xs:boolean" use="optional" default="false">
+      <xs:annotation>
+        <xs:documentation>Określa, czy cel przetwarzania jest na potrzeby Biura.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TCelWbudowany">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DaneOsobowe">
+        <xs:annotation>
+          <xs:documentation>Zgoda na przetwarzanie danych osobowych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DaneOsoboweWCelachMarketingowych">
+        <xs:annotation>
+          <xs:documentation>Zgoda na przetwarzanie danych osobowych w celach marketingowych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OtrzymywanieInformacjiPrzyPomocyKomunikacjiEleketronicznej">
+        <xs:annotation>
+          <xs:documentation>Zgoda na otrzymywanie informacji przy pomocy komunikacji elektronicznej.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OtrzymywanieNewsletteraVendero">
+        <xs:annotation>
+          <xs:documentation>Zgoda na otrzymywanie newslettera Vendero.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DlaBiuraRozliczeniePodatkowe">
+        <xs:annotation>
+          <xs:documentation>Zgoda na przetwarzanie danych poprzez biuro rachunkowe w celach rozliczenia podatkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="TCzasTrwania">
+    <xs:sequence>
+      <xs:element name="Lata" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Liczba lat.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Miesiace" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Liczba miesięcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dni" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Liczba dni.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="LiczOdKoncaRoku" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Czy okres ma być liczony od końca roku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:simpleType name="TRodzajCeluPrzetwarzania">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ZDataZakoczenia">
+        <xs:annotation>
+          <xs:documentation>Z datą zakończenia.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NaOkresOdUdzieleniaZgody">
+        <xs:annotation>
+          <xs:documentation>Na okres od udzielenia zgody.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Bezterminowy">
+        <xs:annotation>
+          <xs:documentation>Bezterminowy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+  <xs:complexType name="TCelePrzetwarzania">
+    <xs:sequence>
+      <xs:element name="CelPrzetwarzania" type="TCelPrzetwarzania" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące celu przetwarzania</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="CelePrzetwarzania" type="TCelePrzetwarzania">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące celów przetwarzania.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  
+</xs:schema>

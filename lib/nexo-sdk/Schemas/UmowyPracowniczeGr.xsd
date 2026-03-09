@@ -1,0 +1,970 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/gratyfikant/umowyPracownicze"
+           xmlns="http://schemas.insert.com.pl/2015/hop/gratyfikant/umowyPracownicze"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop">
+  <xs:annotation>
+    <xs:documentation>Informacje o umowach o pracę oraz umowach cywilnoprawnych.</xs:documentation>
+  </xs:annotation>
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+
+  <xs:simpleType name="TTypSkladnikaPlacowego">
+    <xs:annotation>
+      <xs:documentation>Określa typ składnika płacowego.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Naliczenie">
+        <xs:annotation>
+          <xs:documentation>Składnik płacowy jako naliczenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Potracenie">
+        <xs:annotation>
+          <xs:documentation>Składnik płacowy jako potrącenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTypPlatnika">
+    <xs:annotation>
+      <xs:documentation>Określa typ płatnika.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Pracodawca">
+        <xs:annotation>
+          <xs:documentation>Pracodawca jako płatnik.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ZUS">
+        <xs:annotation>
+          <xs:documentation>ZUS jako płatnik.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTypRaportuZUS">
+    <xs:annotation>
+      <xs:documentation>Typ generowanego raportu dla ZUS.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="RCA">
+        <xs:annotation>
+          <xs:documentation>Raport RCA.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RZA">
+        <xs:annotation>
+          <xs:documentation>Raport RZA.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TSkladkiZUS">
+    <xs:annotation>
+      <xs:documentation>Definicja naliczanych składek ZUS.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Emerytalne" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek emerytalnych.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Rentowe" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek rentowych.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Zdrowotne" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek zdrowotnych.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Chorobowe" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek chorobowych.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Wypadkowe" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek wypadkowych.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="FP" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek Funduszu Pracy i Fundusz Solidarnościowy.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="FGSP" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Naliczanie składek Funduszu Gwarantowanych Świadczeń Pracowniczych.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NieOgraniczajChorobowego" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Nie ograniczaj chorobowego (dla umów cywilnoprawnych).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NieOgraniczajZdrowotnego" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Nie ograniczaj zdrowotnego (dla umów cywilnoprawnych).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TOdliczanieKUP">
+    <xs:annotation>
+      <xs:documentation>Typ odliczania kosztów uzyskania przychodu.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Odliczac">
+        <xs:annotation>
+          <xs:documentation>Odliczanie kosztów uzyskania przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NieOdliczac">
+        <xs:annotation>
+          <xs:documentation>Brak odliczania kosztów uzyskania przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OdliczacPowiekszone">
+        <xs:annotation>
+          <xs:documentation>Odliczanie powiększonych kosztów uzyskania przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WgUstawienPracownika">
+        <xs:annotation>
+          <xs:documentation>Odliczenie kosztów według parametrów zdefiniowanych w danych pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TPobieranieZaliczki">
+    <xs:annotation>
+      <xs:documentation>Typ naliczania zaliczki na podatek.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NiePobieraj">
+        <xs:annotation>
+          <xs:documentation>Nie pobieraj zaliczki na podatek.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WgUstawienPracownika">
+        <xs:annotation>
+          <xs:documentation>Pobieraj zaliczkę według ustawień w zdefiniowanych w danych pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NiePobierajDoKwotyWolnej">
+        <xs:annotation>
+          <xs:documentation>Nie pobieraj zaliczki do kwoty wolnej.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TPodatekUP">
+    <xs:annotation>
+      <xs:documentation>Dane naliczanego podatku w ramach umowy o pracę.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="OdliczanieKUP" type="TOdliczanieKUP">
+        <xs:annotation>
+          <xs:documentation>Rodzaj naliczania kosztów uzyskania przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PobieranieZaliczki" type="TPobieranieZaliczki" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj naliczania kosztów uzyskania przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OdliczanieUlgi" type="wspolne:TOdliczanieUlgi" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj odliczania ulgi podatkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="NaliczaniePodatku" type="xs:boolean">
+      <xs:annotation>
+        <xs:documentation>Włączenie naliczania podatku w ramach umowy.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NaliczanieZaliczki" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Włączenie naliczania zaliczki na podatek.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="OdliczanieUlgi" type="xs:boolean" use ="optional">
+      <xs:annotation>
+        <xs:documentation>Włączenie odliczania ulgi podatkowej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="NaliczanieUlgiDlaKlasySredniej" type="xs:boolean" use="optional" >
+      <xs:annotation>
+        <xs:documentation>Włączenie naliczania ulgi dla klasy średniej.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:simpleType name="TRodzajPrzychodu">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Dzialalnosc">
+        <xs:annotation>
+          <xs:documentation>Działalność wykonywana osobiście.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ObowiazkiSpoleczne">
+        <xs:annotation>
+          <xs:documentation>Czynności związane z pełnieniem obowiązków społecznych.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PrawaAutorskie">
+        <xs:annotation>
+          <xs:documentation>Prawa autorskie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="InneZrodla">
+        <xs:annotation>
+          <xs:documentation>Inne źródła.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="UmowaZlecenie">
+        <xs:annotation>
+          <xs:documentation>Należności z tytułu umowy zlecenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TPodatekUC">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące podatku w ramach umowy cywilnoprawnej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="ZryczaltowanyPodatek" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Zryczałtowany podatek.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RodzajPrzychodu" type="TRodzajPrzychodu">
+        <xs:annotation>
+          <xs:documentation>Rodzaj przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KosztyUzyskaniaPrzychodu">
+        <xs:annotation>
+          <xs:documentation>Koszty uzyskania przychodu (procentowo lub kwotowo - zależnie od atrybutu).</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:decimal">
+              <xs:attribute name="Kwotowo" type="xs:boolean" default="false">
+                <xs:annotation>
+                  <xs:documentation>Określa rodzaj wartości kosztów uzyskania przychodu.</xs:documentation>
+                </xs:annotation>
+              </xs:attribute>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="PobieranieZaliczki" type="TPobieranieZaliczki" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj naliczania zaliczki na podatek.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OdliczanieUlgi" type="wspolne:TOdliczanieUlgi" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj odliczania ulgi podatkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="NaliczanieZaliczki" type="xs:boolean" use="optional" >
+      <xs:annotation>
+        <xs:documentation>Włączenie naliczania zaliczki na podatek.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TSkalaPodatkowa">
+    <xs:sequence>
+      <xs:element name="Prog" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Próg w PLN.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Stopa1" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Stopa 1.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Stopa2" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Stopa 2.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RocznaUlgaPodatkowa" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Roczna ulga podatkowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="MiesiecznaUlgaPodatkowa" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Miesięczna ulga podatkowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KosztyUzyskaniaPrzychodu" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Koszty uzyskania przychodu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+
+  <xs:simpleType name="TTypUmowy">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UmowaOPrace">
+        <xs:annotation>
+          <xs:documentation>Umowa pracownicza.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="UmowaZlecenie">
+        <xs:annotation>
+          <xs:documentation>Umowa zlecenie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="UmowaODzielo">
+        <xs:annotation>
+          <xs:documentation>Umowa o dzieło.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="KontraktMenadzerski">
+        <xs:annotation>
+          <xs:documentation>Kontrakt menadżerski.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TRodzajUmowy">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NaCzasOkreslony">
+        <xs:annotation>
+          <xs:documentation>Na czas określony.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NaCzasNieokreslony">
+        <xs:annotation>
+          <xs:documentation>Na czas nieokreślony.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NaOkresProbny">
+        <xs:annotation>
+          <xs:documentation>Na okres próbny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NaWykonanieZadania">
+        <xs:annotation>
+          <xs:documentation>Na wykonanie zadania.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NaZastepstwo">
+        <xs:annotation>
+          <xs:documentation>Na zastępstwo.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DoDniaPorodu">
+        <xs:annotation>
+          <xs:documentation>Do dnia porodu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TRozwiazanaUmowa">
+    <xs:sequence>
+      <xs:element name="Data" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Data rozwiązania umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Przyczyna">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące przyczyny rozwiązania umowy.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Kod" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kod przyczyny rozwiązania umowy.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="Opis" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Opis przyczyny rozwiązania umowy.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TStanowiskoDzial">
+    <xs:sequence>
+      <xs:element name="DataOd" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek okresu pracy na danym stanowisku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Stanowisko" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa stanowiska.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dzial" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa działu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TKalendarzWUmowie">
+    <xs:sequence>
+      <xs:element name="DataOd" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek obowiązywania kalendarza.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kalendarz" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa kalendarza.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WymiarZatrudnienia">
+        <xs:annotation>
+          <xs:documentation>Wymiar zatrudnienia.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Licznik" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>Licznik wymiaru zatrudnienia.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="Mianownik" type="xs:int">
+              <xs:annotation>
+                <xs:documentation>Mianownik wymiaru zatrudnienia.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="DodatekPo" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Czas pracy, po których przysługuje dodatek za nadgodziny (w minutach).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TSposobRozNadIAbs">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Bilansowane">
+        <xs:annotation>
+          <xs:documentation>Bilansowane.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Rozliczane">
+        <xs:annotation>
+          <xs:documentation>Naliczane/potrącane w wypłacie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TSposobRozNadIAbsPoZbil">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Pomijane">
+        <xs:annotation>
+          <xs:documentation>Pomijane.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Rozliczane">
+        <xs:annotation>
+          <xs:documentation>Naliczane/potrącane w wypłacie.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TUczen">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="I">
+        <xs:annotation>
+          <xs:documentation>I rok.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="II">
+        <xs:annotation>
+          <xs:documentation>I rok.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="III">
+        <xs:annotation>
+          <xs:documentation>I rok.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OkresPrzyuczenia">
+        <xs:annotation>
+          <xs:documentation>Okres przyuczenia.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="PraktykaAbsolwencka">
+        <xs:annotation>
+          <xs:documentation>Praktyka absolwencka.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TDefinicjaPrzelewow">
+    <xs:sequence>
+      <xs:element name="RachunekBankowy" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer rachunku bankowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wartosc" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Wartość przelewu (kwotowo lub procentowo - w zależności od atrybutu)</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Kwotowo" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>Określa czy wartość przelewu jest kwotą czy procentem.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TPracaWSzczegWar">
+    <xs:sequence>
+      <xs:element name="DataOd" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek okresu pracy w szczególnych warunkach/charakterze.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataDo" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny koniec okresu pracy w szczególnych warunkach/charakterze.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kod" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Kod pracy w szczególnych warunkach/charakterze.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TSystemWynagrodzenUP">
+    <xs:sequence>
+      <xs:element name="DefinicjeListPlac">
+        <xs:annotation>
+          <xs:documentation>Definicje list płac powiązane z umową.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="DefinicjaListyPlac" type="xs:string" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Nazwa definicji listy płac.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="SkladnikiPlacowe">
+        <xs:annotation>
+          <xs:documentation>Składniki płacowe na umowie (każdy składnik musi istnieć na co najmniej jednej definicji listy płac powiązanej z umową).</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="SkladnikPlacowy" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Składnik płacowy.</xs:documentation>
+              </xs:annotation>
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="Nazwa" type="xs:string">
+                    <xs:annotation>
+                      <xs:documentation>Nazwa składnika płacowego.</xs:documentation>
+                    </xs:annotation>
+                  </xs:element>
+                  <xs:element name="Kwota" type="xs:decimal" minOccurs="0">
+                    <xs:annotation>
+                      <xs:documentation>Opcjonalna indywidualna wartość składnika na umowie.</xs:documentation>
+                    </xs:annotation>
+                  </xs:element>
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TSystemWynagrodzenUC">
+    <xs:sequence>
+      <xs:element name="Kwota">
+        <xs:annotation>
+          <xs:documentation>Kwota na umowie cywilnoprawnej</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:decimal">
+              <xs:attribute name="DotyczyCalejUmowy" type="xs:boolean" use="required">
+                <xs:annotation>
+                  <xs:documentation>Określa czy kwota dotyczy całej umowy cywilnoprawnej.</xs:documentation>
+                </xs:annotation>
+              </xs:attribute>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="WyplacanieWynagrodzenia">
+        <xs:simpleType>
+          <xs:restriction base="xs:string">
+            <xs:enumeration value="Jednorazowo">
+              <xs:annotation>
+                <xs:documentation>Wypłacanie wynagrodzenia jednorazowo.</xs:documentation>
+              </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="CoMiesiac">
+              <xs:annotation>
+                <xs:documentation>Wypłacanie wynagrodzenia co miesiąc.</xs:documentation>
+              </xs:annotation>
+            </xs:enumeration>
+            <xs:enumeration value="BrakPlanu">
+              <xs:annotation>
+                <xs:documentation>Generowanie wynagrodzenia będzie wywoływane ręcznie.</xs:documentation>
+              </xs:annotation>
+            </xs:enumeration>
+          </xs:restriction>
+        </xs:simpleType>
+      </xs:element>
+      <xs:element name="DataRachunku" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna data rachunku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TPracaZdalna">
+    <xs:annotation>
+      <xs:documentation>Definicja parametrów pracy zdalnej.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="KontrolujLimit" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Kontroluj limit pracy zdalnej okazjonalnej w roku</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TPowiekszaStaze">
+    <xs:annotation>
+      <xs:documentation>Definicja parametrów staży wbudowanych.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="StazPracy" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Powiększa staż pracy</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="StazUrlopowy" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Powiększa staż urlopowy</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TUmowa">
+    <xs:annotation>
+      <xs:documentation>Dane umowy.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Typ" type="TTypUmowy">
+        <xs:annotation>
+          <xs:documentation>Typ umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Numer" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Alfanumeryczny symbol (numer) umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataSporzadzenia" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Data sporządzenia umowy</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Pracownik" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Symbol pracownika, którego dotyczy umowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rodzaj" type="TRodzajUmowy">
+        <xs:annotation>
+          <xs:documentation>Rodzaj umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataOd" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek obowiązywania umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataDo" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Koniec obowiązywania umowy, jeśli dotyczy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Szczegoly" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Szczegóły umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StanowiskaDzialy" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Stanowiska i działy na umowie.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="StanowiskoDzial" type="TStanowiskoDzial" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Okres pracy na danym stanowisku w danym dziale.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Kalendarze" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Kalendarze (dla umów o pracę).</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Kalendarz" type="TKalendarzWUmowie" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Okres obowiązywania kalendarza.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="SposobRozNadIAbs" type="TSposobRozNadIAbs" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sposób rozliczania nadgodzin i godzin absencji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SposobRozNadIAbsPoZbil" type="TSposobRozNadIAbsPoZbil" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sposób rozliczania nadgodzin i godzin absencji po zbilansowaniu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KodUbezpieczenia" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Kod tytułu ubezpieczenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="GenerowanyRaport" type="TTypRaportuZUS" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny typ raportu generowanego dla ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="IndywidualnaPlacaMinimalna" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna indywidualna płaca minimalna (dla umów o pracę).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="CzasWyczekiwania" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny okres wyczekiwania na zasiłek chorobowy (w dniach).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SkladkiZUS" type="TSkladkiZUS">
+        <xs:annotation>
+          <xs:documentation>Typy naliczanych składek ZUS.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:choice>
+        <xs:element name="PodatekUP" type="TPodatekUP">
+          <xs:annotation>
+            <xs:documentation>Dane naliczanego podatku w ramach umowy o pracę.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="PodatekUC" type="TPodatekUC">
+          <xs:annotation>
+            <xs:documentation>Dane dotyczące podatku w ramach umowy cywilnoprawnej.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:choice>
+      <xs:element name="IndywidualnaSkalaPodatkowa" type="TSkalaPodatkowa" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna indywidualna skala podatkowa (dla umów o pracę).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Zawod" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny zawód.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Uczen" type="TUczen" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Uczeń.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rozwiazanie" type="TRozwiazanaUmowa" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalne dane rozwiązanej umowy (data, przyczyna).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Tresc" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna treść umowy (z wyewaluowanymi autotekstami) w formacie tekstu RTF zakodowanego jako hex.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opis umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DefinicjePrzelewow" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Definicje przelewów w kolejności w jakiej mają być wykonywane.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="DefinicjaPrzelewu" type="TDefinicjaPrzelewow" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Definicja przelewu.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="PracaWSzczegWar" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące okresów pracy w szczególnych warunkach (dla umów o pracę).</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="OkresSczegWar" type="TPracaWSzczegWar" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Okres pracy w szczególnych warunkach/charakterze.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:choice>
+        <xs:element name="SystemWynagrodzenUP" type="TSystemWynagrodzenUP">
+          <xs:annotation>
+            <xs:documentation>System wynagrodzeń na umowie o pracę.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+        <xs:element name="SystemWynagrodzenUC" type="TSystemWynagrodzenUC">
+          <xs:annotation>
+            <xs:documentation>System wynagrodzeń na umowie cywilnoprawnej.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:choice>
+      <xs:element name="PracaZdalna" type="TPracaZdalna" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Praca zdalna.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element minOccurs="0" name="WlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych umowy pracowniczej.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone">
+              <xs:annotation>
+                <xs:documentation>Pole własne rozszerzone umowy. Zawartość tego elementu jest wartością pola.</xs:documentation>
+              </xs:annotation>
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="Nazwa" type="xs:string" use="required">
+                      <xs:annotation>
+                        <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                      </xs:annotation>
+                    </xs:attribute>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="FlagaWlasna" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:all>
+            <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kolor flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kształt flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="PowiekszaStaze" type="TPowiekszaStaze" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Powiększane staże wbudowane.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Aktywna" type="xs:boolean" default="true">
+      <xs:annotation>
+        <xs:documentation>Opcjonalna informacja o aktywności umowy (domyślnie importowana jako aktywna).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TUmowyPracownicze">
+    <xs:annotation>
+      <xs:documentation>Dane umów.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Umowa" minOccurs="0" maxOccurs="unbounded" type="TUmowa">
+        <xs:annotation>
+          <xs:documentation>Dane umowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  <xs:element name="UmowyPracownicze" type="TUmowyPracownicze">
+    <xs:annotation>
+      <xs:documentation>Umowy pracownicze.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

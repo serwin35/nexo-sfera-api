@@ -1,0 +1,316 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/gratyfikant/kalendarze"
+           xmlns="http://schemas.insert.com.pl/2015/hop/gratyfikant/kalendarze"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Informacje o kalendarzach.</xs:documentation>
+  </xs:annotation>
+
+  <xs:simpleType name="TRozliczanieObecnosci">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Szczegolowo">
+        <xs:annotation>
+          <xs:documentation>Rozliczanie obecności szczegółowo.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Zbiorczo">
+        <xs:annotation>
+          <xs:documentation>Rozliczanie obeczności zbiorczo.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTypDnia">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Roboczy">
+        <xs:annotation>
+          <xs:documentation>Dzień roboczy.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wolny">
+        <xs:annotation>
+          <xs:documentation>Dzień wolny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Swiateczny">
+        <xs:annotation>
+          <xs:documentation>Dzień świąteczny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TSposobPracy">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Stacjonarny">
+        <xs:annotation>
+          <xs:documentation>Praca stacjonarna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Zdalny">
+        <xs:annotation>
+          <xs:documentation>Praca zdalna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ZdalnyOkazjonalny">
+        <xs:annotation>
+          <xs:documentation>Praca zdalna okazjonalna</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TTypDniaWolnego">
+    <xs:sequence>
+      <xs:element name="Symbol" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Symbol dnia wolnego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Opis typu dnia wolnego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TDzien">
+    <xs:sequence>
+      <xs:element name="Typ" type="TTypDnia">
+        <xs:annotation>
+          <xs:documentation>Typ dnia kalendarze.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Godziny" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Liczba wszystkich godzin do przepracowania (w minutach).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nocne" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Liczba godzin nocnych do przepracowania (w minutach).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Szczegoly" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Szczegółowe dane dotyczące godzin do przepracownia</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="GodzinyDoPrzepracowania" minOccurs="0" maxOccurs="unbounded">
+              <xs:complexType>
+                <xs:sequence>
+                  <xs:element name="Poczatek" type="xs:int">
+                    <xs:annotation>
+                      <xs:documentation>Początek okresu do przepracowania (w minutach, np 8:00 = 480, 1:00 (2 doba) = 1500).</xs:documentation>
+                    </xs:annotation>
+                  </xs:element>
+                  <xs:element name="Koniec" type="xs:int">
+                    <xs:annotation>
+                      <xs:documentation>Koniec okresu do przepracowania (w minutach, np 16:00 = 960).</xs:documentation>
+                    </xs:annotation>
+                  </xs:element>
+                  <xs:element name="Typ">
+                    <xs:annotation>
+                      <xs:documentation>Rodzaj godzin do przepracowania.</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="Dzienne">
+                          <xs:annotation>
+                            <xs:documentation>Godziny dzienne.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                        <xs:enumeration value="Nocne">
+                          <xs:annotation>
+                            <xs:documentation>Godziny nocne.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:element>
+                </xs:sequence>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opis dnia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SposobPracy" type="TSposobPracy" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sposób pracy</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="TypDniaWolnego" type="TTypDniaWolnego" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Typ dnia wilnego</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TCykl">
+    <xs:sequence>
+      <xs:element name="Od" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek obowiązywania cyklu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dni">
+        <xs:annotation>
+          <xs:documentation>Dni cyklu kalendarza w odpowiedniej kolejności.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Dzien" type="TDzien" minOccurs="1" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Dane dotyczące dnia cyklu.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="WyjatkiUstawowe" type="xs:boolean" use="required">
+      <xs:annotation>
+        <xs:documentation>Czy w cyklu mają być uwzględnione wyjątki ustawowe.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TWyjatekKalendarza">
+    <xs:sequence>
+      <xs:element name="Data" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Data wyjątku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dzien" type="TDzien">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące dnia wyjątku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKalendarz">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Unikalna nazwa kalendarza.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="RozliczanieObecnosci" type="TRozliczanieObecnosci">
+        <xs:annotation>
+          <xs:documentation>Rodzaj rozliczania obecności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WymiarDobowy" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Dobowy wymiar czasu pracy dla pełnego etatu w minutach.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UwzgledniajWymiarWUmowie" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Określa czy wymiar zatrudnienia z umowy ma być uwzględniany.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Cykle">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Cykl" type="TCykl" minOccurs="1" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Cykl kalendarza.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Wyjatki">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Wyjatek" type="TWyjatekKalendarza" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Wyjątek kalendarza.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKalendarze">
+    <xs:sequence>
+      <xs:element name="Kalendarz" type="TKalendarz" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Kalendarz.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TWyjatek">
+    <xs:sequence>
+      <xs:element name="Data" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Dzień, którego dotyczy wyjątek.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Umowa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer umowy, której dotyczy wyjątek.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Szczegoly" type="TDzien">
+        <xs:annotation>
+          <xs:documentation>Szczegóły dotyczące dnia wyjątku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SposobPracy" type="TSposobPracy" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sposób pracy</xs:documentation>
+        </xs:annotation>
+      </xs:element>      
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TWyjatki">
+    <xs:sequence>
+      <xs:element name="Wyjatek" type="TWyjatek" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Wyjątek dotyczący pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKalendarzeIWyjatki">
+    <xs:sequence>
+      <xs:element name="Kalendarze" type="TKalendarze">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące kalendarzy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wyjatki" type="TWyjatki">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące wyjątków.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="KalendarzeIWyjatki" type="TKalendarzeIWyjatki">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące kalendarzy i wyjątków.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  
+</xs:schema>
