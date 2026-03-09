@@ -31,7 +31,7 @@ public class IntrastatController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<IntrastatDeclarationDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<IntrastatDeclarationDto>> GetIntrastatDeclarations(
+    public async Task<ActionResult<PagedResponse<IntrastatDeclarationDto>>> GetIntrastatDeclarations(
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] string? direction,  // Arrival/Dispatch
@@ -41,74 +41,84 @@ public class IntrastatController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("DeklaracjeIntrastat");
-            if (manager == null)
+            var (items, totalCount) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DeklaracjeIntrastat");
+                if (manager == null)
+                {
+                    return (null, -1);
+                }
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by year
+                if (year.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
+                        return rok.HasValue && rok.Value == year.Value;
+                    }).ToList();
+                }
+
+                // Filter by month
+                if (month.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
+                        return miesiac.HasValue && miesiac.Value == month.Value;
+                    }).ToList();
+                }
+
+                // Filter by direction (Arrival = przywóz, Dispatch = wywóz)
+                if (!string.IsNullOrEmpty(direction))
+                {
+                    bool isArrival = direction.Equals("arrival", StringComparison.OrdinalIgnoreCase) ||
+                                    direction.Equals("przywoz", StringComparison.OrdinalIgnoreCase);
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
+                        // 0 = Arrival (Przywóz), 1 = Dispatch (Wywóz)
+                        return isArrival ? typ == 0 : typ == 1;
+                    }).ToList();
+                }
+
+                // Filter by status
+                if (!string.IsNullOrEmpty(status))
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var declStatus = MapIntrastatStatus(DynamicPropertyHelper.GetNullableInt(d, "Status"));
+                        return declStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var count = allDeklaracje.Count;
+                var pagedDeklaracje = allDeklaracje
+                    .OrderByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Rok") ?? 0)
+                    .ThenByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Miesiac") ?? 0)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var result = new List<IntrastatDeclarationDto>();
+                foreach (var d in pagedDeklaracje)
+                {
+                    result.Add(MapIntrastatDeclaration(d, false));
+                }
+
+                return (result, count);
+            });
+
+            if (totalCount == -1)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by year
-            if (year.HasValue)
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
-                    return rok.HasValue && rok.Value == year.Value;
-                }).ToList();
-            }
-
-            // Filter by month
-            if (month.HasValue)
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
-                    return miesiac.HasValue && miesiac.Value == month.Value;
-                }).ToList();
-            }
-
-            // Filter by direction (Arrival = przywóz, Dispatch = wywóz)
-            if (!string.IsNullOrEmpty(direction))
-            {
-                bool isArrival = direction.Equals("arrival", StringComparison.OrdinalIgnoreCase) ||
-                                direction.Equals("przywoz", StringComparison.OrdinalIgnoreCase);
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
-                    // 0 = Arrival (Przywóz), 1 = Dispatch (Wywóz)
-                    return isArrival ? typ == 0 : typ == 1;
-                }).ToList();
-            }
-
-            // Filter by status
-            if (!string.IsNullOrEmpty(status))
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var declStatus = MapIntrastatStatus(DynamicPropertyHelper.GetNullableInt(d, "Status"));
-                    return declStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allDeklaracje.Count;
-            var pagedDeklaracje = allDeklaracje
-                .OrderByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Rok") ?? 0)
-                .ThenByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Miesiac") ?? 0)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<IntrastatDeclarationDto>();
-            foreach (var d in pagedDeklaracje)
-            {
-                items.Add(MapIntrastatDeclaration(d, false));
-            }
-
             return Ok(new PagedResponse<IntrastatDeclarationDto>
             {
-                Data = items,
+                Data = items!,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -127,25 +137,28 @@ public class IntrastatController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<IntrastatDeclarationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IntrastatDeclarationDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<IntrastatDeclarationDto>> GetIntrastatDeclaration(int id, [FromQuery] bool includeItems = true)
+    public async Task<ActionResult<ApiResponse<IntrastatDeclarationDto>>> GetIntrastatDeclaration(int id, [FromQuery] bool includeItems = true)
     {
         try
         {
-            var manager = _sferaService.GetManager("DeklaracjeIntrastat");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<IntrastatDeclarationDto>.Error("Failed to get DeklaracjeIntrastat manager"));
-            }
+                var manager = _sferaService.GetManager("DeklaracjeIntrastat");
+                if (manager == null) return (IntrastatDeclarationDto?)null;
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
-            if (deklaracja == null)
+                if (deklaracja == null) return (IntrastatDeclarationDto?)null;
+                return (IntrastatDeclarationDto?)MapIntrastatDeclaration(deklaracja, includeItems);
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<IntrastatDeclarationDto>.Error($"Intrastat declaration with ID {id} not found"));
             }
 
-            return Ok(ApiResponse<IntrastatDeclarationDto>.Ok(MapIntrastatDeclaration(deklaracja, includeItems)));
+            return Ok(ApiResponse<IntrastatDeclarationDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -160,7 +173,7 @@ public class IntrastatController : ControllerBase
     [HttpGet("{id}/items")]
     [ProducesResponseType(typeof(PagedResponse<IntrastatItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public ActionResult<PagedResponse<IntrastatItemDto>> GetIntrastatItems(
+    public async Task<ActionResult<PagedResponse<IntrastatItemDto>>> GetIntrastatItems(
         int id,
         [FromQuery] string? countryCode,
         [FromQuery] int page = 1,
@@ -168,50 +181,59 @@ public class IntrastatController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("DeklaracjeIntrastat");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DeklaracjeIntrastat");
+                if (manager == null) return (null, -1);
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
+
+                if (deklaracja == null) return (null, -2);
+
+                var pozycje = DynamicPropertyHelper.GetCollection((object)deklaracja, "Pozycje");
+                var items = new List<IntrastatItemDto>();
+
+                foreach (var p in pozycje)
+                {
+                    var item = MapIntrastatItem(p);
+
+                    // Filter by country
+                    if (!string.IsNullOrEmpty(countryCode) &&
+                        !string.Equals(item.CountryCode, countryCode, StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+
+                    items.Add(item);
+                }
+
+                var totalCount = items.Count;
+                var pagedItems = items
+                    .OrderBy(i => i.CnCode)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                return (pagedItems, totalCount);
+            });
+
+            if (result.Item2 == -1)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
-
-            if (deklaracja == null)
+            if (result.Item2 == -2)
             {
                 return NotFound(ApiResponse<object>.Error($"Intrastat declaration with ID {id} not found"));
             }
 
-            var pozycje = DynamicPropertyHelper.GetCollection((object)deklaracja, "Pozycje");
-            var items = new List<IntrastatItemDto>();
-
-            foreach (var p in pozycje)
-            {
-                var item = MapIntrastatItem(p);
-
-                // Filter by country
-                if (!string.IsNullOrEmpty(countryCode) &&
-                    !string.Equals(item.CountryCode, countryCode, StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-
-                items.Add(item);
-            }
-
-            var totalCount = items.Count;
-            var pagedItems = items
-                .OrderBy(i => i.CnCode)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
             return Ok(new PagedResponse<IntrastatItemDto>
             {
-                Data = pagedItems,
+                Data = result.Item1!,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.Item2
             });
         }
         catch (Exception ex)
@@ -226,112 +248,117 @@ public class IntrastatController : ControllerBase
     /// </summary>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(ApiResponse<IntrastatSummaryDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<IntrastatSummaryDto>> GetIntrastatSummary(
+    public async Task<ActionResult<ApiResponse<IntrastatSummaryDto>>> GetIntrastatSummary(
         [FromQuery] int year,
         [FromQuery] int? month,
         [FromQuery] string? direction)
     {
         try
         {
-            var manager = _sferaService.GetManager("DeklaracjeIntrastat");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DeklaracjeIntrastat");
+                if (manager == null) return (IntrastatSummaryDto?)null;
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by year
+                allDeklaracje = allDeklaracje.Where(d =>
+                {
+                    var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
+                    return rok.HasValue && rok.Value == year;
+                }).ToList();
+
+                // Filter by month
+                if (month.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
+                        return miesiac.HasValue && miesiac.Value == month.Value;
+                    }).ToList();
+                }
+
+                // Filter by direction
+                if (!string.IsNullOrEmpty(direction))
+                {
+                    bool isArrival = direction.Equals("arrival", StringComparison.OrdinalIgnoreCase);
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
+                        return isArrival ? typ == 0 : typ == 1;
+                    }).ToList();
+                }
+
+                decimal totalArrivalValue = 0;
+                decimal totalDispatchValue = 0;
+                decimal totalArrivalWeight = 0;
+                decimal totalDispatchWeight = 0;
+                var countryBreakdown = new Dictionary<string, IntrastatCountrySummaryDto>();
+
+                foreach (var d in allDeklaracje)
+                {
+                    var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
+                    bool isArrival = typ == 0;
+
+                    var pozycje = DynamicPropertyHelper.GetCollection((object)d, "Pozycje");
+                    foreach (var p in pozycje)
+                    {
+                        var wartosc = DynamicPropertyHelper.GetDecimal(p, "WartoscStatystyczna");
+                        var masa = DynamicPropertyHelper.GetDecimal(p, "MasaNetto");
+                        var kodKraju = DynamicPropertyHelper.GetString(p, "KodKraju") ?? "XX";
+
+                        if (isArrival)
+                        {
+                            totalArrivalValue += wartosc;
+                            totalArrivalWeight += masa;
+                        }
+                        else
+                        {
+                            totalDispatchValue += wartosc;
+                            totalDispatchWeight += masa;
+                        }
+
+                        if (!countryBreakdown.ContainsKey(kodKraju))
+                        {
+                            countryBreakdown[kodKraju] = new IntrastatCountrySummaryDto { CountryCode = kodKraju };
+                        }
+
+                        if (isArrival)
+                        {
+                            countryBreakdown[kodKraju].ArrivalValue += wartosc;
+                            countryBreakdown[kodKraju].ArrivalWeight += masa;
+                        }
+                        else
+                        {
+                            countryBreakdown[kodKraju].DispatchValue += wartosc;
+                            countryBreakdown[kodKraju].DispatchWeight += masa;
+                        }
+                    }
+                }
+
+                return (IntrastatSummaryDto?)new IntrastatSummaryDto
+                {
+                    Year = year,
+                    Month = month,
+                    DeclarationCount = allDeklaracje.Count,
+                    TotalArrivalValue = totalArrivalValue,
+                    TotalDispatchValue = totalDispatchValue,
+                    TotalArrivalWeight = totalArrivalWeight,
+                    TotalDispatchWeight = totalDispatchWeight,
+                    CountryBreakdown = countryBreakdown.Values
+                        .OrderByDescending(c => c.ArrivalValue + c.DispatchValue)
+                        .Take(20)
+                        .ToList()
+                };
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<IntrastatSummaryDto>.Error("Failed to get DeklaracjeIntrastat manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by year
-            allDeklaracje = allDeklaracje.Where(d =>
-            {
-                var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
-                return rok.HasValue && rok.Value == year;
-            }).ToList();
-
-            // Filter by month
-            if (month.HasValue)
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
-                    return miesiac.HasValue && miesiac.Value == month.Value;
-                }).ToList();
-            }
-
-            // Filter by direction
-            if (!string.IsNullOrEmpty(direction))
-            {
-                bool isArrival = direction.Equals("arrival", StringComparison.OrdinalIgnoreCase);
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
-                    return isArrival ? typ == 0 : typ == 1;
-                }).ToList();
-            }
-
-            decimal totalArrivalValue = 0;
-            decimal totalDispatchValue = 0;
-            decimal totalArrivalWeight = 0;
-            decimal totalDispatchWeight = 0;
-            var countryBreakdown = new Dictionary<string, IntrastatCountrySummaryDto>();
-
-            foreach (var d in allDeklaracje)
-            {
-                var typ = DynamicPropertyHelper.GetNullableInt(d, "Typ");
-                bool isArrival = typ == 0;
-
-                var pozycje = DynamicPropertyHelper.GetCollection((object)d, "Pozycje");
-                foreach (var p in pozycje)
-                {
-                    var wartosc = DynamicPropertyHelper.GetDecimal(p, "WartoscStatystyczna");
-                    var masa = DynamicPropertyHelper.GetDecimal(p, "MasaNetto");
-                    var kodKraju = DynamicPropertyHelper.GetString(p, "KodKraju") ?? "XX";
-
-                    if (isArrival)
-                    {
-                        totalArrivalValue += wartosc;
-                        totalArrivalWeight += masa;
-                    }
-                    else
-                    {
-                        totalDispatchValue += wartosc;
-                        totalDispatchWeight += masa;
-                    }
-
-                    if (!countryBreakdown.ContainsKey(kodKraju))
-                    {
-                        countryBreakdown[kodKraju] = new IntrastatCountrySummaryDto { CountryCode = kodKraju };
-                    }
-
-                    if (isArrival)
-                    {
-                        countryBreakdown[kodKraju].ArrivalValue += wartosc;
-                        countryBreakdown[kodKraju].ArrivalWeight += masa;
-                    }
-                    else
-                    {
-                        countryBreakdown[kodKraju].DispatchValue += wartosc;
-                        countryBreakdown[kodKraju].DispatchWeight += masa;
-                    }
-                }
-            }
-
-            var summary = new IntrastatSummaryDto
-            {
-                Year = year,
-                Month = month,
-                DeclarationCount = allDeklaracje.Count,
-                TotalArrivalValue = totalArrivalValue,
-                TotalDispatchValue = totalDispatchValue,
-                TotalArrivalWeight = totalArrivalWeight,
-                TotalDispatchWeight = totalDispatchWeight,
-                CountryBreakdown = countryBreakdown.Values
-                    .OrderByDescending(c => c.ArrivalValue + c.DispatchValue)
-                    .Take(20)
-                    .ToList()
-            };
-
-            return Ok(ApiResponse<IntrastatSummaryDto>.Ok(summary));
+            return Ok(ApiResponse<IntrastatSummaryDto>.Ok(result));
         }
         catch (Exception ex)
         {

@@ -372,9 +372,9 @@ public class SferaService : ISferaService, IDisposable
                 // E-invoice (KSeF) - use reflection to call extension methods
                 "FabrykaGeneratorowEFaktury" => GetEInvoiceManager("FabrykaGeneratorowEFaktury"),
                 "KoordynatorWysylaniaEFaktur" => GetEInvoiceManager("KoordynatorWysylaniaEFaktur"),
-                // Methods that don't have extension methods - need different approach
-                "DokumentyHandlowe" => throw new NotSupportedException("DokumentyHandlowe requires direct Sfera access"),
-                "OfertyDlaKlientow" => throw new NotSupportedException("OfertyDlaKlientow requires direct Sfera access"),
+                // Aliases - map to the actual SDK manager methods
+                "DokumentyHandlowe" => _sfera.DokumentySprzedazy(), // alias - same manager used for e-invoice generation
+                "OfertyDlaKlientow" => _sfera.Oferty(), // alias - same manager
                 _ => throw new ArgumentException($"Unknown manager: {managerMethodName}")
             };
         }

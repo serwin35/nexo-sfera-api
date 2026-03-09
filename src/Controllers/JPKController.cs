@@ -31,7 +31,7 @@ public class JPKController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<JpkFileDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<JpkFileDto>> GetJpkFiles(
+    public async Task<IActionResult> GetJpkFiles(
         [FromQuery] string? type,
         [FromQuery] int? year,
         [FromQuery] int? month,
@@ -41,73 +41,76 @@ public class JPKController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("JednolitePlikiKontrolne");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("JednolitePlikiKontrolne");
+                if (manager == null) return (managerNull: true, items: (List<JpkFileDto>?)null, totalCount: 0);
+
+                var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                if (!string.IsNullOrEmpty(type))
+                {
+                    allJpk = allJpk.Where(j =>
+                    {
+                        var jpkType = DynamicPropertyHelper.GetString(j, "TypJPK");
+                        return jpkType != null && jpkType.Contains(type, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                if (year.HasValue)
+                {
+                    allJpk = allJpk.Where(j =>
+                    {
+                        var dataOd = DynamicPropertyHelper.GetDateTime(j, "DataOd");
+                        return dataOd.HasValue && dataOd.Value.Year == year.Value;
+                    }).ToList();
+                }
+
+                if (month.HasValue)
+                {
+                    allJpk = allJpk.Where(j =>
+                    {
+                        var dataOd = DynamicPropertyHelper.GetDateTime(j, "DataOd");
+                        return dataOd.HasValue && dataOd.Value.Month == month.Value;
+                    }).ToList();
+                }
+
+                if (!string.IsNullOrEmpty(status))
+                {
+                    allJpk = allJpk.Where(j =>
+                    {
+                        var jpkStatus = MapJpkStatus(DynamicPropertyHelper.GetNullableInt(j, "Status"));
+                        return jpkStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var totalCount = allJpk.Count;
+                var pagedJpk = allJpk
+                    .OrderByDescending(j => DynamicPropertyHelper.GetDateTime(j, "DataOd") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<JpkFileDto>();
+                foreach (var j in pagedJpk)
+                {
+                    items.Add(MapJpkFile(j));
+                }
+
+                return (managerNull: false, items: (List<JpkFileDto>?)items, totalCount);
+            });
+
+            if (result.managerNull)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get JednolitePlikiKontrolne manager"));
             }
 
-            var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by type
-            if (!string.IsNullOrEmpty(type))
-            {
-                allJpk = allJpk.Where(j =>
-                {
-                    var jpkType = DynamicPropertyHelper.GetString(j, "TypJPK");
-                    return jpkType != null && jpkType.Contains(type, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            // Filter by year
-            if (year.HasValue)
-            {
-                allJpk = allJpk.Where(j =>
-                {
-                    var dataOd = DynamicPropertyHelper.GetDateTime(j, "DataOd");
-                    return dataOd.HasValue && dataOd.Value.Year == year.Value;
-                }).ToList();
-            }
-
-            // Filter by month
-            if (month.HasValue)
-            {
-                allJpk = allJpk.Where(j =>
-                {
-                    var dataOd = DynamicPropertyHelper.GetDateTime(j, "DataOd");
-                    return dataOd.HasValue && dataOd.Value.Month == month.Value;
-                }).ToList();
-            }
-
-            // Filter by status
-            if (!string.IsNullOrEmpty(status))
-            {
-                allJpk = allJpk.Where(j =>
-                {
-                    var jpkStatus = MapJpkStatus(DynamicPropertyHelper.GetNullableInt(j, "Status"));
-                    return jpkStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allJpk.Count;
-            var pagedJpk = allJpk
-                .OrderByDescending(j => DynamicPropertyHelper.GetDateTime(j, "DataOd") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<JpkFileDto>();
-            foreach (var j in pagedJpk)
-            {
-                items.Add(MapJpkFile(j));
-            }
-
             return Ok(new PagedResponse<JpkFileDto>
             {
-                Data = items,
+                Data = result.items!,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -123,25 +126,30 @@ public class JPKController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<JpkFileDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<JpkFileDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<JpkFileDto>> GetJpkFile(int id)
+    public async Task<IActionResult> GetJpkFile(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("JednolitePlikiKontrolne");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("JednolitePlikiKontrolne");
+                if (manager == null) return (found: false, managerNull: true, dto: (JpkFileDto?)null);
+
+                var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var jpk = allJpk.FirstOrDefault(j => DynamicPropertyHelper.GetId(j) == id);
+
+                if (jpk == null) return (found: false, managerNull: false, dto: (JpkFileDto?)null);
+
+                return (found: true, managerNull: false, dto: (JpkFileDto?)MapJpkFile(jpk));
+            });
+
+            if (result.managerNull)
                 return StatusCode(500, ApiResponse<JpkFileDto>.Error("Failed to get JednolitePlikiKontrolne manager"));
-            }
 
-            var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var jpk = allJpk.FirstOrDefault(j => DynamicPropertyHelper.GetId(j) == id);
-
-            if (jpk == null)
-            {
+            if (!result.found)
                 return NotFound(ApiResponse<JpkFileDto>.Error($"JPK file with ID {id} not found"));
-            }
 
-            return Ok(ApiResponse<JpkFileDto>.Ok(MapJpkFile(jpk)));
+            return Ok(ApiResponse<JpkFileDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -156,37 +164,42 @@ public class JPKController : ControllerBase
     [HttpGet("{id}/status")]
     [ProducesResponseType(typeof(ApiResponse<JpkStatusDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<JpkStatusDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<JpkStatusDto>> GetJpkFileStatus(int id)
+    public async Task<IActionResult> GetJpkFileStatus(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("JednolitePlikiKontrolne");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("JednolitePlikiKontrolne");
+                if (manager == null) return (found: false, managerNull: true, dto: (JpkStatusDto?)null);
+
+                var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var jpk = allJpk.FirstOrDefault(j => DynamicPropertyHelper.GetId(j) == id);
+
+                if (jpk == null) return (found: false, managerNull: false, dto: (JpkStatusDto?)null);
+
+                var statusDto = new JpkStatusDto
+                {
+                    Id = id,
+                    Status = MapJpkStatus(DynamicPropertyHelper.GetNullableInt(jpk, "Status")),
+                    StatusCode = DynamicPropertyHelper.GetNullableInt(jpk, "Status") ?? 0,
+                    ReferenceNumber = DynamicPropertyHelper.GetString(jpk, "NumerReferencyjny"),
+                    UpoNumber = DynamicPropertyHelper.GetString(jpk, "NumerUPO"),
+                    SubmittedDate = DynamicPropertyHelper.GetDateTime(jpk, "DataWyslania"),
+                    AcceptedDate = DynamicPropertyHelper.GetDateTime(jpk, "DataPotwierdzenia"),
+                    ErrorMessage = DynamicPropertyHelper.GetString(jpk, "KomunikatBledu")
+                };
+
+                return (found: true, managerNull: false, dto: (JpkStatusDto?)statusDto);
+            });
+
+            if (result.managerNull)
                 return StatusCode(500, ApiResponse<JpkStatusDto>.Error("Failed to get JednolitePlikiKontrolne manager"));
-            }
 
-            var allJpk = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var jpk = allJpk.FirstOrDefault(j => DynamicPropertyHelper.GetId(j) == id);
-
-            if (jpk == null)
-            {
+            if (!result.found)
                 return NotFound(ApiResponse<JpkStatusDto>.Error($"JPK file with ID {id} not found"));
-            }
 
-            var statusDto = new JpkStatusDto
-            {
-                Id = id,
-                Status = MapJpkStatus(DynamicPropertyHelper.GetNullableInt(jpk, "Status")),
-                StatusCode = DynamicPropertyHelper.GetNullableInt(jpk, "Status") ?? 0,
-                ReferenceNumber = DynamicPropertyHelper.GetString(jpk, "NumerReferencyjny"),
-                UpoNumber = DynamicPropertyHelper.GetString(jpk, "NumerUPO"),
-                SubmittedDate = DynamicPropertyHelper.GetDateTime(jpk, "DataWyslania"),
-                AcceptedDate = DynamicPropertyHelper.GetDateTime(jpk, "DataPotwierdzenia"),
-                ErrorMessage = DynamicPropertyHelper.GetString(jpk, "KomunikatBledu")
-            };
-
-            return Ok(ApiResponse<JpkStatusDto>.Ok(statusDto));
+            return Ok(ApiResponse<JpkStatusDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -228,42 +241,45 @@ public class JPKController : ControllerBase
     /// </summary>
     [HttpGet("types/{typeCode}/versions")]
     [ProducesResponseType(typeof(ApiResponse<List<JpkVersionDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<JpkVersionDto>>> GetJpkVersions(string typeCode)
+    public async Task<IActionResult> GetJpkVersions(string typeCode)
     {
         try
         {
-            var manager = _sferaService.GetManager("WersjeDefinicjiJPK");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                // Return default versions if manager not available
-                var defaultVersions = new List<JpkVersionDto>
+                var manager = _sferaService.GetManager("WersjeDefinicjiJPK");
+                if (manager == null)
                 {
-                    new() { Version = "1", TypeCode = typeCode, ValidFrom = new DateTime(2020, 10, 1), IsCurrent = true }
-                };
-                return Ok(ApiResponse<List<JpkVersionDto>>.Ok(defaultVersions));
-            }
+                    return new List<JpkVersionDto>
+                    {
+                        new() { Version = "1", TypeCode = typeCode, ValidFrom = new DateTime(2020, 10, 1), IsCurrent = true }
+                    };
+                }
 
-            var allVersions = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var typeVersions = allVersions.Where(v =>
-            {
-                var typ = DynamicPropertyHelper.GetString(v, "TypJPK");
-                return typ != null && typ.Equals(typeCode, StringComparison.OrdinalIgnoreCase);
-            }).ToList();
-
-            var versions = new List<JpkVersionDto>();
-            foreach (var v in typeVersions)
-            {
-                versions.Add(new JpkVersionDto
+                var allVersions = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var typeVersions = allVersions.Where(v =>
                 {
-                    Version = DynamicPropertyHelper.GetString(v, "Wersja") ?? "1",
-                    TypeCode = typeCode,
-                    ValidFrom = DynamicPropertyHelper.GetDateTime(v, "DataObowiazywaniaOd"),
-                    ValidTo = DynamicPropertyHelper.GetDateTime(v, "DataObowiazywaniaDo"),
-                    IsCurrent = DynamicPropertyHelper.GetBool(v, "Aktualna")
-                });
-            }
+                    var typ = DynamicPropertyHelper.GetString(v, "TypJPK");
+                    return typ != null && typ.Equals(typeCode, StringComparison.OrdinalIgnoreCase);
+                }).ToList();
 
-            return Ok(ApiResponse<List<JpkVersionDto>>.Ok(versions.OrderByDescending(v => v.ValidFrom).ToList()));
+                var versions = new List<JpkVersionDto>();
+                foreach (var v in typeVersions)
+                {
+                    versions.Add(new JpkVersionDto
+                    {
+                        Version = DynamicPropertyHelper.GetString(v, "Wersja") ?? "1",
+                        TypeCode = typeCode,
+                        ValidFrom = DynamicPropertyHelper.GetDateTime(v, "DataObowiazywaniaOd"),
+                        ValidTo = DynamicPropertyHelper.GetDateTime(v, "DataObowiazywaniaDo"),
+                        IsCurrent = DynamicPropertyHelper.GetBool(v, "Aktualna")
+                    });
+                }
+
+                return versions.OrderByDescending(v => v.ValidFrom).ToList();
+            });
+
+            return Ok(ApiResponse<List<JpkVersionDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -281,49 +297,54 @@ public class JPKController : ControllerBase
     /// </summary>
     [HttpGet("packages")]
     [ProducesResponseType(typeof(PagedResponse<JpkPackageDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<JpkPackageDto>> GetJpkPackages(
+    public async Task<IActionResult> GetJpkPackages(
         [FromQuery] string? status,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
         try
         {
-            var manager = _sferaService.GetManager("PaczkiJednolitychPlikowKontrolnych");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get PaczkiJednolitychPlikowKontrolnych manager"));
-            }
+                var manager = _sferaService.GetManager("PaczkiJednolitychPlikowKontrolnych");
+                if (manager == null) return (managerNull: true, items: (List<JpkPackageDto>?)null, totalCount: 0);
 
-            var allPaczki = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var allPaczki = DynamicPropertyHelper.SafeGetAll((object)manager);
 
-            if (!string.IsNullOrEmpty(status))
-            {
-                allPaczki = allPaczki.Where(p =>
+                if (!string.IsNullOrEmpty(status))
                 {
-                    var paczkaStatus = MapJpkPackageStatus(DynamicPropertyHelper.GetNullableInt(p, "Status"));
-                    return paczkaStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
+                    allPaczki = allPaczki.Where(p =>
+                    {
+                        var paczkaStatus = MapJpkPackageStatus(DynamicPropertyHelper.GetNullableInt(p, "Status"));
+                        return paczkaStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
 
-            var totalCount = allPaczki.Count;
-            var pagedPaczki = allPaczki
-                .OrderByDescending(p => DynamicPropertyHelper.GetDateTime(p, "DataUtworzenia") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+                var totalCount = allPaczki.Count;
+                var pagedPaczki = allPaczki
+                    .OrderByDescending(p => DynamicPropertyHelper.GetDateTime(p, "DataUtworzenia") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
 
-            var items = new List<JpkPackageDto>();
-            foreach (var p in pagedPaczki)
-            {
-                items.Add(MapJpkPackage(p));
-            }
+                var items = new List<JpkPackageDto>();
+                foreach (var p in pagedPaczki)
+                {
+                    items.Add(MapJpkPackage(p));
+                }
+
+                return (managerNull: false, items: (List<JpkPackageDto>?)items, totalCount);
+            });
+
+            if (result.managerNull)
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get PaczkiJednolitychPlikowKontrolnych manager"));
 
             return Ok(new PagedResponse<JpkPackageDto>
             {
-                Data = items,
+                Data = result.items!,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -339,25 +360,30 @@ public class JPKController : ControllerBase
     [HttpGet("packages/{id}")]
     [ProducesResponseType(typeof(ApiResponse<JpkPackageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<JpkPackageDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<JpkPackageDto>> GetJpkPackage(int id)
+    public async Task<IActionResult> GetJpkPackage(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("PaczkiJednolitychPlikowKontrolnych");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("PaczkiJednolitychPlikowKontrolnych");
+                if (manager == null) return (found: false, managerNull: true, dto: (JpkPackageDto?)null);
+
+                var allPaczki = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var paczka = allPaczki.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
+
+                if (paczka == null) return (found: false, managerNull: false, dto: (JpkPackageDto?)null);
+
+                return (found: true, managerNull: false, dto: (JpkPackageDto?)MapJpkPackage(paczka));
+            });
+
+            if (result.managerNull)
                 return StatusCode(500, ApiResponse<JpkPackageDto>.Error("Failed to get PaczkiJednolitychPlikowKontrolnych manager"));
-            }
 
-            var allPaczki = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var paczka = allPaczki.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
-
-            if (paczka == null)
-            {
+            if (!result.found)
                 return NotFound(ApiResponse<JpkPackageDto>.Error($"JPK package with ID {id} not found"));
-            }
 
-            return Ok(ApiResponse<JpkPackageDto>.Ok(MapJpkPackage(paczka)));
+            return Ok(ApiResponse<JpkPackageDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {

@@ -30,109 +30,117 @@ public class ContractorGroupsController : ControllerBase
     /// Get all contractor groups with optional filtering
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<ContractorGroupListItemDto>> GetContractorGroups([FromQuery] ContractorGroupQueryRequest query)
+    public async Task<ActionResult<PagedResponse<ContractorGroupListItemDto>>> GetContractorGroups([FromQuery] ContractorGroupQueryRequest query)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (managerNull: true, response: (PagedResponse<ContractorGroupListItemDto>?)null);
+                }
+
+                var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupy);
+
+                // Apply filters
+                var filteredList = new List<object>();
+                foreach (var g in allGrupy)
+                {
+                    // Deleted filter
+                    if (!query.IncludeDeleted)
+                    {
+                        var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
+                        if (isDeleted) continue;
+                    }
+
+                    // Inactive filter
+                    if (!query.IncludeInactive)
+                    {
+                        var isActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywny") ?? true;
+                        if (!isActive) continue;
+                    }
+
+                    // Parent filter (root groups if ParentId not specified and not IncludeAllLevels)
+                    if (!query.IncludeAllLevels)
+                    {
+                        var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+                        var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+
+                        if (query.ParentId.HasValue)
+                        {
+                            if (parentId != query.ParentId.Value) continue;
+                        }
+                        else
+                        {
+                            // Only root groups (no parent)
+                            if (parentId.HasValue && parentId > 0) continue;
+                        }
+                    }
+
+                    // Search filter
+                    if (!string.IsNullOrEmpty(query.Search))
+                    {
+                        var searchLower = query.Search.ToLower();
+                        var symbol = (DynamicPropertyHelper.GetString(g, "Symbol") ?? "").ToLower();
+                        var nazwa = (DynamicPropertyHelper.GetString(g, "Nazwa") ?? "").ToLower();
+
+                        if (!symbol.Contains(searchLower) && !nazwa.Contains(searchLower))
+                            continue;
+                    }
+
+                    filteredList.Add(g);
+                }
+
+                var totalCount = filteredList.Count;
+                var pagedItems = filteredList
+                    .OrderBy(g => DynamicPropertyHelper.GetString(g, "Nazwa"))
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
+
+                var items = new List<ContractorGroupListItemDto>();
+                foreach (var g in pagedItems)
+                {
+                    var dto = MapToListItemDto(g);
+
+                    // Include contractor count if requested
+                    if (query.IncludeContractorCount)
+                    {
+                        dto.ContractorCount = GetContractorCountForGroup(DynamicPropertyHelper.GetId(g), grupy);
+                    }
+
+                    // Check if has children
+                    dto.HasChildren = false;
+                    foreach (var child in allGrupy)
+                    {
+                        var parent = DynamicPropertyHelper.GetProperty(child, "Rodzic");
+                        if (parent != null && DynamicPropertyHelper.GetId(parent) == dto.Id)
+                        {
+                            dto.HasChildren = true;
+                            break;
+                        }
+                    }
+
+                    items.Add(dto);
+                }
+
+                return (managerNull: false, response: new PagedResponse<ContractorGroupListItemDto>
+                {
+                    Data = items,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                });
+            });
+
+            if (result.managerNull)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
             }
 
-            var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupy);
-
-            // Apply filters
-            var filteredList = new List<object>();
-            foreach (var g in allGrupy)
-            {
-                // Deleted filter
-                if (!query.IncludeDeleted)
-                {
-                    var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
-                    if (isDeleted) continue;
-                }
-
-                // Inactive filter
-                if (!query.IncludeInactive)
-                {
-                    var isActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywny") ?? true;
-                    if (!isActive) continue;
-                }
-
-                // Parent filter (root groups if ParentId not specified and not IncludeAllLevels)
-                if (!query.IncludeAllLevels)
-                {
-                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
-
-                    if (query.ParentId.HasValue)
-                    {
-                        if (parentId != query.ParentId.Value) continue;
-                    }
-                    else
-                    {
-                        // Only root groups (no parent)
-                        if (parentId.HasValue && parentId > 0) continue;
-                    }
-                }
-
-                // Search filter
-                if (!string.IsNullOrEmpty(query.Search))
-                {
-                    var searchLower = query.Search.ToLower();
-                    var symbol = (DynamicPropertyHelper.GetString(g, "Symbol") ?? "").ToLower();
-                    var nazwa = (DynamicPropertyHelper.GetString(g, "Nazwa") ?? "").ToLower();
-
-                    if (!symbol.Contains(searchLower) && !nazwa.Contains(searchLower))
-                        continue;
-                }
-
-                filteredList.Add(g);
-            }
-
-            var totalCount = filteredList.Count;
-            var pagedItems = filteredList
-                .OrderBy(g => DynamicPropertyHelper.GetString(g, "Nazwa"))
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .ToList();
-
-            var items = new List<ContractorGroupListItemDto>();
-            foreach (var g in pagedItems)
-            {
-                var dto = MapToListItemDto(g);
-
-                // Include contractor count if requested
-                if (query.IncludeContractorCount)
-                {
-                    dto.ContractorCount = GetContractorCountForGroup(DynamicPropertyHelper.GetId(g));
-                }
-
-                // Check if has children
-                dto.HasChildren = false;
-                foreach (var child in allGrupy)
-                {
-                    var parent = DynamicPropertyHelper.GetProperty(child, "Rodzic");
-                    if (parent != null && DynamicPropertyHelper.GetId(parent) == dto.Id)
-                    {
-                        dto.HasChildren = true;
-                        break;
-                    }
-                }
-
-                items.Add(dto);
-            }
-
-            var response = new PagedResponse<ContractorGroupListItemDto>
-            {
-                Data = items,
-                Page = query.Page,
-                PageSize = query.PageSize,
-                TotalCount = totalCount
-            };
-
-            return Ok(response);
+            return Ok(result.response!);
         }
         catch (Exception ex)
         {
@@ -145,69 +153,79 @@ public class ContractorGroupsController : ControllerBase
     /// Get contractor groups as a tree structure
     /// </summary>
     [HttpGet("tree")]
-    public ActionResult<ApiResponse<List<ContractorGroupTreeDto>>> GetContractorGroupsTree([FromQuery] bool includeContractorCount = false)
+    public async Task<ActionResult<ApiResponse<List<ContractorGroupTreeDto>>>> GetContractorGroupsTree([FromQuery] bool includeContractorCount = false)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var rootGroups = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return null;
+                }
+
+                var allGrupyRaw = DynamicPropertyHelper.SafeGetAll((object)grupy);
+                var allGrupy = new List<object>();
+                foreach (var g in allGrupyRaw)
+                {
+                    if (!(DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false))
+                    {
+                        allGrupy.Add(g);
+                    }
+                }
+
+                // Build tree
+                var groupMap = new Dictionary<int, ContractorGroupTreeDto>();
+                var roots = new List<ContractorGroupTreeDto>();
+
+                // First pass: create all nodes
+                foreach (var g in allGrupy)
+                {
+                    var id = DynamicPropertyHelper.GetId(g);
+                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+
+                    var node = new ContractorGroupTreeDto
+                    {
+                        Id = id,
+                        Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? "",
+                        Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
+                        ParentId = parentId,
+                        Level = DynamicPropertyHelper.GetNullableInt(g, "Poziom") ?? 0,
+                        ContractorCount = includeContractorCount ? GetContractorCountForGroup(id, grupy) : 0
+                    };
+
+                    groupMap[id] = node;
+                }
+
+                // Second pass: build hierarchy
+                foreach (var node in groupMap.Values)
+                {
+                    if (node.ParentId.HasValue && node.ParentId.Value > 0 && groupMap.ContainsKey(node.ParentId.Value))
+                    {
+                        groupMap[node.ParentId.Value].Children.Add(node);
+                    }
+                    else
+                    {
+                        roots.Add(node);
+                    }
+                }
+
+                // Sort children
+                foreach (var node in groupMap.Values)
+                {
+                    node.Children = node.Children.OrderBy(c => c.Name).ToList();
+                }
+                roots = roots.OrderBy(r => r.Name).ToList();
+
+                return roots;
+            });
+
+            if (rootGroups == null)
             {
                 return StatusCode(500, ApiResponse<List<ContractorGroupTreeDto>>.Error("Failed to get Grupy manager"));
             }
-
-            var allGrupyRaw = DynamicPropertyHelper.SafeGetAll((object)grupy);
-            var allGrupy = new List<object>();
-            foreach (var g in allGrupyRaw)
-            {
-                if (!(DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false))
-                {
-                    allGrupy.Add(g);
-                }
-            }
-
-            // Build tree
-            var groupMap = new Dictionary<int, ContractorGroupTreeDto>();
-            var rootGroups = new List<ContractorGroupTreeDto>();
-
-            // First pass: create all nodes
-            foreach (var g in allGrupy)
-            {
-                var id = DynamicPropertyHelper.GetId(g);
-                var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
-
-                var node = new ContractorGroupTreeDto
-                {
-                    Id = id,
-                    Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? "",
-                    Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
-                    ParentId = parentId,
-                    Level = DynamicPropertyHelper.GetNullableInt(g, "Poziom") ?? 0,
-                    ContractorCount = includeContractorCount ? GetContractorCountForGroup(id) : 0
-                };
-
-                groupMap[id] = node;
-            }
-
-            // Second pass: build hierarchy
-            foreach (var node in groupMap.Values)
-            {
-                if (node.ParentId.HasValue && node.ParentId.Value > 0 && groupMap.ContainsKey(node.ParentId.Value))
-                {
-                    groupMap[node.ParentId.Value].Children.Add(node);
-                }
-                else
-                {
-                    rootGroups.Add(node);
-                }
-            }
-
-            // Sort children
-            foreach (var node in groupMap.Values)
-            {
-                node.Children = node.Children.OrderBy(c => c.Name).ToList();
-            }
-            rootGroups = rootGroups.OrderBy(r => r.Name).ToList();
 
             return Ok(ApiResponse<List<ContractorGroupTreeDto>>.Ok(rootGroups));
         }
@@ -222,23 +240,38 @@ public class ContractorGroupsController : ControllerBase
     /// Get contractor group by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<ContractorGroupDto>> GetContractorGroup(int id)
+    public async Task<ActionResult<ApiResponse<ContractorGroupDto>>> GetContractorGroup(int id)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var (managerNull, notFound, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (true, false, (ContractorGroupDto?)null);
+                }
+
+                var grupa = DynamicPropertyHelper.FindById(grupy, id);
+                if (grupa == null)
+                {
+                    return (false, true, (ContractorGroupDto?)null);
+                }
+
+                return (false, false, MapToDto(grupa, grupy));
+            });
+
+            if (managerNull)
             {
                 return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            var grupa = DynamicPropertyHelper.FindById(grupy, id);
-            if (grupa == null)
+            if (notFound)
             {
                 return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with ID {id} not found"));
             }
 
-            return Ok(ApiResponse<ContractorGroupDto>.Ok(MapToDto(grupa, grupy)));
+            return Ok(ApiResponse<ContractorGroupDto>.Ok(dto!));
         }
         catch (Exception ex)
         {
@@ -251,32 +284,47 @@ public class ContractorGroupsController : ControllerBase
     /// Get contractor group by symbol
     /// </summary>
     [HttpGet("by-symbol/{symbol}")]
-    public ActionResult<ApiResponse<ContractorGroupDto>> GetContractorGroupBySymbol(string symbol)
+    public async Task<ActionResult<ApiResponse<ContractorGroupDto>>> GetContractorGroupBySymbol(string symbol)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var (managerNull, notFound, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (true, false, (ContractorGroupDto?)null);
+                }
+
+                dynamic? grupa = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
+                    {
+                        grupa = g;
+                        break;
+                    }
+                }
+
+                if (grupa == null)
+                {
+                    return (false, true, (ContractorGroupDto?)null);
+                }
+
+                return (false, false, MapToDto(grupa, grupy));
+            });
+
+            if (managerNull)
             {
                 return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            dynamic? grupa = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
-                {
-                    grupa = g;
-                    break;
-                }
-            }
-
-            if (grupa == null)
+            if (notFound)
             {
                 return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with symbol {symbol} not found"));
             }
 
-            return Ok(ApiResponse<ContractorGroupDto>.Ok(MapToDto(grupa, grupy)));
+            return Ok(ApiResponse<ContractorGroupDto>.Ok(dto!));
         }
         catch (Exception ex)
         {
@@ -289,33 +337,43 @@ public class ContractorGroupsController : ControllerBase
     /// Get children of a contractor group
     /// </summary>
     [HttpGet("{id}/children")]
-    public ActionResult<ApiResponse<List<ContractorGroupListItemDto>>> GetContractorGroupChildren(int id)
+    public async Task<ActionResult<ApiResponse<List<ContractorGroupListItemDto>>>> GetContractorGroupChildren(int id)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var children = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return null;
+                }
+
+                var result = new List<ContractorGroupListItemDto>();
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+
+                    if (parentId == id)
+                    {
+                        var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
+                        if (!isDeleted)
+                        {
+                            result.Add(MapToListItemDto(g));
+                        }
+                    }
+                }
+
+                return result.OrderBy(c => c.Name).ToList();
+            });
+
+            if (children == null)
             {
                 return StatusCode(500, ApiResponse<List<ContractorGroupListItemDto>>.Error("Failed to get Grupy manager"));
             }
 
-            var children = new List<ContractorGroupListItemDto>();
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
-
-                if (parentId == id)
-                {
-                    var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
-                    if (!isDeleted)
-                    {
-                        children.Add(MapToListItemDto(g));
-                    }
-                }
-            }
-
-            return Ok(ApiResponse<List<ContractorGroupListItemDto>>.Ok(children.OrderBy(c => c.Name).ToList()));
+            return Ok(ApiResponse<List<ContractorGroupListItemDto>>.Ok(children));
         }
         catch (Exception ex)
         {
@@ -328,69 +386,82 @@ public class ContractorGroupsController : ControllerBase
     /// Get contractors in a group
     /// </summary>
     [HttpGet("{id}/contractors")]
-    public ActionResult<PagedResponse<CustomerListItemDto>> GetGroupContractors(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
+    public async Task<ActionResult<PagedResponse<CustomerListItemDto>>> GetGroupContractors(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (managerNull: true, notFound: false, response: (PagedResponse<CustomerListItemDto>?)null);
+                }
+
+                // Verify group exists
+                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
+                if (grupaDane == null)
+                {
+                    return (false, true, (PagedResponse<CustomerListItemDto>?)null);
+                }
+
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (true, false, (PagedResponse<CustomerListItemDto>?)null);
+                }
+
+                var contractors = new List<object>();
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                {
+                    var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
+                    if (grupa != null && DynamicPropertyHelper.GetId(grupa) == id)
+                    {
+                        contractors.Add(p);
+                    }
+                }
+
+                var totalCount = contractors.Count;
+                var pagedItems = contractors
+                    .OrderBy(p => DynamicPropertyHelper.GetString(p, "NazwaSkrocona"))
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<CustomerListItemDto>();
+                foreach (var p in pagedItems)
+                {
+                    items.Add(new CustomerListItemDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        Name = DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "",
+                        TaxId = DynamicPropertyHelper.GetString(p, "NIP"),
+                        Phone = DynamicPropertyHelper.GetString(p, "Telefon"),
+                        IsActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? true,
+                        ContractorType = (ContractorType)(DynamicPropertyHelper.GetNullableInt(p, "RodzajKontrahenta") ?? 0)
+                    });
+                }
+
+                return (false, false, new PagedResponse<CustomerListItemDto>
+                {
+                    Data = items,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
+                });
+            });
+
+            if (result.managerNull)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
             }
 
-            // Verify group exists
-            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-            if (grupaDane == null)
+            if (result.notFound)
             {
                 return NotFound(ApiResponse<object>.Error($"Contractor group with ID {id} not found"));
             }
 
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
-            {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
-            }
-
-            var contractors = new List<object>();
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
-                if (grupa != null && DynamicPropertyHelper.GetId(grupa) == id)
-                {
-                    contractors.Add(p);
-                }
-            }
-
-            var totalCount = contractors.Count;
-            var pagedItems = contractors
-                .OrderBy(p => DynamicPropertyHelper.GetString(p, "NazwaSkrocona"))
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<CustomerListItemDto>();
-            foreach (var p in pagedItems)
-            {
-                items.Add(new CustomerListItemDto
-                {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    Name = DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "",
-                    TaxId = DynamicPropertyHelper.GetString(p, "NIP"),
-                    Phone = DynamicPropertyHelper.GetString(p, "Telefon"),
-                    IsActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? true,
-                    ContractorType = (ContractorType)(DynamicPropertyHelper.GetNullableInt(p, "RodzajKontrahenta") ?? 0)
-                });
-            }
-
-            var response = new PagedResponse<CustomerListItemDto>
-            {
-                Data = items,
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
-
-            return Ok(response);
+            return Ok(result.response!);
         }
         catch (Exception ex)
         {
@@ -403,106 +474,127 @@ public class ContractorGroupsController : ControllerBase
     /// Create a new contractor group
     /// </summary>
     [HttpPost]
-    public ActionResult<ApiResponse<ContractorGroupDto>> CreateContractorGroup([FromBody] CreateContractorGroupRequest request)
+    public async Task<ActionResult<ApiResponse<ContractorGroupDto>>> CreateContractorGroup([FromBody] CreateContractorGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (status: "managerNull", id: 0, dto: (ContractorGroupDto?)null, errors: (List<string>?)null);
+                }
+
+                // Check if symbol already exists
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
+                    {
+                        return ("symbolExists", 0, (ContractorGroupDto?)null, (List<string>?)null);
+                    }
+                }
+
+                using (var grupa = grupy.Utworz())
+                {
+                    dynamic dane = grupa.Dane;
+                    dane.Symbol = request.Symbol;
+                    dane.Nazwa = request.Name;
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        try { dane.Opis = request.Description; } catch { }
+                    }
+
+                    // Set parent
+                    if (request.ParentId.HasValue)
+                    {
+                        var rodzic = DynamicPropertyHelper.FindById(grupy, request.ParentId.Value);
+                        if (rodzic != null)
+                        {
+                            dane.Rodzic = rodzic;
+                        }
+                    }
+
+                    // Set default payment method
+                    if (request.DefaultPaymentMethodId.HasValue)
+                    {
+                        var sposobyPlatnosci = _sferaService.GetManager("SposobyPlatnosci");
+                        if (sposobyPlatnosci != null)
+                        {
+                            var sp = DynamicPropertyHelper.FindById(sposobyPlatnosci, request.DefaultPaymentMethodId.Value);
+                            if (sp != null)
+                            {
+                                try { dane.DomyslnySposobPlatnosci = sp; } catch { }
+                            }
+                        }
+                    }
+
+                    // Set default payment days
+                    if (request.DefaultPaymentDays.HasValue)
+                    {
+                        try { dane.DomyslnyTerminPlatnosci = request.DefaultPaymentDays.Value; } catch { }
+                    }
+
+                    // Set default discount
+                    if (request.DefaultDiscountPercent.HasValue)
+                    {
+                        try { dane.DomyslnyRabatProcent = request.DefaultDiscountPercent.Value; } catch { }
+                    }
+
+                    // Set default price level
+                    if (request.DefaultPriceLevelId.HasValue)
+                    {
+                        var cenniki = _sferaService.GetManager("Cenniki");
+                        if (cenniki != null)
+                        {
+                            var c = DynamicPropertyHelper.FindById(cenniki, request.DefaultPriceLevelId.Value);
+                            if (c != null)
+                            {
+                                try { dane.DomyslnyPoziomCen = c; } catch { }
+                            }
+                        }
+                    }
+
+                    // Set default credit limit
+                    if (request.DefaultCreditLimit.HasValue)
+                    {
+                        try { dane.DomyslnyLimitKredytu = request.DefaultCreditLimit.Value; } catch { }
+                    }
+
+                    if ((bool)grupa.Zapisz())
+                    {
+                        var newId = DynamicPropertyHelper.GetId(dane);
+                        return ("created", newId, MapToDto(dane, grupy), (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("saveFailed", 0, (ContractorGroupDto?)null, errors);
+                    }
+                }
+            });
+
+            if (result.status == "managerNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            // Check if symbol already exists
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+            if (result.status == "symbolExists")
             {
-                if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
-                {
-                    return BadRequest(ApiResponse<ContractorGroupDto>.Error($"Contractor group with symbol {request.Symbol} already exists"));
-                }
+                return BadRequest(ApiResponse<ContractorGroupDto>.Error($"Contractor group with symbol {request.Symbol} already exists"));
             }
 
-            using (var grupa = grupy.Utworz())
+            if (result.status == "saveFailed")
             {
-                dynamic dane = grupa.Dane;
-                dane.Symbol = request.Symbol;
-                dane.Nazwa = request.Name;
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                // Set parent
-                if (request.ParentId.HasValue)
-                {
-                    var rodzic = DynamicPropertyHelper.FindById(grupy, request.ParentId.Value);
-                    if (rodzic != null)
-                    {
-                        dane.Rodzic = rodzic;
-                    }
-                }
-
-                // Set default payment method
-                if (request.DefaultPaymentMethodId.HasValue)
-                {
-                    var sposobyPlatnosci = _sferaService.GetManager("SposobyPlatnosci");
-                    if (sposobyPlatnosci != null)
-                    {
-                        var sp = DynamicPropertyHelper.FindById(sposobyPlatnosci, request.DefaultPaymentMethodId.Value);
-                        if (sp != null)
-                        {
-                            try { dane.DomyslnySposobPlatnosci = sp; } catch { }
-                        }
-                    }
-                }
-
-                // Set default payment days
-                if (request.DefaultPaymentDays.HasValue)
-                {
-                    try { dane.DomyslnyTerminPlatnosci = request.DefaultPaymentDays.Value; } catch { }
-                }
-
-                // Set default discount
-                if (request.DefaultDiscountPercent.HasValue)
-                {
-                    try { dane.DomyslnyRabatProcent = request.DefaultDiscountPercent.Value; } catch { }
-                }
-
-                // Set default price level
-                if (request.DefaultPriceLevelId.HasValue)
-                {
-                    var cenniki = _sferaService.GetManager("Cenniki");
-                    if (cenniki != null)
-                    {
-                        var c = DynamicPropertyHelper.FindById(cenniki, request.DefaultPriceLevelId.Value);
-                        if (c != null)
-                        {
-                            try { dane.DomyslnyPoziomCen = c; } catch { }
-                        }
-                    }
-                }
-
-                // Set default credit limit
-                if (request.DefaultCreditLimit.HasValue)
-                {
-                    try { dane.DomyslnyLimitKredytu = request.DefaultCreditLimit.Value; } catch { }
-                }
-
-                if ((bool)grupa.Zapisz())
-                {
-                    _logger.LogInformation("Created contractor group {Symbol}", request.Symbol);
-                    return CreatedAtAction(
-                        nameof(GetContractorGroup),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<ContractorGroupDto>.Ok(MapToDto(dane, grupy), "Contractor group created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to create contractor group", errors));
-                }
+                return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to create contractor group", result.errors));
             }
+
+            _logger.LogInformation("Created contractor group {Symbol}", request.Symbol);
+            return CreatedAtAction(
+                nameof(GetContractorGroup),
+                new { id = result.id },
+                ApiResponse<ContractorGroupDto>.Ok(result.dto!, "Contractor group created successfully"));
         }
         catch (Exception ex)
         {
@@ -515,98 +607,118 @@ public class ContractorGroupsController : ControllerBase
     /// Update an existing contractor group
     /// </summary>
     [HttpPut("{id}")]
-    public ActionResult<ApiResponse<ContractorGroupDto>> UpdateContractorGroup(int id, [FromBody] UpdateContractorGroupRequest request)
+    public async Task<ActionResult<ApiResponse<ContractorGroupDto>>> UpdateContractorGroup(int id, [FromBody] UpdateContractorGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (status: "managerNull", dto: (ContractorGroupDto?)null, errors: (List<string>?)null);
+                }
+
+                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
+                if (grupaDane == null)
+                {
+                    return ("notFound", (ContractorGroupDto?)null, (List<string>?)null);
+                }
+
+                using (var grupa = grupy.Znajdz(grupaDane))
+                {
+                    if (grupa == null)
+                    {
+                        return ("notFound", (ContractorGroupDto?)null, (List<string>?)null);
+                    }
+
+                    dynamic dane = grupa.Dane;
+
+                    if (!string.IsNullOrEmpty(request.Name))
+                    {
+                        dane.Nazwa = request.Name;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        try { dane.Opis = request.Description; } catch { }
+                    }
+
+                    if (request.DefaultPaymentMethodId.HasValue)
+                    {
+                        var sposobyPlatnosci = _sferaService.GetManager("SposobyPlatnosci");
+                        if (sposobyPlatnosci != null)
+                        {
+                            var sp = DynamicPropertyHelper.FindById(sposobyPlatnosci, request.DefaultPaymentMethodId.Value);
+                            if (sp != null)
+                            {
+                                try { dane.DomyslnySposobPlatnosci = sp; } catch { }
+                            }
+                        }
+                    }
+
+                    if (request.DefaultPaymentDays.HasValue)
+                    {
+                        try { dane.DomyslnyTerminPlatnosci = request.DefaultPaymentDays.Value; } catch { }
+                    }
+
+                    if (request.DefaultDiscountPercent.HasValue)
+                    {
+                        try { dane.DomyslnyRabatProcent = request.DefaultDiscountPercent.Value; } catch { }
+                    }
+
+                    if (request.DefaultPriceLevelId.HasValue)
+                    {
+                        var cenniki = _sferaService.GetManager("Cenniki");
+                        if (cenniki != null)
+                        {
+                            var c = DynamicPropertyHelper.FindById(cenniki, request.DefaultPriceLevelId.Value);
+                            if (c != null)
+                            {
+                                try { dane.DomyslnyPoziomCen = c; } catch { }
+                            }
+                        }
+                    }
+
+                    if (request.DefaultCreditLimit.HasValue)
+                    {
+                        try { dane.DomyslnyLimitKredytu = request.DefaultCreditLimit.Value; } catch { }
+                    }
+
+                    if (request.IsActive.HasValue)
+                    {
+                        try { dane.Aktywny = request.IsActive.Value; } catch { }
+                    }
+
+                    if ((bool)grupa.Zapisz())
+                    {
+                        return ("ok", MapToDto(dane, grupy), (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("saveFailed", (ContractorGroupDto?)null, errors);
+                    }
+                }
+            });
+
+            if (result.status == "managerNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupDto>.Error("Failed to get Grupy manager"));
             }
 
-            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-            if (grupaDane == null)
+            if (result.status == "notFound")
             {
                 return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with ID {id} not found"));
             }
 
-            using (var grupa = grupy.Znajdz(grupaDane))
+            if (result.status == "saveFailed")
             {
-                if (grupa == null)
-                {
-                    return NotFound(ApiResponse<ContractorGroupDto>.Error($"Contractor group with ID {id} not found"));
-                }
-
-                dynamic dane = grupa.Dane;
-
-                if (!string.IsNullOrEmpty(request.Name))
-                {
-                    dane.Nazwa = request.Name;
-                }
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                if (request.DefaultPaymentMethodId.HasValue)
-                {
-                    var sposobyPlatnosci = _sferaService.GetManager("SposobyPlatnosci");
-                    if (sposobyPlatnosci != null)
-                    {
-                        var sp = DynamicPropertyHelper.FindById(sposobyPlatnosci, request.DefaultPaymentMethodId.Value);
-                        if (sp != null)
-                        {
-                            try { dane.DomyslnySposobPlatnosci = sp; } catch { }
-                        }
-                    }
-                }
-
-                if (request.DefaultPaymentDays.HasValue)
-                {
-                    try { dane.DomyslnyTerminPlatnosci = request.DefaultPaymentDays.Value; } catch { }
-                }
-
-                if (request.DefaultDiscountPercent.HasValue)
-                {
-                    try { dane.DomyslnyRabatProcent = request.DefaultDiscountPercent.Value; } catch { }
-                }
-
-                if (request.DefaultPriceLevelId.HasValue)
-                {
-                    var cenniki = _sferaService.GetManager("Cenniki");
-                    if (cenniki != null)
-                    {
-                        var c = DynamicPropertyHelper.FindById(cenniki, request.DefaultPriceLevelId.Value);
-                        if (c != null)
-                        {
-                            try { dane.DomyslnyPoziomCen = c; } catch { }
-                        }
-                    }
-                }
-
-                if (request.DefaultCreditLimit.HasValue)
-                {
-                    try { dane.DomyslnyLimitKredytu = request.DefaultCreditLimit.Value; } catch { }
-                }
-
-                if (request.IsActive.HasValue)
-                {
-                    try { dane.Aktywny = request.IsActive.Value; } catch { }
-                }
-
-                if ((bool)grupa.Zapisz())
-                {
-                    _logger.LogInformation("Updated contractor group {Id}", id);
-                    return Ok(ApiResponse<ContractorGroupDto>.Ok(MapToDto(dane, grupy), "Contractor group updated successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to update contractor group", errors));
-                }
+                return BadRequest(ApiResponse<ContractorGroupDto>.Error("Failed to update contractor group", result.errors));
             }
+
+            _logger.LogInformation("Updated contractor group {Id}", id);
+            return Ok(ApiResponse<ContractorGroupDto>.Ok(result.dto!, "Contractor group updated successfully"));
         }
         catch (Exception ex)
         {
@@ -619,40 +731,60 @@ public class ContractorGroupsController : ControllerBase
     /// Delete a contractor group
     /// </summary>
     [HttpDelete("{id}")]
-    public ActionResult<ApiResponse<bool>> DeleteContractorGroup(int id)
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteContractorGroup(int id)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (status: "managerNull", errors: (List<string>?)null);
+                }
+
+                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
+                if (grupaDane == null)
+                {
+                    return ("notFound", (List<string>?)null);
+                }
+
+                using (var grupa = grupy.Znajdz(grupaDane))
+                {
+                    if (grupa == null)
+                    {
+                        return ("notFound", (List<string>?)null);
+                    }
+
+                    if ((bool)grupa.Usun())
+                    {
+                        return ("ok", (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("deleteFailed", errors);
+                    }
+                }
+            });
+
+            if (result.status == "managerNull")
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Grupy manager"));
             }
 
-            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-            if (grupaDane == null)
+            if (result.status == "notFound")
             {
                 return NotFound(ApiResponse<bool>.Error($"Contractor group with ID {id} not found"));
             }
 
-            using (var grupa = grupy.Znajdz(grupaDane))
+            if (result.status == "deleteFailed")
             {
-                if (grupa == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Contractor group with ID {id} not found"));
-                }
-
-                if ((bool)grupa.Usun())
-                {
-                    _logger.LogInformation("Deleted contractor group {Id}", id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Contractor group deleted successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to delete contractor group", errors));
-                }
+                return BadRequest(ApiResponse<bool>.Error("Failed to delete contractor group", result.errors));
             }
+
+            _logger.LogInformation("Deleted contractor group {Id}", id);
+            return Ok(ApiResponse<bool>.Ok(true, "Contractor group deleted successfully"));
         }
         catch (Exception ex)
         {
@@ -665,66 +797,96 @@ public class ContractorGroupsController : ControllerBase
     /// Add a contractor to a group
     /// </summary>
     [HttpPost("{id}/contractors")]
-    public ActionResult<ApiResponse<ContractorGroupMembershipDto>> AddContractorToGroup(int id, [FromBody] AddContractorToGroupRequest request)
+    public async Task<ActionResult<ApiResponse<ContractorGroupMembershipDto>>> AddContractorToGroup(int id, [FromBody] AddContractorToGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (status: "grupyNull", membership: (ContractorGroupMembershipDto?)null, errors: (List<string>?)null);
+                }
+
+                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
+                if (grupaDane == null)
+                {
+                    return ("groupNotFound", (ContractorGroupMembershipDto?)null, (List<string>?)null);
+                }
+
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return ("podmiotyNull", (ContractorGroupMembershipDto?)null, (List<string>?)null);
+                }
+
+                var podmiotDane = DynamicPropertyHelper.FindById(podmioty, request.ContractorId);
+                if (podmiotDane == null)
+                {
+                    return ("contractorNotFound", (ContractorGroupMembershipDto?)null, (List<string>?)null);
+                }
+
+                using (var podmiot = podmioty.Znajdz(podmiotDane))
+                {
+                    if (podmiot == null)
+                    {
+                        return ("contractorNotFound", (ContractorGroupMembershipDto?)null, (List<string>?)null);
+                    }
+
+                    podmiot.Dane.Grupa = grupaDane;
+
+                    if ((bool)podmiot.Zapisz())
+                    {
+                        var membership = new ContractorGroupMembershipDto
+                        {
+                            ContractorId = request.ContractorId,
+                            ContractorSymbol = DynamicPropertyHelper.GetString(podmiotDane, "Symbol"),
+                            ContractorName = DynamicPropertyHelper.GetString(podmiotDane, "NazwaSkrocona"),
+                            GroupId = id,
+                            GroupSymbol = DynamicPropertyHelper.GetString(grupaDane, "Symbol"),
+                            GroupName = DynamicPropertyHelper.GetString(grupaDane, "Nazwa"),
+                            JoinDate = DateTime.Now,
+                            IsPrimary = request.IsPrimary
+                        };
+
+                        return ("ok", membership, (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(podmiot);
+                        return ("saveFailed", (ContractorGroupMembershipDto?)null, errors);
+                    }
+                }
+            });
+
+            if (result.status == "grupyNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Grupy manager"));
             }
 
-            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-            if (grupaDane == null)
+            if (result.status == "groupNotFound")
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor group with ID {id} not found"));
             }
 
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            if (result.status == "podmiotyNull")
             {
                 return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Podmioty manager"));
             }
 
-            var podmiotDane = DynamicPropertyHelper.FindById(podmioty, request.ContractorId);
-            if (podmiotDane == null)
+            if (result.status == "contractorNotFound")
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor with ID {request.ContractorId} not found"));
             }
 
-            using (var podmiot = podmioty.Znajdz(podmiotDane))
+            if (result.status == "saveFailed")
             {
-                if (podmiot == null)
-                {
-                    return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor with ID {request.ContractorId} not found"));
-                }
-
-                podmiot.Dane.Grupa = grupaDane;
-
-                if ((bool)podmiot.Zapisz())
-                {
-                    var membership = new ContractorGroupMembershipDto
-                    {
-                        ContractorId = request.ContractorId,
-                        ContractorSymbol = DynamicPropertyHelper.GetString(podmiotDane, "Symbol"),
-                        ContractorName = DynamicPropertyHelper.GetString(podmiotDane, "NazwaSkrocona"),
-                        GroupId = id,
-                        GroupSymbol = DynamicPropertyHelper.GetString(grupaDane, "Symbol"),
-                        GroupName = DynamicPropertyHelper.GetString(grupaDane, "Nazwa"),
-                        JoinDate = DateTime.Now,
-                        IsPrimary = request.IsPrimary
-                    };
-
-                    _logger.LogInformation("Added contractor {ContractorId} to group {GroupId}", request.ContractorId, id);
-                    return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(membership, "Contractor added to group successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(podmiot);
-                    return BadRequest(ApiResponse<ContractorGroupMembershipDto>.Error("Failed to add contractor to group", errors));
-                }
+                return BadRequest(ApiResponse<ContractorGroupMembershipDto>.Error("Failed to add contractor to group", result.errors));
             }
+
+            _logger.LogInformation("Added contractor {ContractorId} to group {GroupId}", request.ContractorId, id);
+            return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(result.membership!, "Contractor added to group successfully"));
         }
         catch (Exception ex)
         {
@@ -737,57 +899,77 @@ public class ContractorGroupsController : ControllerBase
     /// Bulk add contractors to a group
     /// </summary>
     [HttpPost("{id}/contractors/bulk")]
-    public ActionResult<ApiResponse<int>> BulkAddContractorsToGroup(int id, [FromBody] BulkAddContractorsToGroupRequest request)
+    public async Task<ActionResult<ApiResponse<int>>> BulkAddContractorsToGroup(int id, [FromBody] BulkAddContractorsToGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("Grupy");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var grupy = _sferaService.GetManager("Grupy");
+                if (grupy == null)
+                {
+                    return (status: "grupyNull", addedCount: 0);
+                }
+
+                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
+                if (grupaDane == null)
+                {
+                    return ("groupNotFound", 0);
+                }
+
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return ("podmiotyNull", 0);
+                }
+
+                int addedCount = 0;
+                foreach (var contractorId in request.ContractorIds)
+                {
+                    var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
+                    if (podmiotDane != null)
+                    {
+                        try
+                        {
+                            using (var podmiot = podmioty.Znajdz(podmiotDane))
+                            {
+                                if (podmiot != null)
+                                {
+                                    podmiot.Dane.Grupa = grupaDane;
+                                    if ((bool)podmiot.Zapisz())
+                                    {
+                                        addedCount++;
+                                    }
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // Continue with other contractors
+                        }
+                    }
+                }
+
+                return ("ok", addedCount);
+            });
+
+            if (result.status == "grupyNull")
             {
                 return StatusCode(500, ApiResponse<int>.Error("Failed to get Grupy manager"));
             }
 
-            var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-            if (grupaDane == null)
+            if (result.status == "groupNotFound")
             {
                 return NotFound(ApiResponse<int>.Error($"Contractor group with ID {id} not found"));
             }
 
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            if (result.status == "podmiotyNull")
             {
                 return StatusCode(500, ApiResponse<int>.Error("Failed to get Podmioty manager"));
             }
 
-            int addedCount = 0;
-            foreach (var contractorId in request.ContractorIds)
-            {
-                var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
-                if (podmiotDane != null)
-                {
-                    try
-                    {
-                        using (var podmiot = podmioty.Znajdz(podmiotDane))
-                        {
-                            if (podmiot != null)
-                            {
-                                podmiot.Dane.Grupa = grupaDane;
-                                if ((bool)podmiot.Zapisz())
-                                {
-                                    addedCount++;
-                                }
-                            }
-                        }
-                    }
-                    catch
-                    {
-                        // Continue with other contractors
-                    }
-                }
-            }
-
-            _logger.LogInformation("Bulk added {Count} contractors to group {GroupId}", addedCount, id);
-            return Ok(ApiResponse<int>.Ok(addedCount, $"Added {addedCount} contractors to group"));
+            _logger.LogInformation("Bulk added {Count} contractors to group {GroupId}", result.addedCount, id);
+            return Ok(ApiResponse<int>.Ok(result.addedCount, $"Added {result.addedCount} contractors to group"));
         }
         catch (Exception ex)
         {
@@ -800,49 +982,74 @@ public class ContractorGroupsController : ControllerBase
     /// Remove a contractor from a group
     /// </summary>
     [HttpDelete("{id}/contractors/{contractorId}")]
-    public ActionResult<ApiResponse<bool>> RemoveContractorFromGroup(int id, int contractorId)
+    public async Task<ActionResult<ApiResponse<bool>>> RemoveContractorFromGroup(int id, int contractorId)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (status: "podmiotyNull", errors: (List<string>?)null);
+                }
+
+                var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
+                if (podmiotDane == null)
+                {
+                    return ("contractorNotFound", (List<string>?)null);
+                }
+
+                // Verify contractor is in this group
+                var currentGroup = DynamicPropertyHelper.GetProperty(podmiotDane, "Grupa");
+                if (currentGroup == null || DynamicPropertyHelper.GetId(currentGroup) != id)
+                {
+                    return ("notInGroup", (List<string>?)null);
+                }
+
+                using (var podmiot = podmioty.Znajdz(podmiotDane))
+                {
+                    if (podmiot == null)
+                    {
+                        return ("contractorNotFound", (List<string>?)null);
+                    }
+
+                    try { podmiot.Dane.Grupa = null; } catch { }
+
+                    if ((bool)podmiot.Zapisz())
+                    {
+                        return ("ok", (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(podmiot);
+                        return ("saveFailed", errors);
+                    }
+                }
+            });
+
+            if (result.status == "podmiotyNull")
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
             }
 
-            var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
-            if (podmiotDane == null)
+            if (result.status == "contractorNotFound")
             {
                 return NotFound(ApiResponse<bool>.Error($"Contractor with ID {contractorId} not found"));
             }
 
-            // Verify contractor is in this group
-            var currentGroup = DynamicPropertyHelper.GetProperty(podmiotDane, "Grupa");
-            if (currentGroup == null || DynamicPropertyHelper.GetId(currentGroup) != id)
+            if (result.status == "notInGroup")
             {
                 return BadRequest(ApiResponse<bool>.Error("Contractor is not in this group"));
             }
 
-            using (var podmiot = podmioty.Znajdz(podmiotDane))
+            if (result.status == "saveFailed")
             {
-                if (podmiot == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Contractor with ID {contractorId} not found"));
-                }
-
-                try { podmiot.Dane.Grupa = null; } catch { }
-
-                if ((bool)podmiot.Zapisz())
-                {
-                    _logger.LogInformation("Removed contractor {ContractorId} from group {GroupId}", contractorId, id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Contractor removed from group successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(podmiot);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to remove contractor from group", errors));
-                }
+                return BadRequest(ApiResponse<bool>.Error("Failed to remove contractor from group", result.errors));
             }
+
+            _logger.LogInformation("Removed contractor {ContractorId} from group {GroupId}", contractorId, id);
+            return Ok(ApiResponse<bool>.Ok(true, "Contractor removed from group successfully"));
         }
         catch (Exception ex)
         {
@@ -851,13 +1058,10 @@ public class ContractorGroupsController : ControllerBase
         }
     }
 
-    private int GetContractorCountForGroup(int groupId)
+    private static int GetContractorCountForGroup(int groupId, dynamic podmioty)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null) return 0;
-
             int count = 0;
             foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
             {
@@ -890,7 +1094,7 @@ public class ContractorGroupsController : ControllerBase
         };
     }
 
-    private ContractorGroupDto MapToDto(dynamic grupa, dynamic grupy)
+    private static ContractorGroupDto MapToDto(dynamic grupa, dynamic grupy)
     {
         var parent = DynamicPropertyHelper.GetProperty(grupa, "Rodzic");
         var defaultPriceLevel = DynamicPropertyHelper.GetProperty(grupa, "DomyslnyPoziomCen");
@@ -925,8 +1129,8 @@ public class ContractorGroupsController : ControllerBase
             Path = DynamicPropertyHelper.GetString(grupa, "Sciezka"),
 
             // Statistics
-            ContractorCount = GetContractorCountForGroup(groupId),
-            DirectContractorCount = GetContractorCountForGroup(groupId),
+            ContractorCount = GetContractorCountForGroup(groupId, grupy),
+            DirectContractorCount = GetContractorCountForGroup(groupId, grupy),
             ChildGroupCount = childCount,
 
             // Default settings

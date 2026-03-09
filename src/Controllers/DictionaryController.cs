@@ -32,46 +32,48 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("vat-rates")]
     [ProducesResponseType(typeof(ApiResponse<List<VatRateDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<VatRateDto>>> GetVatRates([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetVatRates([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var stawkiManager = _sferaService.GetManager("StawkiVat");
-            if (stawkiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<VatRateDto>>.Error("Failed to get StawkiVat manager"));
-            }
-            var allStawki = DynamicPropertyHelper.SafeGetAll((object)stawkiManager);
+                var stawkiManager = _sferaService.GetManager("StawkiVat");
+                if (stawkiManager == null) return (List<VatRateDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredStawki = new List<object>();
+                var allStawki = DynamicPropertyHelper.SafeGetAll((object)stawkiManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredStawki = new List<object>();
+                    foreach (var s in allStawki)
+                    {
+                        if (DynamicPropertyHelper.GetBool(s, "Aktywna"))
+                            filteredStawki.Add(s);
+                    }
+                    allStawki = filteredStawki;
+                }
+
+                var dtos = new List<VatRateDto>();
                 foreach (var s in allStawki)
                 {
-                    if (DynamicPropertyHelper.GetBool(s, "Aktywna"))
+                    dtos.Add(new VatRateDto
                     {
-                        filteredStawki.Add(s);
-                    }
+                        Id = DynamicPropertyHelper.GetId(s),
+                        Symbol = DynamicPropertyHelper.GetString(s, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
+                        Rate = DynamicPropertyHelper.GetNullableDecimal(s, "Procent") ?? 0,
+                        IsActive = DynamicPropertyHelper.GetBool(s, "Aktywna"),
+                        Type = MapVatRateType(DynamicPropertyHelper.GetString(s, "Symbol"))
+                    });
                 }
-                allStawki = filteredStawki;
-            }
+                return (List<VatRateDto>?)dtos.OrderBy(v => v.Rate).ToList();
+            });
 
-            var dtos = new List<VatRateDto>();
-            foreach (var s in allStawki)
-            {
-                dtos.Add(new VatRateDto
-                {
-                    Id = DynamicPropertyHelper.GetId(s),
-                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
-                    Rate = DynamicPropertyHelper.GetNullableDecimal(s, "Procent") ?? 0,
-                    IsActive = DynamicPropertyHelper.GetBool(s, "Aktywna"),
-                    Type = MapVatRateType(DynamicPropertyHelper.GetString(s, "Symbol"))
-                });
-            }
-            dtos = dtos.OrderBy(v => v.Rate).ToList();
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<VatRateDto>>.Error("Failed to get StawkiVat manager"));
 
-            return Ok(ApiResponse<List<VatRateDto>>.Ok(dtos));
+            return Ok(ApiResponse<List<VatRateDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -86,32 +88,37 @@ public class DictionaryController : ControllerBase
     [HttpGet("vat-rates/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<VatRateDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<VatRateDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<VatRateDto>> GetVatRate(string symbol)
+    public async Task<IActionResult> GetVatRate(string symbol)
     {
         try
         {
-            var stawkiManager = _sferaService.GetManager("StawkiVat");
-            if (stawkiManager == null) return StatusCode(500, ApiResponse<VatRateDto>.Error("Failed to get StawkiVat manager"));
-            var allStawki = DynamicPropertyHelper.SafeGetAll((object)stawkiManager);
-            var stawka = allStawki.FirstOrDefault(s =>
-                DynamicPropertyHelper.GetString(s, "Symbol") == symbol);
-
-            if (stawka == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<VatRateDto>.Error($"VAT rate '{symbol}' not found"));
-            }
+                var stawkiManager = _sferaService.GetManager("StawkiVat");
+                if (stawkiManager == null) return (found: false, managerNull: true, dto: (VatRateDto?)null);
 
-            var dto = new VatRateDto
-            {
-                Id = DynamicPropertyHelper.GetId(stawka),
-                Symbol = DynamicPropertyHelper.GetString(stawka, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(stawka, "Nazwa"),
-                Rate = DynamicPropertyHelper.GetNullableDecimal(stawka, "Procent") ?? 0,
-                IsActive = DynamicPropertyHelper.GetBool(stawka, "Aktywna"),
-                Type = MapVatRateType(DynamicPropertyHelper.GetString(stawka, "Symbol"))
-            };
+                var allStawki = DynamicPropertyHelper.SafeGetAll((object)stawkiManager);
+                var stawka = allStawki.FirstOrDefault(s => DynamicPropertyHelper.GetString(s, "Symbol") == symbol);
 
-            return Ok(ApiResponse<VatRateDto>.Ok(dto));
+                if (stawka == null) return (found: false, managerNull: false, dto: (VatRateDto?)null);
+
+                var dto = new VatRateDto
+                {
+                    Id = DynamicPropertyHelper.GetId(stawka),
+                    Symbol = DynamicPropertyHelper.GetString(stawka, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(stawka, "Nazwa"),
+                    Rate = DynamicPropertyHelper.GetNullableDecimal(stawka, "Procent") ?? 0,
+                    IsActive = DynamicPropertyHelper.GetBool(stawka, "Aktywna"),
+                    Type = MapVatRateType(DynamicPropertyHelper.GetString(stawka, "Symbol"))
+                };
+
+                return (found: true, managerNull: false, dto: (VatRateDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<VatRateDto>.Error("Failed to get StawkiVat manager"));
+            if (!result.found) return NotFound(ApiResponse<VatRateDto>.Error($"VAT rate '{symbol}' not found"));
+
+            return Ok(ApiResponse<VatRateDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -142,45 +149,47 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("units")]
     [ProducesResponseType(typeof(ApiResponse<List<UnitOfMeasureDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<UnitOfMeasureDto>>> GetUnits([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetUnits([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var jednostkiManager = _sferaService.GetManager("JednostkiMiar");
-            if (jednostkiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<UnitOfMeasureDto>>.Error("Failed to get JednostkiMiar manager"));
-            }
-            var allJednostki = DynamicPropertyHelper.SafeGetAll((object)jednostkiManager);
+                var jednostkiManager = _sferaService.GetManager("JednostkiMiar");
+                if (jednostkiManager == null) return (List<UnitOfMeasureDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredJednostki = new List<object>();
+                var allJednostki = DynamicPropertyHelper.SafeGetAll((object)jednostkiManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredJednostki = new List<object>();
+                    foreach (var j in allJednostki)
+                    {
+                        if (DynamicPropertyHelper.GetBool(j, "Aktywna"))
+                            filteredJednostki.Add(j);
+                    }
+                    allJednostki = filteredJednostki;
+                }
+
+                var dtos = new List<UnitOfMeasureDto>();
                 foreach (var j in allJednostki)
                 {
-                    if (DynamicPropertyHelper.GetBool(j, "Aktywna"))
+                    dtos.Add(new UnitOfMeasureDto
                     {
-                        filteredJednostki.Add(j);
-                    }
+                        Id = DynamicPropertyHelper.GetId(j),
+                        Symbol = DynamicPropertyHelper.GetString(j, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(j, "Nazwa"),
+                        DecimalPlaces = DynamicPropertyHelper.GetInt(j, "MiejscPoPrzecinku"),
+                        IsActive = DynamicPropertyHelper.GetBool(j, "Aktywna")
+                    });
                 }
-                allJednostki = filteredJednostki;
-            }
+                return (List<UnitOfMeasureDto>?)dtos.OrderBy(u => u.Symbol).ToList();
+            });
 
-            var dtos = new List<UnitOfMeasureDto>();
-            foreach (var j in allJednostki)
-            {
-                dtos.Add(new UnitOfMeasureDto
-                {
-                    Id = DynamicPropertyHelper.GetId(j),
-                    Symbol = DynamicPropertyHelper.GetString(j, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(j, "Nazwa"),
-                    DecimalPlaces = DynamicPropertyHelper.GetInt(j, "MiejscPoPrzecinku"),
-                    IsActive = DynamicPropertyHelper.GetBool(j, "Aktywna")
-                });
-            }
-            dtos = dtos.OrderBy(u => u.Symbol).ToList();
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<UnitOfMeasureDto>>.Error("Failed to get JednostkiMiar manager"));
 
-            return Ok(ApiResponse<List<UnitOfMeasureDto>>.Ok(dtos));
+            return Ok(ApiResponse<List<UnitOfMeasureDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -195,34 +204,36 @@ public class DictionaryController : ControllerBase
     [HttpGet("units/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<UnitOfMeasureDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<UnitOfMeasureDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<UnitOfMeasureDto>> GetUnit(string symbol)
+    public async Task<IActionResult> GetUnit(string symbol)
     {
         try
         {
-            var jednostkiManager = _sferaService.GetManager("JednostkiMiar");
-            if (jednostkiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<UnitOfMeasureDto>.Error("Failed to get JednostkiMiar manager"));
-            }
-            var allJednostki = DynamicPropertyHelper.SafeGetAll((object)jednostkiManager);
-            var jednostka = allJednostki.FirstOrDefault(j =>
-                DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
+                var jednostkiManager = _sferaService.GetManager("JednostkiMiar");
+                if (jednostkiManager == null) return (found: false, managerNull: true, dto: (UnitOfMeasureDto?)null);
 
-            if (jednostka == null)
-            {
-                return NotFound(ApiResponse<UnitOfMeasureDto>.Error($"Unit '{symbol}' not found"));
-            }
+                var allJednostki = DynamicPropertyHelper.SafeGetAll((object)jednostkiManager);
+                var jednostka = allJednostki.FirstOrDefault(j => DynamicPropertyHelper.GetString(j, "Symbol") == symbol);
 
-            var dto = new UnitOfMeasureDto
-            {
-                Id = DynamicPropertyHelper.GetId(jednostka),
-                Symbol = DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(jednostka, "Nazwa"),
-                DecimalPlaces = DynamicPropertyHelper.GetInt(jednostka, "MiejscPoPrzecinku"),
-                IsActive = DynamicPropertyHelper.GetBool(jednostka, "Aktywna")
-            };
+                if (jednostka == null) return (found: false, managerNull: false, dto: (UnitOfMeasureDto?)null);
 
-            return Ok(ApiResponse<UnitOfMeasureDto>.Ok(dto));
+                var dto = new UnitOfMeasureDto
+                {
+                    Id = DynamicPropertyHelper.GetId(jednostka),
+                    Symbol = DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(jednostka, "Nazwa"),
+                    DecimalPlaces = DynamicPropertyHelper.GetInt(jednostka, "MiejscPoPrzecinku"),
+                    IsActive = DynamicPropertyHelper.GetBool(jednostka, "Aktywna")
+                };
+
+                return (found: true, managerNull: false, dto: (UnitOfMeasureDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<UnitOfMeasureDto>.Error("Failed to get JednostkiMiar manager"));
+            if (!result.found) return NotFound(ApiResponse<UnitOfMeasureDto>.Error($"Unit '{symbol}' not found"));
+
+            return Ok(ApiResponse<UnitOfMeasureDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -240,63 +251,66 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("product-groups")]
     [ProducesResponseType(typeof(ApiResponse<List<ProductGroupDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<ProductGroupDto>>> GetProductGroups(
+    public async Task<IActionResult> GetProductGroups(
         [FromQuery] bool? activeOnly = false,
         [FromQuery] bool? hierarchical = false)
     {
         try
         {
-            var grupyManager = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<ProductGroupDto>>.Error("Failed to get GrupyAsortymentu manager"));
-            }
-            var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupyManager);
+                var grupyManager = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupyManager == null) return (List<ProductGroupDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredGrupy = new List<object>();
+                var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupyManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredGrupy = new List<object>();
+                    foreach (var g in allGrupy)
+                    {
+                        if (DynamicPropertyHelper.GetBool(g, "Aktywna"))
+                            filteredGrupy.Add(g);
+                    }
+                    allGrupy = filteredGrupy;
+                }
+
+                var dtos = new List<ProductGroupDto>();
                 foreach (var g in allGrupy)
                 {
-                    if (DynamicPropertyHelper.GetBool(g, "Aktywna"))
+                    var grupaNadrzedna = DynamicPropertyHelper.GetProperty(g, "GrupaNadrzedna");
+                    var asortymenty = DynamicPropertyHelper.GetCollection((object)g, "Asortymenty");
+
+                    dtos.Add(new ProductGroupDto
                     {
-                        filteredGrupy.Add(g);
-                    }
+                        Id = DynamicPropertyHelper.GetId(g),
+                        Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(g, "Nazwa"),
+                        Description = DynamicPropertyHelper.GetString(g, "Opis"),
+                        ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
+                        ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
+                        IsActive = DynamicPropertyHelper.GetBool(g, "Aktywna"),
+                        ProductCount = asortymenty.Count
+                    });
                 }
-                allGrupy = filteredGrupy;
-            }
 
-            var dtos = new List<ProductGroupDto>();
-            foreach (var g in allGrupy)
-            {
-                var grupaNadrzedna = DynamicPropertyHelper.GetProperty(g, "GrupaNadrzedna");
-                var asortymenty = DynamicPropertyHelper.GetCollection((object)g, "Asortymenty");
+                return (List<ProductGroupDto>?)dtos;
+            });
 
-                dtos.Add(new ProductGroupDto
-                {
-                    Id = DynamicPropertyHelper.GetId(g),
-                    Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(g, "Nazwa"),
-                    Description = DynamicPropertyHelper.GetString(g, "Opis"),
-                    ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
-                    ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
-                    IsActive = DynamicPropertyHelper.GetBool(g, "Aktywna"),
-                    ProductCount = asortymenty.Count
-                });
-            }
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<ProductGroupDto>>.Error("Failed to get GrupyAsortymentu manager"));
 
             if (hierarchical == true)
             {
-                // Build tree structure
-                var rootGroups = dtos.Where(g => g.ParentId == null).ToList();
+                var rootGroups = result.Where(g => g.ParentId == null).ToList();
                 foreach (var root in rootGroups)
                 {
-                    root.Children = GetChildGroups(root.Id, dtos);
+                    root.Children = GetChildGroups(root.Id, result);
                 }
                 return Ok(ApiResponse<List<ProductGroupDto>>.Ok(rootGroups));
             }
 
-            return Ok(ApiResponse<List<ProductGroupDto>>.Ok(dtos.OrderBy(g => g.Symbol).ToList()));
+            return Ok(ApiResponse<List<ProductGroupDto>>.Ok(result.OrderBy(g => g.Symbol).ToList()));
         }
         catch (Exception ex)
         {
@@ -320,7 +334,7 @@ public class DictionaryController : ControllerBase
                 Name = child.Name ?? string.Empty,
                 ParentId = child.ParentId,
                 ParentSymbol = child.ParentSymbol,
-                Level = 0, // Can be calculated if needed
+                Level = 0,
                 ProductCount = child.ProductCount,
                 HasChildren = allGroups.Any(g => g.ParentId == child.Id)
             });
@@ -334,40 +348,42 @@ public class DictionaryController : ControllerBase
     [HttpGet("product-groups/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<ProductGroupDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ProductGroupDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<ProductGroupDto>> GetProductGroup(string symbol)
+    public async Task<IActionResult> GetProductGroup(string symbol)
     {
         try
         {
-            var grupyManager = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
-            }
-            var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupyManager);
-            var grupa = allGrupy.FirstOrDefault(g =>
-                DynamicPropertyHelper.GetString(g, "Symbol") == symbol);
+                var grupyManager = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupyManager == null) return (found: false, managerNull: true, dto: (ProductGroupDto?)null);
 
-            if (grupa == null)
-            {
-                return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group '{symbol}' not found"));
-            }
+                var allGrupy = DynamicPropertyHelper.SafeGetAll((object)grupyManager);
+                var grupa = allGrupy.FirstOrDefault(g => DynamicPropertyHelper.GetString(g, "Symbol") == symbol);
 
-            var grupaNadrzedna = DynamicPropertyHelper.GetProperty(grupa, "GrupaNadrzedna");
-            var asortymenty = DynamicPropertyHelper.GetCollection((object)grupa, "Asortymenty");
+                if (grupa == null) return (found: false, managerNull: false, dto: (ProductGroupDto?)null);
 
-            var dto = new ProductGroupDto
-            {
-                Id = DynamicPropertyHelper.GetId(grupa),
-                Symbol = DynamicPropertyHelper.GetString(grupa, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(grupa, "Nazwa"),
-                Description = DynamicPropertyHelper.GetString(grupa, "Opis"),
-                ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
-                ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
-                IsActive = DynamicPropertyHelper.GetBool(grupa, "Aktywna"),
-                ProductCount = asortymenty.Count
-            };
+                var grupaNadrzedna = DynamicPropertyHelper.GetProperty(grupa, "GrupaNadrzedna");
+                var asortymenty = DynamicPropertyHelper.GetCollection((object)grupa, "Asortymenty");
 
-            return Ok(ApiResponse<ProductGroupDto>.Ok(dto));
+                var dto = new ProductGroupDto
+                {
+                    Id = DynamicPropertyHelper.GetId(grupa),
+                    Symbol = DynamicPropertyHelper.GetString(grupa, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(grupa, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(grupa, "Opis"),
+                    ParentId = grupaNadrzedna != null ? DynamicPropertyHelper.GetId(grupaNadrzedna) : null,
+                    ParentSymbol = grupaNadrzedna != null ? DynamicPropertyHelper.GetString(grupaNadrzedna, "Symbol") : null,
+                    IsActive = DynamicPropertyHelper.GetBool(grupa, "Aktywna"),
+                    ProductCount = asortymenty.Count
+                };
+
+                return (found: true, managerNull: false, dto: (ProductGroupDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
+            if (!result.found) return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group '{symbol}' not found"));
+
+            return Ok(ApiResponse<ProductGroupDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -385,47 +401,49 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("price-levels")]
     [ProducesResponseType(typeof(ApiResponse<List<PriceLevelDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PriceLevelDto>>> GetPriceLevels([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetPriceLevels([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var poziomyManager = _sferaService.GetManager("PoziomyCen");
-            if (poziomyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<PriceLevelDto>>.Error("Failed to get PoziomyCen manager"));
-            }
-            var allPoziomy = DynamicPropertyHelper.SafeGetAll((object)poziomyManager);
+                var poziomyManager = _sferaService.GetManager("PoziomyCen");
+                if (poziomyManager == null) return (List<PriceLevelDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredPoziomy = new List<object>();
+                var allPoziomy = DynamicPropertyHelper.SafeGetAll((object)poziomyManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredPoziomy = new List<object>();
+                    foreach (var p in allPoziomy)
+                    {
+                        if (DynamicPropertyHelper.GetBool(p, "Aktywny"))
+                            filteredPoziomy.Add(p);
+                    }
+                    allPoziomy = filteredPoziomy;
+                }
+
+                var dtos = new List<PriceLevelDto>();
                 foreach (var p in allPoziomy)
                 {
-                    if (DynamicPropertyHelper.GetBool(p, "Aktywny"))
+                    dtos.Add(new PriceLevelDto
                     {
-                        filteredPoziomy.Add(p);
-                    }
+                        Id = DynamicPropertyHelper.GetId(p),
+                        Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
+                        Description = DynamicPropertyHelper.GetString(p, "Opis"),
+                        IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslny"),
+                        IsActive = DynamicPropertyHelper.GetBool(p, "Aktywny"),
+                        Priority = DynamicPropertyHelper.GetNullableInt(p, "Priorytet") ?? 0
+                    });
                 }
-                allPoziomy = filteredPoziomy;
-            }
+                return (List<PriceLevelDto>?)dtos.OrderBy(p => p.Priority).ToList();
+            });
 
-            var dtos = new List<PriceLevelDto>();
-            foreach (var p in allPoziomy)
-            {
-                dtos.Add(new PriceLevelDto
-                {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
-                    Description = DynamicPropertyHelper.GetString(p, "Opis"),
-                    IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslny"),
-                    IsActive = DynamicPropertyHelper.GetBool(p, "Aktywny"),
-                    Priority = DynamicPropertyHelper.GetNullableInt(p, "Priorytet") ?? 0
-                });
-            }
-            dtos = dtos.OrderBy(p => p.Priority).ToList();
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<PriceLevelDto>>.Error("Failed to get PoziomyCen manager"));
 
-            return Ok(ApiResponse<List<PriceLevelDto>>.Ok(dtos));
+            return Ok(ApiResponse<List<PriceLevelDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -440,36 +458,38 @@ public class DictionaryController : ControllerBase
     [HttpGet("price-levels/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<PriceLevelDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PriceLevelDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<PriceLevelDto>> GetPriceLevel(string symbol)
+    public async Task<IActionResult> GetPriceLevel(string symbol)
     {
         try
         {
-            var poziomyManager = _sferaService.GetManager("PoziomyCen");
-            if (poziomyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<PriceLevelDto>.Error("Failed to get PoziomyCen manager"));
-            }
-            var allPoziomy = DynamicPropertyHelper.SafeGetAll((object)poziomyManager);
-            var poziom = allPoziomy.FirstOrDefault(p =>
-                DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
+                var poziomyManager = _sferaService.GetManager("PoziomyCen");
+                if (poziomyManager == null) return (found: false, managerNull: true, dto: (PriceLevelDto?)null);
 
-            if (poziom == null)
-            {
-                return NotFound(ApiResponse<PriceLevelDto>.Error($"Price level '{symbol}' not found"));
-            }
+                var allPoziomy = DynamicPropertyHelper.SafeGetAll((object)poziomyManager);
+                var poziom = allPoziomy.FirstOrDefault(p => DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
 
-            var dto = new PriceLevelDto
-            {
-                Id = DynamicPropertyHelper.GetId(poziom),
-                Symbol = DynamicPropertyHelper.GetString(poziom, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(poziom, "Nazwa"),
-                Description = DynamicPropertyHelper.GetString(poziom, "Opis"),
-                IsDefault = DynamicPropertyHelper.GetBool(poziom, "Domyslny"),
-                IsActive = DynamicPropertyHelper.GetBool(poziom, "Aktywny"),
-                Priority = DynamicPropertyHelper.GetNullableInt(poziom, "Priorytet") ?? 0
-            };
+                if (poziom == null) return (found: false, managerNull: false, dto: (PriceLevelDto?)null);
 
-            return Ok(ApiResponse<PriceLevelDto>.Ok(dto));
+                var dto = new PriceLevelDto
+                {
+                    Id = DynamicPropertyHelper.GetId(poziom),
+                    Symbol = DynamicPropertyHelper.GetString(poziom, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(poziom, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(poziom, "Opis"),
+                    IsDefault = DynamicPropertyHelper.GetBool(poziom, "Domyslny"),
+                    IsActive = DynamicPropertyHelper.GetBool(poziom, "Aktywny"),
+                    Priority = DynamicPropertyHelper.GetNullableInt(poziom, "Priorytet") ?? 0
+                };
+
+                return (found: true, managerNull: false, dto: (PriceLevelDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<PriceLevelDto>.Error("Failed to get PoziomyCen manager"));
+            if (!result.found) return NotFound(ApiResponse<PriceLevelDto>.Error($"Price level '{symbol}' not found"));
+
+            return Ok(ApiResponse<PriceLevelDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -487,52 +507,54 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("price-lists")]
     [ProducesResponseType(typeof(ApiResponse<List<PriceListDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PriceListDto>>> GetPriceLists([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetPriceLists([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var cennikiManager = _sferaService.GetManager("Cenniki");
-            if (cennikiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<PriceListDto>>.Error("Failed to get Cenniki manager"));
-            }
-            var allCenniki = DynamicPropertyHelper.SafeGetAll((object)cennikiManager);
+                var cennikiManager = _sferaService.GetManager("Cenniki");
+                if (cennikiManager == null) return (List<PriceListDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredCenniki = new List<object>();
+                var allCenniki = DynamicPropertyHelper.SafeGetAll((object)cennikiManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredCenniki = new List<object>();
+                    foreach (var c in allCenniki)
+                    {
+                        if (DynamicPropertyHelper.GetBool(c, "Aktywny"))
+                            filteredCenniki.Add(c);
+                    }
+                    allCenniki = filteredCenniki;
+                }
+
+                var dtos = new List<PriceListDto>();
                 foreach (var c in allCenniki)
                 {
-                    if (DynamicPropertyHelper.GetBool(c, "Aktywny"))
+                    var waluta = DynamicPropertyHelper.GetProperty(c, "Waluta");
+                    var pozycje = DynamicPropertyHelper.GetCollection((object)c, "Pozycje");
+
+                    dtos.Add(new PriceListDto
                     {
-                        filteredCenniki.Add(c);
-                    }
+                        Id = DynamicPropertyHelper.GetId(c),
+                        Symbol = DynamicPropertyHelper.GetString(c, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(c, "Nazwa"),
+                        Description = DynamicPropertyHelper.GetString(c, "Opis"),
+                        ValidFrom = DynamicPropertyHelper.GetDateTime(c, "DataOd"),
+                        ValidTo = DynamicPropertyHelper.GetDateTime(c, "DataDo"),
+                        IsActive = DynamicPropertyHelper.GetBool(c, "Aktywny"),
+                        CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
+                        ItemCount = pozycje.Count
+                    });
                 }
-                allCenniki = filteredCenniki;
-            }
+                return (List<PriceListDto>?)dtos.OrderBy(c => c.Symbol).ToList();
+            });
 
-            var dtos = new List<PriceListDto>();
-            foreach (var c in allCenniki)
-            {
-                var waluta = DynamicPropertyHelper.GetProperty(c, "Waluta");
-                var pozycje = DynamicPropertyHelper.GetCollection((object)c, "Pozycje");
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<PriceListDto>>.Error("Failed to get Cenniki manager"));
 
-                dtos.Add(new PriceListDto
-                {
-                    Id = DynamicPropertyHelper.GetId(c),
-                    Symbol = DynamicPropertyHelper.GetString(c, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(c, "Nazwa"),
-                    Description = DynamicPropertyHelper.GetString(c, "Opis"),
-                    ValidFrom = DynamicPropertyHelper.GetDateTime(c, "DataOd"),
-                    ValidTo = DynamicPropertyHelper.GetDateTime(c, "DataDo"),
-                    IsActive = DynamicPropertyHelper.GetBool(c, "Aktywny"),
-                    CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
-                    ItemCount = pozycje.Count
-                });
-            }
-            dtos = dtos.OrderBy(c => c.Symbol).ToList();
-
-            return Ok(ApiResponse<List<PriceListDto>>.Ok(dtos));
+            return Ok(ApiResponse<List<PriceListDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -547,41 +569,43 @@ public class DictionaryController : ControllerBase
     [HttpGet("price-lists/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<PriceListDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PriceListDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<PriceListDto>> GetPriceList(string symbol)
+    public async Task<IActionResult> GetPriceList(string symbol)
     {
         try
         {
-            var cennikiManager = _sferaService.GetManager("Cenniki");
-            if (cennikiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<PriceListDto>.Error("Failed to get Cenniki manager"));
-            }
-            var allCenniki = DynamicPropertyHelper.SafeGetAll((object)cennikiManager);
-            var cennik = allCenniki.FirstOrDefault(c =>
-                DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
+                var cennikiManager = _sferaService.GetManager("Cenniki");
+                if (cennikiManager == null) return (found: false, managerNull: true, dto: (PriceListDto?)null);
 
-            if (cennik == null)
-            {
-                return NotFound(ApiResponse<PriceListDto>.Error($"Price list '{symbol}' not found"));
-            }
+                var allCenniki = DynamicPropertyHelper.SafeGetAll((object)cennikiManager);
+                var cennik = allCenniki.FirstOrDefault(c => DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
 
-            var waluta = DynamicPropertyHelper.GetProperty(cennik, "Waluta");
-            var pozycje = DynamicPropertyHelper.GetCollection((object)cennik, "Pozycje");
+                if (cennik == null) return (found: false, managerNull: false, dto: (PriceListDto?)null);
 
-            var dto = new PriceListDto
-            {
-                Id = DynamicPropertyHelper.GetId(cennik),
-                Symbol = DynamicPropertyHelper.GetString(cennik, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(cennik, "Nazwa"),
-                Description = DynamicPropertyHelper.GetString(cennik, "Opis"),
-                ValidFrom = DynamicPropertyHelper.GetDateTime(cennik, "DataOd"),
-                ValidTo = DynamicPropertyHelper.GetDateTime(cennik, "DataDo"),
-                IsActive = DynamicPropertyHelper.GetBool(cennik, "Aktywny"),
-                CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
-                ItemCount = pozycje.Count
-            };
+                var waluta = DynamicPropertyHelper.GetProperty(cennik, "Waluta");
+                var pozycje = DynamicPropertyHelper.GetCollection((object)cennik, "Pozycje");
 
-            return Ok(ApiResponse<PriceListDto>.Ok(dto));
+                var dto = new PriceListDto
+                {
+                    Id = DynamicPropertyHelper.GetId(cennik),
+                    Symbol = DynamicPropertyHelper.GetString(cennik, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(cennik, "Nazwa"),
+                    Description = DynamicPropertyHelper.GetString(cennik, "Opis"),
+                    ValidFrom = DynamicPropertyHelper.GetDateTime(cennik, "DataOd"),
+                    ValidTo = DynamicPropertyHelper.GetDateTime(cennik, "DataDo"),
+                    IsActive = DynamicPropertyHelper.GetBool(cennik, "Aktywny"),
+                    CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
+                    ItemCount = pozycje.Count
+                };
+
+                return (found: true, managerNull: false, dto: (PriceListDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<PriceListDto>.Error("Failed to get Cenniki manager"));
+            if (!result.found) return NotFound(ApiResponse<PriceListDto>.Error($"Price list '{symbol}' not found"));
+
+            return Ok(ApiResponse<PriceListDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -596,7 +620,7 @@ public class DictionaryController : ControllerBase
     [HttpGet("price-lists/{symbol}/items")]
     [ProducesResponseType(typeof(PagedResponse<PriceListItemDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public ActionResult<PagedResponse<PriceListItemDto>> GetPriceListItems(
+    public async Task<IActionResult> GetPriceListItems(
         string symbol,
         [FromQuery] int? productId,
         [FromQuery] string? productSymbol,
@@ -605,85 +629,87 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            var cennikiManager = _sferaService.GetManager("Cenniki");
-            if (cennikiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var cennikiManager = _sferaService.GetManager("Cenniki");
+                if (cennikiManager == null) return (managerNull: true, notFound: false, items: (List<PriceListItemDto>?)null, totalCount: 0);
+
+                var allCenniki = DynamicPropertyHelper.SafeGetAll((object)cennikiManager);
+                var cennik = allCenniki.FirstOrDefault(c => DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
+
+                if (cennik == null) return (managerNull: false, notFound: true, items: (List<PriceListItemDto>?)null, totalCount: 0);
+
+                var pozycje = DynamicPropertyHelper.GetCollection((object)cennik, "Pozycje");
+
+                if (productId.HasValue)
+                {
+                    var filteredPozycje = new List<object>();
+                    foreach (var p in pozycje)
+                    {
+                        var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                        if (asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value)
+                            filteredPozycje.Add(p);
+                    }
+                    pozycje = filteredPozycje;
+                }
+
+                if (!string.IsNullOrEmpty(productSymbol))
+                {
+                    var filteredPozycje = new List<object>();
+                    foreach (var p in pozycje)
+                    {
+                        var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                        if (asortyment != null && DynamicPropertyHelper.GetString(asortyment, "Symbol") == productSymbol)
+                            filteredPozycje.Add(p);
+                    }
+                    pozycje = filteredPozycje;
+                }
+
+                var totalCount = pozycje.Count;
+                var pagedPozycje = pozycje
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var cennikId = DynamicPropertyHelper.GetId(cennik);
+                var items = new List<PriceListItemDto>();
+                foreach (var p in pagedPozycje)
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
+                    var stawkaVat = asortyment != null ? DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy") : null;
+
+                    items.Add(new PriceListItemDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        PriceListId = cennikId,
+                        ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                        ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                        ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                        PriceNet = DynamicPropertyHelper.GetNullableDecimal(p, "CenaNetto") ?? 0,
+                        PriceGross = DynamicPropertyHelper.GetNullableDecimal(p, "CenaBrutto") ?? 0,
+                        VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
+                        MinQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscOd"),
+                        MaxQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscDo"),
+                        ValidFrom = DynamicPropertyHelper.GetDateTime(p, "DataOd"),
+                        ValidTo = DynamicPropertyHelper.GetDateTime(p, "DataDo")
+                    });
+                }
+
+                return (managerNull: false, notFound: false, items: (List<PriceListItemDto>?)items, totalCount);
+            });
+
+            if (result.managerNull)
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Cenniki manager"));
-            }
-            var allCenniki = DynamicPropertyHelper.SafeGetAll((object)cennikiManager);
-            var cennik = allCenniki.FirstOrDefault(c =>
-                DynamicPropertyHelper.GetString(c, "Symbol") == symbol);
 
-            if (cennik == null)
-            {
+            if (result.notFound)
                 return NotFound(ApiResponse<object>.Error($"Price list '{symbol}' not found"));
-            }
-
-            var pozycje = DynamicPropertyHelper.GetCollection((object)cennik, "Pozycje");
-
-            if (productId.HasValue)
-            {
-                var filteredPozycje = new List<object>();
-                foreach (var p in pozycje)
-                {
-                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                    if (asortyment != null && DynamicPropertyHelper.GetId(asortyment) == productId.Value)
-                    {
-                        filteredPozycje.Add(p);
-                    }
-                }
-                pozycje = filteredPozycje;
-            }
-
-            if (!string.IsNullOrEmpty(productSymbol))
-            {
-                var filteredPozycje = new List<object>();
-                foreach (var p in pozycje)
-                {
-                    var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                    if (asortyment != null && DynamicPropertyHelper.GetString(asortyment, "Symbol") == productSymbol)
-                    {
-                        filteredPozycje.Add(p);
-                    }
-                }
-                pozycje = filteredPozycje;
-            }
-
-            var totalCount = pozycje.Count;
-            var pagedPozycje = pozycje
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<PriceListItemDto>();
-            foreach (var p in pagedPozycje)
-            {
-                var asortyment = DynamicPropertyHelper.GetProperty(p, "Asortyment");
-                var stawkaVat = asortyment != null ? DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy") : null;
-
-                items.Add(new PriceListItemDto
-                {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    PriceListId = DynamicPropertyHelper.GetId(cennik),
-                    ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
-                    ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                    ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
-                    PriceNet = DynamicPropertyHelper.GetNullableDecimal(p, "CenaNetto") ?? 0,
-                    PriceGross = DynamicPropertyHelper.GetNullableDecimal(p, "CenaBrutto") ?? 0,
-                    VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
-                    MinQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscOd"),
-                    MaxQuantity = DynamicPropertyHelper.GetNullableDecimal(p, "IloscDo"),
-                    ValidFrom = DynamicPropertyHelper.GetDateTime(p, "DataOd"),
-                    ValidTo = DynamicPropertyHelper.GetDateTime(p, "DataDo")
-                });
-            }
 
             return Ok(new PagedResponse<PriceListItemDto>
             {
-                Data = items,
+                Data = result.items!,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -702,47 +728,49 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("currencies")]
     [ProducesResponseType(typeof(ApiResponse<List<CurrencyDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<CurrencyDto>>> GetCurrencies([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetCurrencies([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var walutyManager = _sferaService.GetManager("Waluty");
-            if (walutyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<CurrencyDto>>.Error("Failed to get Waluty manager"));
-            }
-            var allWaluty = DynamicPropertyHelper.SafeGetAll((object)walutyManager);
+                var walutyManager = _sferaService.GetManager("Waluty");
+                if (walutyManager == null) return (List<CurrencyDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredWaluty = new List<object>();
+                var allWaluty = DynamicPropertyHelper.SafeGetAll((object)walutyManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredWaluty = new List<object>();
+                    foreach (var w in allWaluty)
+                    {
+                        if (DynamicPropertyHelper.GetBool(w, "Aktywna"))
+                            filteredWaluty.Add(w);
+                    }
+                    allWaluty = filteredWaluty;
+                }
+
+                var dtos = new List<CurrencyDto>();
                 foreach (var w in allWaluty)
                 {
-                    if (DynamicPropertyHelper.GetBool(w, "Aktywna"))
+                    dtos.Add(new CurrencyDto
                     {
-                        filteredWaluty.Add(w);
-                    }
+                        Id = DynamicPropertyHelper.GetId(w),
+                        Symbol = DynamicPropertyHelper.GetString(w, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(w, "Nazwa"),
+                        IsoCode = DynamicPropertyHelper.GetString(w, "Symbol"),
+                        ExchangeRate = DynamicPropertyHelper.GetNullableDecimal(w, "OstatniKurs"),
+                        IsDefault = DynamicPropertyHelper.GetBool(w, "Bazowa"),
+                        IsActive = DynamicPropertyHelper.GetBool(w, "Aktywna")
+                    });
                 }
-                allWaluty = filteredWaluty;
-            }
+                return (List<CurrencyDto>?)dtos.OrderBy(c => c.Symbol).ToList();
+            });
 
-            var dtos = new List<CurrencyDto>();
-            foreach (var w in allWaluty)
-            {
-                dtos.Add(new CurrencyDto
-                {
-                    Id = DynamicPropertyHelper.GetId(w),
-                    Symbol = DynamicPropertyHelper.GetString(w, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(w, "Nazwa"),
-                    IsoCode = DynamicPropertyHelper.GetString(w, "Symbol"),
-                    ExchangeRate = DynamicPropertyHelper.GetNullableDecimal(w, "OstatniKurs"),
-                    IsDefault = DynamicPropertyHelper.GetBool(w, "Bazowa"),
-                    IsActive = DynamicPropertyHelper.GetBool(w, "Aktywna")
-                });
-            }
-            dtos = dtos.OrderBy(c => c.Symbol).ToList();
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<CurrencyDto>>.Error("Failed to get Waluty manager"));
 
-            return Ok(ApiResponse<List<CurrencyDto>>.Ok(dtos));
+            return Ok(ApiResponse<List<CurrencyDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -757,7 +785,7 @@ public class DictionaryController : ControllerBase
     [HttpGet("currencies/{symbol}/rates")]
     [ProducesResponseType(typeof(ApiResponse<List<ExchangeRateDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<List<ExchangeRateDto>>> GetExchangeRates(
+    public async Task<IActionResult> GetExchangeRates(
         string symbol,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
@@ -765,60 +793,56 @@ public class DictionaryController : ControllerBase
     {
         try
         {
-            // Access exchange rates through Waluty manager and then Kursy collection on currency
-            var walutyManager = _sferaService.GetManager("Waluty");
-            if (walutyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Failed to get Waluty manager"));
-            }
-            var allWaluty = DynamicPropertyHelper.SafeGetAll((object)walutyManager);
+                var walutyManager = _sferaService.GetManager("Waluty");
+                if (walutyManager == null) return (found: false, managerNull: true, rates: (List<ExchangeRateDto>?)null);
 
-            var waluta = allWaluty.FirstOrDefault(w =>
-                DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
+                var allWaluty = DynamicPropertyHelper.SafeGetAll((object)walutyManager);
+                var waluta = allWaluty.FirstOrDefault(w => DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
 
-            if (waluta == null)
-            {
-                return NotFound(ApiResponse<List<ExchangeRateDto>>.Error($"Currency '{symbol}' not found"));
-            }
+                if (waluta == null) return (found: false, managerNull: false, rates: (List<ExchangeRateDto>?)null);
 
-            // Get exchange rates from the currency's Kursy collection
-            var kursy = DynamicPropertyHelper.GetCollection((object)waluta, "Kursy");
+                var kursy = DynamicPropertyHelper.GetCollection((object)waluta, "Kursy");
 
-            // Filter by date using explicit loops (dynamic types don't work with lambdas)
-            var filteredKursy = new List<object>();
-            foreach (var k in kursy)
-            {
-                var data = DynamicPropertyHelper.GetDateTime(k, "Data");
-                if (dateFrom.HasValue && (!data.HasValue || data.Value < dateFrom.Value))
-                    continue;
-                if (dateTo.HasValue && (!data.HasValue || data.Value > dateTo.Value))
-                    continue;
-                filteredKursy.Add(k);
-            }
-
-            // Map to DTOs first (typed), then sort
-            var rates = new List<ExchangeRateDto>();
-            foreach (var k in filteredKursy)
-            {
-                rates.Add(new ExchangeRateDto
+                var filteredKursy = new List<object>();
+                foreach (var k in kursy)
                 {
-                    Id = DynamicPropertyHelper.GetId(k),
-                    CurrencySymbol = symbol,
-                    Date = DynamicPropertyHelper.GetDateTime(k, "Data"),
-                    Rate = DynamicPropertyHelper.GetDecimal(k, "Kurs"),
-                    Multiplier = DynamicPropertyHelper.GetInt(k, "Przelicznik"),
-                    Source = DynamicPropertyHelper.GetString(k, "Zrodlo") ?? "NBP",
-                    TableNumber = DynamicPropertyHelper.GetString(k, "NumerTabeli")
-                });
-            }
+                    var data = DynamicPropertyHelper.GetDateTime(k, "Data");
+                    if (dateFrom.HasValue && (!data.HasValue || data.Value < dateFrom.Value))
+                        continue;
+                    if (dateTo.HasValue && (!data.HasValue || data.Value > dateTo.Value))
+                        continue;
+                    filteredKursy.Add(k);
+                }
 
-            // Now sort by date descending (typed list, lambdas work)
-            rates = rates
-                .OrderByDescending(r => r.Date ?? DateTime.MinValue)
-                .Take(limit)
-                .ToList();
+                var rates = new List<ExchangeRateDto>();
+                foreach (var k in filteredKursy)
+                {
+                    rates.Add(new ExchangeRateDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(k),
+                        CurrencySymbol = symbol,
+                        Date = DynamicPropertyHelper.GetDateTime(k, "Data"),
+                        Rate = DynamicPropertyHelper.GetDecimal(k, "Kurs"),
+                        Multiplier = DynamicPropertyHelper.GetInt(k, "Przelicznik"),
+                        Source = DynamicPropertyHelper.GetString(k, "Zrodlo") ?? "NBP",
+                        TableNumber = DynamicPropertyHelper.GetString(k, "NumerTabeli")
+                    });
+                }
 
-            return Ok(ApiResponse<List<ExchangeRateDto>>.Ok(rates));
+                rates = rates
+                    .OrderByDescending(r => r.Date ?? DateTime.MinValue)
+                    .Take(limit)
+                    .ToList();
+
+                return (found: true, managerNull: false, rates: (List<ExchangeRateDto>?)rates);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<List<ExchangeRateDto>>.Error("Failed to get Waluty manager"));
+            if (!result.found) return NotFound(ApiResponse<List<ExchangeRateDto>>.Error($"Currency '{symbol}' not found"));
+
+            return Ok(ApiResponse<List<ExchangeRateDto>>.Ok(result.rates!));
         }
         catch (Exception ex)
         {
@@ -833,7 +857,7 @@ public class DictionaryController : ControllerBase
     [HttpGet("currencies/{symbol}/rate")]
     [ProducesResponseType(typeof(ApiResponse<ExchangeRateDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<ExchangeRateDto>> GetExchangeRate(
+    public async Task<IActionResult> GetExchangeRate(
         string symbol,
         [FromQuery] DateTime? date)
     {
@@ -841,58 +865,55 @@ public class DictionaryController : ControllerBase
         {
             var targetDate = date ?? DateTime.Today;
 
-            // Access exchange rates through Waluty manager
-            var walutyManager = _sferaService.GetManager("Waluty");
-            if (walutyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Failed to get Waluty manager"));
-            }
-            var allWaluty = DynamicPropertyHelper.SafeGetAll((object)walutyManager);
+                var walutyManager = _sferaService.GetManager("Waluty");
+                if (walutyManager == null) return (found: false, managerNull: true, noRate: false, dto: (ExchangeRateDto?)null);
 
-            var waluta = allWaluty.FirstOrDefault(w =>
-                DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
+                var allWaluty = DynamicPropertyHelper.SafeGetAll((object)walutyManager);
+                var waluta = allWaluty.FirstOrDefault(w => DynamicPropertyHelper.GetString(w, "Symbol") == symbol);
 
-            if (waluta == null)
-            {
-                return NotFound(ApiResponse<ExchangeRateDto>.Error($"Currency '{symbol}' not found"));
-            }
+                if (waluta == null) return (found: false, managerNull: false, noRate: false, dto: (ExchangeRateDto?)null);
 
-            // Get exchange rates from the currency's Kursy collection
-            var kursy = DynamicPropertyHelper.GetCollection((object)waluta, "Kursy");
+                var kursy = DynamicPropertyHelper.GetCollection((object)waluta, "Kursy");
 
-            dynamic? latestKurs = null;
-            DateTime? latestDate = null;
+                dynamic? latestKurs = null;
+                DateTime? latestDate = null;
 
-            foreach (var k in kursy)
-            {
-                var kursDate = DynamicPropertyHelper.GetDateTime(k, "Data");
-                if (kursDate.HasValue && kursDate.Value <= targetDate)
+                foreach (var k in kursy)
                 {
-                    if (!latestDate.HasValue || kursDate.Value > latestDate.Value)
+                    var kursDate = DynamicPropertyHelper.GetDateTime(k, "Data");
+                    if (kursDate.HasValue && kursDate.Value <= targetDate)
                     {
-                        latestDate = kursDate;
-                        latestKurs = k;
+                        if (!latestDate.HasValue || kursDate.Value > latestDate.Value)
+                        {
+                            latestDate = kursDate;
+                            latestKurs = k;
+                        }
                     }
                 }
-            }
 
-            if (latestKurs == null)
-            {
-                return NotFound(ApiResponse<ExchangeRateDto>.Error($"No exchange rate found for {symbol}"));
-            }
+                if (latestKurs == null) return (found: true, managerNull: false, noRate: true, dto: (ExchangeRateDto?)null);
 
-            var dto = new ExchangeRateDto
-            {
-                Id = DynamicPropertyHelper.GetId(latestKurs),
-                CurrencySymbol = symbol,
-                Date = latestDate,
-                Rate = DynamicPropertyHelper.GetDecimal(latestKurs, "Kurs"),
-                Multiplier = DynamicPropertyHelper.GetInt(latestKurs, "Przelicznik"),
-                Source = DynamicPropertyHelper.GetString(latestKurs, "Zrodlo") ?? "NBP",
-                TableNumber = DynamicPropertyHelper.GetString(latestKurs, "NumerTabeli")
-            };
+                var dto = new ExchangeRateDto
+                {
+                    Id = DynamicPropertyHelper.GetId(latestKurs),
+                    CurrencySymbol = symbol,
+                    Date = latestDate,
+                    Rate = DynamicPropertyHelper.GetDecimal(latestKurs, "Kurs"),
+                    Multiplier = DynamicPropertyHelper.GetInt(latestKurs, "Przelicznik"),
+                    Source = DynamicPropertyHelper.GetString(latestKurs, "Zrodlo") ?? "NBP",
+                    TableNumber = DynamicPropertyHelper.GetString(latestKurs, "NumerTabeli")
+                };
 
-            return Ok(ApiResponse<ExchangeRateDto>.Ok(dto));
+                return (found: true, managerNull: false, noRate: false, dto: (ExchangeRateDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<ExchangeRateDto>.Error("Failed to get Waluty manager"));
+            if (!result.found) return NotFound(ApiResponse<ExchangeRateDto>.Error($"Currency '{symbol}' not found"));
+            if (result.noRate) return NotFound(ApiResponse<ExchangeRateDto>.Error($"No exchange rate found for {symbol}"));
+
+            return Ok(ApiResponse<ExchangeRateDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -910,47 +931,49 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("payment-methods")]
     [ProducesResponseType(typeof(ApiResponse<List<PaymentMethodDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PaymentMethodDto>>> GetPaymentMethods([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetPaymentMethods([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var formyManager = _sferaService.GetManager("FormyPlatnosci");
-            if (formyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<PaymentMethodDto>>.Error("Failed to get FormyPlatnosci manager"));
-            }
-            var allFormy = DynamicPropertyHelper.SafeGetAll((object)formyManager);
+                var formyManager = _sferaService.GetManager("FormyPlatnosci");
+                if (formyManager == null) return (List<PaymentMethodDto>?)null;
 
-            if (activeOnly == true)
-            {
-                var filteredFormy = new List<object>();
+                var allFormy = DynamicPropertyHelper.SafeGetAll((object)formyManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredFormy = new List<object>();
+                    foreach (var f in allFormy)
+                    {
+                        if (DynamicPropertyHelper.GetBool(f, "Aktywna"))
+                            filteredFormy.Add(f);
+                    }
+                    allFormy = filteredFormy;
+                }
+
+                var dtos = new List<PaymentMethodDto>();
                 foreach (var f in allFormy)
                 {
-                    if (DynamicPropertyHelper.GetBool(f, "Aktywna"))
+                    dtos.Add(new PaymentMethodDto
                     {
-                        filteredFormy.Add(f);
-                    }
+                        Id = DynamicPropertyHelper.GetId(f),
+                        Symbol = DynamicPropertyHelper.GetString(f, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(f, "Nazwa"),
+                        Type = MapPaymentMethodType(DynamicPropertyHelper.GetNullableInt(f, "Typ")),
+                        DefaultDueDays = DynamicPropertyHelper.GetNullableInt(f, "DomyslnyTermin"),
+                        IsActive = DynamicPropertyHelper.GetBool(f, "Aktywna"),
+                        IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslna")
+                    });
                 }
-                allFormy = filteredFormy;
-            }
+                return (List<PaymentMethodDto>?)dtos.OrderBy(p => p.Symbol).ToList();
+            });
 
-            var dtos = new List<PaymentMethodDto>();
-            foreach (var f in allFormy)
-            {
-                dtos.Add(new PaymentMethodDto
-                {
-                    Id = DynamicPropertyHelper.GetId(f),
-                    Symbol = DynamicPropertyHelper.GetString(f, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(f, "Nazwa"),
-                    Type = MapPaymentMethodType(DynamicPropertyHelper.GetNullableInt(f, "Typ")),
-                    DefaultDueDays = DynamicPropertyHelper.GetNullableInt(f, "DomyslnyTermin"),
-                    IsActive = DynamicPropertyHelper.GetBool(f, "Aktywna"),
-                    IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslna")
-                });
-            }
-            dtos = dtos.OrderBy(p => p.Symbol).ToList();
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<PaymentMethodDto>>.Error("Failed to get FormyPlatnosci manager"));
 
-            return Ok(ApiResponse<List<PaymentMethodDto>>.Ok(dtos));
+            return Ok(ApiResponse<List<PaymentMethodDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -968,6 +991,7 @@ public class DictionaryController : ControllerBase
             2 => PaymentMethodType.Card,
             3 => PaymentMethodType.DirectDebit,
             4 => PaymentMethodType.Compensation,
+            5 => PaymentMethodType.ElectronicPayment,
             _ => PaymentMethodType.Other
         };
     }
@@ -981,49 +1005,52 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("cash-operation-types")]
     [ProducesResponseType(typeof(ApiResponse<List<OperationTypeDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetCashOperationTypes([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetCashOperationTypes([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var manager = _sferaService.GetManager("RodzajeOperacjiKasowych");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiKasowych manager"));
-            }
+                var manager = _sferaService.GetManager("RodzajeOperacjiKasowych");
+                if (manager == null) return (List<OperationTypeDto>?)null;
 
-            var allRodzaje = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var allRodzaje = DynamicPropertyHelper.SafeGetAll((object)manager);
 
-            if (activeOnly == true)
-            {
-                var filtered = new List<object>();
+                if (activeOnly == true)
+                {
+                    var filtered = new List<object>();
+                    foreach (var r in allRodzaje)
+                    {
+                        if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                            filtered.Add(r);
+                    }
+                    allRodzaje = filtered;
+                }
+
+                var dtos = new List<OperationTypeDto>();
                 foreach (var r in allRodzaje)
                 {
-                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    dtos.Add(new OperationTypeDto
                     {
-                        filtered.Add(r);
-                    }
+                        Id = DynamicPropertyHelper.GetId(r),
+                        Symbol = DynamicPropertyHelper.GetString(r, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                        Description = DynamicPropertyHelper.GetString(r, "Opis"),
+                        OperationType = MapCashOperationType(DynamicPropertyHelper.GetNullableInt(r, "Typ")),
+                        IsDeposit = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 0,
+                        IsWithdrawal = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 1,
+                        IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                        IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
+                    });
                 }
-                allRodzaje = filtered;
-            }
 
-            var dtos = new List<OperationTypeDto>();
-            foreach (var r in allRodzaje)
-            {
-                dtos.Add(new OperationTypeDto
-                {
-                    Id = DynamicPropertyHelper.GetId(r),
-                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
-                    Description = DynamicPropertyHelper.GetString(r, "Opis"),
-                    OperationType = MapCashOperationType(DynamicPropertyHelper.GetNullableInt(r, "Typ")),
-                    IsDeposit = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 0,
-                    IsWithdrawal = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 1,
-                    IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
-                    IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
-                });
-            }
+                return (List<OperationTypeDto>?)dtos.OrderBy(o => o.Symbol).ToList();
+            });
 
-            return Ok(ApiResponse<List<OperationTypeDto>>.Ok(dtos.OrderBy(o => o.Symbol).ToList()));
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiKasowych manager"));
+
+            return Ok(ApiResponse<List<OperationTypeDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -1051,49 +1078,52 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("bank-operation-types")]
     [ProducesResponseType(typeof(ApiResponse<List<OperationTypeDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<OperationTypeDto>>> GetBankOperationTypes([FromQuery] bool? activeOnly = false)
+    public async Task<IActionResult> GetBankOperationTypes([FromQuery] bool? activeOnly = false)
     {
         try
         {
-            var manager = _sferaService.GetManager("RodzajeOperacjiBankowych");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiBankowych manager"));
-            }
+                var manager = _sferaService.GetManager("RodzajeOperacjiBankowych");
+                if (manager == null) return (List<OperationTypeDto>?)null;
 
-            var allRodzaje = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var allRodzaje = DynamicPropertyHelper.SafeGetAll((object)manager);
 
-            if (activeOnly == true)
-            {
-                var filtered = new List<object>();
+                if (activeOnly == true)
+                {
+                    var filtered = new List<object>();
+                    foreach (var r in allRodzaje)
+                    {
+                        if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                            filtered.Add(r);
+                    }
+                    allRodzaje = filtered;
+                }
+
+                var dtos = new List<OperationTypeDto>();
                 foreach (var r in allRodzaje)
                 {
-                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    dtos.Add(new OperationTypeDto
                     {
-                        filtered.Add(r);
-                    }
+                        Id = DynamicPropertyHelper.GetId(r),
+                        Symbol = DynamicPropertyHelper.GetString(r, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                        Description = DynamicPropertyHelper.GetString(r, "Opis"),
+                        OperationType = MapBankOperationType(DynamicPropertyHelper.GetNullableInt(r, "Typ")),
+                        IsDeposit = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 0,
+                        IsWithdrawal = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 1,
+                        IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                        IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
+                    });
                 }
-                allRodzaje = filtered;
-            }
 
-            var dtos = new List<OperationTypeDto>();
-            foreach (var r in allRodzaje)
-            {
-                dtos.Add(new OperationTypeDto
-                {
-                    Id = DynamicPropertyHelper.GetId(r),
-                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
-                    Description = DynamicPropertyHelper.GetString(r, "Opis"),
-                    OperationType = MapBankOperationType(DynamicPropertyHelper.GetNullableInt(r, "Typ")),
-                    IsDeposit = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 0,
-                    IsWithdrawal = DynamicPropertyHelper.GetNullableInt(r, "Typ") == 1,
-                    IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
-                    IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
-                });
-            }
+                return (List<OperationTypeDto>?)dtos.OrderBy(o => o.Symbol).ToList();
+            });
 
-            return Ok(ApiResponse<List<OperationTypeDto>>.Ok(dtos.OrderBy(o => o.Symbol).ToList()));
+            if (result == null)
+                return StatusCode(500, ApiResponse<List<OperationTypeDto>>.Error("Failed to get RodzajeOperacjiBankowych manager"));
+
+            return Ok(ApiResponse<List<OperationTypeDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -1122,65 +1152,66 @@ public class DictionaryController : ControllerBase
     /// </summary>
     [HttpGet("countries")]
     [ProducesResponseType(typeof(ApiResponse<List<CountryDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<CountryDto>>> GetCountries(
+    public async Task<IActionResult> GetCountries(
         [FromQuery] bool? activeOnly = false,
         [FromQuery] bool? euOnly = null)
     {
         try
         {
-            var manager = _sferaService.GetManager("Panstwa");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("Panstwa");
+                if (manager == null) return (List<CountryDto>?)null;
+
+                var allPanstwa = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                if (activeOnly == true)
+                {
+                    var filtered = new List<object>();
+                    foreach (var p in allPanstwa)
+                    {
+                        if (DynamicPropertyHelper.GetBool(p, "Aktywne"))
+                            filtered.Add(p);
+                    }
+                    allPanstwa = filtered;
+                }
+
+                if (euOnly.HasValue)
+                {
+                    var filtered = new List<object>();
+                    foreach (var p in allPanstwa)
+                    {
+                        bool isEu = DynamicPropertyHelper.GetBool(p, "CzlonekUE");
+                        if (isEu == euOnly.Value)
+                            filtered.Add(p);
+                    }
+                    allPanstwa = filtered;
+                }
+
+                var dtos = new List<CountryDto>();
+                foreach (var p in allPanstwa)
+                {
+                    dtos.Add(new CountryDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
+                        Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
+                        IsoCode2 = DynamicPropertyHelper.GetString(p, "KodISO"),
+                        IsoCode3 = DynamicPropertyHelper.GetString(p, "KodISO3"),
+                        EuCode = DynamicPropertyHelper.GetString(p, "KodUE"),
+                        IsEuMember = DynamicPropertyHelper.GetBool(p, "CzlonekUE"),
+                        IsActive = DynamicPropertyHelper.GetBool(p, "Aktywne"),
+                        IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslne")
+                    });
+                }
+
+                return (List<CountryDto>?)dtos.OrderBy(c => c.Name).ToList();
+            });
+
+            if (result == null)
                 return StatusCode(500, ApiResponse<List<CountryDto>>.Error("Failed to get Panstwa manager"));
-            }
 
-            var allPanstwa = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            if (activeOnly == true)
-            {
-                var filtered = new List<object>();
-                foreach (var p in allPanstwa)
-                {
-                    if (DynamicPropertyHelper.GetBool(p, "Aktywne"))
-                    {
-                        filtered.Add(p);
-                    }
-                }
-                allPanstwa = filtered;
-            }
-
-            if (euOnly.HasValue)
-            {
-                var filtered = new List<object>();
-                foreach (var p in allPanstwa)
-                {
-                    bool isEu = DynamicPropertyHelper.GetBool(p, "CzlonekUE");
-                    if (isEu == euOnly.Value)
-                    {
-                        filtered.Add(p);
-                    }
-                }
-                allPanstwa = filtered;
-            }
-
-            var dtos = new List<CountryDto>();
-            foreach (var p in allPanstwa)
-            {
-                dtos.Add(new CountryDto
-                {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
-                    Name = DynamicPropertyHelper.GetString(p, "Nazwa"),
-                    IsoCode2 = DynamicPropertyHelper.GetString(p, "KodISO"),
-                    IsoCode3 = DynamicPropertyHelper.GetString(p, "KodISO3"),
-                    EuCode = DynamicPropertyHelper.GetString(p, "KodUE"),
-                    IsEuMember = DynamicPropertyHelper.GetBool(p, "CzlonekUE"),
-                    IsActive = DynamicPropertyHelper.GetBool(p, "Aktywne"),
-                    IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslne")
-                });
-            }
-
-            return Ok(ApiResponse<List<CountryDto>>.Ok(dtos.OrderBy(c => c.Name).ToList()));
+            return Ok(ApiResponse<List<CountryDto>>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -1195,41 +1226,43 @@ public class DictionaryController : ControllerBase
     [HttpGet("countries/{isoCode}")]
     [ProducesResponseType(typeof(ApiResponse<CountryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CountryDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<CountryDto>> GetCountry(string isoCode)
+    public async Task<IActionResult> GetCountry(string isoCode)
     {
         try
         {
-            var manager = _sferaService.GetManager("Panstwa");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<CountryDto>.Error("Failed to get Panstwa manager"));
-            }
+                var manager = _sferaService.GetManager("Panstwa");
+                if (manager == null) return (found: false, managerNull: true, dto: (CountryDto?)null);
 
-            var allPanstwa = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var panstwo = allPanstwa.FirstOrDefault(p =>
-                DynamicPropertyHelper.GetString(p, "KodISO") == isoCode.ToUpper() ||
-                DynamicPropertyHelper.GetString(p, "KodISO3") == isoCode.ToUpper() ||
-                DynamicPropertyHelper.GetString(p, "Symbol") == isoCode);
+                var allPanstwa = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var panstwo = allPanstwa.FirstOrDefault(p =>
+                    DynamicPropertyHelper.GetString(p, "KodISO") == isoCode.ToUpper() ||
+                    DynamicPropertyHelper.GetString(p, "KodISO3") == isoCode.ToUpper() ||
+                    DynamicPropertyHelper.GetString(p, "Symbol") == isoCode);
 
-            if (panstwo == null)
-            {
-                return NotFound(ApiResponse<CountryDto>.Error($"Country with code '{isoCode}' not found"));
-            }
+                if (panstwo == null) return (found: false, managerNull: false, dto: (CountryDto?)null);
 
-            var dto = new CountryDto
-            {
-                Id = DynamicPropertyHelper.GetId(panstwo),
-                Symbol = DynamicPropertyHelper.GetString(panstwo, "Symbol") ?? string.Empty,
-                Name = DynamicPropertyHelper.GetString(panstwo, "Nazwa"),
-                IsoCode2 = DynamicPropertyHelper.GetString(panstwo, "KodISO"),
-                IsoCode3 = DynamicPropertyHelper.GetString(panstwo, "KodISO3"),
-                EuCode = DynamicPropertyHelper.GetString(panstwo, "KodUE"),
-                IsEuMember = DynamicPropertyHelper.GetBool(panstwo, "CzlonekUE"),
-                IsActive = DynamicPropertyHelper.GetBool(panstwo, "Aktywne"),
-                IsDefault = DynamicPropertyHelper.GetBool(panstwo, "Domyslne")
-            };
+                var dto = new CountryDto
+                {
+                    Id = DynamicPropertyHelper.GetId(panstwo),
+                    Symbol = DynamicPropertyHelper.GetString(panstwo, "Symbol") ?? string.Empty,
+                    Name = DynamicPropertyHelper.GetString(panstwo, "Nazwa"),
+                    IsoCode2 = DynamicPropertyHelper.GetString(panstwo, "KodISO"),
+                    IsoCode3 = DynamicPropertyHelper.GetString(panstwo, "KodISO3"),
+                    EuCode = DynamicPropertyHelper.GetString(panstwo, "KodUE"),
+                    IsEuMember = DynamicPropertyHelper.GetBool(panstwo, "CzlonekUE"),
+                    IsActive = DynamicPropertyHelper.GetBool(panstwo, "Aktywne"),
+                    IsDefault = DynamicPropertyHelper.GetBool(panstwo, "Domyslne")
+                };
 
-            return Ok(ApiResponse<CountryDto>.Ok(dto));
+                return (found: true, managerNull: false, dto: (CountryDto?)dto);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<CountryDto>.Error("Failed to get Panstwa manager"));
+            if (!result.found) return NotFound(ApiResponse<CountryDto>.Error($"Country with code '{isoCode}' not found"));
+
+            return Ok(ApiResponse<CountryDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -1249,8 +1282,6 @@ public class DictionaryController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<DocumentTypeDto>>), StatusCodes.Status200OK)]
     public ActionResult<ApiResponse<List<DocumentTypeDto>>> GetDocumentTypes([FromQuery] string? category = null)
     {
-        // Document types are mostly predefined in the system
-        // This endpoint provides a reference list
         var documentTypes = new List<DocumentTypeDto>
         {
             // Sales documents
@@ -1302,7 +1333,6 @@ public class DictionaryController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<DocumentStatusDto>>), StatusCodes.Status200OK)]
     public ActionResult<ApiResponse<List<DocumentStatusDto>>> GetDocumentStatuses()
     {
-        // Document statuses are predefined in the system
         var statuses = new List<DocumentStatusDto>
         {
             new() { Code = 0, Symbol = "BUFOR", Name = "Bufor", Description = "Dokument w buforze (robocza wersja)" },

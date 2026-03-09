@@ -31,87 +31,92 @@ public class SystemController : ControllerBase
     /// </summary>
     [HttpGet("company")]
     [ProducesResponseType(typeof(ApiResponse<CompanyInfoDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<CompanyInfoDto>> GetCompanyInfo()
+    public async Task<ActionResult<ApiResponse<CompanyInfoDto>>> GetCompanyInfo()
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
-            // Try to get company info from Sfera
-            dynamic? firma = null;
-            try
+            var dto = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                firma = sfera.PodajObiektTypu<dynamic>();
-            }
-            catch { }
+                dynamic sfera = _sferaService.GetSfera();
 
-            // Fallback: try to get from Kontekst
-            dynamic? kontekst = null;
-            try
-            {
-                var kontekstProp = sfera.GetType().GetProperty("Kontekst");
-                if (kontekstProp != null)
-                {
-                    kontekst = kontekstProp.GetValue(sfera);
-                }
-            }
-            catch { }
-
-            // Try to get from InformacjeOFirmie
-            dynamic? infoOFirmie = null;
-            try
-            {
-                var infoProp = sfera.GetType().GetProperty("InformacjeOFirmie");
-                if (infoProp != null)
-                {
-                    infoOFirmie = infoProp.GetValue(sfera);
-                }
-            }
-            catch { }
-
-            var dto = new CompanyInfoDto();
-
-            if (infoOFirmie != null)
-            {
-                dto.Name = DynamicPropertyHelper.GetString(infoOFirmie, "Nazwa");
-                dto.ShortName = DynamicPropertyHelper.GetString(infoOFirmie, "NazwaSkrocona");
-                dto.TaxId = DynamicPropertyHelper.GetString(infoOFirmie, "NIP");
-                dto.Regon = DynamicPropertyHelper.GetString(infoOFirmie, "Regon");
-                dto.Street = DynamicPropertyHelper.GetString(infoOFirmie, "Ulica");
-                dto.City = DynamicPropertyHelper.GetString(infoOFirmie, "Miejscowosc");
-                dto.PostalCode = DynamicPropertyHelper.GetString(infoOFirmie, "KodPocztowy");
-                dto.Country = DynamicPropertyHelper.GetString(infoOFirmie, "Kraj");
-                dto.Phone = DynamicPropertyHelper.GetString(infoOFirmie, "Telefon");
-                dto.Email = DynamicPropertyHelper.GetString(infoOFirmie, "Email");
-                dto.Website = DynamicPropertyHelper.GetString(infoOFirmie, "WWW");
-                dto.BankAccount = DynamicPropertyHelper.GetString(infoOFirmie, "NumerRachunkuBankowego");
-                dto.BankName = DynamicPropertyHelper.GetString(infoOFirmie, "NazwaBanku");
-            }
-            else if (kontekst != null)
-            {
-                // Try getting from context
-                var firmaProp = DynamicPropertyHelper.GetProperty(kontekst, "Firma");
-                if (firmaProp != null)
-                {
-                    dto.Name = DynamicPropertyHelper.GetString(firmaProp, "Nazwa");
-                    dto.ShortName = DynamicPropertyHelper.GetString(firmaProp, "NazwaSkrocona");
-                    dto.TaxId = DynamicPropertyHelper.GetString(firmaProp, "NIP");
-                }
-            }
-
-            // If still empty, try to get from database name or connection info
-            if (string.IsNullOrEmpty(dto.Name))
-            {
+                // Try to get company info from Sfera
+                dynamic? firma = null;
                 try
                 {
-                    var nazwaFirmyProp = sfera.GetType().GetProperty("NazwaFirmy");
-                    if (nazwaFirmyProp != null)
+                    firma = sfera.PodajObiektTypu<dynamic>();
+                }
+                catch { }
+
+                // Fallback: try to get from Kontekst
+                dynamic? kontekst = null;
+                try
+                {
+                    var kontekstProp = sfera.GetType().GetProperty("Kontekst");
+                    if (kontekstProp != null)
                     {
-                        dto.Name = nazwaFirmyProp.GetValue(sfera)?.ToString();
+                        kontekst = kontekstProp.GetValue(sfera);
                     }
                 }
                 catch { }
-            }
+
+                // Try to get from InformacjeOFirmie
+                dynamic? infoOFirmie = null;
+                try
+                {
+                    var infoProp = sfera.GetType().GetProperty("InformacjeOFirmie");
+                    if (infoProp != null)
+                    {
+                        infoOFirmie = infoProp.GetValue(sfera);
+                    }
+                }
+                catch { }
+
+                var result = new CompanyInfoDto();
+
+                if (infoOFirmie != null)
+                {
+                    result.Name = DynamicPropertyHelper.GetString(infoOFirmie, "Nazwa");
+                    result.ShortName = DynamicPropertyHelper.GetString(infoOFirmie, "NazwaSkrocona");
+                    result.TaxId = DynamicPropertyHelper.GetString(infoOFirmie, "NIP");
+                    result.Regon = DynamicPropertyHelper.GetString(infoOFirmie, "Regon");
+                    result.Street = DynamicPropertyHelper.GetString(infoOFirmie, "Ulica");
+                    result.City = DynamicPropertyHelper.GetString(infoOFirmie, "Miejscowosc");
+                    result.PostalCode = DynamicPropertyHelper.GetString(infoOFirmie, "KodPocztowy");
+                    result.Country = DynamicPropertyHelper.GetString(infoOFirmie, "Kraj");
+                    result.Phone = DynamicPropertyHelper.GetString(infoOFirmie, "Telefon");
+                    result.Email = DynamicPropertyHelper.GetString(infoOFirmie, "Email");
+                    result.Website = DynamicPropertyHelper.GetString(infoOFirmie, "WWW");
+                    result.BankAccount = DynamicPropertyHelper.GetString(infoOFirmie, "NumerRachunkuBankowego");
+                    result.BankName = DynamicPropertyHelper.GetString(infoOFirmie, "NazwaBanku");
+                }
+                else if (kontekst != null)
+                {
+                    // Try getting from context
+                    var firmaProp = DynamicPropertyHelper.GetProperty(kontekst, "Firma");
+                    if (firmaProp != null)
+                    {
+                        result.Name = DynamicPropertyHelper.GetString(firmaProp, "Nazwa");
+                        result.ShortName = DynamicPropertyHelper.GetString(firmaProp, "NazwaSkrocona");
+                        result.TaxId = DynamicPropertyHelper.GetString(firmaProp, "NIP");
+                    }
+                }
+
+                // If still empty, try to get from database name or connection info
+                if (string.IsNullOrEmpty(result.Name))
+                {
+                    try
+                    {
+                        var nazwaFirmyProp = sfera.GetType().GetProperty("NazwaFirmy");
+                        if (nazwaFirmyProp != null)
+                        {
+                            result.Name = nazwaFirmyProp.GetValue(sfera)?.ToString();
+                        }
+                    }
+                    catch { }
+                }
+
+                return result;
+            });
 
             return Ok(ApiResponse<CompanyInfoDto>.Ok(dto));
         }
@@ -131,54 +136,59 @@ public class SystemController : ControllerBase
     /// </summary>
     [HttpGet("operator")]
     [ProducesResponseType(typeof(ApiResponse<OperatorInfoDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<OperatorInfoDto>> GetOperatorInfo()
+    public async Task<ActionResult<ApiResponse<OperatorInfoDto>>> GetOperatorInfo()
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
-            var dto = new OperatorInfoDto();
-
-            // Try to get from Operator property
-            try
+            var dto = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var operatorProp = sfera.GetType().GetProperty("Operator");
-                if (operatorProp != null)
-                {
-                    dynamic? oper = operatorProp.GetValue(sfera);
-                    if (oper != null)
-                    {
-                        dto.Id = DynamicPropertyHelper.GetId(oper);
-                        dto.Login = DynamicPropertyHelper.GetString(oper, "Login");
-                        dto.Name = DynamicPropertyHelper.GetString(oper, "Nazwa");
-                        dto.Email = DynamicPropertyHelper.GetString(oper, "Email");
-                        dto.IsActive = DynamicPropertyHelper.GetBool(oper, "Aktywny");
-                        dto.IsAdmin = DynamicPropertyHelper.GetBool(oper, "Administrator");
-                    }
-                }
-            }
-            catch { }
+                dynamic sfera = _sferaService.GetSfera();
 
-            // Try alternative via ZalogowanyOperator
-            if (string.IsNullOrEmpty(dto.Login))
-            {
+                var result = new OperatorInfoDto();
+
+                // Try to get from Operator property
                 try
                 {
-                    var zalogowanyProp = sfera.GetType().GetProperty("ZalogowanyOperator");
-                    if (zalogowanyProp != null)
+                    var operatorProp = sfera.GetType().GetProperty("Operator");
+                    if (operatorProp != null)
                     {
-                        dynamic? zalogowany = zalogowanyProp.GetValue(sfera);
-                        if (zalogowany != null)
+                        dynamic? oper = operatorProp.GetValue(sfera);
+                        if (oper != null)
                         {
-                            dto.Id = DynamicPropertyHelper.GetId(zalogowany);
-                            dto.Login = DynamicPropertyHelper.GetString(zalogowany, "Login");
-                            dto.Name = DynamicPropertyHelper.GetString(zalogowany, "Nazwa");
-                            dto.Email = DynamicPropertyHelper.GetString(zalogowany, "Email");
+                            result.Id = DynamicPropertyHelper.GetId(oper);
+                            result.Login = DynamicPropertyHelper.GetString(oper, "Login");
+                            result.Name = DynamicPropertyHelper.GetString(oper, "Nazwa");
+                            result.Email = DynamicPropertyHelper.GetString(oper, "Email");
+                            result.IsActive = DynamicPropertyHelper.GetBool(oper, "Aktywny");
+                            result.IsAdmin = DynamicPropertyHelper.GetBool(oper, "Administrator");
                         }
                     }
                 }
                 catch { }
-            }
+
+                // Try alternative via ZalogowanyOperator
+                if (string.IsNullOrEmpty(result.Login))
+                {
+                    try
+                    {
+                        var zalogowanyProp = sfera.GetType().GetProperty("ZalogowanyOperator");
+                        if (zalogowanyProp != null)
+                        {
+                            dynamic? zalogowany = zalogowanyProp.GetValue(sfera);
+                            if (zalogowany != null)
+                            {
+                                result.Id = DynamicPropertyHelper.GetId(zalogowany);
+                                result.Login = DynamicPropertyHelper.GetString(zalogowany, "Login");
+                                result.Name = DynamicPropertyHelper.GetString(zalogowany, "Nazwa");
+                                result.Email = DynamicPropertyHelper.GetString(zalogowany, "Email");
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                return result;
+            });
 
             return Ok(ApiResponse<OperatorInfoDto>.Ok(dto));
         }
@@ -198,57 +208,62 @@ public class SystemController : ControllerBase
     /// </summary>
     [HttpGet("context")]
     [ProducesResponseType(typeof(ApiResponse<WorkContextDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<WorkContextDto>> GetWorkContext()
+    public async Task<ActionResult<ApiResponse<WorkContextDto>>> GetWorkContext()
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-
-            var dto = new WorkContextDto
+            var dto = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                IsConnected = _sferaService.IsConnected,
-                SessionStartTime = DateTime.Now // Approximate
-            };
+                dynamic sfera = _sferaService.GetSfera();
 
-            // Try to get database info
-            try
-            {
-                var danePol = sfera.GetType().GetProperty("DanePolaczenia");
-                if (danePol != null)
+                var result = new WorkContextDto
                 {
-                    dynamic? dane = danePol.GetValue(sfera);
-                    if (dane != null)
+                    IsConnected = _sferaService.IsConnected,
+                    SessionStartTime = DateTime.Now // Approximate
+                };
+
+                // Try to get database info
+                try
+                {
+                    var danePol = sfera.GetType().GetProperty("DanePolaczenia");
+                    if (danePol != null)
                     {
-                        dto.ServerName = DynamicPropertyHelper.GetString(dane, "Serwer");
-                        dto.DatabaseName = DynamicPropertyHelper.GetString(dane, "Baza");
+                        dynamic? dane = danePol.GetValue(sfera);
+                        if (dane != null)
+                        {
+                            result.ServerName = DynamicPropertyHelper.GetString(dane, "Serwer");
+                            result.DatabaseName = DynamicPropertyHelper.GetString(dane, "Baza");
+                        }
                     }
                 }
-            }
-            catch { }
+                catch { }
 
-            // Try to get product info
-            try
-            {
-                var produktProp = sfera.GetType().GetProperty("Produkt");
-                if (produktProp != null)
+                // Try to get product info
+                try
                 {
-                    var produkt = produktProp.GetValue(sfera);
-                    dto.ProductName = produkt?.ToString();
+                    var produktProp = sfera.GetType().GetProperty("Produkt");
+                    if (produktProp != null)
+                    {
+                        var produkt = produktProp.GetValue(sfera);
+                        result.ProductName = produkt?.ToString();
+                    }
                 }
-            }
-            catch { }
+                catch { }
 
-            // Try to get version
-            try
-            {
-                var verProp = sfera.GetType().GetProperty("Wersja");
-                if (verProp != null)
+                // Try to get version
+                try
                 {
-                    var ver = verProp.GetValue(sfera);
-                    dto.Version = ver?.ToString();
+                    var verProp = sfera.GetType().GetProperty("Wersja");
+                    if (verProp != null)
+                    {
+                        var ver = verProp.GetValue(sfera);
+                        result.Version = ver?.ToString();
+                    }
                 }
-            }
-            catch { }
+                catch { }
+
+                return result;
+            });
 
             return Ok(ApiResponse<WorkContextDto>.Ok(dto));
         }
@@ -268,7 +283,7 @@ public class SystemController : ControllerBase
     /// </summary>
     [HttpGet("managers")]
     [ProducesResponseType(typeof(ApiResponse<List<ManagerInfoDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<ManagerInfoDto>>> GetAvailableManagers()
+    public async Task<ActionResult<ApiResponse<List<ManagerInfoDto>>>> GetAvailableManagers()
     {
         var managers = new List<ManagerInfoDto>
         {
@@ -327,18 +342,22 @@ public class SystemController : ControllerBase
         };
 
         // Test availability
-        foreach (var manager in managers)
+        await _sferaService.ExecuteWithLockAsync(() =>
         {
-            try
+            foreach (var manager in managers)
             {
-                var result = _sferaService.GetManager(manager.Name);
-                manager.IsAvailable = result != null;
+                try
+                {
+                    var result = _sferaService.GetManager(manager.Name);
+                    manager.IsAvailable = result != null;
+                }
+                catch
+                {
+                    manager.IsAvailable = false;
+                }
             }
-            catch
-            {
-                manager.IsAvailable = false;
-            }
-        }
+            return true;
+        });
 
         return Ok(ApiResponse<List<ManagerInfoDto>>.Ok(managers));
     }

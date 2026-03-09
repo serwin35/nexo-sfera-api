@@ -31,7 +31,7 @@ public class DeclarationsController : ControllerBase
     /// </summary>
     [HttpGet("vat")]
     [ProducesResponseType(typeof(PagedResponse<VatDeclarationDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<VatDeclarationDto>> GetVatDeclarations(
+    public async Task<ActionResult<PagedResponse<VatDeclarationDto>>> GetVatDeclarations(
         [FromQuery] int? year,
         [FromQuery] int? month,
         [FromQuery] string? status,
@@ -40,68 +40,75 @@ public class DeclarationsController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("Deklaracje");
-            if (manager == null)
+            var (items, totalCount) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("Deklaracje");
+                if (manager == null) return (null, -1);
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter VAT declarations only (type = VAT)
+                allDeklaracje = allDeklaracje.Where(d =>
+                {
+                    var typ = DynamicPropertyHelper.GetString(d, "TypDeklaracji");
+                    return typ != null && (typ.Contains("VAT") || typ.Contains("V7") || typ.Contains("JPK_V7"));
+                }).ToList();
+
+                // Filter by year
+                if (year.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
+                        return rok.HasValue && rok.Value == year.Value;
+                    }).ToList();
+                }
+
+                // Filter by month
+                if (month.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
+                        return miesiac.HasValue && miesiac.Value == month.Value;
+                    }).ToList();
+                }
+
+                // Filter by status
+                if (!string.IsNullOrEmpty(status))
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var declStatus = MapDeclarationStatus(DynamicPropertyHelper.GetNullableInt(d, "Status"));
+                        return declStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var count = allDeklaracje.Count;
+                var pagedDeklaracje = allDeklaracje
+                    .OrderByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Rok") ?? 0)
+                    .ThenByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Miesiac") ?? 0)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var result = new List<VatDeclarationDto>();
+                foreach (var d in pagedDeklaracje)
+                {
+                    result.Add(MapVatDeclaration(d));
+                }
+
+                return (result, count);
+            });
+
+            if (totalCount == -1)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Deklaracje manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter VAT declarations only (type = VAT)
-            allDeklaracje = allDeklaracje.Where(d =>
-            {
-                var typ = DynamicPropertyHelper.GetString(d, "TypDeklaracji");
-                return typ != null && (typ.Contains("VAT") || typ.Contains("V7") || typ.Contains("JPK_V7"));
-            }).ToList();
-
-            // Filter by year
-            if (year.HasValue)
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
-                    return rok.HasValue && rok.Value == year.Value;
-                }).ToList();
-            }
-
-            // Filter by month
-            if (month.HasValue)
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
-                    return miesiac.HasValue && miesiac.Value == month.Value;
-                }).ToList();
-            }
-
-            // Filter by status
-            if (!string.IsNullOrEmpty(status))
-            {
-                allDeklaracje = allDeklaracje.Where(d =>
-                {
-                    var declStatus = MapDeclarationStatus(DynamicPropertyHelper.GetNullableInt(d, "Status"));
-                    return declStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allDeklaracje.Count;
-            var pagedDeklaracje = allDeklaracje
-                .OrderByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Rok") ?? 0)
-                .ThenByDescending(d => DynamicPropertyHelper.GetNullableInt(d, "Miesiac") ?? 0)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<VatDeclarationDto>();
-            foreach (var d in pagedDeklaracje)
-            {
-                items.Add(MapVatDeclaration(d));
-            }
-
             return Ok(new PagedResponse<VatDeclarationDto>
             {
-                Data = items,
+                Data = items!,
                 Page = page,
                 PageSize = pageSize,
                 TotalCount = totalCount
@@ -120,25 +127,28 @@ public class DeclarationsController : ControllerBase
     [HttpGet("vat/{id}")]
     [ProducesResponseType(typeof(ApiResponse<VatDeclarationDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<VatDeclarationDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<VatDeclarationDto>> GetVatDeclaration(int id)
+    public async Task<ActionResult<ApiResponse<VatDeclarationDto>>> GetVatDeclaration(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("Deklaracje");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<VatDeclarationDto>.Error("Failed to get Deklaracje manager"));
-            }
+                var manager = _sferaService.GetManager("Deklaracje");
+                if (manager == null) return (VatDeclarationDto?)null;
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
 
-            if (deklaracja == null)
+                if (deklaracja == null) return (VatDeclarationDto?)null;
+                return (VatDeclarationDto?)MapVatDeclaration(deklaracja);
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<VatDeclarationDto>.Error($"VAT declaration with ID {id} not found"));
             }
 
-            return Ok(ApiResponse<VatDeclarationDto>.Ok(MapVatDeclaration(deklaracja)));
+            return Ok(ApiResponse<VatDeclarationDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -152,52 +162,59 @@ public class DeclarationsController : ControllerBase
     /// </summary>
     [HttpGet("vat/summary")]
     [ProducesResponseType(typeof(ApiResponse<VatDeclarationSummaryDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<VatDeclarationSummaryDto>> GetVatDeclarationSummary([FromQuery] int year)
+    public async Task<ActionResult<ApiResponse<VatDeclarationSummaryDto>>> GetVatDeclarationSummary([FromQuery] int year)
     {
         try
         {
-            var manager = _sferaService.GetManager("Deklaracje");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("Deklaracje");
+                if (manager == null) return (VatDeclarationSummaryDto?)null;
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter VAT declarations for the specified year
+                var yearDeklaracje = allDeklaracje.Where(d =>
+                {
+                    var typ = DynamicPropertyHelper.GetString(d, "TypDeklaracji");
+                    var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
+                    return rok.HasValue && rok.Value == year &&
+                           typ != null && (typ.Contains("VAT") || typ.Contains("V7") || typ.Contains("JPK_V7"));
+                }).ToList();
+
+                var summary = new VatDeclarationSummaryDto
+                {
+                    Year = year,
+                    TotalDeclarations = yearDeklaracje.Count,
+                    SubmittedCount = yearDeklaracje.Count(d =>
+                        MapDeclarationStatus(DynamicPropertyHelper.GetNullableInt(d, "Status")) == "Submitted"),
+                    DraftCount = yearDeklaracje.Count(d =>
+                        MapDeclarationStatus(DynamicPropertyHelper.GetNullableInt(d, "Status")) == "Draft"),
+                    TotalVatDue = 0,
+                    TotalVatRefund = 0
+                };
+
+                foreach (var d in yearDeklaracje)
+                {
+                    var vatNalezny = DynamicPropertyHelper.GetDecimal(d, "VATNalezny");
+                    var vatNaliczony = DynamicPropertyHelper.GetDecimal(d, "VATNaliczony");
+                    var roznica = vatNalezny - vatNaliczony;
+
+                    if (roznica > 0)
+                        summary.TotalVatDue += roznica;
+                    else
+                        summary.TotalVatRefund += Math.Abs(roznica);
+                }
+
+                return (VatDeclarationSummaryDto?)summary;
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<VatDeclarationSummaryDto>.Error("Failed to get Deklaracje manager"));
             }
 
-            var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter VAT declarations for the specified year
-            var yearDeklaracje = allDeklaracje.Where(d =>
-            {
-                var typ = DynamicPropertyHelper.GetString(d, "TypDeklaracji");
-                var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
-                return rok.HasValue && rok.Value == year &&
-                       typ != null && (typ.Contains("VAT") || typ.Contains("V7") || typ.Contains("JPK_V7"));
-            }).ToList();
-
-            var summary = new VatDeclarationSummaryDto
-            {
-                Year = year,
-                TotalDeclarations = yearDeklaracje.Count,
-                SubmittedCount = yearDeklaracje.Count(d =>
-                    MapDeclarationStatus(DynamicPropertyHelper.GetNullableInt(d, "Status")) == "Submitted"),
-                DraftCount = yearDeklaracje.Count(d =>
-                    MapDeclarationStatus(DynamicPropertyHelper.GetNullableInt(d, "Status")) == "Draft"),
-                TotalVatDue = 0,
-                TotalVatRefund = 0
-            };
-
-            foreach (var d in yearDeklaracje)
-            {
-                var vatNalezny = DynamicPropertyHelper.GetDecimal(d, "VATNalezny");
-                var vatNaliczony = DynamicPropertyHelper.GetDecimal(d, "VATNaliczony");
-                var roznica = vatNalezny - vatNaliczony;
-
-                if (roznica > 0)
-                    summary.TotalVatDue += roznica;
-                else
-                    summary.TotalVatRefund += Math.Abs(roznica);
-            }
-
-            return Ok(ApiResponse<VatDeclarationSummaryDto>.Ok(summary));
+            return Ok(ApiResponse<VatDeclarationSummaryDto>.Ok(result));
         }
         catch (Exception ex)
         {

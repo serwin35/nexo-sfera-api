@@ -132,5 +132,6 @@ public enum PaymentMethodType
     Card = 2,
     DirectDebit = 3,
     Compensation = 4,
+    ElectronicPayment = 5,
     Other = 99
 }

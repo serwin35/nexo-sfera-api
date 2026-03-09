@@ -30,7 +30,7 @@ public class EmployeesController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<EmployeeSummaryDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<EmployeeSummaryDto>> GetEmployees(
+    public async Task<ActionResult<PagedResponse<EmployeeSummaryDto>>> GetEmployees(
         [FromQuery] string? search = null,
         [FromQuery] bool? activeOnly = true,
         [FromQuery] int page = 1,
@@ -38,59 +38,67 @@ public class EmployeesController : ControllerBase
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
-
-            if (activeOnly == true)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                allPracownicy = allPracownicy.Where(p =>
-                    DynamicPropertyHelper.GetNullableBool(p, "Aktywny") == true).ToList();
-            }
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null) return (null, 0);
+                var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
 
-            if (!string.IsNullOrEmpty(search))
-            {
-                var searchLower = search.ToLower();
-                allPracownicy = allPracownicy.Where(p =>
+                if (activeOnly == true)
                 {
-                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
-                    var imie = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
-                    var nazwisko = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
-                    var symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? "";
-                    return imie.ToLower().Contains(searchLower) ||
-                           nazwisko.ToLower().Contains(searchLower) ||
-                           symbol.ToLower().Contains(searchLower);
-                }).ToList();
-            }
+                    allPracownicy = allPracownicy.Where(p =>
+                        DynamicPropertyHelper.GetNullableBool(p, "Aktywny") == true).ToList();
+                }
 
-            var totalCount = allPracownicy.Count;
-            var items = allPracownicy
-                .OrderBy(p =>
+                if (!string.IsNullOrEmpty(search))
                 {
-                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
-                    return osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
-                })
-                .ThenBy(p =>
-                {
-                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
-                    return osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
-                })
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+                    var searchLower = search.ToLower();
+                    allPracownicy = allPracownicy.Where(p =>
+                    {
+                        var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                        var imie = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
+                        var nazwisko = osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
+                        var symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? "";
+                        return imie.ToLower().Contains(searchLower) ||
+                               nazwisko.ToLower().Contains(searchLower) ||
+                               symbol.ToLower().Contains(searchLower);
+                    }).ToList();
+                }
 
-            var mappedItems = new List<EmployeeSummaryDto>();
-            foreach (var p in items)
-            {
-                mappedItems.Add(MapEmployeeSummary(p));
-            }
+                var totalCount = allPracownicy.Count;
+                var items = allPracownicy
+                    .OrderBy(p =>
+                    {
+                        var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                        return osoba != null ? DynamicPropertyHelper.GetString(osoba, "Nazwisko") ?? "" : "";
+                    })
+                    .ThenBy(p =>
+                    {
+                        var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                        return osoba != null ? DynamicPropertyHelper.GetString(osoba, "Imie") ?? "" : "";
+                    })
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var mappedItems = new List<EmployeeSummaryDto>();
+                foreach (var p in items)
+                {
+                    mappedItems.Add(MapEmployeeSummary(p));
+                }
+
+                return (mappedItems, totalCount);
+            });
+
+            if (result.Item1 == null)
+                return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
 
             return Ok(new PagedResponse<EmployeeSummaryDto>
             {
-                Data = mappedItems,
+                Data = result.Item1,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.Item2
             });
         }
         catch (Exception ex)
@@ -106,26 +114,34 @@ public class EmployeesController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<EmployeeDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmployeeDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<EmployeeDto>> GetEmployee(int id, [FromQuery] bool includeContacts = true)
+    public async Task<ActionResult<ApiResponse<EmployeeDto>>> GetEmployee(int id, [FromQuery] bool includeContacts = true)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
-            var pracownik = allPracownicy.FirstOrDefault(p =>
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
-                var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
-                return pracownikObj != null && DynamicPropertyHelper.GetId(pracownikObj) == id;
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null) return (true, (EmployeeDto?)null);
+                var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
+                var pracownik = allPracownicy.FirstOrDefault(p =>
+                {
+                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                    var pracownikObj = osoba != null ? DynamicPropertyHelper.GetProperty(osoba, "Pracownik") : null;
+                    return pracownikObj != null && DynamicPropertyHelper.GetId(pracownikObj) == id;
+                });
+
+                if (pracownik == null)
+                    return (false, (EmployeeDto?)null);
+
+                return (false, MapEmployee(pracownik, includeContacts));
             });
 
-            if (pracownik == null)
-            {
-                return NotFound(ApiResponse<EmployeeDto>.Error($"Employee with ID {id} not found"));
-            }
+            if (managerNull)
+                return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
 
-            var dto = MapEmployee(pracownik, includeContacts);
+            if (dto == null)
+                return NotFound(ApiResponse<EmployeeDto>.Error($"Employee with ID {id} not found"));
+
             return Ok(ApiResponse<EmployeeDto>.Ok(dto));
         }
         catch (Exception ex)
@@ -141,22 +157,30 @@ public class EmployeesController : ControllerBase
     [HttpGet("by-symbol/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<EmployeeDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmployeeDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<EmployeeDto>> GetEmployeeBySymbol(string symbol, [FromQuery] bool includeContacts = true)
+    public async Task<ActionResult<ApiResponse<EmployeeDto>>> GetEmployeeBySymbol(string symbol, [FromQuery] bool includeContacts = true)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
-            var pracownik = allPracownicy.FirstOrDefault(p =>
-                DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
-
-            if (pracownik == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<EmployeeDto>.Error($"Employee with symbol '{symbol}' not found"));
-            }
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null) return (true, (EmployeeDto?)null);
+                var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
+                var pracownik = allPracownicy.FirstOrDefault(p =>
+                    DynamicPropertyHelper.GetString(p, "Symbol") == symbol);
 
-            var dto = MapEmployee(pracownik, includeContacts);
+                if (pracownik == null)
+                    return (false, (EmployeeDto?)null);
+
+                return (false, MapEmployee(pracownik, includeContacts));
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
+
+            if (dto == null)
+                return NotFound(ApiResponse<EmployeeDto>.Error($"Employee with symbol '{symbol}' not found"));
+
             return Ok(ApiResponse<EmployeeDto>.Ok(dto));
         }
         catch (Exception ex)
@@ -172,25 +196,33 @@ public class EmployeesController : ControllerBase
     [HttpGet("by-pesel/{pesel}")]
     [ProducesResponseType(typeof(ApiResponse<EmployeeDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EmployeeDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<EmployeeDto>> GetEmployeeByPesel(string pesel, [FromQuery] bool includeContacts = true)
+    public async Task<ActionResult<ApiResponse<EmployeeDto>>> GetEmployeeByPesel(string pesel, [FromQuery] bool includeContacts = true)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null) return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
-            var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
-            var pracownik = allPracownicy.FirstOrDefault(p =>
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
-                return osoba != null && DynamicPropertyHelper.GetString(osoba, "PESEL") == pesel;
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null) return (true, (EmployeeDto?)null);
+                var allPracownicy = ((IEnumerable<object>)podmioty.Dane.WszyscyPracownicy()).ToList();
+                var pracownik = allPracownicy.FirstOrDefault(p =>
+                {
+                    var osoba = DynamicPropertyHelper.GetProperty(p, "Osoba");
+                    return osoba != null && DynamicPropertyHelper.GetString(osoba, "PESEL") == pesel;
+                });
+
+                if (pracownik == null)
+                    return (false, (EmployeeDto?)null);
+
+                return (false, MapEmployee(pracownik, includeContacts));
             });
 
-            if (pracownik == null)
-            {
-                return NotFound(ApiResponse<EmployeeDto>.Error($"Employee with PESEL '{pesel}' not found"));
-            }
+            if (managerNull)
+                return StatusCode(500, ApiResponse<object>.Error("Podmioty manager not available"));
 
-            var dto = MapEmployee(pracownik, includeContacts);
+            if (dto == null)
+                return NotFound(ApiResponse<EmployeeDto>.Error($"Employee with PESEL '{pesel}' not found"));
+
             return Ok(ApiResponse<EmployeeDto>.Ok(dto));
         }
         catch (Exception ex)
