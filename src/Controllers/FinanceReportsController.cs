@@ -32,42 +32,47 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("cash-registers")]
     [ProducesResponseType(typeof(ApiResponse<List<CashRegisterDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<CashRegisterDto>>> GetCashRegisters([FromQuery] bool? activeOnly = true)
+    public async Task<ActionResult<ApiResponse<List<CashRegisterDto>>>> GetCashRegisters([FromQuery] bool? activeOnly = true)
     {
         try
         {
-            var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
-            if (stanowiskaManager == null) return StatusCode(500, ApiResponse<List<CashRegisterDto>>.Error("StanowiskaKasowe manager not available"));
-            var allStanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
-
-            if (activeOnly == true)
+            var dtos = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var filteredStanowiska = new List<object>();
+                var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
+                if (stanowiskaManager == null) return null;
+                var allStanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredStanowiska = new List<object>();
+                    foreach (var s in allStanowiska)
+                    {
+                        if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
+                        {
+                            filteredStanowiska.Add(s);
+                        }
+                    }
+                    allStanowiska = filteredStanowiska;
+                }
+
+                var result = new List<CashRegisterDto>();
                 foreach (var s in allStanowiska)
                 {
-                    if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
+                    result.Add(new CashRegisterDto
                     {
-                        filteredStanowiska.Add(s);
-                    }
+                        Id = DynamicPropertyHelper.GetId(s),
+                        Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
+                        Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
+                        CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol"),
+                        CurrentBalance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
+                        IsActive = DynamicPropertyHelper.GetBool(s, "Aktywne"),
+                        IsDefault = DynamicPropertyHelper.GetBool(s, "Domyslne")
+                    });
                 }
-                allStanowiska = filteredStanowiska;
-            }
+                return result.OrderBy(c => c.Symbol).ToList();
+            });
 
-            var dtos = new List<CashRegisterDto>();
-            foreach (var s in allStanowiska)
-            {
-                dtos.Add(new CashRegisterDto
-                {
-                    Id = DynamicPropertyHelper.GetId(s),
-                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
-                    Name = DynamicPropertyHelper.GetString(s, "Nazwa"),
-                    CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol"),
-                    CurrentBalance = DynamicPropertyHelper.GetDecimal(s, "StanKasy"),
-                    IsActive = DynamicPropertyHelper.GetBool(s, "Aktywne"),
-                    IsDefault = DynamicPropertyHelper.GetBool(s, "Domyslne")
-                });
-            }
-            dtos = dtos.OrderBy(c => c.Symbol).ToList();
+            if (dtos == null) return StatusCode(500, ApiResponse<List<CashRegisterDto>>.Error("StanowiskaKasowe manager not available"));
 
             return Ok(ApiResponse<List<CashRegisterDto>>.Ok(dtos));
         }
@@ -87,7 +92,7 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("cash-reports")]
     [ProducesResponseType(typeof(PagedResponse<CashReportDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<CashReportDto>> GetCashReports(
+    public async Task<ActionResult<PagedResponse<CashReportDto>>> GetCashReports(
         [FromQuery] string? cashRegisterSymbol,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
@@ -97,58 +102,65 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var raportyManager = _sferaService.GetManager("RaportyKasowe");
-            if (raportyManager == null) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
-            var allRaporty = DynamicPropertyHelper.SafeGetAll((object)raportyManager);
-
-            if (!string.IsNullOrEmpty(cashRegisterSymbol))
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                allRaporty = allRaporty.Where(r =>
-                    DynamicPropertyHelper.GetString(r, "StanowiskoKasowe", "Symbol") == cashRegisterSymbol).ToList();
-            }
+                var raportyManager = _sferaService.GetManager("RaportyKasowe");
+                if (raportyManager == null) return (managerNull: true, totalCount: 0, items: new List<CashReportDto>());
+                var allRaporty = DynamicPropertyHelper.SafeGetAll((object)raportyManager);
 
-            if (dateFrom.HasValue)
-            {
-                allRaporty = allRaporty.Where(r =>
+                if (!string.IsNullOrEmpty(cashRegisterSymbol))
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(r, "DataOd");
-                    return data.HasValue && data.Value >= dateFrom.Value;
-                }).ToList();
-            }
+                    allRaporty = allRaporty.Where(r =>
+                        DynamicPropertyHelper.GetString(r, "StanowiskoKasowe", "Symbol") == cashRegisterSymbol).ToList();
+                }
 
-            if (dateTo.HasValue)
-            {
-                allRaporty = allRaporty.Where(r =>
+                if (dateFrom.HasValue)
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(r, "DataDo");
-                    return data.HasValue && data.Value <= dateTo.Value;
-                }).ToList();
-            }
+                    allRaporty = allRaporty.Where(r =>
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(r, "DataOd");
+                        return data.HasValue && data.Value >= dateFrom.Value;
+                    }).ToList();
+                }
 
-            if (closedOnly.HasValue && closedOnly.Value)
-            {
-                allRaporty = allRaporty.Where(r => DynamicPropertyHelper.GetBool(r, "Zamkniety")).ToList();
-            }
+                if (dateTo.HasValue)
+                {
+                    allRaporty = allRaporty.Where(r =>
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(r, "DataDo");
+                        return data.HasValue && data.Value <= dateTo.Value;
+                    }).ToList();
+                }
 
-            var totalCount = allRaporty.Count;
-            var pagedRaporty = allRaporty
-                .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "DataOd") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+                if (closedOnly.HasValue && closedOnly.Value)
+                {
+                    allRaporty = allRaporty.Where(r => DynamicPropertyHelper.GetBool(r, "Zamkniety")).ToList();
+                }
 
-            var items = new List<CashReportDto>();
-            foreach (var r in pagedRaporty)
-            {
-                items.Add(MapCashReport(r, false));
-            }
+                var totalCount = allRaporty.Count;
+                var pagedRaporty = allRaporty
+                    .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "DataOd") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<CashReportDto>();
+                foreach (var r in pagedRaporty)
+                {
+                    items.Add(MapCashReport(r, false));
+                }
+
+                return (managerNull: false, totalCount, items);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
 
             return Ok(new PagedResponse<CashReportDto>
             {
-                Data = items,
+                Data = result.items,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -164,22 +176,29 @@ public class FinanceReportsController : ControllerBase
     [HttpGet("cash-reports/{id}")]
     [ProducesResponseType(typeof(ApiResponse<CashReportDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<CashReportDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<CashReportDto>> GetCashReport(int id, [FromQuery] bool includeOperations = true)
+    public async Task<ActionResult<ApiResponse<CashReportDto>>> GetCashReport(int id, [FromQuery] bool includeOperations = true)
     {
         try
         {
-            var raportyManager = _sferaService.GetManager("RaportyKasowe");
-            if (raportyManager == null) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
-            var allRaporty = DynamicPropertyHelper.SafeGetAll((object)raportyManager);
-            var raport = allRaporty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
-
-            if (raport == null)
+            var (managerNull, notFound, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<CashReportDto>.Error($"Cash report with ID {id} not found"));
-            }
+                var raportyManager = _sferaService.GetManager("RaportyKasowe");
+                if (raportyManager == null) return (true, false, (CashReportDto?)null);
+                var allRaporty = DynamicPropertyHelper.SafeGetAll((object)raportyManager);
+                var raport = allRaporty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
-            var dto = MapCashReport(raport, includeOperations);
-            return Ok(ApiResponse<CashReportDto>.Ok(dto));
+                if (raport == null)
+                {
+                    return (false, true, (CashReportDto?)null);
+                }
+
+                return (false, false, MapCashReport(raport, includeOperations));
+            });
+
+            if (managerNull) return StatusCode(500, ApiResponse<object>.Error("RaportyKasowe manager not available"));
+            if (notFound) return NotFound(ApiResponse<CashReportDto>.Error($"Cash report with ID {id} not found"));
+
+            return Ok(ApiResponse<CashReportDto>.Ok(dto!));
         }
         catch (Exception ex)
         {
@@ -242,45 +261,50 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("bank-accounts")]
     [ProducesResponseType(typeof(ApiResponse<List<BankAccountDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<BankAccountDto>>> GetBankAccounts([FromQuery] bool? activeOnly = true)
+    public async Task<ActionResult<ApiResponse<List<BankAccountDto>>>> GetBankAccounts([FromQuery] bool? activeOnly = true)
     {
         try
         {
-            var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
-            if (rachunkiManager == null) return StatusCode(500, ApiResponse<List<BankAccountDto>>.Error("RachunkiBankowe manager not available"));
-            var allRachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
-
-            if (activeOnly == true)
+            var dtos = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var filteredRachunki = new List<object>();
+                var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
+                if (rachunkiManager == null) return null;
+                var allRachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
+
+                if (activeOnly == true)
+                {
+                    var filteredRachunki = new List<object>();
+                    foreach (var r in allRachunki)
+                    {
+                        if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                        {
+                            filteredRachunki.Add(r);
+                        }
+                    }
+                    allRachunki = filteredRachunki;
+                }
+
+                var result = new List<BankAccountDto>();
                 foreach (var r in allRachunki)
                 {
-                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    result.Add(new BankAccountDto
                     {
-                        filteredRachunki.Add(r);
-                    }
+                        Id = DynamicPropertyHelper.GetId(r),
+                        Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+                        Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
+                        AccountNumber = DynamicPropertyHelper.GetString(r, "NumerRachunku"),
+                        BankName = DynamicPropertyHelper.GetString(r, "NazwaBanku"),
+                        BankSwift = DynamicPropertyHelper.GetString(r, "Swift"),
+                        CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol"),
+                        CurrentBalance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
+                        IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
+                        IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
+                    });
                 }
-                allRachunki = filteredRachunki;
-            }
+                return result.OrderBy(b => b.Symbol).ToList();
+            });
 
-            var dtos = new List<BankAccountDto>();
-            foreach (var r in allRachunki)
-            {
-                dtos.Add(new BankAccountDto
-                {
-                    Id = DynamicPropertyHelper.GetId(r),
-                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
-                    Name = DynamicPropertyHelper.GetString(r, "Nazwa"),
-                    AccountNumber = DynamicPropertyHelper.GetString(r, "NumerRachunku"),
-                    BankName = DynamicPropertyHelper.GetString(r, "NazwaBanku"),
-                    BankSwift = DynamicPropertyHelper.GetString(r, "Swift"),
-                    CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol"),
-                    CurrentBalance = DynamicPropertyHelper.GetDecimal(r, "StanRachunku"),
-                    IsActive = DynamicPropertyHelper.GetBool(r, "Aktywny"),
-                    IsDefault = DynamicPropertyHelper.GetBool(r, "Domyslny")
-                });
-            }
-            dtos = dtos.OrderBy(b => b.Symbol).ToList();
+            if (dtos == null) return StatusCode(500, ApiResponse<List<BankAccountDto>>.Error("RachunkiBankowe manager not available"));
 
             return Ok(ApiResponse<List<BankAccountDto>>.Ok(dtos));
         }
@@ -300,7 +324,7 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("bank-statements")]
     [ProducesResponseType(typeof(PagedResponse<BankStatementDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<BankStatementDto>> GetBankStatements(
+    public async Task<ActionResult<PagedResponse<BankStatementDto>>> GetBankStatements(
         [FromQuery] string? bankAccountSymbol,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
@@ -310,58 +334,65 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
-            if (wyciagiManager == null) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
-            var allWyciagi = DynamicPropertyHelper.SafeGetAll((object)wyciagiManager);
-
-            if (!string.IsNullOrEmpty(bankAccountSymbol))
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                allWyciagi = allWyciagi.Where(w =>
-                    DynamicPropertyHelper.GetString(w, "RachunekBankowy", "Symbol") == bankAccountSymbol).ToList();
-            }
+                var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
+                if (wyciagiManager == null) return (managerNull: true, totalCount: 0, items: new List<BankStatementDto>());
+                var allWyciagi = DynamicPropertyHelper.SafeGetAll((object)wyciagiManager);
 
-            if (dateFrom.HasValue)
-            {
-                allWyciagi = allWyciagi.Where(w =>
+                if (!string.IsNullOrEmpty(bankAccountSymbol))
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu");
-                    return data.HasValue && data.Value >= dateFrom.Value;
-                }).ToList();
-            }
+                    allWyciagi = allWyciagi.Where(w =>
+                        DynamicPropertyHelper.GetString(w, "RachunekBankowy", "Symbol") == bankAccountSymbol).ToList();
+                }
 
-            if (dateTo.HasValue)
-            {
-                allWyciagi = allWyciagi.Where(w =>
+                if (dateFrom.HasValue)
                 {
-                    var data = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu");
-                    return data.HasValue && data.Value <= dateTo.Value;
-                }).ToList();
-            }
+                    allWyciagi = allWyciagi.Where(w =>
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu");
+                        return data.HasValue && data.Value >= dateFrom.Value;
+                    }).ToList();
+                }
 
-            if (closedOnly.HasValue && closedOnly.Value)
-            {
-                allWyciagi = allWyciagi.Where(w => DynamicPropertyHelper.GetBool(w, "Zamkniety")).ToList();
-            }
+                if (dateTo.HasValue)
+                {
+                    allWyciagi = allWyciagi.Where(w =>
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(w, "DataWyciagu");
+                        return data.HasValue && data.Value <= dateTo.Value;
+                    }).ToList();
+                }
 
-            var totalCount = allWyciagi.Count;
-            var pagedWyciagi = allWyciagi
-                .OrderByDescending(w => DynamicPropertyHelper.GetDateTime(w, "DataWyciagu") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+                if (closedOnly.HasValue && closedOnly.Value)
+                {
+                    allWyciagi = allWyciagi.Where(w => DynamicPropertyHelper.GetBool(w, "Zamkniety")).ToList();
+                }
 
-            var items = new List<BankStatementDto>();
-            foreach (var w in pagedWyciagi)
-            {
-                items.Add(MapBankStatement(w, false));
-            }
+                var totalCount = allWyciagi.Count;
+                var pagedWyciagi = allWyciagi
+                    .OrderByDescending(w => DynamicPropertyHelper.GetDateTime(w, "DataWyciagu") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<BankStatementDto>();
+                foreach (var w in pagedWyciagi)
+                {
+                    items.Add(MapBankStatement(w, false));
+                }
+
+                return (managerNull: false, totalCount, items);
+            });
+
+            if (result.managerNull) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
 
             return Ok(new PagedResponse<BankStatementDto>
             {
-                Data = items,
+                Data = result.items,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -377,22 +408,29 @@ public class FinanceReportsController : ControllerBase
     [HttpGet("bank-statements/{id}")]
     [ProducesResponseType(typeof(ApiResponse<BankStatementDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<BankStatementDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<BankStatementDto>> GetBankStatement(int id, [FromQuery] bool includeOperations = true)
+    public async Task<ActionResult<ApiResponse<BankStatementDto>>> GetBankStatement(int id, [FromQuery] bool includeOperations = true)
     {
         try
         {
-            var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
-            if (wyciagiManager == null) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
-            var allWyciagi = DynamicPropertyHelper.SafeGetAll((object)wyciagiManager);
-            var wyciag = allWyciagi.FirstOrDefault(w => DynamicPropertyHelper.GetId(w) == id);
-
-            if (wyciag == null)
+            var (managerNull, notFound, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<BankStatementDto>.Error($"Bank statement with ID {id} not found"));
-            }
+                var wyciagiManager = _sferaService.GetManager("WyciagiBankowe");
+                if (wyciagiManager == null) return (true, false, (BankStatementDto?)null);
+                var allWyciagi = DynamicPropertyHelper.SafeGetAll((object)wyciagiManager);
+                var wyciag = allWyciagi.FirstOrDefault(w => DynamicPropertyHelper.GetId(w) == id);
 
-            var dto = MapBankStatement(wyciag, includeOperations);
-            return Ok(ApiResponse<BankStatementDto>.Ok(dto));
+                if (wyciag == null)
+                {
+                    return (false, true, (BankStatementDto?)null);
+                }
+
+                return (false, false, MapBankStatement(wyciag, includeOperations));
+            });
+
+            if (managerNull) return StatusCode(500, ApiResponse<object>.Error("WyciagiBankowe manager not available"));
+            if (notFound) return NotFound(ApiResponse<BankStatementDto>.Error($"Bank statement with ID {id} not found"));
+
+            return Ok(ApiResponse<BankStatementDto>.Ok(dto!));
         }
         catch (Exception ex)
         {
@@ -461,7 +499,7 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("settlements")]
     [ProducesResponseType(typeof(PagedResponse<SettlementDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<SettlementDto>> GetSettlements(
+    public async Task<ActionResult<PagedResponse<SettlementDto>>> GetSettlements(
         [FromQuery] string? type,           // receivable/payable
         [FromQuery] int? customerId,
         [FromQuery] bool? overdueOnly,
@@ -473,87 +511,97 @@ public class FinanceReportsController : ControllerBase
     {
         try
         {
-            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
-            if (rozrachunkiManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+                if (rozrachunkiManager == null)
+                {
+                    return (managerNull: true, totalCount: 0, items: new List<SettlementDto>());
+                }
+
+                var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
+
+                // Filter by type (receivable/payable)
+                if (!string.IsNullOrEmpty(type))
+                {
+                    bool isReceivable = type.Equals("receivable", StringComparison.OrdinalIgnoreCase);
+                    allRozrachunki = allRozrachunki.Where(r =>
+                    {
+                        var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
+                        var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
+                        return isReceivable ? kwotaNaleznosci > 0 : kwotaZobowiazania > 0;
+                    }).ToList();
+                }
+
+                // Filter by customer
+                if (customerId.HasValue)
+                {
+                    allRozrachunki = allRozrachunki.Where(r =>
+                    {
+                        var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+                        return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
+                    }).ToList();
+                }
+
+                // Filter unpaid only
+                if (unpaidOnly == true)
+                {
+                    allRozrachunki = allRozrachunki.Where(r =>
+                        DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia") != 0).ToList();
+                }
+
+                // Filter by due date
+                if (dueDateFrom.HasValue || dueDateTo.HasValue)
+                {
+                    allRozrachunki = allRozrachunki.Where(r =>
+                    {
+                        var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                        if (!terminPlatnosci.HasValue) return false;
+                        if (dueDateFrom.HasValue && terminPlatnosci.Value < dueDateFrom.Value) return false;
+                        if (dueDateTo.HasValue && terminPlatnosci.Value > dueDateTo.Value) return false;
+                        return true;
+                    }).ToList();
+                }
+
+                // Filter overdue only
+                if (overdueOnly == true)
+                {
+                    var today = DateTime.Today;
+                    allRozrachunki = allRozrachunki.Where(r =>
+                    {
+                        var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                        var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                        return terminPlatnosci.HasValue && terminPlatnosci.Value < today && kwotaDoRozliczenia != 0;
+                    }).ToList();
+                }
+
+                var totalCount = allRozrachunki.Count;
+                var pagedRozrachunki = allRozrachunki
+                    .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<SettlementDto>();
+                foreach (var r in pagedRozrachunki)
+                {
+                    items.Add(MapSettlement(r));
+                }
+
+                return (managerNull: false, totalCount, items);
+            });
+
+            if (result.managerNull)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Rozrachunki manager"));
             }
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
-
-            // Filter by type (receivable/payable)
-            if (!string.IsNullOrEmpty(type))
-            {
-                bool isReceivable = type.Equals("receivable", StringComparison.OrdinalIgnoreCase);
-                allRozrachunki = allRozrachunki.Where(r =>
-                {
-                    var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
-                    var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
-                    return isReceivable ? kwotaNaleznosci > 0 : kwotaZobowiazania > 0;
-                }).ToList();
-            }
-
-            // Filter by customer
-            if (customerId.HasValue)
-            {
-                allRozrachunki = allRozrachunki.Where(r =>
-                {
-                    var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
-                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
-                }).ToList();
-            }
-
-            // Filter unpaid only
-            if (unpaidOnly == true)
-            {
-                allRozrachunki = allRozrachunki.Where(r =>
-                    DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia") != 0).ToList();
-            }
-
-            // Filter by due date
-            if (dueDateFrom.HasValue || dueDateTo.HasValue)
-            {
-                allRozrachunki = allRozrachunki.Where(r =>
-                {
-                    var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
-                    if (!terminPlatnosci.HasValue) return false;
-                    if (dueDateFrom.HasValue && terminPlatnosci.Value < dueDateFrom.Value) return false;
-                    if (dueDateTo.HasValue && terminPlatnosci.Value > dueDateTo.Value) return false;
-                    return true;
-                }).ToList();
-            }
-
-            // Filter overdue only
-            if (overdueOnly == true)
-            {
-                var today = DateTime.Today;
-                allRozrachunki = allRozrachunki.Where(r =>
-                {
-                    var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
-                    var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
-                    return terminPlatnosci.HasValue && terminPlatnosci.Value < today && kwotaDoRozliczenia != 0;
-                }).ToList();
-            }
-
-            var totalCount = allRozrachunki.Count;
-            var pagedRozrachunki = allRozrachunki
-                .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<SettlementDto>();
-            foreach (var r in pagedRozrachunki)
-            {
-                items.Add(MapSettlement(r));
-            }
-
             return Ok(new PagedResponse<SettlementDto>
             {
-                Data = items,
+                Data = result.items,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -569,25 +617,40 @@ public class FinanceReportsController : ControllerBase
     [HttpGet("settlements/{id}")]
     [ProducesResponseType(typeof(ApiResponse<SettlementDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<SettlementDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<SettlementDto>> GetSettlement(int id)
+    public async Task<ActionResult<ApiResponse<SettlementDto>>> GetSettlement(int id)
     {
         try
         {
-            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
-            if (rozrachunkiManager == null)
+            var (managerNull, notFound, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+                if (rozrachunkiManager == null)
+                {
+                    return (true, false, (SettlementDto?)null);
+                }
+
+                var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
+                var rozrachunek = allRozrachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
+
+                if (rozrachunek == null)
+                {
+                    return (false, true, (SettlementDto?)null);
+                }
+
+                return (false, false, MapSettlement(rozrachunek));
+            });
+
+            if (managerNull)
             {
                 return StatusCode(500, ApiResponse<SettlementDto>.Error("Failed to get Rozrachunki manager"));
             }
 
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
-            var rozrachunek = allRozrachunki.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
-
-            if (rozrachunek == null)
+            if (notFound)
             {
                 return NotFound(ApiResponse<SettlementDto>.Error($"Settlement with ID {id} not found"));
             }
 
-            return Ok(ApiResponse<SettlementDto>.Ok(MapSettlement(rozrachunek)));
+            return Ok(ApiResponse<SettlementDto>.Ok(dto!));
         }
         catch (Exception ex)
         {
@@ -645,11 +708,11 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("aging-report")]
     [ProducesResponseType(typeof(ApiResponse<AgingReportDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<AgingReportDto>> GetAgingReport(
+    public async Task<ActionResult<ApiResponse<AgingReportDto>>> GetAgingReport(
         [FromQuery] int? customerId,
         [FromQuery] DateTime? asOfDate)
     {
-        return GetAgingReportInternal("receivable", customerId, asOfDate);
+        return await GetAgingReportInternal("receivable", customerId, asOfDate);
     }
 
     /// <summary>
@@ -657,128 +720,136 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("aging-report/payables")]
     [ProducesResponseType(typeof(ApiResponse<AgingReportDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<AgingReportDto>> GetAgingReportPayables(
+    public async Task<ActionResult<ApiResponse<AgingReportDto>>> GetAgingReportPayables(
         [FromQuery] int? customerId,
         [FromQuery] DateTime? asOfDate)
     {
-        return GetAgingReportInternal("payable", customerId, asOfDate);
+        return await GetAgingReportInternal("payable", customerId, asOfDate);
     }
 
-    private ActionResult<ApiResponse<AgingReportDto>> GetAgingReportInternal(string type, int? customerId, DateTime? asOfDate)
+    private async Task<ActionResult<ApiResponse<AgingReportDto>>> GetAgingReportInternal(string type, int? customerId, DateTime? asOfDate)
     {
         try
         {
-            var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
-            if (rozrachunkiManager == null)
+            var report = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+                if (rozrachunkiManager == null)
+                {
+                    return null;
+                }
+
+                var referenceDate = asOfDate ?? DateTime.Today;
+                var isReceivable = type == "receivable";
+
+                var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
+
+                // Filter by type
+                allRozrachunki = allRozrachunki.Where(r =>
+                {
+                    var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
+                    var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
+                    var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+
+                    // Only unpaid settlements
+                    if (kwotaDoRozliczenia == 0) return false;
+
+                    return isReceivable ? kwotaNaleznosci > 0 : kwotaZobowiazania > 0;
+                }).ToList();
+
+                // Filter by customer
+                if (customerId.HasValue)
+                {
+                    allRozrachunki = allRozrachunki.Where(r =>
+                    {
+                        var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+                        return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
+                    }).ToList();
+                }
+
+                // Initialize aging buckets
+                decimal current = 0;      // Not due yet
+                decimal days1To30 = 0;    // 1-30 days overdue
+                decimal days31To60 = 0;   // 31-60 days overdue
+                decimal days61To90 = 0;   // 61-90 days overdue
+                decimal daysOver90 = 0;   // Over 90 days overdue
+
+                var customerDetails = new Dictionary<int, AgingCustomerDto>();
+
+                foreach (var r in allRozrachunki)
+                {
+                    var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                    var kwotaDoRozliczenia = Math.Abs(DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia"));
+                    var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
+
+                    if (!terminPlatnosci.HasValue) continue;
+
+                    int daysOverdue = (int)(referenceDate - terminPlatnosci.Value).TotalDays;
+
+                    // Categorize by aging bucket
+                    if (daysOverdue <= 0)
+                        current += kwotaDoRozliczenia;
+                    else if (daysOverdue <= 30)
+                        days1To30 += kwotaDoRozliczenia;
+                    else if (daysOverdue <= 60)
+                        days31To60 += kwotaDoRozliczenia;
+                    else if (daysOverdue <= 90)
+                        days61To90 += kwotaDoRozliczenia;
+                    else
+                        daysOver90 += kwotaDoRozliczenia;
+
+                    // Aggregate by customer
+                    if (podmiot != null)
+                    {
+                        var podId = DynamicPropertyHelper.GetId(podmiot);
+                        if (!customerDetails.ContainsKey(podId))
+                        {
+                            customerDetails[podId] = new AgingCustomerDto
+                            {
+                                CustomerId = podId,
+                                CustomerName = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona"),
+                                CustomerSymbol = DynamicPropertyHelper.GetString(podmiot, "Symbol")
+                            };
+                        }
+
+                        var customer = customerDetails[podId];
+                        customer.TotalAmount += kwotaDoRozliczenia;
+                        if (daysOverdue <= 0)
+                            customer.Current += kwotaDoRozliczenia;
+                        else if (daysOverdue <= 30)
+                            customer.Days1To30 += kwotaDoRozliczenia;
+                        else if (daysOverdue <= 60)
+                            customer.Days31To60 += kwotaDoRozliczenia;
+                        else if (daysOverdue <= 90)
+                            customer.Days61To90 += kwotaDoRozliczenia;
+                        else
+                            customer.DaysOver90 += kwotaDoRozliczenia;
+                    }
+                }
+
+                return new AgingReportDto
+                {
+                    Type = isReceivable ? "Receivables" : "Payables",
+                    AsOfDate = referenceDate,
+                    TotalAmount = current + days1To30 + days31To60 + days61To90 + daysOver90,
+                    Current = current,
+                    Days1To30 = days1To30,
+                    Days31To60 = days31To60,
+                    Days61To90 = days61To90,
+                    DaysOver90 = daysOver90,
+                    TotalOverdue = days1To30 + days31To60 + days61To90 + daysOver90,
+                    CustomerCount = customerDetails.Count,
+                    CustomerDetails = customerDetails.Values
+                        .OrderByDescending(c => c.TotalAmount)
+                        .Take(20)
+                        .ToList()
+                };
+            });
+
+            if (report == null)
             {
                 return StatusCode(500, ApiResponse<AgingReportDto>.Error("Failed to get Rozrachunki manager"));
             }
-
-            var referenceDate = asOfDate ?? DateTime.Today;
-            var isReceivable = type == "receivable";
-
-            var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager);
-
-            // Filter by type
-            allRozrachunki = allRozrachunki.Where(r =>
-            {
-                var kwotaNaleznosci = DynamicPropertyHelper.GetDecimal(r, "KwotaNaleznosci");
-                var kwotaZobowiazania = DynamicPropertyHelper.GetDecimal(r, "KwotaZobowiazania");
-                var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
-
-                // Only unpaid settlements
-                if (kwotaDoRozliczenia == 0) return false;
-
-                return isReceivable ? kwotaNaleznosci > 0 : kwotaZobowiazania > 0;
-            }).ToList();
-
-            // Filter by customer
-            if (customerId.HasValue)
-            {
-                allRozrachunki = allRozrachunki.Where(r =>
-                {
-                    var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
-                    return podmiot != null && DynamicPropertyHelper.GetId(podmiot) == customerId.Value;
-                }).ToList();
-            }
-
-            // Initialize aging buckets
-            decimal current = 0;      // Not due yet
-            decimal days1To30 = 0;    // 1-30 days overdue
-            decimal days31To60 = 0;   // 31-60 days overdue
-            decimal days61To90 = 0;   // 61-90 days overdue
-            decimal daysOver90 = 0;   // Over 90 days overdue
-
-            var customerDetails = new Dictionary<int, AgingCustomerDto>();
-
-            foreach (var r in allRozrachunki)
-            {
-                var terminPlatnosci = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
-                var kwotaDoRozliczenia = Math.Abs(DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia"));
-                var podmiot = DynamicPropertyHelper.GetProperty(r, "Podmiot");
-
-                if (!terminPlatnosci.HasValue) continue;
-
-                int daysOverdue = (int)(referenceDate - terminPlatnosci.Value).TotalDays;
-
-                // Categorize by aging bucket
-                if (daysOverdue <= 0)
-                    current += kwotaDoRozliczenia;
-                else if (daysOverdue <= 30)
-                    days1To30 += kwotaDoRozliczenia;
-                else if (daysOverdue <= 60)
-                    days31To60 += kwotaDoRozliczenia;
-                else if (daysOverdue <= 90)
-                    days61To90 += kwotaDoRozliczenia;
-                else
-                    daysOver90 += kwotaDoRozliczenia;
-
-                // Aggregate by customer
-                if (podmiot != null)
-                {
-                    var podId = DynamicPropertyHelper.GetId(podmiot);
-                    if (!customerDetails.ContainsKey(podId))
-                    {
-                        customerDetails[podId] = new AgingCustomerDto
-                        {
-                            CustomerId = podId,
-                            CustomerName = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona"),
-                            CustomerSymbol = DynamicPropertyHelper.GetString(podmiot, "Symbol")
-                        };
-                    }
-
-                    var customer = customerDetails[podId];
-                    customer.TotalAmount += kwotaDoRozliczenia;
-                    if (daysOverdue <= 0)
-                        customer.Current += kwotaDoRozliczenia;
-                    else if (daysOverdue <= 30)
-                        customer.Days1To30 += kwotaDoRozliczenia;
-                    else if (daysOverdue <= 60)
-                        customer.Days31To60 += kwotaDoRozliczenia;
-                    else if (daysOverdue <= 90)
-                        customer.Days61To90 += kwotaDoRozliczenia;
-                    else
-                        customer.DaysOver90 += kwotaDoRozliczenia;
-                }
-            }
-
-            var report = new AgingReportDto
-            {
-                Type = isReceivable ? "Receivables" : "Payables",
-                AsOfDate = referenceDate,
-                TotalAmount = current + days1To30 + days31To60 + days61To90 + daysOver90,
-                Current = current,
-                Days1To30 = days1To30,
-                Days31To60 = days31To60,
-                Days61To90 = days61To90,
-                DaysOver90 = daysOver90,
-                TotalOverdue = days1To30 + days31To60 + days61To90 + daysOver90,
-                CustomerCount = customerDetails.Count,
-                CustomerDetails = customerDetails.Values
-                    .OrderByDescending(c => c.TotalAmount)
-                    .Take(20)
-                    .ToList()
-            };
 
             return Ok(ApiResponse<AgingReportDto>.Ok(report));
         }
@@ -798,76 +869,81 @@ public class FinanceReportsController : ControllerBase
     /// </summary>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(ApiResponse<FinanceSummaryDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<FinanceSummaryDto>> GetFinanceSummary()
+    public async Task<ActionResult<ApiResponse<FinanceSummaryDto>>> GetFinanceSummary()
     {
         try
         {
-            // Get cash register balances
-            var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
-            if (stanowiskaManager == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("StanowiskaKasowe manager not available"));
-            var allStanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
-            var stanowiska = new List<object>();
-            foreach (var s in allStanowiska)
+            var summary = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
+                // Get cash register balances
+                var stanowiskaManager = _sferaService.GetManager("StanowiskaKasowe");
+                if (stanowiskaManager == null) return null;
+                var allStanowiska = DynamicPropertyHelper.SafeGetAll((object)stanowiskaManager);
+                var stanowiska = new List<object>();
+                foreach (var s in allStanowiska)
                 {
-                    stanowiska.Add(s);
+                    if (DynamicPropertyHelper.GetBool(s, "Aktywne"))
+                    {
+                        stanowiska.Add(s);
+                    }
                 }
-            }
 
-            decimal cashBalance = 0;
-            var cashRegisterBalances = new List<BalanceItemDto>();
-            foreach (var s in stanowiska)
-            {
-                var stanKasy = DynamicPropertyHelper.GetDecimal(s, "StanKasy");
-                cashBalance += stanKasy;
-                cashRegisterBalances.Add(new BalanceItemDto
+                decimal cashBalance = 0;
+                var cashRegisterBalances = new List<BalanceItemDto>();
+                foreach (var s in stanowiska)
                 {
-                    Name = DynamicPropertyHelper.GetString(s, "Nazwa") ?? DynamicPropertyHelper.GetString(s, "Symbol") ?? "Unknown",
-                    Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
-                    Balance = stanKasy,
-                    CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol") ?? "PLN"
-                });
-            }
-
-            // Get bank account balances
-            var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
-            if (rachunkiManager == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("RachunkiBankowe manager not available"));
-            var allRachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
-            var rachunki = new List<object>();
-            foreach (var r in allRachunki)
-            {
-                if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
-                {
-                    rachunki.Add(r);
+                    var stanKasy = DynamicPropertyHelper.GetDecimal(s, "StanKasy");
+                    cashBalance += stanKasy;
+                    cashRegisterBalances.Add(new BalanceItemDto
+                    {
+                        Name = DynamicPropertyHelper.GetString(s, "Nazwa") ?? DynamicPropertyHelper.GetString(s, "Symbol") ?? "Unknown",
+                        Symbol = DynamicPropertyHelper.GetString(s, "Symbol"),
+                        Balance = stanKasy,
+                        CurrencySymbol = DynamicPropertyHelper.GetString(s, "Waluta", "Symbol") ?? "PLN"
+                    });
                 }
-            }
 
-            decimal bankBalance = 0;
-            var bankAccountBalances = new List<BalanceItemDto>();
-            foreach (var r in rachunki)
-            {
-                var stanRachunku = DynamicPropertyHelper.GetDecimal(r, "StanRachunku");
-                bankBalance += stanRachunku;
-                bankAccountBalances.Add(new BalanceItemDto
+                // Get bank account balances
+                var rachunkiManager = _sferaService.GetManager("RachunkiBankowe");
+                if (rachunkiManager == null) return null;
+                var allRachunki = DynamicPropertyHelper.SafeGetAll((object)rachunkiManager);
+                var rachunki = new List<object>();
+                foreach (var r in allRachunki)
                 {
-                    Name = DynamicPropertyHelper.GetString(r, "Nazwa") ?? DynamicPropertyHelper.GetString(r, "Symbol") ?? "Unknown",
-                    Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
-                    Balance = stanRachunku,
-                    CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol") ?? "PLN"
-                });
-            }
+                    if (DynamicPropertyHelper.GetBool(r, "Aktywny"))
+                    {
+                        rachunki.Add(r);
+                    }
+                }
 
-            var summary = new FinanceSummaryDto
-            {
-                TotalCashBalance = cashBalance,
-                TotalBankBalance = bankBalance,
-                TotalBalance = cashBalance + bankBalance,
-                CashRegisterCount = stanowiska.Count,
-                BankAccountCount = rachunki.Count,
-                CashRegisterBalances = cashRegisterBalances,
-                BankAccountBalances = bankAccountBalances
-            };
+                decimal bankBalance = 0;
+                var bankAccountBalances = new List<BalanceItemDto>();
+                foreach (var r in rachunki)
+                {
+                    var stanRachunku = DynamicPropertyHelper.GetDecimal(r, "StanRachunku");
+                    bankBalance += stanRachunku;
+                    bankAccountBalances.Add(new BalanceItemDto
+                    {
+                        Name = DynamicPropertyHelper.GetString(r, "Nazwa") ?? DynamicPropertyHelper.GetString(r, "Symbol") ?? "Unknown",
+                        Symbol = DynamicPropertyHelper.GetString(r, "Symbol"),
+                        Balance = stanRachunku,
+                        CurrencySymbol = DynamicPropertyHelper.GetString(r, "Waluta", "Symbol") ?? "PLN"
+                    });
+                }
+
+                return new FinanceSummaryDto
+                {
+                    TotalCashBalance = cashBalance,
+                    TotalBankBalance = bankBalance,
+                    TotalBalance = cashBalance + bankBalance,
+                    CashRegisterCount = stanowiska.Count,
+                    BankAccountCount = rachunki.Count,
+                    CashRegisterBalances = cashRegisterBalances,
+                    BankAccountBalances = bankAccountBalances
+                };
+            });
+
+            if (summary == null) return StatusCode(500, ApiResponse<FinanceSummaryDto>.Error("StanowiskaKasowe or RachunkiBankowe manager not available"));
 
             return Ok(ApiResponse<FinanceSummaryDto>.Ok(summary));
         }

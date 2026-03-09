@@ -30,76 +30,77 @@ public class ProductTemplatesController : ControllerBase
     /// Get all product templates with optional filtering
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<ProductTemplateListItemDto>> GetProductTemplates([FromQuery] ProductTemplateQueryRequest query)
+    public async Task<IActionResult> GetProductTemplates([FromQuery] ProductTemplateQueryRequest query)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (managerNull: true, response: (PagedResponse<ProductTemplateListItemDto>?)null);
+
+                var allSzablony = new List<object>();
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
+                {
+                    allSzablony.Add(s);
+                }
+
+                var filteredList = new List<object>();
+                foreach (var s in allSzablony)
+                {
+                    if (!query.IncludeDeleted)
+                    {
+                        var isDeleted = DynamicPropertyHelper.GetNullableBool(s, "Usuniety") ?? false;
+                        if (isDeleted) continue;
+                    }
+
+                    if (query.Type.HasValue)
+                    {
+                        var typ = DynamicPropertyHelper.GetNullableInt(s, "Typ");
+                        if (typ != query.Type.Value) continue;
+                    }
+
+                    if (!string.IsNullOrEmpty(query.Search))
+                    {
+                        var searchLower = query.Search.ToLower();
+                        var symbol = (DynamicPropertyHelper.GetString(s, "Symbol") ?? "").ToLower();
+                        var nazwa = (DynamicPropertyHelper.GetString(s, "Nazwa") ?? "").ToLower();
+
+                        if (!symbol.Contains(searchLower) && !nazwa.Contains(searchLower))
+                            continue;
+                    }
+
+                    filteredList.Add(s);
+                }
+
+                var totalCount = filteredList.Count;
+                var pagedItems = filteredList
+                    .OrderBy(s => DynamicPropertyHelper.GetString(s, "Nazwa"))
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
+
+                var items = new List<ProductTemplateListItemDto>();
+                foreach (var s in pagedItems)
+                {
+                    items.Add(MapToListItemDto(s));
+                }
+
+                var response = new PagedResponse<ProductTemplateListItemDto>
+                {
+                    Data = items,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                };
+
+                return (managerNull: false, response: (PagedResponse<ProductTemplateListItemDto>?)response);
+            });
+
+            if (result.managerNull)
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
 
-            var allSzablony = new List<object>();
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                allSzablony.Add(s);
-            }
-
-            // Apply filters
-            var filteredList = new List<object>();
-            foreach (var s in allSzablony)
-            {
-                // Deleted filter
-                if (!query.IncludeDeleted)
-                {
-                    var isDeleted = DynamicPropertyHelper.GetNullableBool(s, "Usuniety") ?? false;
-                    if (isDeleted) continue;
-                }
-
-                // Type filter
-                if (query.Type.HasValue)
-                {
-                    var typ = DynamicPropertyHelper.GetNullableInt(s, "Typ");
-                    if (typ != query.Type.Value) continue;
-                }
-
-                // Search filter
-                if (!string.IsNullOrEmpty(query.Search))
-                {
-                    var searchLower = query.Search.ToLower();
-                    var symbol = (DynamicPropertyHelper.GetString(s, "Symbol") ?? "").ToLower();
-                    var nazwa = (DynamicPropertyHelper.GetString(s, "Nazwa") ?? "").ToLower();
-
-                    if (!symbol.Contains(searchLower) && !nazwa.Contains(searchLower))
-                        continue;
-                }
-
-                filteredList.Add(s);
-            }
-
-            var totalCount = filteredList.Count;
-            var pagedItems = filteredList
-                .OrderBy(s => DynamicPropertyHelper.GetString(s, "Nazwa"))
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .ToList();
-
-            var items = new List<ProductTemplateListItemDto>();
-            foreach (var s in pagedItems)
-            {
-                items.Add(MapToListItemDto(s));
-            }
-
-            var response = new PagedResponse<ProductTemplateListItemDto>
-            {
-                Data = items,
-                Page = query.Page,
-                PageSize = query.PageSize,
-                TotalCount = totalCount
-            };
-
-            return Ok(response);
+            return Ok(result.response);
         }
         catch (Exception ex)
         {
@@ -112,32 +113,37 @@ public class ProductTemplatesController : ControllerBase
     /// Get product template by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<ProductTemplateDto>> GetProductTemplate(int id)
+    public async Task<IActionResult> GetProductTemplate(int id)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductTemplateDto>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (found: false, managerNull: true, dto: (ProductTemplateDto?)null);
 
-            dynamic? szablon = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                if (DynamicPropertyHelper.GetId(s) == id)
+                dynamic? szablon = null;
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
                 {
-                    szablon = s;
-                    break;
+                    if (DynamicPropertyHelper.GetId(s) == id)
+                    {
+                        szablon = s;
+                        break;
+                    }
                 }
-            }
 
-            if (szablon == null)
-            {
+                if (szablon == null) return (found: false, managerNull: false, dto: (ProductTemplateDto?)null);
+
+                return (found: true, managerNull: false, dto: (ProductTemplateDto?)MapToDto(szablon));
+            });
+
+            if (result.managerNull)
+                return StatusCode(500, ApiResponse<ProductTemplateDto>.Error("Failed to get SzablonyAsortymentu manager"));
+
+            if (!result.found)
                 return NotFound(ApiResponse<ProductTemplateDto>.Error($"Product template with ID {id} not found"));
-            }
 
-            return Ok(ApiResponse<ProductTemplateDto>.Ok(MapToDto(szablon)));
+            return Ok(ApiResponse<ProductTemplateDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -150,32 +156,37 @@ public class ProductTemplatesController : ControllerBase
     /// Get product template by symbol
     /// </summary>
     [HttpGet("by-symbol/{symbol}")]
-    public ActionResult<ApiResponse<ProductTemplateDto>> GetProductTemplateBySymbol(string symbol)
+    public async Task<IActionResult> GetProductTemplateBySymbol(string symbol)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductTemplateDto>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (found: false, managerNull: true, dto: (ProductTemplateDto?)null);
 
-            dynamic? szablon = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                if (DynamicPropertyHelper.GetString(s, "Symbol") == symbol)
+                dynamic? szablon = null;
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
                 {
-                    szablon = s;
-                    break;
+                    if (DynamicPropertyHelper.GetString(s, "Symbol") == symbol)
+                    {
+                        szablon = s;
+                        break;
+                    }
                 }
-            }
 
-            if (szablon == null)
-            {
+                if (szablon == null) return (found: false, managerNull: false, dto: (ProductTemplateDto?)null);
+
+                return (found: true, managerNull: false, dto: (ProductTemplateDto?)MapToDto(szablon));
+            });
+
+            if (result.managerNull)
+                return StatusCode(500, ApiResponse<ProductTemplateDto>.Error("Failed to get SzablonyAsortymentu manager"));
+
+            if (!result.found)
                 return NotFound(ApiResponse<ProductTemplateDto>.Error($"Product template with symbol {symbol} not found"));
-            }
 
-            return Ok(ApiResponse<ProductTemplateDto>.Ok(MapToDto(szablon)));
+            return Ok(ApiResponse<ProductTemplateDto>.Ok(result.dto!));
         }
         catch (Exception ex)
         {
@@ -188,163 +199,165 @@ public class ProductTemplatesController : ControllerBase
     /// Create a new product template
     /// </summary>
     [HttpPost]
-    public ActionResult<ApiResponse<ProductTemplateDto>> CreateProductTemplate([FromBody] CreateProductTemplateRequest request)
+    public async Task<IActionResult> CreateProductTemplate([FromBody] CreateProductTemplateRequest request)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (status: "managerNull", id: 0, dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
+
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
+                {
+                    if (DynamicPropertyHelper.GetString(s, "Symbol") == request.Symbol)
+                        return (status: "duplicate", id: 0, dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
+                }
+
+                using (var szablon = szablony.Utworz())
+                {
+                    dynamic dane = szablon.Dane;
+                    dane.Symbol = request.Symbol;
+                    dane.Nazwa = request.Name;
+                    dane.Typ = request.Type;
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        try { dane.Opis = request.Description; } catch { }
+                    }
+
+                    if (request.UnitId.HasValue)
+                    {
+                        var jednostki = _sferaService.GetManager("Jednostki");
+                        if (jednostki != null)
+                        {
+                            foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostki))
+                            {
+                                if (DynamicPropertyHelper.GetId(j) == request.UnitId.Value)
+                                {
+                                    try { dane.Jednostka = j; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(request.UnitSymbol))
+                    {
+                        var jednostki = _sferaService.GetManager("Jednostki");
+                        if (jednostki != null)
+                        {
+                            foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostki))
+                            {
+                                if (DynamicPropertyHelper.GetString(j, "Symbol") == request.UnitSymbol)
+                                {
+                                    try { dane.Jednostka = j; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (request.VatRateId.HasValue)
+                    {
+                        var stawkiVat = _sferaService.GetManager("StawkiVat");
+                        if (stawkiVat != null)
+                        {
+                            foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
+                            {
+                                if (DynamicPropertyHelper.GetId(sv) == request.VatRateId.Value)
+                                {
+                                    try { dane.StawkaVat = sv; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(request.VatRateSymbol))
+                    {
+                        var stawkiVat = _sferaService.GetManager("StawkiVat");
+                        if (stawkiVat != null)
+                        {
+                            foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
+                            {
+                                if (DynamicPropertyHelper.GetString(sv, "Symbol") == request.VatRateSymbol)
+                                {
+                                    try { dane.StawkaVat = sv; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (request.ProductTypeId.HasValue)
+                    {
+                        try { dane.TypAsortymentuId = request.ProductTypeId.Value; } catch { }
+                    }
+
+                    try { dane.OdwrotneObciazenie = request.ReverseCharge; } catch { }
+                    try { dane.PodzielonaPlatnosc = request.SplitPayment; } catch { }
+
+                    if (request.JpkProductGroup.HasValue)
+                    {
+                        try { dane.GrupaTowarowJPKId = request.JpkProductGroup.Value; } catch { }
+                    }
+
+                    try { dane.UwzgledniajWIntrastat = request.IncludeInIntrastat; } catch { }
+
+                    if (!string.IsNullOrEmpty(request.IntrastatDescription))
+                    {
+                        try { dane.OpisIntrastat = request.IntrastatDescription; } catch { }
+                    }
+
+                    try { dane.WyswietlajKomunikat = request.ShowMessage; } catch { }
+
+                    if (!string.IsNullOrEmpty(request.DefaultMessageContent))
+                    {
+                        try { dane.DomyslnaTrescKomunikatu = request.DefaultMessageContent; } catch { }
+                    }
+
+                    if (request.ReferenceProductId.HasValue)
+                    {
+                        var asortymenty = _sferaService.GetManager("Asortymenty");
+                        if (asortymenty != null)
+                        {
+                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
+                            {
+                                if (DynamicPropertyHelper.GetId(a) == request.ReferenceProductId.Value)
+                                {
+                                    try { dane.AsortymentReferencyjny = a; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if ((bool)szablon.Zapisz())
+                    {
+                        int newId = DynamicPropertyHelper.GetId(dane);
+                        return (status: "created", id: newId, dto: (ProductTemplateDto?)MapToDto(dane), errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(szablon);
+                        return (status: "failed", id: 0, dto: (ProductTemplateDto?)null, errors: (List<string>?)errors);
+                    }
+                }
+            });
+
+            if (result.status == "managerNull")
                 return StatusCode(500, ApiResponse<ProductTemplateDto>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
 
-            // Check if symbol already exists
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                if (DynamicPropertyHelper.GetString(s, "Symbol") == request.Symbol)
-                {
-                    return BadRequest(ApiResponse<ProductTemplateDto>.Error($"Product template with symbol {request.Symbol} already exists"));
-                }
-            }
+            if (result.status == "duplicate")
+                return BadRequest(ApiResponse<ProductTemplateDto>.Error($"Product template with symbol {request.Symbol} already exists"));
 
-            using (var szablon = szablony.Utworz())
-            {
-                dynamic dane = szablon.Dane;
-                dane.Symbol = request.Symbol;
-                dane.Nazwa = request.Name;
-                dane.Typ = request.Type;
+            if (result.status == "failed")
+                return BadRequest(ApiResponse<ProductTemplateDto>.Error("Failed to create product template", result.errors!));
 
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                // Set unit
-                if (request.UnitId.HasValue)
-                {
-                    var jednostki = _sferaService.GetManager("Jednostki");
-                    if (jednostki != null)
-                    {
-                        foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostki))
-                        {
-                            if (DynamicPropertyHelper.GetId(j) == request.UnitId.Value)
-                            {
-                                try { dane.Jednostka = j; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.UnitSymbol))
-                {
-                    var jednostki = _sferaService.GetManager("Jednostki");
-                    if (jednostki != null)
-                    {
-                        foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostki))
-                        {
-                            if (DynamicPropertyHelper.GetString(j, "Symbol") == request.UnitSymbol)
-                            {
-                                try { dane.Jednostka = j; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Set VAT rate
-                if (request.VatRateId.HasValue)
-                {
-                    var stawkiVat = _sferaService.GetManager("StawkiVat");
-                    if (stawkiVat != null)
-                    {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
-                        {
-                            if (DynamicPropertyHelper.GetId(sv) == request.VatRateId.Value)
-                            {
-                                try { dane.StawkaVat = sv; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.VatRateSymbol))
-                {
-                    var stawkiVat = _sferaService.GetManager("StawkiVat");
-                    if (stawkiVat != null)
-                    {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
-                        {
-                            if (DynamicPropertyHelper.GetString(sv, "Symbol") == request.VatRateSymbol)
-                            {
-                                try { dane.StawkaVat = sv; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Set product type
-                if (request.ProductTypeId.HasValue)
-                {
-                    try { dane.TypAsortymentuId = request.ProductTypeId.Value; } catch { }
-                }
-
-                // Set regulatory fields
-                try { dane.OdwrotneObciazenie = request.ReverseCharge; } catch { }
-                try { dane.PodzielonaPlatnosc = request.SplitPayment; } catch { }
-
-                if (request.JpkProductGroup.HasValue)
-                {
-                    try { dane.GrupaTowarowJPKId = request.JpkProductGroup.Value; } catch { }
-                }
-
-                // Intrastat
-                try { dane.UwzgledniajWIntrastat = request.IncludeInIntrastat; } catch { }
-
-                if (!string.IsNullOrEmpty(request.IntrastatDescription))
-                {
-                    try { dane.OpisIntrastat = request.IntrastatDescription; } catch { }
-                }
-
-                // Messages
-                try { dane.WyswietlajKomunikat = request.ShowMessage; } catch { }
-
-                if (!string.IsNullOrEmpty(request.DefaultMessageContent))
-                {
-                    try { dane.DomyslnaTrescKomunikatu = request.DefaultMessageContent; } catch { }
-                }
-
-                // Reference product
-                if (request.ReferenceProductId.HasValue)
-                {
-                    var asortymenty = _sferaService.GetManager("Asortymenty");
-                    if (asortymenty != null)
-                    {
-                        foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                        {
-                            if (DynamicPropertyHelper.GetId(a) == request.ReferenceProductId.Value)
-                            {
-                                try { dane.AsortymentReferencyjny = a; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if ((bool)szablon.Zapisz())
-                {
-                    _logger.LogInformation("Created product template {Symbol}", request.Symbol);
-                    return CreatedAtAction(
-                        nameof(GetProductTemplate),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<ProductTemplateDto>.Ok(MapToDto(dane), "Product template created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(szablon);
-                    return BadRequest(ApiResponse<ProductTemplateDto>.Error("Failed to create product template", errors));
-                }
-            }
+            _logger.LogInformation("Created product template {Symbol}", request.Symbol);
+            return CreatedAtAction(
+                nameof(GetProductTemplate),
+                new { id = result.id },
+                ApiResponse<ProductTemplateDto>.Ok(result.dto!, "Product template created successfully"));
         }
         catch (Exception ex)
         {
@@ -357,131 +370,132 @@ public class ProductTemplatesController : ControllerBase
     /// Update an existing product template
     /// </summary>
     [HttpPut("{id}")]
-    public ActionResult<ApiResponse<ProductTemplateDto>> UpdateProductTemplate(int id, [FromBody] UpdateProductTemplateRequest request)
+    public async Task<IActionResult> UpdateProductTemplate(int id, [FromBody] UpdateProductTemplateRequest request)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (status: "managerNull", dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
+
+                dynamic? szablonDane = null;
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
+                {
+                    if (DynamicPropertyHelper.GetId(s) == id)
+                    {
+                        szablonDane = s;
+                        break;
+                    }
+                }
+
+                if (szablonDane == null) return (status: "notFound", dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
+
+                using (var szablon = szablony.Znajdz(szablonDane))
+                {
+                    if (szablon == null) return (status: "notFound", dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
+
+                    dynamic dane = szablon.Dane;
+
+                    if (!string.IsNullOrEmpty(request.Name))
+                    {
+                        dane.Nazwa = request.Name;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        try { dane.Opis = request.Description; } catch { }
+                    }
+
+                    if (request.VatRateId.HasValue)
+                    {
+                        var stawkiVat = _sferaService.GetManager("StawkiVat");
+                        if (stawkiVat != null)
+                        {
+                            foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
+                            {
+                                if (DynamicPropertyHelper.GetId(sv) == request.VatRateId.Value)
+                                {
+                                    try { dane.StawkaVat = sv; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(request.VatRateSymbol))
+                    {
+                        var stawkiVat = _sferaService.GetManager("StawkiVat");
+                        if (stawkiVat != null)
+                        {
+                            foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
+                            {
+                                if (DynamicPropertyHelper.GetString(sv, "Symbol") == request.VatRateSymbol)
+                                {
+                                    try { dane.StawkaVat = sv; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (request.ReverseCharge.HasValue)
+                    {
+                        try { dane.OdwrotneObciazenie = request.ReverseCharge.Value; } catch { }
+                    }
+
+                    if (request.SplitPayment.HasValue)
+                    {
+                        try { dane.PodzielonaPlatnosc = request.SplitPayment.Value; } catch { }
+                    }
+
+                    if (request.JpkProductGroup.HasValue)
+                    {
+                        try { dane.GrupaTowarowJPKId = request.JpkProductGroup.Value; } catch { }
+                    }
+
+                    if (request.IncludeInIntrastat.HasValue)
+                    {
+                        try { dane.UwzgledniajWIntrastat = request.IncludeInIntrastat.Value; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.IntrastatDescription))
+                    {
+                        try { dane.OpisIntrastat = request.IntrastatDescription; } catch { }
+                    }
+
+                    if (request.ShowMessage.HasValue)
+                    {
+                        try { dane.WyswietlajKomunikat = request.ShowMessage.Value; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.DefaultMessageContent))
+                    {
+                        try { dane.DomyslnaTrescKomunikatu = request.DefaultMessageContent; } catch { }
+                    }
+
+                    if ((bool)szablon.Zapisz())
+                    {
+                        return (status: "ok", dto: (ProductTemplateDto?)MapToDto(dane), errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(szablon);
+                        return (status: "failed", dto: (ProductTemplateDto?)null, errors: (List<string>?)errors);
+                    }
+                }
+            });
+
+            if (result.status == "managerNull")
                 return StatusCode(500, ApiResponse<ProductTemplateDto>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
 
-            dynamic? szablonDane = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                if (DynamicPropertyHelper.GetId(s) == id)
-                {
-                    szablonDane = s;
-                    break;
-                }
-            }
-
-            if (szablonDane == null)
-            {
+            if (result.status == "notFound")
                 return NotFound(ApiResponse<ProductTemplateDto>.Error($"Product template with ID {id} not found"));
-            }
 
-            using (var szablon = szablony.Znajdz(szablonDane))
-            {
-                if (szablon == null)
-                {
-                    return NotFound(ApiResponse<ProductTemplateDto>.Error($"Product template with ID {id} not found"));
-                }
+            if (result.status == "failed")
+                return BadRequest(ApiResponse<ProductTemplateDto>.Error("Failed to update product template", result.errors!));
 
-                dynamic dane = szablon.Dane;
-
-                if (!string.IsNullOrEmpty(request.Name))
-                {
-                    dane.Nazwa = request.Name;
-                }
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                // Update VAT rate
-                if (request.VatRateId.HasValue)
-                {
-                    var stawkiVat = _sferaService.GetManager("StawkiVat");
-                    if (stawkiVat != null)
-                    {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
-                        {
-                            if (DynamicPropertyHelper.GetId(sv) == request.VatRateId.Value)
-                            {
-                                try { dane.StawkaVat = sv; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.VatRateSymbol))
-                {
-                    var stawkiVat = _sferaService.GetManager("StawkiVat");
-                    if (stawkiVat != null)
-                    {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
-                        {
-                            if (DynamicPropertyHelper.GetString(sv, "Symbol") == request.VatRateSymbol)
-                            {
-                                try { dane.StawkaVat = sv; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Update regulatory fields
-                if (request.ReverseCharge.HasValue)
-                {
-                    try { dane.OdwrotneObciazenie = request.ReverseCharge.Value; } catch { }
-                }
-
-                if (request.SplitPayment.HasValue)
-                {
-                    try { dane.PodzielonaPlatnosc = request.SplitPayment.Value; } catch { }
-                }
-
-                if (request.JpkProductGroup.HasValue)
-                {
-                    try { dane.GrupaTowarowJPKId = request.JpkProductGroup.Value; } catch { }
-                }
-
-                // Intrastat
-                if (request.IncludeInIntrastat.HasValue)
-                {
-                    try { dane.UwzgledniajWIntrastat = request.IncludeInIntrastat.Value; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.IntrastatDescription))
-                {
-                    try { dane.OpisIntrastat = request.IntrastatDescription; } catch { }
-                }
-
-                // Messages
-                if (request.ShowMessage.HasValue)
-                {
-                    try { dane.WyswietlajKomunikat = request.ShowMessage.Value; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.DefaultMessageContent))
-                {
-                    try { dane.DomyslnaTrescKomunikatu = request.DefaultMessageContent; } catch { }
-                }
-
-                if ((bool)szablon.Zapisz())
-                {
-                    _logger.LogInformation("Updated product template {Id}", id);
-                    return Ok(ApiResponse<ProductTemplateDto>.Ok(MapToDto(dane), "Product template updated successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(szablon);
-                    return BadRequest(ApiResponse<ProductTemplateDto>.Error("Failed to update product template", errors));
-                }
-            }
+            _logger.LogInformation("Updated product template {Id}", id);
+            return Ok(ApiResponse<ProductTemplateDto>.Ok(result.dto!, "Product template updated successfully"));
         }
         catch (Exception ex)
         {
@@ -494,49 +508,54 @@ public class ProductTemplatesController : ControllerBase
     /// Delete a product template
     /// </summary>
     [HttpDelete("{id}")]
-    public ActionResult<ApiResponse<bool>> DeleteProductTemplate(int id)
+    public async Task<IActionResult> DeleteProductTemplate(int id)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (status: "managerNull", errors: (List<string>?)null);
+
+                dynamic? szablonDane = null;
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
+                {
+                    if (DynamicPropertyHelper.GetId(s) == id)
+                    {
+                        szablonDane = s;
+                        break;
+                    }
+                }
+
+                if (szablonDane == null) return (status: "notFound", errors: (List<string>?)null);
+
+                using (var szablon = szablony.Znajdz(szablonDane))
+                {
+                    if (szablon == null) return (status: "notFound", errors: (List<string>?)null);
+
+                    if ((bool)szablon.Usun())
+                    {
+                        return (status: "ok", errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(szablon);
+                        return (status: "failed", errors: (List<string>?)errors);
+                    }
+                }
+            });
+
+            if (result.status == "managerNull")
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
 
-            dynamic? szablonDane = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                if (DynamicPropertyHelper.GetId(s) == id)
-                {
-                    szablonDane = s;
-                    break;
-                }
-            }
-
-            if (szablonDane == null)
-            {
+            if (result.status == "notFound")
                 return NotFound(ApiResponse<bool>.Error($"Product template with ID {id} not found"));
-            }
 
-            using (var szablon = szablony.Znajdz(szablonDane))
-            {
-                if (szablon == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Product template with ID {id} not found"));
-                }
+            if (result.status == "failed")
+                return BadRequest(ApiResponse<bool>.Error("Failed to delete product template", result.errors!));
 
-                if ((bool)szablon.Usun())
-                {
-                    _logger.LogInformation("Deleted product template {Id}", id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Product template deleted successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(szablon);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to delete product template", errors));
-                }
-            }
+            _logger.LogInformation("Deleted product template {Id}", id);
+            return Ok(ApiResponse<bool>.Ok(true, "Product template deleted successfully"));
         }
         catch (Exception ex)
         {
@@ -549,137 +568,142 @@ public class ProductTemplatesController : ControllerBase
     /// Create a product from template
     /// </summary>
     [HttpPost("{id}/create-product")]
-    public ActionResult<ApiResponse<ProductDto>> CreateProductFromTemplate(int id, [FromBody] CreateProductFromTemplateRequest request)
+    public async Task<IActionResult> CreateProductFromTemplate(int id, [FromBody] CreateProductFromTemplateRequest request)
     {
         try
         {
-            var szablony = _sferaService.GetManager("SzablonyAsortymentu");
-            if (szablony == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductDto>.Error("Failed to get SzablonyAsortymentu manager"));
-            }
+                var szablony = _sferaService.GetManager("SzablonyAsortymentu");
+                if (szablony == null) return (status: "szablonyNull", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
 
-            dynamic? szablonDane = null;
-            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-            {
-                if (DynamicPropertyHelper.GetId(s) == id)
+                dynamic? szablonDane = null;
+                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
                 {
-                    szablonDane = s;
-                    break;
-                }
-            }
-
-            if (szablonDane == null)
-            {
-                return NotFound(ApiResponse<ProductDto>.Error($"Product template with ID {id} not found"));
-            }
-
-            var asortymenty = _sferaService.GetManager("Asortymenty");
-            if (asortymenty == null)
-            {
-                return StatusCode(500, ApiResponse<ProductDto>.Error("Failed to get Asortymenty manager"));
-            }
-
-            // Check if symbol already exists
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-            {
-                if (DynamicPropertyHelper.GetString(a, "Symbol") == request.Symbol)
-                {
-                    return BadRequest(ApiResponse<ProductDto>.Error($"Product with symbol {request.Symbol} already exists"));
-                }
-            }
-
-            // Try to create product from template
-            dynamic? asortyment = null;
-            try
-            {
-                asortyment = asortymenty.UtworzZSzablonu(szablonDane);
-            }
-            catch
-            {
-                // Fallback: create regular product and copy template settings
-                asortyment = asortymenty.Utworz();
-            }
-
-            if (asortyment == null)
-            {
-                return StatusCode(500, ApiResponse<ProductDto>.Error("Failed to create product from template"));
-            }
-
-            using (asortyment)
-            {
-                dynamic dane = asortyment.Dane;
-                dane.Symbol = request.Symbol;
-                dane.Nazwa = request.Name;
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.EAN))
-                {
-                    try { dane.EAN = request.EAN; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.PKWiU))
-                {
-                    try { dane.PKWiU = request.PKWiU; } catch { }
-                }
-
-                if (request.PurchasePrice.HasValue)
-                {
-                    try { dane.CenaZakupu = request.PurchasePrice.Value; } catch { }
-                }
-
-                if (request.SalePriceNet.HasValue)
-                {
-                    try { dane.CenaSprzedazyNetto = request.SalePriceNet.Value; } catch { }
-                }
-
-                // Set group if provided
-                if (request.GroupId.HasValue)
-                {
-                    var grupy = _sferaService.GetManager("GrupyAsortymentu");
-                    if (grupy != null)
+                    if (DynamicPropertyHelper.GetId(s) == id)
                     {
-                        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                        {
-                            if (DynamicPropertyHelper.GetId(g) == request.GroupId.Value)
-                            {
-                                try { dane.Grupa = g; } catch { }
-                                break;
-                            }
-                        }
+                        szablonDane = s;
+                        break;
                     }
                 }
 
-                if ((bool)asortyment.Zapisz())
-                {
-                    _logger.LogInformation("Created product {Symbol} from template {TemplateId}", request.Symbol, id);
+                if (szablonDane == null) return (status: "templateNotFound", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
 
-                    var productDto = new ProductDto
+                var asortymenty = _sferaService.GetManager("Asortymenty");
+                if (asortymenty == null) return (status: "asortymentyNull", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
+
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
+                {
+                    if (DynamicPropertyHelper.GetString(a, "Symbol") == request.Symbol)
+                        return (status: "duplicate", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
+                }
+
+                dynamic? asortyment = null;
+                try
+                {
+                    asortyment = asortymenty.UtworzZSzablonu(szablonDane);
+                }
+                catch
+                {
+                    asortyment = asortymenty.Utworz();
+                }
+
+                if (asortyment == null)
+                    return (status: "createFailed", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
+
+                using (asortyment)
+                {
+                    dynamic dane = asortyment.Dane;
+                    dane.Symbol = request.Symbol;
+                    dane.Nazwa = request.Name;
+
+                    if (!string.IsNullOrEmpty(request.Description))
                     {
-                        Id = DynamicPropertyHelper.GetId(dane),
-                        Symbol = DynamicPropertyHelper.GetString(dane, "Symbol") ?? "",
-                        Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? "",
-                        Description = DynamicPropertyHelper.GetString(dane, "Opis"),
-                        EAN = DynamicPropertyHelper.GetString(dane, "EAN"),
-                        PKWiU = DynamicPropertyHelper.GetString(dane, "PKWiU")
-                    };
+                        try { dane.Opis = request.Description; } catch { }
+                    }
 
-                    return CreatedAtAction(
-                        "GetProduct",
-                        "Products",
-                        new { id = productDto.Id },
-                        ApiResponse<ProductDto>.Ok(productDto, "Product created from template successfully"));
+                    if (!string.IsNullOrEmpty(request.EAN))
+                    {
+                        try { dane.EAN = request.EAN; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.PKWiU))
+                    {
+                        try { dane.PKWiU = request.PKWiU; } catch { }
+                    }
+
+                    if (request.PurchasePrice.HasValue)
+                    {
+                        try { dane.CenaZakupu = request.PurchasePrice.Value; } catch { }
+                    }
+
+                    if (request.SalePriceNet.HasValue)
+                    {
+                        try { dane.CenaSprzedazyNetto = request.SalePriceNet.Value; } catch { }
+                    }
+
+                    if (request.GroupId.HasValue)
+                    {
+                        var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                        if (grupy != null)
+                        {
+                            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                            {
+                                if (DynamicPropertyHelper.GetId(g) == request.GroupId.Value)
+                                {
+                                    try { dane.Grupa = g; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if ((bool)asortyment.Zapisz())
+                    {
+                        var productDto = new ProductDto
+                        {
+                            Id = DynamicPropertyHelper.GetId(dane),
+                            Symbol = DynamicPropertyHelper.GetString(dane, "Symbol") ?? "",
+                            Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? "",
+                            Description = DynamicPropertyHelper.GetString(dane, "Opis"),
+                            EAN = DynamicPropertyHelper.GetString(dane, "EAN"),
+                            PKWiU = DynamicPropertyHelper.GetString(dane, "PKWiU")
+                        };
+
+                        return (status: "created", productId: productDto.Id, dto: (ProductDto?)productDto, errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(asortyment);
+                        return (status: "saveFailed", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)errors);
+                    }
                 }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(asortyment);
-                    return BadRequest(ApiResponse<ProductDto>.Error("Failed to create product from template", errors));
-                }
-            }
+            });
+
+            if (result.status == "szablonyNull")
+                return StatusCode(500, ApiResponse<ProductDto>.Error("Failed to get SzablonyAsortymentu manager"));
+
+            if (result.status == "templateNotFound")
+                return NotFound(ApiResponse<ProductDto>.Error($"Product template with ID {id} not found"));
+
+            if (result.status == "asortymentyNull")
+                return StatusCode(500, ApiResponse<ProductDto>.Error("Failed to get Asortymenty manager"));
+
+            if (result.status == "duplicate")
+                return BadRequest(ApiResponse<ProductDto>.Error($"Product with symbol {request.Symbol} already exists"));
+
+            if (result.status == "createFailed")
+                return StatusCode(500, ApiResponse<ProductDto>.Error("Failed to create product from template"));
+
+            if (result.status == "saveFailed")
+                return BadRequest(ApiResponse<ProductDto>.Error("Failed to create product from template", result.errors!));
+
+            _logger.LogInformation("Created product {Symbol} from template {TemplateId}", request.Symbol, id);
+            return CreatedAtAction(
+                "GetProduct",
+                "Products",
+                new { id = result.productId },
+                ApiResponse<ProductDto>.Ok(result.dto!, "Product created from template successfully"));
         }
         catch (Exception ex)
         {

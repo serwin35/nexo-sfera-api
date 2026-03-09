@@ -69,112 +69,115 @@ public class WarehouseDocumentsController : ControllerBase
     /// Get warehouse documents with filtering
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<WarehouseDocumentDto>> GetWarehouseDocuments([FromQuery] WarehouseDocumentQueryRequest query)
+    public async Task<ActionResult<PagedResponse<WarehouseDocumentDto>>> GetWarehouseDocuments([FromQuery] WarehouseDocumentQueryRequest query)
     {
         try
         {
-            var documents = new List<WarehouseDocumentDto>();
-            var totalCount = 0;
-
-            // Query WZ documents
-            if (!query.Type.HasValue || query.Type == WarehouseDocumentType.WZ)
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var wzManager = _sferaService.GetManager("WydaniaZewnetrzne");
-                if (wzManager != null)
+                var documents = new List<WarehouseDocumentDto>();
+                var totalCount = 0;
+
+                // Query WZ documents
+                if (!query.Type.HasValue || query.Type == WarehouseDocumentType.WZ)
                 {
-                    var allWz = new List<object>();
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)wzManager))
+                    var wzManager = _sferaService.GetManager("WydaniaZewnetrzne");
+                    if (wzManager != null)
                     {
-                        bool include = true;
-
-                        if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                        var allWz = new List<object>();
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)wzManager))
                         {
-                            var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
-                            if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != query.WarehouseSymbol)
-                                include = false;
+                            bool include = true;
+
+                            if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                            {
+                                var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
+                                if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != query.WarehouseSymbol)
+                                    include = false;
+                            }
+
+                            if (include && query.DateFrom.HasValue)
+                            {
+                                if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") < query.DateFrom.Value)
+                                    include = false;
+                            }
+
+                            if (include && query.DateTo.HasValue)
+                            {
+                                if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") > query.DateTo.Value)
+                                    include = false;
+                            }
+
+                            if (include)
+                                allWz.Add(d);
                         }
 
-                        if (include && query.DateFrom.HasValue)
+                        totalCount += allWz.Count;
+                        var wzDocs = allWz
+                            .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
+                            .Take(query.PageSize)
+                            .ToList();
+                        foreach (var d in wzDocs)
                         {
-                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") < query.DateFrom.Value)
-                                include = false;
+                            documents.Add(MapWZToDto(d));
                         }
-
-                        if (include && query.DateTo.HasValue)
-                        {
-                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") > query.DateTo.Value)
-                                include = false;
-                        }
-
-                        if (include)
-                            allWz.Add(d);
-                    }
-
-                    totalCount += allWz.Count;
-                    var wzDocs = allWz
-                        .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
-                        .Take(query.PageSize)
-                        .ToList();
-                    foreach (var d in wzDocs)
-                    {
-                        documents.Add(MapWZToDto(d));
                     }
                 }
-            }
 
-            // Query PZ documents
-            if (!query.Type.HasValue || query.Type == WarehouseDocumentType.PZ)
-            {
-                var pzManager = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-                if (pzManager != null)
+                // Query PZ documents
+                if (!query.Type.HasValue || query.Type == WarehouseDocumentType.PZ)
                 {
-                    var allPz = new List<object>();
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)pzManager))
+                    var pzManager = _sferaService.GetManager("PrzyjeciaZewnetrzne");
+                    if (pzManager != null)
                     {
-                        bool include = true;
-
-                        if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                        var allPz = new List<object>();
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)pzManager))
                         {
-                            var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
-                            if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != query.WarehouseSymbol)
-                                include = false;
+                            bool include = true;
+
+                            if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                            {
+                                var magazyn = DynamicPropertyHelper.GetProperty(d, "Magazyn");
+                                if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != query.WarehouseSymbol)
+                                    include = false;
+                            }
+
+                            if (include && query.DateFrom.HasValue)
+                            {
+                                if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") < query.DateFrom.Value)
+                                    include = false;
+                            }
+
+                            if (include && query.DateTo.HasValue)
+                            {
+                                if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") > query.DateTo.Value)
+                                    include = false;
+                            }
+
+                            if (include)
+                                allPz.Add(d);
                         }
 
-                        if (include && query.DateFrom.HasValue)
+                        totalCount += allPz.Count;
+                        var pzDocs = allPz
+                            .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
+                            .Take(query.PageSize)
+                            .ToList();
+                        foreach (var d in pzDocs)
                         {
-                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") < query.DateFrom.Value)
-                                include = false;
+                            documents.Add(MapPZToDto(d));
                         }
-
-                        if (include && query.DateTo.HasValue)
-                        {
-                            if (DynamicPropertyHelper.GetDateTime(d, "DataWystawienia") > query.DateTo.Value)
-                                include = false;
-                        }
-
-                        if (include)
-                            allPz.Add(d);
-                    }
-
-                    totalCount += allPz.Count;
-                    var pzDocs = allPz
-                        .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataWystawienia"))
-                        .Take(query.PageSize)
-                        .ToList();
-                    foreach (var d in pzDocs)
-                    {
-                        documents.Add(MapPZToDto(d));
                     }
                 }
-            }
 
-            var response = new PagedResponse<WarehouseDocumentDto>
-            {
-                Data = documents.OrderByDescending(d => d.IssueDate).Take(query.PageSize).ToList(),
-                Page = query.Page,
-                PageSize = query.PageSize,
-                TotalCount = totalCount
-            };
+                return new PagedResponse<WarehouseDocumentDto>
+                {
+                    Data = documents.OrderByDescending(d => d.IssueDate).Take(query.PageSize).ToList(),
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                };
+            });
 
             return Ok(response);
         }

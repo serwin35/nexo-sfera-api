@@ -63,7 +63,7 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("sales/summary")]
     [ProducesResponseType(typeof(ApiResponse<SalesSummaryReportDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<SalesSummaryReportDto>> GetSalesSummary(
+    public async Task<ActionResult<ApiResponse<SalesSummaryReportDto>>> GetSalesSummary(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo)
     {
@@ -72,61 +72,71 @@ public class ReportsController : ControllerBase
             var from = dateFrom ?? DateTime.Today.AddMonths(-1);
             var to = dateTo ?? DateTime.Today;
 
-            var manager = _sferaService.GetManager("DokumentySprzedazy");
-            if (manager == null)
+            var summary = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DokumentySprzedazy");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by date range
+                var filteredDocs = allDocs.Where(d =>
+                {
+                    var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
+                }).ToList();
+
+                var result = new SalesSummaryReportDto
+                {
+                    DateFrom = from,
+                    DateTo = to,
+                    TotalDocuments = filteredDocs.Count,
+                    TotalNetValue = 0,
+                    TotalGrossValue = 0,
+                    TotalVatValue = 0,
+                    ByDocumentType = new List<SalesByTypeDto>()
+                };
+
+                var byType = new Dictionary<string, (int count, decimal net, decimal gross)>();
+
+                foreach (var doc in filteredDocs)
+                {
+                    var netValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscNetto");
+                    var grossValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscBrutto");
+                    var docType = DynamicPropertyHelper.GetString(doc, "TypDokumentu") ?? "Unknown";
+
+                    result.TotalNetValue += netValue;
+                    result.TotalGrossValue += grossValue;
+
+                    if (!byType.ContainsKey(docType))
+                        byType[docType] = (0, 0, 0);
+
+                    var current = byType[docType];
+                    byType[docType] = (current.count + 1, current.net + netValue, current.gross + grossValue);
+                }
+
+                result.TotalVatValue = result.TotalGrossValue - result.TotalNetValue;
+
+                foreach (var kvp in byType)
+                {
+                    result.ByDocumentType.Add(new SalesByTypeDto
+                    {
+                        DocumentType = kvp.Key,
+                        Count = kvp.Value.count,
+                        NetValue = kvp.Value.net,
+                        GrossValue = kvp.Value.gross
+                    });
+                }
+
+                return result;
+            });
+
+            if (summary == null)
             {
                 return StatusCode(500, ApiResponse<SalesSummaryReportDto>.Error("Failed to get DokumentySprzedazy manager"));
-            }
-
-            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by date range
-            var filteredDocs = allDocs.Where(d =>
-            {
-                var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
-                return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
-            }).ToList();
-
-            var summary = new SalesSummaryReportDto
-            {
-                DateFrom = from,
-                DateTo = to,
-                TotalDocuments = filteredDocs.Count,
-                TotalNetValue = 0,
-                TotalGrossValue = 0,
-                TotalVatValue = 0,
-                ByDocumentType = new List<SalesByTypeDto>()
-            };
-
-            var byType = new Dictionary<string, (int count, decimal net, decimal gross)>();
-
-            foreach (var doc in filteredDocs)
-            {
-                var netValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscNetto");
-                var grossValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscBrutto");
-                var docType = DynamicPropertyHelper.GetString(doc, "TypDokumentu") ?? "Unknown";
-
-                summary.TotalNetValue += netValue;
-                summary.TotalGrossValue += grossValue;
-
-                if (!byType.ContainsKey(docType))
-                    byType[docType] = (0, 0, 0);
-
-                var current = byType[docType];
-                byType[docType] = (current.count + 1, current.net + netValue, current.gross + grossValue);
-            }
-
-            summary.TotalVatValue = summary.TotalGrossValue - summary.TotalNetValue;
-
-            foreach (var kvp in byType)
-            {
-                summary.ByDocumentType.Add(new SalesByTypeDto
-                {
-                    DocumentType = kvp.Key,
-                    Count = kvp.Value.count,
-                    NetValue = kvp.Value.net,
-                    GrossValue = kvp.Value.gross
-                });
             }
 
             return Ok(ApiResponse<SalesSummaryReportDto>.Ok(summary));
@@ -143,7 +153,7 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("sales/by-product")]
     [ProducesResponseType(typeof(ApiResponse<List<ProductSalesDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<ProductSalesDto>>> GetSalesByProduct(
+    public async Task<ActionResult<ApiResponse<List<ProductSalesDto>>>> GetSalesByProduct(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
         [FromQuery] int top = 20)
@@ -153,65 +163,73 @@ public class ReportsController : ControllerBase
             var from = dateFrom ?? DateTime.Today.AddMonths(-1);
             var to = dateTo ?? DateTime.Today;
 
-            var manager = _sferaService.GetManager("DokumentySprzedazy");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DokumentySprzedazy");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by date range
+                var filteredDocs = allDocs.Where(d =>
+                {
+                    var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
+                }).ToList();
+
+                var productSales = new Dictionary<int, ProductSalesDto>();
+
+                foreach (var doc in filteredDocs)
+                {
+                    var pozycje = DynamicPropertyHelper.GetProperty(doc, "Pozycje");
+                    if (pozycje == null) continue;
+
+                    foreach (var poz in (IEnumerable<object>)pozycje)
+                    {
+                        var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+                        if (asortyment == null) continue;
+
+                        var productId = DynamicPropertyHelper.GetId(asortyment);
+                        var productSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? "";
+                        var productName = DynamicPropertyHelper.GetString(asortyment, "Nazwa") ?? "";
+                        var quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+                        var netValue = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto");
+                        var grossValue = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto");
+
+                        if (!productSales.ContainsKey(productId))
+                        {
+                            productSales[productId] = new ProductSalesDto
+                            {
+                                ProductId = productId,
+                                Symbol = productSymbol,
+                                Name = productName,
+                                TotalQuantity = 0,
+                                TotalNetValue = 0,
+                                TotalGrossValue = 0,
+                                TransactionCount = 0
+                            };
+                        }
+
+                        productSales[productId].TotalQuantity += quantity;
+                        productSales[productId].TotalNetValue += netValue;
+                        productSales[productId].TotalGrossValue += grossValue;
+                        productSales[productId].TransactionCount++;
+                    }
+                }
+
+                return productSales.Values
+                    .OrderByDescending(p => p.TotalGrossValue)
+                    .Take(top)
+                    .ToList();
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<List<ProductSalesDto>>.Error("Failed to get DokumentySprzedazy manager"));
             }
-
-            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by date range
-            var filteredDocs = allDocs.Where(d =>
-            {
-                var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
-                return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
-            }).ToList();
-
-            var productSales = new Dictionary<int, ProductSalesDto>();
-
-            foreach (var doc in filteredDocs)
-            {
-                var pozycje = DynamicPropertyHelper.GetProperty(doc, "Pozycje");
-                if (pozycje == null) continue;
-
-                foreach (var poz in (IEnumerable<object>)pozycje)
-                {
-                    var asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-                    if (asortyment == null) continue;
-
-                    var productId = DynamicPropertyHelper.GetId(asortyment);
-                    var productSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? "";
-                    var productName = DynamicPropertyHelper.GetString(asortyment, "Nazwa") ?? "";
-                    var quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
-                    var netValue = DynamicPropertyHelper.GetDecimal(poz, "WartoscNetto");
-                    var grossValue = DynamicPropertyHelper.GetDecimal(poz, "WartoscBrutto");
-
-                    if (!productSales.ContainsKey(productId))
-                    {
-                        productSales[productId] = new ProductSalesDto
-                        {
-                            ProductId = productId,
-                            Symbol = productSymbol,
-                            Name = productName,
-                            TotalQuantity = 0,
-                            TotalNetValue = 0,
-                            TotalGrossValue = 0,
-                            TransactionCount = 0
-                        };
-                    }
-
-                    productSales[productId].TotalQuantity += quantity;
-                    productSales[productId].TotalNetValue += netValue;
-                    productSales[productId].TotalGrossValue += grossValue;
-                    productSales[productId].TransactionCount++;
-                }
-            }
-
-            var result = productSales.Values
-                .OrderByDescending(p => p.TotalGrossValue)
-                .Take(top)
-                .ToList();
 
             return Ok(ApiResponse<List<ProductSalesDto>>.Ok(result));
         }
@@ -227,7 +245,7 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("sales/by-customer")]
     [ProducesResponseType(typeof(ApiResponse<List<CustomerSalesDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<CustomerSalesDto>>> GetSalesByCustomer(
+    public async Task<ActionResult<ApiResponse<List<CustomerSalesDto>>>> GetSalesByCustomer(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
         [FromQuery] int top = 20)
@@ -237,56 +255,64 @@ public class ReportsController : ControllerBase
             var from = dateFrom ?? DateTime.Today.AddMonths(-1);
             var to = dateTo ?? DateTime.Today;
 
-            var manager = _sferaService.GetManager("DokumentySprzedazy");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DokumentySprzedazy");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by date range
+                var filteredDocs = allDocs.Where(d =>
+                {
+                    var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
+                }).ToList();
+
+                var customerSales = new Dictionary<int, CustomerSalesDto>();
+
+                foreach (var doc in filteredDocs)
+                {
+                    var kontrahent = DynamicPropertyHelper.GetProperty(doc, "Kontrahent");
+                    if (kontrahent == null) continue;
+
+                    var customerId = DynamicPropertyHelper.GetId(kontrahent);
+                    var customerSymbol = DynamicPropertyHelper.GetString(kontrahent, "Symbol") ?? "";
+                    var customerName = DynamicPropertyHelper.GetString(kontrahent, "Nazwa") ?? "";
+                    var netValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscNetto");
+                    var grossValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscBrutto");
+
+                    if (!customerSales.ContainsKey(customerId))
+                    {
+                        customerSales[customerId] = new CustomerSalesDto
+                        {
+                            CustomerId = customerId,
+                            Symbol = customerSymbol,
+                            Name = customerName,
+                            TotalNetValue = 0,
+                            TotalGrossValue = 0,
+                            DocumentCount = 0
+                        };
+                    }
+
+                    customerSales[customerId].TotalNetValue += netValue;
+                    customerSales[customerId].TotalGrossValue += grossValue;
+                    customerSales[customerId].DocumentCount++;
+                }
+
+                return customerSales.Values
+                    .OrderByDescending(c => c.TotalGrossValue)
+                    .Take(top)
+                    .ToList();
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<List<CustomerSalesDto>>.Error("Failed to get DokumentySprzedazy manager"));
             }
-
-            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by date range
-            var filteredDocs = allDocs.Where(d =>
-            {
-                var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
-                return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
-            }).ToList();
-
-            var customerSales = new Dictionary<int, CustomerSalesDto>();
-
-            foreach (var doc in filteredDocs)
-            {
-                var kontrahent = DynamicPropertyHelper.GetProperty(doc, "Kontrahent");
-                if (kontrahent == null) continue;
-
-                var customerId = DynamicPropertyHelper.GetId(kontrahent);
-                var customerSymbol = DynamicPropertyHelper.GetString(kontrahent, "Symbol") ?? "";
-                var customerName = DynamicPropertyHelper.GetString(kontrahent, "Nazwa") ?? "";
-                var netValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscNetto");
-                var grossValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscBrutto");
-
-                if (!customerSales.ContainsKey(customerId))
-                {
-                    customerSales[customerId] = new CustomerSalesDto
-                    {
-                        CustomerId = customerId,
-                        Symbol = customerSymbol,
-                        Name = customerName,
-                        TotalNetValue = 0,
-                        TotalGrossValue = 0,
-                        DocumentCount = 0
-                    };
-                }
-
-                customerSales[customerId].TotalNetValue += netValue;
-                customerSales[customerId].TotalGrossValue += grossValue;
-                customerSales[customerId].DocumentCount++;
-            }
-
-            var result = customerSales.Values
-                .OrderByDescending(c => c.TotalGrossValue)
-                .Take(top)
-                .ToList();
 
             return Ok(ApiResponse<List<CustomerSalesDto>>.Ok(result));
         }
@@ -306,7 +332,7 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("purchases/summary")]
     [ProducesResponseType(typeof(ApiResponse<PurchaseSummaryReportDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<PurchaseSummaryReportDto>> GetPurchaseSummary(
+    public async Task<ActionResult<ApiResponse<PurchaseSummaryReportDto>>> GetPurchaseSummary(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo)
     {
@@ -315,70 +341,80 @@ public class ReportsController : ControllerBase
             var from = dateFrom ?? DateTime.Today.AddMonths(-1);
             var to = dateTo ?? DateTime.Today;
 
-            var manager = _sferaService.GetManager("DokumentyZakupu");
-            if (manager == null)
+            var summary = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DokumentyZakupu");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by date range
+                var filteredDocs = allDocs.Where(d =>
+                {
+                    var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
+                    return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
+                }).ToList();
+
+                var result = new PurchaseSummaryReportDto
+                {
+                    DateFrom = from,
+                    DateTo = to,
+                    TotalDocuments = filteredDocs.Count,
+                    TotalNetValue = 0,
+                    TotalGrossValue = 0,
+                    TotalVatValue = 0,
+                    BySupplier = new List<PurchaseBySupplierDto>()
+                };
+
+                var bySupplier = new Dictionary<int, (string symbol, string name, int count, decimal net, decimal gross)>();
+
+                foreach (var doc in filteredDocs)
+                {
+                    var netValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscNetto");
+                    var grossValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscBrutto");
+
+                    result.TotalNetValue += netValue;
+                    result.TotalGrossValue += grossValue;
+
+                    var kontrahent = DynamicPropertyHelper.GetProperty(doc, "Kontrahent");
+                    if (kontrahent != null)
+                    {
+                        var supplierId = DynamicPropertyHelper.GetId(kontrahent);
+                        var supplierSymbol = DynamicPropertyHelper.GetString(kontrahent, "Symbol") ?? "";
+                        var supplierName = DynamicPropertyHelper.GetString(kontrahent, "Nazwa") ?? "";
+
+                        if (!bySupplier.ContainsKey(supplierId))
+                            bySupplier[supplierId] = (supplierSymbol, supplierName, 0, 0, 0);
+
+                        var current = bySupplier[supplierId];
+                        bySupplier[supplierId] = (current.symbol, current.name, current.count + 1, current.net + netValue, current.gross + grossValue);
+                    }
+                }
+
+                result.TotalVatValue = result.TotalGrossValue - result.TotalNetValue;
+
+                foreach (var kvp in bySupplier.OrderByDescending(x => x.Value.gross).Take(10))
+                {
+                    result.BySupplier.Add(new PurchaseBySupplierDto
+                    {
+                        SupplierId = kvp.Key,
+                        Symbol = kvp.Value.symbol,
+                        Name = kvp.Value.name,
+                        DocumentCount = kvp.Value.count,
+                        NetValue = kvp.Value.net,
+                        GrossValue = kvp.Value.gross
+                    });
+                }
+
+                return result;
+            });
+
+            if (summary == null)
             {
                 return StatusCode(500, ApiResponse<PurchaseSummaryReportDto>.Error("Failed to get DokumentyZakupu manager"));
-            }
-
-            var allDocs = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by date range
-            var filteredDocs = allDocs.Where(d =>
-            {
-                var dataWystawienia = DynamicPropertyHelper.GetDateTime(d, "DataWystawienia");
-                return dataWystawienia.HasValue && dataWystawienia.Value >= from && dataWystawienia.Value <= to;
-            }).ToList();
-
-            var summary = new PurchaseSummaryReportDto
-            {
-                DateFrom = from,
-                DateTo = to,
-                TotalDocuments = filteredDocs.Count,
-                TotalNetValue = 0,
-                TotalGrossValue = 0,
-                TotalVatValue = 0,
-                BySupplier = new List<PurchaseBySupplierDto>()
-            };
-
-            var bySupplier = new Dictionary<int, (string symbol, string name, int count, decimal net, decimal gross)>();
-
-            foreach (var doc in filteredDocs)
-            {
-                var netValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscNetto");
-                var grossValue = DynamicPropertyHelper.GetDecimal(doc, "WartoscBrutto");
-
-                summary.TotalNetValue += netValue;
-                summary.TotalGrossValue += grossValue;
-
-                var kontrahent = DynamicPropertyHelper.GetProperty(doc, "Kontrahent");
-                if (kontrahent != null)
-                {
-                    var supplierId = DynamicPropertyHelper.GetId(kontrahent);
-                    var supplierSymbol = DynamicPropertyHelper.GetString(kontrahent, "Symbol") ?? "";
-                    var supplierName = DynamicPropertyHelper.GetString(kontrahent, "Nazwa") ?? "";
-
-                    if (!bySupplier.ContainsKey(supplierId))
-                        bySupplier[supplierId] = (supplierSymbol, supplierName, 0, 0, 0);
-
-                    var current = bySupplier[supplierId];
-                    bySupplier[supplierId] = (current.symbol, current.name, current.count + 1, current.net + netValue, current.gross + grossValue);
-                }
-            }
-
-            summary.TotalVatValue = summary.TotalGrossValue - summary.TotalNetValue;
-
-            foreach (var kvp in bySupplier.OrderByDescending(x => x.Value.gross).Take(10))
-            {
-                summary.BySupplier.Add(new PurchaseBySupplierDto
-                {
-                    SupplierId = kvp.Key,
-                    Symbol = kvp.Value.symbol,
-                    Name = kvp.Value.name,
-                    DocumentCount = kvp.Value.count,
-                    NetValue = kvp.Value.net,
-                    GrossValue = kvp.Value.gross
-                });
             }
 
             return Ok(ApiResponse<PurchaseSummaryReportDto>.Ok(summary));
@@ -399,51 +435,61 @@ public class ReportsController : ControllerBase
     /// </summary>
     [HttpGet("inventory/turnover")]
     [ProducesResponseType(typeof(ApiResponse<List<InventoryTurnoverDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<InventoryTurnoverDto>>> GetInventoryTurnover(
+    public async Task<ActionResult<ApiResponse<List<InventoryTurnoverDto>>>> GetInventoryTurnover(
         [FromQuery] int? warehouseId,
         [FromQuery] int top = 50)
     {
         try
         {
-            var productManager = _sferaService.GetManager("Asortymenty");
-            if (productManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<InventoryTurnoverDto>>.Error("Failed to get Asortymenty manager"));
-            }
-
-            var allProducts = DynamicPropertyHelper.SafeGetAll((object)productManager);
-
-            var result = new List<InventoryTurnoverDto>();
-
-            foreach (var prod in allProducts.Take(top))
-            {
-                var stanyMagazynowe = DynamicPropertyHelper.GetProperty(prod, "StanyMagazynowe");
-                decimal currentStock = 0;
-
-                if (stanyMagazynowe != null)
+                var productManager = _sferaService.GetManager("Asortymenty");
+                if (productManager == null)
                 {
-                    foreach (var stan in (IEnumerable<object>)stanyMagazynowe)
-                    {
-                        if (warehouseId.HasValue)
-                        {
-                            var magazyn = DynamicPropertyHelper.GetProperty(stan, "Magazyn");
-                            if (magazyn != null && DynamicPropertyHelper.GetId(magazyn) != warehouseId.Value)
-                                continue;
-                        }
-                        currentStock += DynamicPropertyHelper.GetDecimal(stan, "Ilosc");
-                    }
+                    return null;
                 }
 
-                result.Add(new InventoryTurnoverDto
+                var allProducts = DynamicPropertyHelper.SafeGetAll((object)productManager);
+
+                var items = new List<InventoryTurnoverDto>();
+
+                foreach (var prod in allProducts.Take(top))
                 {
-                    ProductId = DynamicPropertyHelper.GetId(prod),
-                    Symbol = DynamicPropertyHelper.GetString(prod, "Symbol") ?? "",
-                    Name = DynamicPropertyHelper.GetString(prod, "Nazwa") ?? "",
-                    CurrentStock = currentStock,
-                    // Note: Full turnover calculation requires historical sales data
-                    SalesQuantity30Days = 0,
-                    TurnoverDays = currentStock > 0 ? 0 : -1
-                });
+                    var stanyMagazynowe = DynamicPropertyHelper.GetProperty(prod, "StanyMagazynowe");
+                    decimal currentStock = 0;
+
+                    if (stanyMagazynowe != null)
+                    {
+                        foreach (var stan in (IEnumerable<object>)stanyMagazynowe)
+                        {
+                            if (warehouseId.HasValue)
+                            {
+                                var magazyn = DynamicPropertyHelper.GetProperty(stan, "Magazyn");
+                                if (magazyn != null && DynamicPropertyHelper.GetId(magazyn) != warehouseId.Value)
+                                    continue;
+                            }
+                            currentStock += DynamicPropertyHelper.GetDecimal(stan, "Ilosc");
+                        }
+                    }
+
+                    items.Add(new InventoryTurnoverDto
+                    {
+                        ProductId = DynamicPropertyHelper.GetId(prod),
+                        Symbol = DynamicPropertyHelper.GetString(prod, "Symbol") ?? "",
+                        Name = DynamicPropertyHelper.GetString(prod, "Nazwa") ?? "",
+                        CurrentStock = currentStock,
+                        // Note: Full turnover calculation requires historical sales data
+                        SalesQuantity30Days = 0,
+                        TurnoverDays = currentStock > 0 ? 0 : -1
+                    });
+                }
+
+                return items;
+            });
+
+            if (result == null)
+            {
+                return StatusCode(500, ApiResponse<List<InventoryTurnoverDto>>.Error("Failed to get Asortymenty manager"));
             }
 
             return Ok(ApiResponse<List<InventoryTurnoverDto>>.Ok(result));

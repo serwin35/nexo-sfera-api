@@ -30,108 +30,120 @@ public class ProductGroupsController : ControllerBase
     /// Get all product groups with optional filtering
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<ProductGroupListItemDto>> GetProductGroups([FromQuery] ProductGroupQueryRequest query)
+    public async Task<ActionResult<PagedResponse<ProductGroupListItemDto>>> GetProductGroups([FromQuery] ProductGroupQueryRequest query)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get GrupyAsortymentu manager"));
-            }
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return (null, 0);
 
-            var allGrupy = new List<object>();
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                allGrupy.Add(g);
-            }
-
-            // Apply filters
-            var filteredList = new List<object>();
-            foreach (var g in allGrupy)
-            {
-                // Deleted filter
-                if (!query.IncludeDeleted)
+                var allGrupy = new List<object>();
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
-                    var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
-                    if (isDeleted) continue;
+                    allGrupy.Add(g);
                 }
 
-                // Inactive filter
-                if (!query.IncludeInactive)
+                // Apply filters
+                var filteredList = new List<object>();
+                foreach (var g in allGrupy)
                 {
-                    var isActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywny") ?? true;
-                    if (!isActive) continue;
-                }
-
-                // Parent filter (root groups if ParentId not specified and not IncludeAllLevels)
-                if (!query.IncludeAllLevels)
-                {
-                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
-
-                    if (query.ParentId.HasValue)
+                    // Deleted filter
+                    if (!query.IncludeDeleted)
                     {
-                        if (parentId != query.ParentId.Value) continue;
+                        var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
+                        if (isDeleted) continue;
                     }
-                    else
+
+                    // Inactive filter
+                    if (!query.IncludeInactive)
                     {
-                        // Only root groups (no parent)
-                        if (parentId.HasValue && parentId > 0) continue;
+                        var isActive = DynamicPropertyHelper.GetNullableBool(g, "Aktywny") ?? true;
+                        if (!isActive) continue;
                     }
+
+                    // Parent filter (root groups if ParentId not specified and not IncludeAllLevels)
+                    if (!query.IncludeAllLevels)
+                    {
+                        var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+                        var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+
+                        if (query.ParentId.HasValue)
+                        {
+                            if (parentId != query.ParentId.Value) continue;
+                        }
+                        else
+                        {
+                            // Only root groups (no parent)
+                            if (parentId.HasValue && parentId > 0) continue;
+                        }
+                    }
+
+                    // Search filter
+                    if (!string.IsNullOrEmpty(query.Search))
+                    {
+                        var searchLower = query.Search.ToLower();
+                        var symbol = (DynamicPropertyHelper.GetString(g, "Symbol") ?? "").ToLower();
+                        var nazwa = (DynamicPropertyHelper.GetString(g, "Nazwa") ?? "").ToLower();
+
+                        if (!symbol.Contains(searchLower) && !nazwa.Contains(searchLower))
+                            continue;
+                    }
+
+                    filteredList.Add(g);
                 }
 
-                // Search filter
-                if (!string.IsNullOrEmpty(query.Search))
-                {
-                    var searchLower = query.Search.ToLower();
-                    var symbol = (DynamicPropertyHelper.GetString(g, "Symbol") ?? "").ToLower();
-                    var nazwa = (DynamicPropertyHelper.GetString(g, "Nazwa") ?? "").ToLower();
+                var totalCount = filteredList.Count;
+                var pagedItems = filteredList
+                    .OrderBy(g => DynamicPropertyHelper.GetString(g, "Nazwa"))
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
 
-                    if (!symbol.Contains(searchLower) && !nazwa.Contains(searchLower))
-                        continue;
-                }
-
-                filteredList.Add(g);
-            }
-
-            var totalCount = filteredList.Count;
-            var pagedItems = filteredList
-                .OrderBy(g => DynamicPropertyHelper.GetString(g, "Nazwa"))
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .ToList();
-
-            var items = new List<ProductGroupListItemDto>();
-            foreach (var g in pagedItems)
-            {
-                var dto = MapToListItemDto(g);
-
-                // Include product count if requested
+                // Build product count cache if needed
+                Dictionary<int, int>? productCountCache = null;
                 if (query.IncludeProductCount)
                 {
-                    dto.ProductCount = GetProductCountForGroup(DynamicPropertyHelper.GetId(g));
+                    productCountCache = BuildProductCountCache(grupy);
                 }
 
-                // Check if has children
-                dto.HasChildren = allGrupy.Any(child =>
+                var items = new List<ProductGroupListItemDto>();
+                foreach (var g in pagedItems)
                 {
-                    var parent = DynamicPropertyHelper.GetProperty(child, "Rodzic");
-                    return parent != null && DynamicPropertyHelper.GetId(parent) == dto.Id;
-                });
+                    var dto = MapToListItemDto(g);
 
-                items.Add(dto);
-            }
+                    // Include product count if requested
+                    if (query.IncludeProductCount && productCountCache != null)
+                    {
+                        productCountCache.TryGetValue(dto.Id, out var count);
+                        dto.ProductCount = count;
+                    }
 
-            var response = new PagedResponse<ProductGroupListItemDto>
+                    // Check if has children
+                    dto.HasChildren = allGrupy.Any(child =>
+                    {
+                        var parent = DynamicPropertyHelper.GetProperty(child, "Rodzic");
+                        return parent != null && DynamicPropertyHelper.GetId(parent) == dto.Id;
+                    });
+
+                    items.Add(dto);
+                }
+
+                return (items, totalCount);
+            });
+
+            if (result.Item1 == null)
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get GrupyAsortymentu manager"));
+
+            return Ok(new PagedResponse<ProductGroupListItemDto>
             {
-                Data = items,
+                Data = result.Item1,
                 Page = query.Page,
                 PageSize = query.PageSize,
-                TotalCount = totalCount
-            };
-
-            return Ok(response);
+                TotalCount = result.Item2
+            });
         }
         catch (Exception ex)
         {
@@ -144,69 +156,86 @@ public class ProductGroupsController : ControllerBase
     /// Get product groups as a tree structure
     /// </summary>
     [HttpGet("tree")]
-    public ActionResult<ApiResponse<List<ProductGroupTreeDto>>> GetProductGroupsTree([FromQuery] bool includeProductCount = false)
+    public async Task<ActionResult<ApiResponse<List<ProductGroupTreeDto>>>> GetProductGroupsTree([FromQuery] bool includeProductCount = false)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var rootGroups = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return null;
+
+                var allGrupy = new List<object>();
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
+                    if (!isDeleted)
+                    {
+                        allGrupy.Add(g);
+                    }
+                }
+
+                // Build product count cache if needed
+                Dictionary<int, int>? productCountCache = null;
+                if (includeProductCount)
+                {
+                    productCountCache = BuildProductCountCache(grupy);
+                }
+
+                // Build tree
+                var groupMap = new Dictionary<int, ProductGroupTreeDto>();
+                var result = new List<ProductGroupTreeDto>();
+
+                // First pass: create all nodes
+                foreach (var g in allGrupy)
+                {
+                    var id = DynamicPropertyHelper.GetId(g);
+                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+
+                    int count = 0;
+                    if (includeProductCount && productCountCache != null)
+                        productCountCache.TryGetValue(id, out count);
+
+                    var node = new ProductGroupTreeDto
+                    {
+                        Id = id,
+                        Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? "",
+                        Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
+                        ParentId = parentId,
+                        Level = DynamicPropertyHelper.GetNullableInt(g, "Poziom") ?? 0,
+                        ProductCount = count
+                    };
+
+                    groupMap[id] = node;
+                }
+
+                // Second pass: build hierarchy
+                foreach (var node in groupMap.Values)
+                {
+                    if (node.ParentId.HasValue && node.ParentId.Value > 0 && groupMap.ContainsKey(node.ParentId.Value))
+                    {
+                        groupMap[node.ParentId.Value].Children.Add(node);
+                    }
+                    else
+                    {
+                        result.Add(node);
+                    }
+                }
+
+                // Sort children
+                foreach (var node in groupMap.Values)
+                {
+                    node.Children = node.Children.OrderBy(c => c.Name).ToList();
+                }
+                result = result.OrderBy(r => r.Name).ToList();
+
+                return result;
+            });
+
+            if (rootGroups == null)
                 return StatusCode(500, ApiResponse<List<ProductGroupTreeDto>>.Error("Failed to get GrupyAsortymentu manager"));
-            }
-
-            var allGrupy = new List<object>();
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
-                if (!isDeleted)
-                {
-                    allGrupy.Add(g);
-                }
-            }
-
-            // Build tree
-            var groupMap = new Dictionary<int, ProductGroupTreeDto>();
-            var rootGroups = new List<ProductGroupTreeDto>();
-
-            // First pass: create all nodes
-            foreach (var g in allGrupy)
-            {
-                var id = DynamicPropertyHelper.GetId(g);
-                var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
-
-                var node = new ProductGroupTreeDto
-                {
-                    Id = id,
-                    Symbol = DynamicPropertyHelper.GetString(g, "Symbol") ?? "",
-                    Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
-                    ParentId = parentId,
-                    Level = DynamicPropertyHelper.GetNullableInt(g, "Poziom") ?? 0,
-                    ProductCount = includeProductCount ? GetProductCountForGroup(id) : 0
-                };
-
-                groupMap[id] = node;
-            }
-
-            // Second pass: build hierarchy
-            foreach (var node in groupMap.Values)
-            {
-                if (node.ParentId.HasValue && node.ParentId.Value > 0 && groupMap.ContainsKey(node.ParentId.Value))
-                {
-                    groupMap[node.ParentId.Value].Children.Add(node);
-                }
-                else
-                {
-                    rootGroups.Add(node);
-                }
-            }
-
-            // Sort children
-            foreach (var node in groupMap.Values)
-            {
-                node.Children = node.Children.OrderBy(c => c.Name).ToList();
-            }
-            rootGroups = rootGroups.OrderBy(r => r.Name).ToList();
 
             return Ok(ApiResponse<List<ProductGroupTreeDto>>.Ok(rootGroups));
         }
@@ -221,32 +250,39 @@ public class ProductGroupsController : ControllerBase
     /// Get product group by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<ProductGroupDto>> GetProductGroup(int id)
+    public async Task<ActionResult<ApiResponse<ProductGroupDto>>> GetProductGroup(int id)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
-            }
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return (true, (ProductGroupDto?)null);
 
-            dynamic? grupa = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
+                dynamic? grupa = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
-                    grupa = g;
-                    break;
+                    if (DynamicPropertyHelper.GetId(g) == id)
+                    {
+                        grupa = g;
+                        break;
+                    }
                 }
-            }
 
-            if (grupa == null)
-            {
+                if (grupa == null)
+                    return (false, (ProductGroupDto?)null);
+
+                return (false, MapToDto(grupa, grupy));
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
+
+            if (dto == null)
                 return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with ID {id} not found"));
-            }
 
-            return Ok(ApiResponse<ProductGroupDto>.Ok(MapToDto(grupa, grupy)));
+            return Ok(ApiResponse<ProductGroupDto>.Ok(dto));
         }
         catch (Exception ex)
         {
@@ -259,32 +295,39 @@ public class ProductGroupsController : ControllerBase
     /// Get product group by symbol
     /// </summary>
     [HttpGet("by-symbol/{symbol}")]
-    public ActionResult<ApiResponse<ProductGroupDto>> GetProductGroupBySymbol(string symbol)
+    public async Task<ActionResult<ApiResponse<ProductGroupDto>>> GetProductGroupBySymbol(string symbol)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
-            }
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return (true, (ProductGroupDto?)null);
 
-            dynamic? grupa = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
+                dynamic? grupa = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
-                    grupa = g;
-                    break;
+                    if (DynamicPropertyHelper.GetString(g, "Symbol") == symbol)
+                    {
+                        grupa = g;
+                        break;
+                    }
                 }
-            }
 
-            if (grupa == null)
-            {
+                if (grupa == null)
+                    return (false, (ProductGroupDto?)null);
+
+                return (false, MapToDto(grupa, grupy));
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
+
+            if (dto == null)
                 return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with symbol {symbol} not found"));
-            }
 
-            return Ok(ApiResponse<ProductGroupDto>.Ok(MapToDto(grupa, grupy)));
+            return Ok(ApiResponse<ProductGroupDto>.Ok(dto));
         }
         catch (Exception ex)
         {
@@ -297,33 +340,39 @@ public class ProductGroupsController : ControllerBase
     /// Get children of a product group
     /// </summary>
     [HttpGet("{id}/children")]
-    public ActionResult<ApiResponse<List<ProductGroupListItemDto>>> GetProductGroupChildren(int id)
+    public async Task<ActionResult<ApiResponse<List<ProductGroupListItemDto>>>> GetProductGroupChildren(int id)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var (managerNull, children) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<ProductGroupListItemDto>>.Error("Failed to get GrupyAsortymentu manager"));
-            }
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return (true, (List<ProductGroupListItemDto>?)null);
 
-            var children = new List<ProductGroupListItemDto>();
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
-
-                if (parentId == id)
+                var result = new List<ProductGroupListItemDto>();
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
-                    var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
-                    if (!isDeleted)
+                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+
+                    if (parentId == id)
                     {
-                        children.Add(MapToListItemDto(g));
+                        var isDeleted = DynamicPropertyHelper.GetNullableBool(g, "Usuniety") ?? false;
+                        if (!isDeleted)
+                        {
+                            result.Add(MapToListItemDto(g));
+                        }
                     }
                 }
-            }
 
-            return Ok(ApiResponse<List<ProductGroupListItemDto>>.Ok(children.OrderBy(c => c.Name).ToList()));
+                return (false, result);
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<List<ProductGroupListItemDto>>.Error("Failed to get GrupyAsortymentu manager"));
+
+            return Ok(ApiResponse<List<ProductGroupListItemDto>>.Ok(children!.OrderBy(c => c.Name).ToList()));
         }
         catch (Exception ex)
         {
@@ -336,108 +385,118 @@ public class ProductGroupsController : ControllerBase
     /// Create a new product group
     /// </summary>
     [HttpPost]
-    public ActionResult<ApiResponse<ProductGroupDto>> CreateProductGroup([FromBody] CreateProductGroupRequest request)
+    public async Task<ActionResult<ApiResponse<ProductGroupDto>>> CreateProductGroup([FromBody] CreateProductGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return ("manager_null", (ProductGroupDto?)null, (List<string>?)null);
+
+                // Check if symbol already exists
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
+                        return ("duplicate", (ProductGroupDto?)null, (List<string>?)null);
+                }
+
+                using (var grupa = grupy.Utworz())
+                {
+                    dynamic dane = grupa.Dane;
+                    dane.Symbol = request.Symbol;
+                    dane.Nazwa = request.Name;
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        try { dane.Opis = request.Description; } catch { }
+                    }
+
+                    // Set parent
+                    if (request.ParentId.HasValue)
+                    {
+                        dynamic? rodzic = null;
+                        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                        {
+                            if (DynamicPropertyHelper.GetId(g) == request.ParentId.Value)
+                            {
+                                rodzic = g;
+                                break;
+                            }
+                        }
+                        if (rodzic != null)
+                        {
+                            dane.Rodzic = rodzic;
+                        }
+                    }
+
+                    // Set minimal margin
+                    if (request.MinimalMarginId.HasValue)
+                    {
+                        try { dane.MinimalnaMarza = request.MinimalMarginId.Value; } catch { }
+                    }
+
+                    // Set default price level
+                    if (request.DefaultPriceLevelId.HasValue)
+                    {
+                        var cenniki = _sferaService.GetManager("Cenniki");
+                        if (cenniki != null)
+                        {
+                            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
+                            {
+                                if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
+                                {
+                                    try { dane.DomyslnyPoziomCen = c; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Set default VAT rate
+                    if (request.DefaultVatRateId.HasValue)
+                    {
+                        var stawkiVat = _sferaService.GetManager("StawkiVat");
+                        if (stawkiVat != null)
+                        {
+                            foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
+                            {
+                                if (DynamicPropertyHelper.GetId(sv) == request.DefaultVatRateId.Value)
+                                {
+                                    try { dane.DomyslnaStawkaVat = sv; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if ((bool)grupa.Zapisz())
+                    {
+                        return ("ok", MapToDto(dane, grupy), (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("save_failed", (ProductGroupDto?)null, errors);
+                    }
+                }
+            });
+
+            if (result.Item1 == "manager_null")
                 return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
-            }
 
-            // Check if symbol already exists
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetString(g, "Symbol") == request.Symbol)
-                {
-                    return BadRequest(ApiResponse<ProductGroupDto>.Error($"Product group with symbol {request.Symbol} already exists"));
-                }
-            }
+            if (result.Item1 == "duplicate")
+                return BadRequest(ApiResponse<ProductGroupDto>.Error($"Product group with symbol {request.Symbol} already exists"));
 
-            using (var grupa = grupy.Utworz())
-            {
-                dynamic dane = grupa.Dane;
-                dane.Symbol = request.Symbol;
-                dane.Nazwa = request.Name;
+            if (result.Item1 == "save_failed")
+                return BadRequest(ApiResponse<ProductGroupDto>.Error("Failed to create product group", result.Item3!));
 
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                // Set parent
-                if (request.ParentId.HasValue)
-                {
-                    dynamic? rodzic = null;
-                    foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                    {
-                        if (DynamicPropertyHelper.GetId(g) == request.ParentId.Value)
-                        {
-                            rodzic = g;
-                            break;
-                        }
-                    }
-                    if (rodzic != null)
-                    {
-                        dane.Rodzic = rodzic;
-                    }
-                }
-
-                // Set minimal margin
-                if (request.MinimalMarginId.HasValue)
-                {
-                    try { dane.MinimalnaMarza = request.MinimalMarginId.Value; } catch { }
-                }
-
-                // Set default price level
-                if (request.DefaultPriceLevelId.HasValue)
-                {
-                    var cenniki = _sferaService.GetManager("Cenniki");
-                    if (cenniki != null)
-                    {
-                        foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
-                        {
-                            if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
-                            {
-                                try { dane.DomyslnyPoziomCen = c; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                // Set default VAT rate
-                if (request.DefaultVatRateId.HasValue)
-                {
-                    var stawkiVat = _sferaService.GetManager("StawkiVat");
-                    if (stawkiVat != null)
-                    {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
-                        {
-                            if (DynamicPropertyHelper.GetId(sv) == request.DefaultVatRateId.Value)
-                            {
-                                try { dane.DomyslnaStawkaVat = sv; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if ((bool)grupa.Zapisz())
-                {
-                    _logger.LogInformation("Created product group {Symbol}", request.Symbol);
-                    return CreatedAtAction(
-                        nameof(GetProductGroup),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<ProductGroupDto>.Ok(MapToDto(dane, grupy), "Product group created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<ProductGroupDto>.Error("Failed to create product group", errors));
-                }
-            }
+            _logger.LogInformation("Created product group {Symbol}", request.Symbol);
+            return CreatedAtAction(
+                nameof(GetProductGroup),
+                new { id = result.Item2!.Id },
+                ApiResponse<ProductGroupDto>.Ok(result.Item2, "Product group created successfully"));
         }
         catch (Exception ex)
         {
@@ -450,103 +509,111 @@ public class ProductGroupsController : ControllerBase
     /// Update an existing product group
     /// </summary>
     [HttpPut("{id}")]
-    public ActionResult<ApiResponse<ProductGroupDto>> UpdateProductGroup(int id, [FromBody] UpdateProductGroupRequest request)
+    public async Task<ActionResult<ApiResponse<ProductGroupDto>>> UpdateProductGroup(int id, [FromBody] UpdateProductGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return ("manager_null", (ProductGroupDto?)null, (List<string>?)null);
+
+                dynamic? grupaDane = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    if (DynamicPropertyHelper.GetId(g) == id)
+                    {
+                        grupaDane = g;
+                        break;
+                    }
+                }
+
+                if (grupaDane == null)
+                    return ("not_found", (ProductGroupDto?)null, (List<string>?)null);
+
+                using (var grupa = grupy.Znajdz(grupaDane))
+                {
+                    if (grupa == null)
+                        return ("not_found", (ProductGroupDto?)null, (List<string>?)null);
+
+                    dynamic dane = grupa.Dane;
+
+                    if (!string.IsNullOrEmpty(request.Name))
+                    {
+                        dane.Nazwa = request.Name;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        try { dane.Opis = request.Description; } catch { }
+                    }
+
+                    if (request.MinimalMarginId.HasValue)
+                    {
+                        try { dane.MinimalnaMarza = request.MinimalMarginId.Value; } catch { }
+                    }
+
+                    if (request.DefaultPriceLevelId.HasValue)
+                    {
+                        var cenniki = _sferaService.GetManager("Cenniki");
+                        if (cenniki != null)
+                        {
+                            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
+                            {
+                                if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
+                                {
+                                    try { dane.DomyslnyPoziomCen = c; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (request.DefaultVatRateId.HasValue)
+                    {
+                        var stawkiVat = _sferaService.GetManager("StawkiVat");
+                        if (stawkiVat != null)
+                        {
+                            foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
+                            {
+                                if (DynamicPropertyHelper.GetId(sv) == request.DefaultVatRateId.Value)
+                                {
+                                    try { dane.DomyslnaStawkaVat = sv; } catch { }
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (request.IsActive.HasValue)
+                    {
+                        try { dane.Aktywny = request.IsActive.Value; } catch { }
+                    }
+
+                    if ((bool)grupa.Zapisz())
+                    {
+                        return ("ok", MapToDto(dane, grupy), (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("save_failed", (ProductGroupDto?)null, errors);
+                    }
+                }
+            });
+
+            if (result.Item1 == "manager_null")
                 return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
-            }
 
-            dynamic? grupaDane = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
-            if (grupaDane == null)
-            {
+            if (result.Item1 == "not_found")
                 return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with ID {id} not found"));
-            }
 
-            using (var grupa = grupy.Znajdz(grupaDane))
-            {
-                if (grupa == null)
-                {
-                    return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with ID {id} not found"));
-                }
+            if (result.Item1 == "save_failed")
+                return BadRequest(ApiResponse<ProductGroupDto>.Error("Failed to update product group", result.Item3!));
 
-                dynamic dane = grupa.Dane;
-
-                if (!string.IsNullOrEmpty(request.Name))
-                {
-                    dane.Nazwa = request.Name;
-                }
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    try { dane.Opis = request.Description; } catch { }
-                }
-
-                if (request.MinimalMarginId.HasValue)
-                {
-                    try { dane.MinimalnaMarza = request.MinimalMarginId.Value; } catch { }
-                }
-
-                if (request.DefaultPriceLevelId.HasValue)
-                {
-                    var cenniki = _sferaService.GetManager("Cenniki");
-                    if (cenniki != null)
-                    {
-                        foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
-                        {
-                            if (DynamicPropertyHelper.GetId(c) == request.DefaultPriceLevelId.Value)
-                            {
-                                try { dane.DomyslnyPoziomCen = c; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (request.DefaultVatRateId.HasValue)
-                {
-                    var stawkiVat = _sferaService.GetManager("StawkiVat");
-                    if (stawkiVat != null)
-                    {
-                        foreach (var sv in DynamicPropertyHelper.SafeGetAll((object)stawkiVat))
-                        {
-                            if (DynamicPropertyHelper.GetId(sv) == request.DefaultVatRateId.Value)
-                            {
-                                try { dane.DomyslnaStawkaVat = sv; } catch { }
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                if (request.IsActive.HasValue)
-                {
-                    try { dane.Aktywny = request.IsActive.Value; } catch { }
-                }
-
-                if ((bool)grupa.Zapisz())
-                {
-                    _logger.LogInformation("Updated product group {Id}", id);
-                    return Ok(ApiResponse<ProductGroupDto>.Ok(MapToDto(dane, grupy), "Product group updated successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<ProductGroupDto>.Error("Failed to update product group", errors));
-                }
-            }
+            _logger.LogInformation("Updated product group {Id}", id);
+            return Ok(ApiResponse<ProductGroupDto>.Ok(result.Item2!, "Product group updated successfully"));
         }
         catch (Exception ex)
         {
@@ -559,79 +626,87 @@ public class ProductGroupsController : ControllerBase
     /// Move a product group to a new parent
     /// </summary>
     [HttpPost("{id}/move")]
-    public ActionResult<ApiResponse<ProductGroupDto>> MoveProductGroup(int id, [FromBody] MoveProductGroupRequest request)
+    public async Task<ActionResult<ApiResponse<ProductGroupDto>>> MoveProductGroup(int id, [FromBody] MoveProductGroupRequest request)
     {
+        // Prevent moving to self or descendant
+        if (request.NewParentId == id)
+        {
+            return BadRequest(ApiResponse<ProductGroupDto>.Error("Cannot move group to itself"));
+        }
+
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
-            }
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return ("manager_null", (ProductGroupDto?)null, (List<string>?)null);
 
-            dynamic? grupaDane = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
+                dynamic? grupaDane = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
-            if (grupaDane == null)
-            {
-                return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with ID {id} not found"));
-            }
-
-            // Prevent moving to self or descendant
-            if (request.NewParentId == id)
-            {
-                return BadRequest(ApiResponse<ProductGroupDto>.Error("Cannot move group to itself"));
-            }
-
-            using (var grupa = grupy.Znajdz(grupaDane))
-            {
-                if (grupa == null)
-                {
-                    return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with ID {id} not found"));
-                }
-
-                dynamic dane = grupa.Dane;
-
-                if (request.NewParentId.HasValue)
-                {
-                    dynamic? nowyRodzic = null;
-                    foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                    if (DynamicPropertyHelper.GetId(g) == id)
                     {
-                        if (DynamicPropertyHelper.GetId(g) == request.NewParentId.Value)
+                        grupaDane = g;
+                        break;
+                    }
+                }
+
+                if (grupaDane == null)
+                    return ("not_found", (ProductGroupDto?)null, (List<string>?)null);
+
+                using (var grupa = grupy.Znajdz(grupaDane))
+                {
+                    if (grupa == null)
+                        return ("not_found", (ProductGroupDto?)null, (List<string>?)null);
+
+                    dynamic dane = grupa.Dane;
+
+                    if (request.NewParentId.HasValue)
+                    {
+                        dynamic? nowyRodzic = null;
+                        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                         {
-                            nowyRodzic = g;
-                            break;
+                            if (DynamicPropertyHelper.GetId(g) == request.NewParentId.Value)
+                            {
+                                nowyRodzic = g;
+                                break;
+                            }
+                        }
+                        if (nowyRodzic != null)
+                        {
+                            dane.Rodzic = nowyRodzic;
                         }
                     }
-                    if (nowyRodzic != null)
+                    else
                     {
-                        dane.Rodzic = nowyRodzic;
+                        // Move to root
+                        try { dane.Rodzic = null; } catch { }
+                    }
+
+                    if ((bool)grupa.Zapisz())
+                    {
+                        return ("ok", MapToDto(dane, grupy), (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("save_failed", (ProductGroupDto?)null, errors);
                     }
                 }
-                else
-                {
-                    // Move to root
-                    try { dane.Rodzic = null; } catch { }
-                }
+            });
 
-                if ((bool)grupa.Zapisz())
-                {
-                    _logger.LogInformation("Moved product group {Id} to parent {ParentId}", id, request.NewParentId);
-                    return Ok(ApiResponse<ProductGroupDto>.Ok(MapToDto(dane, grupy), "Product group moved successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<ProductGroupDto>.Error("Failed to move product group", errors));
-                }
-            }
+            if (result.Item1 == "manager_null")
+                return StatusCode(500, ApiResponse<ProductGroupDto>.Error("Failed to get GrupyAsortymentu manager"));
+
+            if (result.Item1 == "not_found")
+                return NotFound(ApiResponse<ProductGroupDto>.Error($"Product group with ID {id} not found"));
+
+            if (result.Item1 == "save_failed")
+                return BadRequest(ApiResponse<ProductGroupDto>.Error("Failed to move product group", result.Item3!));
+
+            _logger.LogInformation("Moved product group {Id} to parent {ParentId}", id, request.NewParentId);
+            return Ok(ApiResponse<ProductGroupDto>.Ok(result.Item2!, "Product group moved successfully"));
         }
         catch (Exception ex)
         {
@@ -644,49 +719,57 @@ public class ProductGroupsController : ControllerBase
     /// Delete a product group
     /// </summary>
     [HttpDelete("{id}")]
-    public ActionResult<ApiResponse<bool>> DeleteProductGroup(int id)
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteProductGroup(int id)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return ("manager_null", (List<string>?)null);
+
+                dynamic? grupaDane = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
+                {
+                    if (DynamicPropertyHelper.GetId(g) == id)
+                    {
+                        grupaDane = g;
+                        break;
+                    }
+                }
+
+                if (grupaDane == null)
+                    return ("not_found", (List<string>?)null);
+
+                using (var grupa = grupy.Znajdz(grupaDane))
+                {
+                    if (grupa == null)
+                        return ("not_found", (List<string>?)null);
+
+                    if ((bool)grupa.Usun())
+                    {
+                        return ("ok", (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(grupa);
+                        return ("delete_failed", errors);
+                    }
+                }
+            });
+
+            if (result.Item1 == "manager_null")
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get GrupyAsortymentu manager"));
-            }
 
-            dynamic? grupaDane = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
-                {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
-            if (grupaDane == null)
-            {
+            if (result.Item1 == "not_found")
                 return NotFound(ApiResponse<bool>.Error($"Product group with ID {id} not found"));
-            }
 
-            using (var grupa = grupy.Znajdz(grupaDane))
-            {
-                if (grupa == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Product group with ID {id} not found"));
-                }
+            if (result.Item1 == "delete_failed")
+                return BadRequest(ApiResponse<bool>.Error("Failed to delete product group", result.Item2!));
 
-                if ((bool)grupa.Usun())
-                {
-                    _logger.LogInformation("Deleted product group {Id}", id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Product group deleted successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(grupa);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to delete product group", errors));
-                }
-            }
+            _logger.LogInformation("Deleted product group {Id}", id);
+            return Ok(ApiResponse<bool>.Ok(true, "Product group deleted successfully"));
         }
         catch (Exception ex)
         {
@@ -699,75 +782,83 @@ public class ProductGroupsController : ControllerBase
     /// Assign products to a group
     /// </summary>
     [HttpPost("{id}/assign-products")]
-    public ActionResult<ApiResponse<int>> AssignProductsToGroup(int id, [FromBody] AssignProductsToGroupRequest request)
+    public async Task<ActionResult<ApiResponse<int>>> AssignProductsToGroup(int id, [FromBody] AssignProductsToGroupRequest request)
     {
         try
         {
-            var grupy = _sferaService.GetManager("GrupyAsortymentu");
-            if (grupy == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<int>.Error("Failed to get GrupyAsortymentu manager"));
-            }
+                var grupy = _sferaService.GetManager("GrupyAsortymentu");
+                if (grupy == null)
+                    return ("grupy_null", 0);
 
-            dynamic? grupaDane = null;
-            foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-            {
-                if (DynamicPropertyHelper.GetId(g) == id)
+                dynamic? grupaDane = null;
+                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
-                    grupaDane = g;
-                    break;
-                }
-            }
-
-            if (grupaDane == null)
-            {
-                return NotFound(ApiResponse<int>.Error($"Product group with ID {id} not found"));
-            }
-
-            var asortymenty = _sferaService.GetManager("Asortymenty");
-            if (asortymenty == null)
-            {
-                return StatusCode(500, ApiResponse<int>.Error("Failed to get Asortymenty manager"));
-            }
-
-            int assignedCount = 0;
-            foreach (var productId in request.ProductIds)
-            {
-                dynamic? asortymentDane = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                {
-                    if (DynamicPropertyHelper.GetId(a) == productId)
+                    if (DynamicPropertyHelper.GetId(g) == id)
                     {
-                        asortymentDane = a;
+                        grupaDane = g;
                         break;
                     }
                 }
 
-                if (asortymentDane != null)
+                if (grupaDane == null)
+                    return ("not_found", 0);
+
+                var asortymenty = _sferaService.GetManager("Asortymenty");
+                if (asortymenty == null)
+                    return ("asortymenty_null", 0);
+
+                int assignedCount = 0;
+                foreach (var productId in request.ProductIds)
                 {
-                    try
+                    dynamic? asortymentDane = null;
+                    foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
                     {
-                        using (var asortyment = asortymenty.Znajdz(asortymentDane))
+                        if (DynamicPropertyHelper.GetId(a) == productId)
                         {
-                            if (asortyment != null)
+                            asortymentDane = a;
+                            break;
+                        }
+                    }
+
+                    if (asortymentDane != null)
+                    {
+                        try
+                        {
+                            using (var asortyment = asortymenty.Znajdz(asortymentDane))
                             {
-                                asortyment.Dane.Grupa = grupaDane;
-                                if ((bool)asortyment.Zapisz())
+                                if (asortyment != null)
                                 {
-                                    assignedCount++;
+                                    asortyment.Dane.Grupa = grupaDane;
+                                    if ((bool)asortyment.Zapisz())
+                                    {
+                                        assignedCount++;
+                                    }
                                 }
                             }
                         }
-                    }
-                    catch
-                    {
-                        // Continue with other products
+                        catch
+                        {
+                            // Continue with other products
+                        }
                     }
                 }
-            }
 
-            _logger.LogInformation("Assigned {Count} products to group {GroupId}", assignedCount, id);
-            return Ok(ApiResponse<int>.Ok(assignedCount, $"Assigned {assignedCount} products to group"));
+                return ("ok", assignedCount);
+            });
+
+            if (result.Item1 == "grupy_null")
+                return StatusCode(500, ApiResponse<int>.Error("Failed to get GrupyAsortymentu manager"));
+
+            if (result.Item1 == "not_found")
+                return NotFound(ApiResponse<int>.Error($"Product group with ID {id} not found"));
+
+            if (result.Item1 == "asortymenty_null")
+                return StatusCode(500, ApiResponse<int>.Error("Failed to get Asortymenty manager"));
+
+            _logger.LogInformation("Assigned {Count} products to group {GroupId}", result.Item2, id);
+            return Ok(ApiResponse<int>.Ok(result.Item2, $"Assigned {result.Item2} products to group"));
         }
         catch (Exception ex)
         {
@@ -776,28 +867,27 @@ public class ProductGroupsController : ControllerBase
         }
     }
 
-    private int GetProductCountForGroup(int groupId)
+    private Dictionary<int, int> BuildProductCountCache(dynamic asortymenty)
     {
+        var cache = new Dictionary<int, int>();
         try
         {
-            var asortymenty = _sferaService.GetManager("Asortymenty");
-            if (asortymenty == null) return 0;
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            if (asortymentyManager == null) return cache;
 
-            int count = 0;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
+            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
             {
                 var grupa = DynamicPropertyHelper.GetProperty(a, "Grupa");
-                if (grupa != null && DynamicPropertyHelper.GetId(grupa) == groupId)
+                if (grupa != null)
                 {
-                    count++;
+                    var groupId = DynamicPropertyHelper.GetId(grupa);
+                    cache.TryGetValue(groupId, out var current);
+                    cache[groupId] = current + 1;
                 }
             }
-            return count;
         }
-        catch
-        {
-            return 0;
-        }
+        catch { }
+        return cache;
     }
 
     private static ProductGroupListItemDto MapToListItemDto(dynamic grupa)
@@ -835,6 +925,23 @@ public class ProductGroupsController : ControllerBase
             }
         }
 
+        // Get product count from Asortymenty manager (already inside lock when called from action methods)
+        int productCount = 0;
+        try
+        {
+            var asortymentyManager = _sferaService.GetManager("Asortymenty");
+            if (asortymentyManager != null)
+            {
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                {
+                    var g = DynamicPropertyHelper.GetProperty(a, "Grupa");
+                    if (g != null && DynamicPropertyHelper.GetId(g) == groupId)
+                        productCount++;
+                }
+            }
+        }
+        catch { }
+
         return new ProductGroupDto
         {
             // Identity
@@ -851,8 +958,8 @@ public class ProductGroupsController : ControllerBase
             Path = DynamicPropertyHelper.GetString(grupa, "Sciezka"),
 
             // Statistics
-            ProductCount = GetProductCountForGroup(groupId),
-            DirectProductCount = GetProductCountForGroup(groupId),
+            ProductCount = productCount,
+            DirectProductCount = productCount,
             ChildGroupCount = childCount,
 
             // Margins

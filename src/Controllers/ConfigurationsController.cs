@@ -174,39 +174,47 @@ public class ConfigurationsController : ControllerBase
     /// </summary>
     [HttpGet("vat")]
     [ProducesResponseType(typeof(ApiResponse<VatConfigDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<VatConfigDto>> GetVatConfiguration()
+    public async Task<ActionResult<ApiResponse<VatConfigDto>>> GetVatConfiguration()
     {
         try
         {
-            var vatManager = _sferaService.GetManager("StawkiVat");
-            if (vatManager == null)
+            var config = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var vatManager = _sferaService.GetManager("StawkiVat");
+                if (vatManager == null)
+                {
+                    return null;
+                }
+
+                var allRates = DynamicPropertyHelper.SafeGetAll((object)vatManager);
+                var rates = new List<VatRateConfigDto>();
+
+                foreach (var rate in allRates)
+                {
+                    rates.Add(new VatRateConfigDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(rate),
+                        Symbol = DynamicPropertyHelper.GetString(rate, "Symbol") ?? "",
+                        Name = DynamicPropertyHelper.GetString(rate, "Nazwa") ?? "",
+                        Rate = DynamicPropertyHelper.GetDecimal(rate, "Wartosc"),
+                        IsActive = DynamicPropertyHelper.GetBool(rate, "Aktywna")
+                    });
+                }
+
+                return new VatConfigDto
+                {
+                    DefaultVatRate = rates.FirstOrDefault(r => r.Rate == 23)?.Symbol ?? "23%",
+                    VatRates = rates,
+                    VatPayer = true,
+                    JpkVatEnabled = true,
+                    KsefEnabled = true
+                };
+            });
+
+            if (config == null)
             {
                 return StatusCode(500, ApiResponse<VatConfigDto>.Error("Failed to get StawkiVat manager"));
             }
-
-            var allRates = DynamicPropertyHelper.SafeGetAll((object)vatManager);
-            var rates = new List<VatRateConfigDto>();
-
-            foreach (var rate in allRates)
-            {
-                rates.Add(new VatRateConfigDto
-                {
-                    Id = DynamicPropertyHelper.GetId(rate),
-                    Symbol = DynamicPropertyHelper.GetString(rate, "Symbol") ?? "",
-                    Name = DynamicPropertyHelper.GetString(rate, "Nazwa") ?? "",
-                    Rate = DynamicPropertyHelper.GetDecimal(rate, "Wartosc"),
-                    IsActive = DynamicPropertyHelper.GetBool(rate, "Aktywna")
-                });
-            }
-
-            var config = new VatConfigDto
-            {
-                DefaultVatRate = rates.FirstOrDefault(r => r.Rate == 23)?.Symbol ?? "23%",
-                VatRates = rates,
-                VatPayer = true,
-                JpkVatEnabled = true,
-                KsefEnabled = true
-            };
 
             return Ok(ApiResponse<VatConfigDto>.Ok(config));
         }
@@ -226,38 +234,46 @@ public class ConfigurationsController : ControllerBase
     /// </summary>
     [HttpGet("currencies")]
     [ProducesResponseType(typeof(ApiResponse<CurrencyConfigDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<CurrencyConfigDto>> GetCurrencyConfiguration()
+    public async Task<ActionResult<ApiResponse<CurrencyConfigDto>>> GetCurrencyConfiguration()
     {
         try
         {
-            var currencyManager = _sferaService.GetManager("Waluty");
-            if (currencyManager == null)
+            var config = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var currencyManager = _sferaService.GetManager("Waluty");
+                if (currencyManager == null)
+                {
+                    return null;
+                }
+
+                var allCurrencies = DynamicPropertyHelper.SafeGetAll((object)currencyManager);
+                var currencies = new List<CurrencyItemDto>();
+
+                foreach (var curr in allCurrencies)
+                {
+                    currencies.Add(new CurrencyItemDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(curr),
+                        Symbol = DynamicPropertyHelper.GetString(curr, "Symbol") ?? "",
+                        Name = DynamicPropertyHelper.GetString(curr, "Nazwa") ?? "",
+                        IsDefault = DynamicPropertyHelper.GetBool(curr, "Domyslna"),
+                        IsActive = DynamicPropertyHelper.GetBool(curr, "Aktywna")
+                    });
+                }
+
+                return new CurrencyConfigDto
+                {
+                    BaseCurrency = currencies.FirstOrDefault(c => c.IsDefault)?.Symbol ?? "PLN",
+                    Currencies = currencies,
+                    ExchangeRateSource = "NBP",
+                    AutoUpdateRates = true
+                };
+            });
+
+            if (config == null)
             {
                 return StatusCode(500, ApiResponse<CurrencyConfigDto>.Error("Failed to get Waluty manager"));
             }
-
-            var allCurrencies = DynamicPropertyHelper.SafeGetAll((object)currencyManager);
-            var currencies = new List<CurrencyItemDto>();
-
-            foreach (var curr in allCurrencies)
-            {
-                currencies.Add(new CurrencyItemDto
-                {
-                    Id = DynamicPropertyHelper.GetId(curr),
-                    Symbol = DynamicPropertyHelper.GetString(curr, "Symbol") ?? "",
-                    Name = DynamicPropertyHelper.GetString(curr, "Nazwa") ?? "",
-                    IsDefault = DynamicPropertyHelper.GetBool(curr, "Domyslna"),
-                    IsActive = DynamicPropertyHelper.GetBool(curr, "Aktywna")
-                });
-            }
-
-            var config = new CurrencyConfigDto
-            {
-                BaseCurrency = currencies.FirstOrDefault(c => c.IsDefault)?.Symbol ?? "PLN",
-                Currencies = currencies,
-                ExchangeRateSource = "NBP",
-                AutoUpdateRates = true
-            };
 
             return Ok(ApiResponse<CurrencyConfigDto>.Ok(config));
         }
@@ -277,38 +293,46 @@ public class ConfigurationsController : ControllerBase
     /// </summary>
     [HttpGet("payments")]
     [ProducesResponseType(typeof(ApiResponse<PaymentConfigDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<PaymentConfigDto>> GetPaymentConfiguration()
+    public async Task<ActionResult<ApiResponse<PaymentConfigDto>>> GetPaymentConfiguration()
     {
         try
         {
-            var paymentManager = _sferaService.GetManager("FormyPlatnosci");
-            if (paymentManager == null)
+            var config = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var paymentManager = _sferaService.GetManager("FormyPlatnosci");
+                if (paymentManager == null)
+                {
+                    return null;
+                }
+
+                var allPayments = DynamicPropertyHelper.SafeGetAll((object)paymentManager);
+                var methods = new List<PaymentMethodConfigDto>();
+
+                foreach (var pm in allPayments)
+                {
+                    methods.Add(new PaymentMethodConfigDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(pm),
+                        Symbol = DynamicPropertyHelper.GetString(pm, "Symbol") ?? "",
+                        Name = DynamicPropertyHelper.GetString(pm, "Nazwa") ?? "",
+                        DefaultDueDays = DynamicPropertyHelper.GetNullableInt(pm, "LiczbaDni") ?? 0,
+                        IsDefault = DynamicPropertyHelper.GetBool(pm, "Domyslna"),
+                        IsActive = DynamicPropertyHelper.GetBool(pm, "Aktywna")
+                    });
+                }
+
+                return new PaymentConfigDto
+                {
+                    DefaultPaymentMethod = methods.FirstOrDefault(m => m.IsDefault)?.Symbol ?? "PRZELEW",
+                    PaymentMethods = methods,
+                    DefaultDueDays = 14
+                };
+            });
+
+            if (config == null)
             {
                 return StatusCode(500, ApiResponse<PaymentConfigDto>.Error("Failed to get FormyPlatnosci manager"));
             }
-
-            var allPayments = DynamicPropertyHelper.SafeGetAll((object)paymentManager);
-            var methods = new List<PaymentMethodConfigDto>();
-
-            foreach (var pm in allPayments)
-            {
-                methods.Add(new PaymentMethodConfigDto
-                {
-                    Id = DynamicPropertyHelper.GetId(pm),
-                    Symbol = DynamicPropertyHelper.GetString(pm, "Symbol") ?? "",
-                    Name = DynamicPropertyHelper.GetString(pm, "Nazwa") ?? "",
-                    DefaultDueDays = DynamicPropertyHelper.GetNullableInt(pm, "LiczbaDni") ?? 0,
-                    IsDefault = DynamicPropertyHelper.GetBool(pm, "Domyslna"),
-                    IsActive = DynamicPropertyHelper.GetBool(pm, "Aktywna")
-                });
-            }
-
-            var config = new PaymentConfigDto
-            {
-                DefaultPaymentMethod = methods.FirstOrDefault(m => m.IsDefault)?.Symbol ?? "PRZELEW",
-                PaymentMethods = methods,
-                DefaultDueDays = 14
-            };
 
             return Ok(ApiResponse<PaymentConfigDto>.Ok(config));
         }

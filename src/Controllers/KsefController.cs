@@ -39,7 +39,7 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpGet("documents")]
     [ProducesResponseType(typeof(PagedResponse<ElectronicDocumentDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<ElectronicDocumentDto>> GetElectronicDocuments(
+    public async Task<ActionResult<PagedResponse<ElectronicDocumentDto>>> GetElectronicDocuments(
         [FromQuery] string? status,
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
@@ -49,66 +49,76 @@ public class KsefController : ControllerBase
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
+                {
+                    return null;
+                }
+
+                int? statusFilter = !string.IsNullOrEmpty(status) ? GetStatusValue(status) : null;
+
+                var allDokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    bool include = true;
+
+                    if (statusFilter.HasValue && DynamicPropertyHelper.GetInt(d, "EStatus") != statusFilter.Value)
+                        include = false;
+
+                    if (include && dateFrom.HasValue)
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
+                        if (!data.HasValue || data.Value < dateFrom.Value)
+                            include = false;
+                    }
+
+                    if (include && dateTo.HasValue)
+                    {
+                        var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
+                        if (!data.HasValue || data.Value > dateTo.Value)
+                            include = false;
+                    }
+
+                    if (include && !string.IsNullOrEmpty(customerTaxId))
+                    {
+                        if (DynamicPropertyHelper.GetString(d, "IdentyfikatorPodatkowyKlienta") != customerTaxId)
+                            include = false;
+                    }
+
+                    if (include)
+                        allDokumenty.Add(d);
+                }
+
+                var totalCount = allDokumenty.Count;
+                var pagedDokumenty = allDokumenty
+                    .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<ElectronicDocumentDto>();
+                foreach (var d in pagedDokumenty)
+                {
+                    items.Add(MapElectronicDocument(d));
+                }
+
+                return new PagedResponse<ElectronicDocumentDto>
+                {
+                    Data = items,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            int? statusFilter = !string.IsNullOrEmpty(status) ? GetStatusValue(status) : null;
-
-            var allDokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                bool include = true;
-
-                if (statusFilter.HasValue && DynamicPropertyHelper.GetInt(d, "EStatus") != statusFilter.Value)
-                    include = false;
-
-                if (include && dateFrom.HasValue)
-                {
-                    var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
-                    if (!data.HasValue || data.Value < dateFrom.Value)
-                        include = false;
-                }
-
-                if (include && dateTo.HasValue)
-                {
-                    var data = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia");
-                    if (!data.HasValue || data.Value > dateTo.Value)
-                        include = false;
-                }
-
-                if (include && !string.IsNullOrEmpty(customerTaxId))
-                {
-                    if (DynamicPropertyHelper.GetString(d, "IdentyfikatorPodatkowyKlienta") != customerTaxId)
-                        include = false;
-                }
-
-                if (include)
-                    allDokumenty.Add(d);
-            }
-
-            var totalCount = allDokumenty.Count;
-            var pagedDokumenty = allDokumenty
-                .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<ElectronicDocumentDto>();
-            foreach (var d in pagedDokumenty)
-            {
-                items.Add(MapElectronicDocument(d));
-            }
-
-            return Ok(new PagedResponse<ElectronicDocumentDto>
-            {
-                Data = items,
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            });
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -123,33 +133,47 @@ public class KsefController : ControllerBase
     [HttpGet("documents/{id}")]
     [ProducesResponseType(typeof(ApiResponse<ElectronicDocumentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ElectronicDocumentDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<ElectronicDocumentDto>> GetElectronicDocument(int id)
+    public async Task<ActionResult<ApiResponse<ElectronicDocumentDto>>> GetElectronicDocument(int id)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
+                {
+                    return (found: false, managerMissing: true, dto: (ElectronicDocumentDto?)null);
+                }
+
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (DynamicPropertyHelper.GetId(d) == id)
+                    {
+                        dokument = d;
+                        break;
+                    }
+                }
+
+                if (dokument == null)
+                {
+                    return (found: false, managerMissing: false, dto: (ElectronicDocumentDto?)null);
+                }
+
+                return (found: true, managerMissing: false, dto: (ElectronicDocumentDto?)MapElectronicDocument(dokument));
+            });
+
+            if (result.managerMissing)
             {
                 return StatusCode(500, ApiResponse<ElectronicDocumentDto>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(d) == id)
-                {
-                    dokument = d;
-                    break;
-                }
-            }
-
-            if (dokument == null)
+            if (!result.found)
             {
                 return NotFound(ApiResponse<ElectronicDocumentDto>.Error($"Electronic document with ID {id} not found"));
             }
 
-            var dto = MapElectronicDocument(dokument);
-            return Ok(ApiResponse<ElectronicDocumentDto>.Ok(dto));
+            return Ok(ApiResponse<ElectronicDocumentDto>.Ok(result.dto));
         }
         catch (Exception ex)
         {
@@ -164,33 +188,47 @@ public class KsefController : ControllerBase
     [HttpGet("documents/by-ksef-number/{ksefNumber}")]
     [ProducesResponseType(typeof(ApiResponse<ElectronicDocumentDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ElectronicDocumentDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<ElectronicDocumentDto>> GetElectronicDocumentByKsefNumber(string ksefNumber)
+    public async Task<ActionResult<ApiResponse<ElectronicDocumentDto>>> GetElectronicDocumentByKsefNumber(string ksefNumber)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
+                {
+                    return (found: false, managerMissing: true, dto: (ElectronicDocumentDto?)null);
+                }
+
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (DynamicPropertyHelper.GetString(d, "NumerKSeF") == ksefNumber)
+                    {
+                        dokument = d;
+                        break;
+                    }
+                }
+
+                if (dokument == null)
+                {
+                    return (found: false, managerMissing: false, dto: (ElectronicDocumentDto?)null);
+                }
+
+                return (found: true, managerMissing: false, dto: (ElectronicDocumentDto?)MapElectronicDocument(dokument));
+            });
+
+            if (result.managerMissing)
             {
                 return StatusCode(500, ApiResponse<ElectronicDocumentDto>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (DynamicPropertyHelper.GetString(d, "NumerKSeF") == ksefNumber)
-                {
-                    dokument = d;
-                    break;
-                }
-            }
-
-            if (dokument == null)
+            if (!result.found)
             {
                 return NotFound(ApiResponse<ElectronicDocumentDto>.Error($"Electronic document with KSeF number {ksefNumber} not found"));
             }
 
-            var dto = MapElectronicDocument(dokument);
-            return Ok(ApiResponse<ElectronicDocumentDto>.Ok(dto));
+            return Ok(ApiResponse<ElectronicDocumentDto>.Ok(result.dto));
         }
         catch (Exception ex)
         {
@@ -209,70 +247,85 @@ public class KsefController : ControllerBase
     [HttpPost("generate/{documentId}")]
     [ProducesResponseType(typeof(ApiResponse<EInvoiceGenerationResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<EInvoiceGenerationResultDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<EInvoiceGenerationResultDto>> GenerateEInvoice(int documentId)
+    public async Task<ActionResult<ApiResponse<EInvoiceGenerationResultDto>>> GenerateEInvoice(int documentId)
     {
         try
         {
-            // Find the document
-            var dokumentyManager = _sferaService.GetManager("DokumentyHandlowe");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<EInvoiceGenerationResultDto>.Error("Failed to get DokumentyHandlowe manager"));
-            }
-
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(d) == documentId)
+                // Find the document
+                var dokumentyManager = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentyManager == null)
                 {
-                    dokument = d;
+                    return (status: "managerMissing", managerName: "DokumentySprzedazy", dto: (EInvoiceGenerationResultDto?)null);
+                }
+
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (DynamicPropertyHelper.GetId(d) == documentId)
+                    {
+                        dokument = d;
+                        break;
+                    }
+                }
+
+                if (dokument == null)
+                {
+                    return (status: "notFound", managerName: "", dto: (EInvoiceGenerationResultDto?)null);
+                }
+
+                // Generate e-invoice (requires factory access)
+                var fabrykaGeneratorow = _sferaService.GetManager("FabrykaGeneratorowEFaktury");
+                if (fabrykaGeneratorow == null)
+                {
+                    return (status: "managerMissing", managerName: "FabrykaGeneratorowEFaktury", dto: (EInvoiceGenerationResultDto?)null);
+                }
+                var generator = fabrykaGeneratorow.PobierzAktualny();
+
+                // Create parameters object dynamically
+                var sfera = _sferaService.GetSfera();
+                dynamic parametry = Activator.CreateInstance(
+                    sfera.GetType().Assembly.GetType("InsERT.Moria.Sfera.ParametryGenerowaniaEFaktury")
+                    ?? typeof(object));
+
+                var wyniki = generator.WygenerujEFaktury(new[] { dokument }, parametry);
+
+                dynamic? wynik = null;
+                foreach (var w in (IEnumerable<object>)wyniki)
+                {
+                    wynik = w;
                     break;
                 }
+
+                var dto = new EInvoiceGenerationResultDto
+                {
+                    DocumentId = documentId,
+                    DocumentNumber = DynamicPropertyHelper.GetString(dokument, "Numer", "PelnaSygnatura"),
+                    Success = wynik != null && DynamicPropertyHelper.GetBool(wynik, "Sukces"),
+                    ElectronicDocumentId = wynik != null ? DynamicPropertyHelper.GetNullableInt(wynik, "DokumentElektronicznyId") : null,
+                    Errors = GetErrorsFromResult(wynik)
+                };
+
+                return (status: "ok", managerName: "", dto: (EInvoiceGenerationResultDto?)dto);
+            });
+
+            if (result.status == "managerMissing")
+            {
+                return StatusCode(500, ApiResponse<EInvoiceGenerationResultDto>.Error($"Failed to get {result.managerName} manager"));
             }
 
-            if (dokument == null)
+            if (result.status == "notFound")
             {
                 return NotFound(ApiResponse<EInvoiceGenerationResultDto>.Error($"Document with ID {documentId} not found"));
             }
 
-            // Generate e-invoice (requires factory access)
-            var fabrykaGeneratorow = _sferaService.GetManager("FabrykaGeneratorowEFaktury");
-            if (fabrykaGeneratorow == null)
+            if (!result.dto!.Success)
             {
-                return StatusCode(500, ApiResponse<EInvoiceGenerationResultDto>.Error("FabrykaGeneratorowEFaktury manager not available"));
-            }
-            var generator = fabrykaGeneratorow.PobierzAktualny();
-
-            // Create parameters object dynamically
-            var sfera = _sferaService.GetSfera();
-            dynamic parametry = Activator.CreateInstance(
-                sfera.GetType().Assembly.GetType("InsERT.Moria.Sfera.ParametryGenerowaniaEFaktury")
-                ?? typeof(object));
-
-            var wyniki = generator.WygenerujEFaktury(new[] { dokument }, parametry);
-
-            dynamic? wynik = null;
-            foreach (var w in (IEnumerable<object>)wyniki)
-            {
-                wynik = w;
-                break;
+                return Ok(ApiResponse<EInvoiceGenerationResultDto>.Error("Failed to generate e-invoice", result.dto.Errors));
             }
 
-            var result = new EInvoiceGenerationResultDto
-            {
-                DocumentId = documentId,
-                DocumentNumber = DynamicPropertyHelper.GetString(dokument, "Numer", "PelnaSygnatura"),
-                Success = wynik != null && DynamicPropertyHelper.GetBool(wynik, "Sukces"),
-                ElectronicDocumentId = wynik != null ? DynamicPropertyHelper.GetNullableInt(wynik, "DokumentElektronicznyId") : null,
-                Errors = GetErrorsFromResult(wynik)
-            };
-
-            if (!result.Success)
-            {
-                return Ok(ApiResponse<EInvoiceGenerationResultDto>.Error("Failed to generate e-invoice", result.Errors));
-            }
-
-            return Ok(ApiResponse<EInvoiceGenerationResultDto>.Ok(result));
+            return Ok(ApiResponse<EInvoiceGenerationResultDto>.Ok(result.dto));
         }
         catch (Exception ex)
         {
@@ -286,70 +339,85 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpPost("generate/batch")]
     [ProducesResponseType(typeof(ApiResponse<List<EInvoiceGenerationResultDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<EInvoiceGenerationResultDto>>> GenerateEInvoicesBatch([FromBody] List<int> documentIds)
+    public async Task<ActionResult<ApiResponse<List<EInvoiceGenerationResultDto>>>> GenerateEInvoicesBatch([FromBody] List<int> documentIds)
     {
         try
         {
-            // Find documents
-            var dokumentyManager = _sferaService.GetManager("DokumentyHandlowe");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error("Failed to get DokumentyHandlowe manager"));
-            }
-
-            var dokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (documentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                // Find documents
+                var dokumentyManager = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentyManager == null)
                 {
-                    dokumenty.Add(d);
+                    return (status: "managerMissing", managerName: "DokumentySprzedazy", results: (List<EInvoiceGenerationResultDto>?)null);
                 }
+
+                var dokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (documentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                    {
+                        dokumenty.Add(d);
+                    }
+                }
+
+                if (dokumenty.Count == 0)
+                {
+                    return (status: "notFound", managerName: "", results: (List<EInvoiceGenerationResultDto>?)null);
+                }
+
+                // Generate e-invoices (requires factory access)
+                var fabrykaGeneratorow = _sferaService.GetManager("FabrykaGeneratorowEFaktury");
+                if (fabrykaGeneratorow == null)
+                {
+                    return (status: "managerMissing", managerName: "FabrykaGeneratorowEFaktury", results: (List<EInvoiceGenerationResultDto>?)null);
+                }
+                var generator = fabrykaGeneratorow.PobierzAktualny();
+
+                var sfera = _sferaService.GetSfera();
+                dynamic parametry = Activator.CreateInstance(
+                    sfera.GetType().Assembly.GetType("InsERT.Moria.Sfera.ParametryGenerowaniaEFaktury")
+                    ?? typeof(object));
+
+                var wyniki = generator.WygenerujEFaktury(dokumenty.ToArray(), parametry);
+
+                var results = new List<EInvoiceGenerationResultDto>();
+                foreach (var w in (IEnumerable<object>)wyniki)
+                {
+                    var docId = DynamicPropertyHelper.GetInt(w, "DokumentId");
+                    string? docNumber = null;
+                    foreach (var d in dokumenty)
+                    {
+                        if (DynamicPropertyHelper.GetId(d) == docId)
+                        {
+                            docNumber = DynamicPropertyHelper.GetString(d, "Numer", "PelnaSygnatura");
+                            break;
+                        }
+                    }
+                    results.Add(new EInvoiceGenerationResultDto
+                    {
+                        DocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentId"),
+                        DocumentNumber = docNumber,
+                        Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
+                        ElectronicDocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentElektronicznyId"),
+                        Errors = GetErrorsFromResult(w)
+                    });
+                }
+
+                return (status: "ok", managerName: "", results: (List<EInvoiceGenerationResultDto>?)results);
+            });
+
+            if (result.status == "managerMissing")
+            {
+                return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error($"Failed to get {result.managerName} manager"));
             }
 
-            if (dokumenty.Count == 0)
+            if (result.status == "notFound")
             {
                 return Ok(ApiResponse<List<EInvoiceGenerationResultDto>>.Error("No documents found with the provided IDs"));
             }
 
-            // Generate e-invoices (requires factory access)
-            var fabrykaGeneratorow = _sferaService.GetManager("FabrykaGeneratorowEFaktury");
-            if (fabrykaGeneratorow == null)
-            {
-                return StatusCode(500, ApiResponse<List<EInvoiceGenerationResultDto>>.Error("FabrykaGeneratorowEFaktury manager not available"));
-            }
-            var generator = fabrykaGeneratorow.PobierzAktualny();
-
-            var sfera = _sferaService.GetSfera();
-            dynamic parametry = Activator.CreateInstance(
-                sfera.GetType().Assembly.GetType("InsERT.Moria.Sfera.ParametryGenerowaniaEFaktury")
-                ?? typeof(object));
-
-            var wyniki = generator.WygenerujEFaktury(dokumenty.ToArray(), parametry);
-
-            var results = new List<EInvoiceGenerationResultDto>();
-            foreach (var w in (IEnumerable<object>)wyniki)
-            {
-                var docId = DynamicPropertyHelper.GetInt(w, "DokumentId");
-                string? docNumber = null;
-                foreach (var d in dokumenty)
-                {
-                    if (DynamicPropertyHelper.GetId(d) == docId)
-                    {
-                        docNumber = DynamicPropertyHelper.GetString(d, "Numer", "PelnaSygnatura");
-                        break;
-                    }
-                }
-                results.Add(new EInvoiceGenerationResultDto
-                {
-                    DocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentId"),
-                    DocumentNumber = docNumber,
-                    Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
-                    ElectronicDocumentId = DynamicPropertyHelper.GetNullableInt(w, "DokumentElektronicznyId"),
-                    Errors = GetErrorsFromResult(w)
-                });
-            }
-
-            return Ok(ApiResponse<List<EInvoiceGenerationResultDto>>.Ok(results));
+            return Ok(ApiResponse<List<EInvoiceGenerationResultDto>>.Ok(result.results));
         }
         catch (Exception ex)
         {
@@ -368,55 +436,70 @@ public class KsefController : ControllerBase
     [HttpPost("send/{electronicDocumentId}")]
     [ProducesResponseType(typeof(ApiResponse<KsefSendResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<KsefSendResultDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<KsefSendResultDto>> SendToKsef(int electronicDocumentId)
+    public async Task<ActionResult<ApiResponse<KsefSendResultDto>>> SendToKsef(int electronicDocumentId)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<KsefSendResultDto>.Error("Failed to get DokumentyElektroniczne manager"));
-            }
-
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(d) == electronicDocumentId)
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
                 {
-                    dokument = d;
+                    return (status: "managerMissing", managerName: "DokumentyElektroniczne", dto: (KsefSendResultDto?)null);
+                }
+
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (DynamicPropertyHelper.GetId(d) == electronicDocumentId)
+                    {
+                        dokument = d;
+                        break;
+                    }
+                }
+
+                if (dokument == null)
+                {
+                    return (status: "notFound", managerName: "", dto: (KsefSendResultDto?)null);
+                }
+
+                // Get coordinator for KSeF sending
+                var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+                if (koordynator == null)
+                {
+                    return (status: "managerMissing", managerName: "KoordynatorWysylaniaEFaktur", dto: (KsefSendResultDto?)null);
+                }
+                var wyniki = koordynator.PrzekazDoWysylki(new[] { dokument }, null);
+
+                dynamic? wynik = null;
+                foreach (var w in (IEnumerable<object>)wyniki)
+                {
+                    wynik = w;
                     break;
                 }
+
+                var dto = new KsefSendResultDto
+                {
+                    DocumentNumber = wynik != null ? DynamicPropertyHelper.GetString(wynik, "NumerDokumentu") : null,
+                    ElectronicDocumentId = electronicDocumentId,
+                    Success = wynik != null && DynamicPropertyHelper.GetBool(wynik, "Sukces"),
+                    Errors = GetErrorsFromResult(wynik)
+                };
+
+                return (status: "ok", managerName: "", dto: (KsefSendResultDto?)dto);
+            });
+
+            if (result.status == "managerMissing")
+            {
+                return StatusCode(500, ApiResponse<KsefSendResultDto>.Error($"Failed to get {result.managerName} manager"));
             }
 
-            if (dokument == null)
+            if (result.status == "notFound")
             {
                 return NotFound(ApiResponse<KsefSendResultDto>.Error($"Electronic document with ID {electronicDocumentId} not found"));
             }
 
-            // Get coordinator for KSeF sending
-            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
-            if (koordynator == null)
-            {
-                return StatusCode(500, ApiResponse<KsefSendResultDto>.Error("KoordynatorWysylaniaEFaktur manager not available"));
-            }
-            var wyniki = koordynator.PrzekazDoWysylki(new[] { dokument }, null);
-
-            dynamic? wynik = null;
-            foreach (var w in (IEnumerable<object>)wyniki)
-            {
-                wynik = w;
-                break;
-            }
-
-            var result = new KsefSendResultDto
-            {
-                DocumentNumber = wynik != null ? DynamicPropertyHelper.GetString(wynik, "NumerDokumentu") : null,
-                ElectronicDocumentId = electronicDocumentId,
-                Success = wynik != null && DynamicPropertyHelper.GetBool(wynik, "Sukces"),
-                Errors = GetErrorsFromResult(wynik)
-            };
-
-            return Ok(ApiResponse<KsefSendResultDto>.Ok(result));
+            return Ok(ApiResponse<KsefSendResultDto>.Ok(result.dto));
         }
         catch (Exception ex)
         {
@@ -430,61 +513,76 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpPost("send/batch")]
     [ProducesResponseType(typeof(ApiResponse<List<KsefSendResultDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<KsefSendResultDto>>> SendToKsefBatch([FromBody] List<int> electronicDocumentIds)
+    public async Task<ActionResult<ApiResponse<List<KsefSendResultDto>>>> SendToKsefBatch([FromBody] List<int> electronicDocumentIds)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
-            }
-
-            var dokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
                 {
-                    dokumenty.Add(d);
+                    return (status: "managerMissing", managerName: "DokumentyElektroniczne", results: (List<KsefSendResultDto>?)null);
                 }
+
+                var dokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                    {
+                        dokumenty.Add(d);
+                    }
+                }
+
+                if (dokumenty.Count == 0)
+                {
+                    return (status: "notFound", managerName: "", results: (List<KsefSendResultDto>?)null);
+                }
+
+                // Get coordinator for KSeF sending
+                var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+                if (koordynator == null)
+                {
+                    return (status: "managerMissing", managerName: "KoordynatorWysylaniaEFaktur", results: (List<KsefSendResultDto>?)null);
+                }
+                var wyniki = koordynator.PrzekazDoWysylki(dokumenty.ToArray(), null);
+
+                var results = new List<KsefSendResultDto>();
+                foreach (var w in (IEnumerable<object>)wyniki)
+                {
+                    var docNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu");
+                    int? elecDocId = null;
+                    foreach (var d in dokumenty)
+                    {
+                        if (DynamicPropertyHelper.GetString(d, "NumerDokumentu") == docNumber)
+                        {
+                            elecDocId = DynamicPropertyHelper.GetId(d);
+                            break;
+                        }
+                    }
+                    results.Add(new KsefSendResultDto
+                    {
+                        DocumentNumber = docNumber,
+                        ElectronicDocumentId = elecDocId,
+                        Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
+                        Errors = GetErrorsFromResult(w)
+                    });
+                }
+
+                return (status: "ok", managerName: "", results: (List<KsefSendResultDto>?)results);
+            });
+
+            if (result.status == "managerMissing")
+            {
+                return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error($"Failed to get {result.managerName} manager"));
             }
 
-            if (dokumenty.Count == 0)
+            if (result.status == "notFound")
             {
                 return Ok(ApiResponse<List<KsefSendResultDto>>.Error("No electronic documents found with the provided IDs"));
             }
 
-            // Get coordinator for KSeF sending
-            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
-            if (koordynator == null)
-            {
-                return StatusCode(500, ApiResponse<List<KsefSendResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
-            }
-            var wyniki = koordynator.PrzekazDoWysylki(dokumenty.ToArray(), null);
-
-            var results = new List<KsefSendResultDto>();
-            foreach (var w in (IEnumerable<object>)wyniki)
-            {
-                var docNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu");
-                int? elecDocId = null;
-                foreach (var d in dokumenty)
-                {
-                    if (DynamicPropertyHelper.GetString(d, "NumerDokumentu") == docNumber)
-                    {
-                        elecDocId = DynamicPropertyHelper.GetId(d);
-                        break;
-                    }
-                }
-                results.Add(new KsefSendResultDto
-                {
-                    DocumentNumber = docNumber,
-                    ElectronicDocumentId = elecDocId,
-                    Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
-                    Errors = GetErrorsFromResult(w)
-                });
-            }
-
-            return Ok(ApiResponse<List<KsefSendResultDto>>.Ok(results));
+            return Ok(ApiResponse<List<KsefSendResultDto>>.Ok(result.results));
         }
         catch (Exception ex)
         {
@@ -502,34 +600,44 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpPost("status/check")]
     [ProducesResponseType(typeof(ApiResponse<List<KsefStatusResultDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<KsefStatusResultDto>>> CheckKsefStatus()
+    public async Task<ActionResult<ApiResponse<List<KsefStatusResultDto>>>> CheckKsefStatus()
     {
         try
         {
-            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
-            if (koordynator == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+                if (koordynator == null)
+                {
+                    return (managerMissing: true, results: (List<KsefStatusResultDto>?)null);
+                }
+
+                var statusy = koordynator.SprawdzStatus();
+
+                var results = new List<KsefStatusResultDto>();
+                foreach (var s in (IEnumerable<object>)statusy)
+                {
+                    results.Add(new KsefStatusResultDto
+                    {
+                        DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId") ?? 0,
+                        DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
+                        KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
+                        ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
+                        Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
+                        Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
+                        Errors = GetErrorsFromResult(s)
+                    });
+                }
+
+                return (managerMissing: false, results: (List<KsefStatusResultDto>?)results);
+            });
+
+            if (result.managerMissing)
             {
                 return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
             }
 
-            var statusy = koordynator.SprawdzStatus();
-
-            var results = new List<KsefStatusResultDto>();
-            foreach (var s in (IEnumerable<object>)statusy)
-            {
-                results.Add(new KsefStatusResultDto
-                {
-                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId") ?? 0,
-                    DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
-                    KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
-                    ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
-                    Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
-                    Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
-                    Errors = GetErrorsFromResult(s)
-                });
-            }
-
-            return Ok(ApiResponse<List<KsefStatusResultDto>>.Ok(results));
+            return Ok(ApiResponse<List<KsefStatusResultDto>>.Ok(result.results));
         }
         catch (Exception ex)
         {
@@ -543,54 +651,69 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpPost("status/check/batch")]
     [ProducesResponseType(typeof(ApiResponse<List<KsefStatusResultDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<KsefStatusResultDto>>> CheckKsefStatusBatch([FromBody] List<int> electronicDocumentIds)
+    public async Task<ActionResult<ApiResponse<List<KsefStatusResultDto>>>> CheckKsefStatusBatch([FromBody] List<int> electronicDocumentIds)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
-            }
-
-            var dokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
                 {
-                    dokumenty.Add(d);
+                    return (status: "managerMissing", managerName: "DokumentyElektroniczne", results: (List<KsefStatusResultDto>?)null);
                 }
+
+                var dokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)))
+                    {
+                        dokumenty.Add(d);
+                    }
+                }
+
+                if (dokumenty.Count == 0)
+                {
+                    return (status: "notFound", managerName: "", results: (List<KsefStatusResultDto>?)null);
+                }
+
+                // Get coordinator for KSeF status check
+                var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+                if (koordynator == null)
+                {
+                    return (status: "managerMissing", managerName: "KoordynatorWysylaniaEFaktur", results: (List<KsefStatusResultDto>?)null);
+                }
+                var statusy = koordynator.SprawdzStatus(dokumenty.ToArray());
+
+                var results = new List<KsefStatusResultDto>();
+                foreach (var s in (IEnumerable<object>)statusy)
+                {
+                    results.Add(new KsefStatusResultDto
+                    {
+                        DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId") ?? 0,
+                        DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
+                        KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
+                        ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
+                        Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
+                        Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
+                        Errors = GetErrorsFromResult(s)
+                    });
+                }
+
+                return (status: "ok", managerName: "", results: (List<KsefStatusResultDto>?)results);
+            });
+
+            if (result.status == "managerMissing")
+            {
+                return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error($"Failed to get {result.managerName} manager"));
             }
 
-            if (dokumenty.Count == 0)
+            if (result.status == "notFound")
             {
                 return Ok(ApiResponse<List<KsefStatusResultDto>>.Error("No electronic documents found with the provided IDs"));
             }
 
-            // Get coordinator for KSeF status check
-            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
-            if (koordynator == null)
-            {
-                return StatusCode(500, ApiResponse<List<KsefStatusResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
-            }
-            var statusy = koordynator.SprawdzStatus(dokumenty.ToArray());
-
-            var results = new List<KsefStatusResultDto>();
-            foreach (var s in (IEnumerable<object>)statusy)
-            {
-                results.Add(new KsefStatusResultDto
-                {
-                    DocumentId = DynamicPropertyHelper.GetNullableInt(s, "DokumentId") ?? 0,
-                    DocumentNumber = DynamicPropertyHelper.GetString(s, "NumerDokumentu"),
-                    KsefNumber = DynamicPropertyHelper.GetString(s, "NumerKsef"),
-                    ProcessingCompleted = DynamicPropertyHelper.GetBool(s, "PrzetwarzanieZakonczone"),
-                    Success = DynamicPropertyHelper.GetBool(s, "Sukces"),
-                    Status = DynamicPropertyHelper.GetString(s, "OpisStatusu"),
-                    Errors = GetErrorsFromResult(s)
-                });
-            }
-
-            return Ok(ApiResponse<List<KsefStatusResultDto>>.Ok(results));
+            return Ok(ApiResponse<List<KsefStatusResultDto>>.Ok(result.results));
         }
         catch (Exception ex)
         {
@@ -608,52 +731,67 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpPost("upo/download")]
     [ProducesResponseType(typeof(ApiResponse<List<KsefUpoResultDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<KsefUpoResultDto>>> DownloadUpo([FromBody] List<int> electronicDocumentIds)
+    public async Task<ActionResult<ApiResponse<List<KsefUpoResultDto>>>> DownloadUpo([FromBody] List<int> electronicDocumentIds)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error("Failed to get DokumentyElektroniczne manager"));
-            }
-
-            var dokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)) &&
-                    DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef)
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
                 {
-                    dokumenty.Add(d);
+                    return (status: "managerMissing", managerName: "DokumentyElektroniczne", results: (List<KsefUpoResultDto>?)null);
                 }
+
+                var dokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    if (electronicDocumentIds.Contains(DynamicPropertyHelper.GetId(d)) &&
+                        DynamicPropertyHelper.GetInt(d, "EStatus") == StatusPobranyNumerKsef)
+                    {
+                        dokumenty.Add(d);
+                    }
+                }
+
+                if (dokumenty.Count == 0)
+                {
+                    return (status: "notFound", managerName: "", results: (List<KsefUpoResultDto>?)null);
+                }
+
+                // Get coordinator for UPO download
+                var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
+                if (koordynator == null)
+                {
+                    return (status: "managerMissing", managerName: "KoordynatorWysylaniaEFaktur", results: (List<KsefUpoResultDto>?)null);
+                }
+                var wyniki = koordynator.PobierzUpo(dokumenty.ToArray());
+
+                var results = new List<KsefUpoResultDto>();
+                foreach (var w in (IEnumerable<object>)wyniki)
+                {
+                    results.Add(new KsefUpoResultDto
+                    {
+                        DocumentNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu"),
+                        KsefNumber = DynamicPropertyHelper.GetString(w, "NumerKsef"),
+                        Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
+                        Errors = GetErrorsFromResult(w)
+                    });
+                }
+
+                return (status: "ok", managerName: "", results: (List<KsefUpoResultDto>?)results);
+            });
+
+            if (result.status == "managerMissing")
+            {
+                return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error($"Failed to get {result.managerName} manager"));
             }
 
-            if (dokumenty.Count == 0)
+            if (result.status == "notFound")
             {
                 return Ok(ApiResponse<List<KsefUpoResultDto>>.Error("No documents ready for UPO download found"));
             }
 
-            // Get coordinator for UPO download
-            var koordynator = _sferaService.GetManager("KoordynatorWysylaniaEFaktur");
-            if (koordynator == null)
-            {
-                return StatusCode(500, ApiResponse<List<KsefUpoResultDto>>.Error("KoordynatorWysylaniaEFaktur manager not available"));
-            }
-            var wyniki = koordynator.PobierzUpo(dokumenty.ToArray());
-
-            var results = new List<KsefUpoResultDto>();
-            foreach (var w in (IEnumerable<object>)wyniki)
-            {
-                results.Add(new KsefUpoResultDto
-                {
-                    DocumentNumber = DynamicPropertyHelper.GetString(w, "NumerDokumentu"),
-                    KsefNumber = DynamicPropertyHelper.GetString(w, "NumerKsef"),
-                    Success = DynamicPropertyHelper.GetBool(w, "Sukces"),
-                    Errors = GetErrorsFromResult(w)
-                });
-            }
-
-            return Ok(ApiResponse<List<KsefUpoResultDto>>.Ok(results));
+            return Ok(ApiResponse<List<KsefUpoResultDto>>.Ok(result.results));
         }
         catch (Exception ex)
         {
@@ -671,44 +809,54 @@ public class KsefController : ControllerBase
     /// </summary>
     [HttpGet("summary")]
     [ProducesResponseType(typeof(ApiResponse<KsefSummaryDto>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<KsefSummaryDto>> GetKsefSummary()
+    public async Task<ActionResult<ApiResponse<KsefSummaryDto>>> GetKsefSummary()
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var dokumentyManager = _sferaService.GetManager("DokumentyElektroniczne");
+                if (dokumentyManager == null)
+                {
+                    return (managerMissing: true, summary: (KsefSummaryDto?)null);
+                }
+
+                var dokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    dokumenty.Add(d);
+                }
+
+                int pendingSend = 0, sent = 0, withKsefNumber = 0, withUpo = 0, errors = 0;
+                foreach (var d in dokumenty)
+                {
+                    var status = DynamicPropertyHelper.GetInt(d, "EStatus");
+                    if (status == StatusDoWyslania) pendingSend++;
+                    else if (status == StatusWyslana) sent++;
+                    else if (status == StatusPobranyNumerKsef) withKsefNumber++;
+                    else if (status == StatusPobraneUpo) withUpo++;
+                    else if (status == StatusBlad) errors++;
+                }
+
+                var summary = new KsefSummaryDto
+                {
+                    TotalDocuments = dokumenty.Count,
+                    PendingSend = pendingSend,
+                    Sent = sent,
+                    WithKsefNumber = withKsefNumber,
+                    WithUpo = withUpo,
+                    Errors = errors
+                };
+
+                return (managerMissing: false, summary: (KsefSummaryDto?)summary);
+            });
+
+            if (result.managerMissing)
             {
                 return StatusCode(500, ApiResponse<KsefSummaryDto>.Error("Failed to get DokumentyElektroniczne manager"));
             }
 
-            var dokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                dokumenty.Add(d);
-            }
-
-            int pendingSend = 0, sent = 0, withKsefNumber = 0, withUpo = 0, errors = 0;
-            foreach (var d in dokumenty)
-            {
-                var status = DynamicPropertyHelper.GetInt(d, "EStatus");
-                if (status == StatusDoWyslania) pendingSend++;
-                else if (status == StatusWyslana) sent++;
-                else if (status == StatusPobranyNumerKsef) withKsefNumber++;
-                else if (status == StatusPobraneUpo) withUpo++;
-                else if (status == StatusBlad) errors++;
-            }
-
-            var summary = new KsefSummaryDto
-            {
-                TotalDocuments = dokumenty.Count,
-                PendingSend = pendingSend,
-                Sent = sent,
-                WithKsefNumber = withKsefNumber,
-                WithUpo = withUpo,
-                Errors = errors
-            };
-
-            return Ok(ApiResponse<KsefSummaryDto>.Ok(summary));
+            return Ok(ApiResponse<KsefSummaryDto>.Ok(result.summary));
         }
         catch (Exception ex)
         {

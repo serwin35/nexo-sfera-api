@@ -30,79 +30,101 @@ public class ProductsController : ControllerBase
     /// Explore properties of a single Asortyment entity
     /// </summary>
     [HttpGet("debug/properties/{id}")]
-    public ActionResult<object> GetProductProperties(int id)
+    public async Task<ActionResult<object>> GetProductProperties(int id)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
+                {
+                    return (object?)null;
+                }
+
+                dynamic? asortyment = null;
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                {
+                    if (DynamicPropertyHelper.GetId(a) == id)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+
+                if (asortyment == null)
+                {
+                    return (object?)new { NotFound = true, Id = id };
+                }
+
+                Type asortymentType = asortyment.GetType();
+                var properties = new Dictionary<string, object>();
+
+                foreach (var prop in asortymentType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(asortyment);
+                        var valueType = value?.GetType().Name ?? "null";
+
+                        // For collections, get count
+                        if (value != null && value.GetType().Name.Contains("Collection"))
+                        {
+                            try
+                            {
+                                int count = 0;
+                                foreach (var _ in (dynamic)value) count++;
+                                properties[prop.Name] = new { Type = valueType, Count = count };
+                            }
+                            catch
+                            {
+                                properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                            }
+                        }
+                        else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string)
+                                 && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal)
+                                 && !prop.PropertyType.IsEnum && prop.PropertyType != typeof(Guid))
+                        {
+                            properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
+                        }
+                        else
+                        {
+                            properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        properties[prop.Name] = new { Error = ex.Message };
+                    }
+                }
+
+                return (object?)new
+                {
+                    Id = id,
+                    EntityType = asortymentType.FullName,
+                    PropertyCount = properties.Count,
+                    Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                };
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, new { Error = "Failed to get Asortymenty manager" });
             }
 
-            dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+            // Check if not found sentinel
+            var notFoundCheck = result as dynamic;
+            try
             {
-                if (DynamicPropertyHelper.GetId(a) == id)
+                bool isNotFound = notFoundCheck?.NotFound == true;
+                if (isNotFound)
                 {
-                    asortyment = a;
-                    break;
+                    return NotFound(new { Error = $"Product {id} not found" });
                 }
             }
+            catch { /* not a not-found sentinel */ }
 
-            if (asortyment == null)
-            {
-                return NotFound(new { Error = $"Product {id} not found" });
-            }
-
-            Type asortymentType = asortyment.GetType();
-            var properties = new Dictionary<string, object>();
-
-            foreach (var prop in asortymentType.GetProperties())
-            {
-                try
-                {
-                    var value = prop.GetValue(asortyment);
-                    var valueType = value?.GetType().Name ?? "null";
-
-                    // For collections, get count
-                    if (value != null && value.GetType().Name.Contains("Collection"))
-                    {
-                        try
-                        {
-                            int count = 0;
-                            foreach (var _ in (dynamic)value) count++;
-                            properties[prop.Name] = new { Type = valueType, Count = count };
-                        }
-                        catch
-                        {
-                            properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
-                        }
-                    }
-                    else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string)
-                             && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal)
-                             && !prop.PropertyType.IsEnum && prop.PropertyType != typeof(Guid))
-                    {
-                        properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
-                    }
-                    else
-                    {
-                        properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
-                    }
-                }
-                catch (Exception ex)
-                {
-                    properties[prop.Name] = new { Error = ex.Message };
-                }
-            }
-
-            return Ok(new
-            {
-                Id = id,
-                EntityType = asortymentType.FullName,
-                PropertyCount = properties.Count,
-                Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
-            });
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -114,7 +136,7 @@ public class ProductsController : ControllerBase
     /// Get all products with optional filtering (lightweight list view)
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<ProductListItemDto>> GetProducts(
+    public async Task<ActionResult<PagedResponse<ProductListItemDto>>> GetProducts(
         [FromQuery] string? search,
         [FromQuery] ProductType? type,
         [FromQuery] bool? activeOnly,
@@ -123,53 +145,61 @@ public class ProductsController : ControllerBase
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
+                {
+                    return (PagedResponse<ProductListItemDto>?)null;
+                }
+
+                var allAsortymenty = new List<object>();
+                var sourceData = activeOnly == true ? asortymentyManager.Dane.WszystkieDostepne() : DynamicPropertyHelper.SafeGetAll((object)asortymentyManager);
+                foreach (var a in sourceData)
+                {
+                    allAsortymenty.Add(a);
+                }
+
+                if (!string.IsNullOrEmpty(search))
+                {
+                    allAsortymenty = allAsortymenty.Where(a =>
+                    {
+                        var symbol = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
+                        var nazwa = DynamicPropertyHelper.GetString(a, "Nazwa") ?? "";
+                        var ean = DynamicPropertyHelper.GetString(a, "EAN") ?? "";
+                        return symbol.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                               nazwa.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                               ean.Contains(search, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var totalCount = allAsortymenty.Count;
+                var items = allAsortymenty
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var mappedItems = new List<ProductListItemDto>();
+                foreach (var item in items)
+                {
+                    mappedItems.Add(MapToListItemDto(item));
+                }
+
+                return new PagedResponse<ProductListItemDto>
+                {
+                    Data = mappedItems,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
             }
 
-            var allAsortymenty = new List<object>();
-            var sourceData = activeOnly == true ? asortymentyManager.Dane.WszystkieDostepne() : DynamicPropertyHelper.SafeGetAll((object)asortymentyManager);
-            foreach (var a in sourceData)
-            {
-                allAsortymenty.Add(a);
-            }
-
-            if (!string.IsNullOrEmpty(search))
-            {
-                allAsortymenty = allAsortymenty.Where(a =>
-                {
-                    var symbol = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
-                    var nazwa = DynamicPropertyHelper.GetString(a, "Nazwa") ?? "";
-                    var ean = DynamicPropertyHelper.GetString(a, "EAN") ?? "";
-                    return symbol.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                           nazwa.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                           ean.Contains(search, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allAsortymenty.Count;
-            var items = allAsortymenty
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var mappedItems = new List<ProductListItemDto>();
-            foreach (var item in items)
-            {
-                mappedItems.Add(MapToListItemDto(item));
-            }
-
-            var response = new PagedResponse<ProductListItemDto>
-            {
-                Data = mappedItems,
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            };
-
-            return Ok(response);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -182,32 +212,42 @@ public class ProductsController : ControllerBase
     /// Get product by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<ProductDto>> GetProduct(int id)
+    public async Task<ActionResult<ApiResponse<ProductDto>>> GetProduct(int id)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
-            }
-
-            dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(a) == id)
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
                 {
-                    asortyment = a;
-                    break;
+                    return (ProductDto?)null;
                 }
-            }
 
-            if (asortyment == null)
+                dynamic? asortyment = null;
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                {
+                    if (DynamicPropertyHelper.GetId(a) == id)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+
+                if (asortyment == null)
+                {
+                    return (ProductDto?)null;
+                }
+
+                return (ProductDto?)MapToDto(asortyment);
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with ID {id} not found"));
             }
 
-            return Ok(ApiResponse<ProductDto>.Ok(MapToDto(asortyment)));
+            return Ok(ApiResponse<ProductDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -220,23 +260,33 @@ public class ProductsController : ControllerBase
     /// Get product by symbol
     /// </summary>
     [HttpGet("by-symbol/{symbol}")]
-    public ActionResult<ApiResponse<ProductDto>> GetProductBySymbol(string symbol)
+    public async Task<ActionResult<ApiResponse<ProductDto>>> GetProductBySymbol(string symbol)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
-            }
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
+                {
+                    return (ProductDto?)null;
+                }
 
-            var asortyment = asortymentyManager.Znajdz(symbol);
-            if (asortyment == null)
+                var asortyment = asortymentyManager.Znajdz(symbol);
+                if (asortyment == null)
+                {
+                    return (ProductDto?)null;
+                }
+
+                return (ProductDto?)MapToDto(asortyment.Dane);
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with symbol {symbol} not found"));
             }
 
-            return Ok(ApiResponse<ProductDto>.Ok(MapToDto(asortyment.Dane)));
+            return Ok(ApiResponse<ProductDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -249,32 +299,42 @@ public class ProductsController : ControllerBase
     /// Get product by EAN
     /// </summary>
     [HttpGet("by-ean/{ean}")]
-    public ActionResult<ApiResponse<ProductDto>> GetProductByEan(string ean)
+    public async Task<ActionResult<ApiResponse<ProductDto>>> GetProductByEan(string ean)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
-            }
-
-            dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-            {
-                if (DynamicPropertyHelper.GetString(a, "EAN") == ean)
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
                 {
-                    asortyment = a;
-                    break;
+                    return (ProductDto?)null;
                 }
-            }
 
-            if (asortyment == null)
+                dynamic? asortyment = null;
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                {
+                    if (DynamicPropertyHelper.GetString(a, "EAN") == ean)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+
+                if (asortyment == null)
+                {
+                    return (ProductDto?)null;
+                }
+
+                return (ProductDto?)MapToDto(asortyment);
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<ProductDto>.Error($"Product with EAN {ean} not found"));
             }
 
-            return Ok(ApiResponse<ProductDto>.Ok(MapToDto(asortyment)));
+            return Ok(ApiResponse<ProductDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -287,114 +347,129 @@ public class ProductsController : ControllerBase
     /// Create a new product
     /// </summary>
     [HttpPost]
-    public ActionResult<ApiResponse<ProductDto>> CreateProduct([FromBody] CreateProductRequest request)
+    public async Task<ActionResult<ApiResponse<ProductDto>>> CreateProduct([FromBody] CreateProductRequest request)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
-            }
-
-            // Check if symbol already exists
-            var existing = asortymentyManager.Znajdz(request.Symbol);
-            if (existing != null)
-            {
-                return BadRequest(ApiResponse<ProductDto>.Error($"Product with symbol {request.Symbol} already exists"));
-            }
-
-            using (var nowyAsortyment = asortymentyManager.Utworz())
-            {
-                dynamic dane = nowyAsortyment.Dane;
-
-                // Apply template if specified
-                if (!string.IsNullOrEmpty(request.TemplateSymbol))
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
                 {
-                    var szablonyManager = _sferaService.GetManager("SzablonyAsortymentu");
-                    if (szablonyManager != null)
+                    return (statusCode: 500, dto: (ProductDto?)null, error: "Failed to get Asortymenty manager", errors: (List<string>?)null);
+                }
+
+                // Check if symbol already exists
+                var existing = asortymentyManager.Znajdz(request.Symbol);
+                if (existing != null)
+                {
+                    return (statusCode: 400, dto: (ProductDto?)null, error: $"Product with symbol {request.Symbol} already exists", errors: (List<string>?)null);
+                }
+
+                using (var nowyAsortyment = asortymentyManager.Utworz())
+                {
+                    dynamic dane = nowyAsortyment.Dane;
+
+                    // Apply template if specified
+                    if (!string.IsNullOrEmpty(request.TemplateSymbol))
                     {
-                        dynamic? szablon = null;
-                        foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablonyManager))
+                        var szablonyManager = _sferaService.GetManager("SzablonyAsortymentu");
+                        if (szablonyManager != null)
                         {
-                            if (DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol)
+                            dynamic? szablon = null;
+                            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablonyManager))
                             {
-                                szablon = s;
-                                break;
+                                if (DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol)
+                                {
+                                    szablon = s;
+                                    break;
+                                }
+                            }
+                            if (szablon != null)
+                            {
+                                nowyAsortyment.WypelnijNaPodstawieSzablonu(szablon);
                             }
                         }
-                        if (szablon != null)
+                    }
+
+                    dane.Symbol = request.Symbol;
+                    dane.Nazwa = request.Name;
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        dane.Opis = request.Description;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.EAN))
+                    {
+                        dane.EAN = request.EAN;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.PKWiU))
+                    {
+                        dane.PKWIU = request.PKWiU;
+                    }
+
+                    // Set unit (GetUnit accesses SDK managers, must be called inside lock)
+                    var jednostka = GetUnit(request.SaleUnit);
+                    if (jednostka != null)
+                    {
+                        dane.JednostkaSprzedazy = jednostka;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.PurchaseUnit))
+                    {
+                        var jednostkaZakupu = GetUnit(request.PurchaseUnit);
+                        if (jednostkaZakupu != null)
                         {
-                            nowyAsortyment.WypelnijNaPodstawieSzablonu(szablon);
+                            dane.JednostkaZakupu = jednostkaZakupu;
                         }
                     }
-                }
 
-                dane.Symbol = request.Symbol;
-                dane.Nazwa = request.Name;
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    dane.Opis = request.Description;
-                }
-
-                if (!string.IsNullOrEmpty(request.EAN))
-                {
-                    dane.EAN = request.EAN;
-                }
-
-                if (!string.IsNullOrEmpty(request.PKWiU))
-                {
-                    dane.PKWIU = request.PKWiU;
-                }
-
-                // Set unit
-                var jednostka = GetUnit(request.SaleUnit);
-                if (jednostka != null)
-                {
-                    dane.JednostkaSprzedazy = jednostka;
-                }
-
-                if (!string.IsNullOrEmpty(request.PurchaseUnit))
-                {
-                    var jednostkaZakupu = GetUnit(request.PurchaseUnit);
-                    if (jednostkaZakupu != null)
+                    // Set price
+                    if (request.PriceNet.HasValue)
                     {
-                        dane.JednostkaZakupu = jednostkaZakupu;
+                        dane.CenaNetto = request.PriceNet.Value;
+                    }
+
+                    // Set physical properties
+                    if (request.Weight.HasValue)
+                    {
+                        dane.Masa = request.Weight.Value;
+                    }
+
+                    if (request.Volume.HasValue)
+                    {
+                        dane.Objetosc = request.Volume.Value;
+                    }
+
+                    if ((bool)nowyAsortyment.Zapisz())
+                    {
+                        var dto = MapToDto(dane);
+                        return (statusCode: 201, dto: (ProductDto?)dto, error: (string?)null, errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(nowyAsortyment);
+                        return (statusCode: 400, dto: (ProductDto?)null, error: "Failed to create product", errors: (List<string>?)errors);
                     }
                 }
+            });
 
-                // Set price
-                if (request.PriceNet.HasValue)
-                {
-                    dane.CenaNetto = request.PriceNet.Value;
-                }
-
-                // Set physical properties
-                if (request.Weight.HasValue)
-                {
-                    dane.Masa = request.Weight.Value;
-                }
-
-                if (request.Volume.HasValue)
-                {
-                    dane.Objetosc = request.Volume.Value;
-                }
-
-                if ((bool)nowyAsortyment.Zapisz())
-                {
-                    _logger.LogInformation("Created product {Symbol}", request.Symbol);
-                    return CreatedAtAction(
-                        nameof(GetProduct),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<ProductDto>.Ok(MapToDto(dane), "Product created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(nowyAsortyment);
-                    return BadRequest(ApiResponse<ProductDto>.Error("Failed to create product", errors));
-                }
+            if (result.statusCode == 500)
+            {
+                return StatusCode(500, ApiResponse<object>.Error(result.error ?? "Internal error"));
             }
+            if (result.statusCode == 400)
+            {
+                return BadRequest(ApiResponse<ProductDto>.Error(result.error ?? "Bad request", result.errors ?? new List<string>()));
+            }
+
+            _logger.LogInformation("Created product {Symbol}", request.Symbol);
+            return CreatedAtAction(
+                nameof(GetProduct),
+                new { id = result.dto!.Id },
+                ApiResponse<ProductDto>.Ok(result.dto, "Product created successfully"));
         }
         catch (Exception ex)
         {
@@ -407,91 +482,109 @@ public class ProductsController : ControllerBase
     /// Update an existing product
     /// </summary>
     [HttpPut("{id}")]
-    public ActionResult<ApiResponse<ProductDto>> UpdateProduct(int id, [FromBody] UpdateProductRequest request)
+    public async Task<ActionResult<ApiResponse<ProductDto>>> UpdateProduct(int id, [FromBody] UpdateProductRequest request)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
+                {
+                    return (statusCode: 500, dto: (ProductDto?)null, error: "Failed to get Asortymenty manager", errors: (List<string>?)null);
+                }
+
+                dynamic? asortyment = null;
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                {
+                    if (DynamicPropertyHelper.GetId(a) == id)
+                    {
+                        asortyment = a;
+                        break;
+                    }
+                }
+
+                if (asortyment == null)
+                {
+                    return (statusCode: 404, dto: (ProductDto?)null, error: $"Product with ID {id} not found", errors: (List<string>?)null);
+                }
+
+                using (var edytowanyAsortyment = asortymentyManager.Znajdz(asortyment))
+                {
+                    if (edytowanyAsortyment == null)
+                    {
+                        return (statusCode: 404, dto: (ProductDto?)null, error: $"Product with ID {id} not found", errors: (List<string>?)null);
+                    }
+
+                    dynamic dane = edytowanyAsortyment.Dane;
+
+                    if (!string.IsNullOrEmpty(request.Name))
+                    {
+                        dane.Nazwa = request.Name;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Description))
+                    {
+                        dane.Opis = request.Description;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.EAN))
+                    {
+                        dane.EAN = request.EAN;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.PKWiU))
+                    {
+                        dane.PKWIU = request.PKWiU;
+                    }
+
+                    if (request.PriceNet.HasValue)
+                    {
+                        dane.CenaNetto = request.PriceNet.Value;
+                    }
+
+                    if (request.Weight.HasValue)
+                    {
+                        dane.Masa = request.Weight.Value;
+                    }
+
+                    if (request.Volume.HasValue)
+                    {
+                        dane.Objetosc = request.Volume.Value;
+                    }
+
+                    if (request.IsActive.HasValue)
+                    {
+                        dane.Aktywny = request.IsActive.Value;
+                    }
+
+                    if ((bool)edytowanyAsortyment.Zapisz())
+                    {
+                        return (statusCode: 200, dto: (ProductDto?)MapToDto(dane), error: (string?)null, errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(edytowanyAsortyment);
+                        return (statusCode: 400, dto: (ProductDto?)null, error: "Failed to update product", errors: (List<string>?)errors);
+                    }
+                }
+            });
+
+            if (result.statusCode == 500)
+            {
+                return StatusCode(500, ApiResponse<object>.Error(result.error ?? "Internal error"));
+            }
+            if (result.statusCode == 404)
+            {
+                return NotFound(ApiResponse<ProductDto>.Error(result.error ?? "Not found"));
+            }
+            if (result.statusCode == 400)
+            {
+                return BadRequest(ApiResponse<ProductDto>.Error(result.error ?? "Bad request", result.errors ?? new List<string>()));
             }
 
-            dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(a) == id)
-                {
-                    asortyment = a;
-                    break;
-                }
-            }
-
-            if (asortyment == null)
-            {
-                return NotFound(ApiResponse<ProductDto>.Error($"Product with ID {id} not found"));
-            }
-
-            using (var edytowanyAsortyment = asortymentyManager.Znajdz(asortyment))
-            {
-                if (edytowanyAsortyment == null)
-                {
-                    return NotFound(ApiResponse<ProductDto>.Error($"Product with ID {id} not found"));
-                }
-
-                dynamic dane = edytowanyAsortyment.Dane;
-
-                if (!string.IsNullOrEmpty(request.Name))
-                {
-                    dane.Nazwa = request.Name;
-                }
-
-                if (!string.IsNullOrEmpty(request.Description))
-                {
-                    dane.Opis = request.Description;
-                }
-
-                if (!string.IsNullOrEmpty(request.EAN))
-                {
-                    dane.EAN = request.EAN;
-                }
-
-                if (!string.IsNullOrEmpty(request.PKWiU))
-                {
-                    dane.PKWIU = request.PKWiU;
-                }
-
-                if (request.PriceNet.HasValue)
-                {
-                    dane.CenaNetto = request.PriceNet.Value;
-                }
-
-                if (request.Weight.HasValue)
-                {
-                    dane.Masa = request.Weight.Value;
-                }
-
-                if (request.Volume.HasValue)
-                {
-                    dane.Objetosc = request.Volume.Value;
-                }
-
-                if (request.IsActive.HasValue)
-                {
-                    dane.Aktywny = request.IsActive.Value;
-                }
-
-                if ((bool)edytowanyAsortyment.Zapisz())
-                {
-                    _logger.LogInformation("Updated product {Id}", id);
-                    return Ok(ApiResponse<ProductDto>.Ok(MapToDto(dane), "Product updated successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(edytowanyAsortyment);
-                    return BadRequest(ApiResponse<ProductDto>.Error("Failed to update product", errors));
-                }
-            }
+            _logger.LogInformation("Updated product {Id}", id);
+            return Ok(ApiResponse<ProductDto>.Ok(result.dto!, "Product updated successfully"));
         }
         catch (Exception ex)
         {
@@ -504,49 +597,67 @@ public class ProductsController : ControllerBase
     /// Delete a product
     /// </summary>
     [HttpDelete("{id}")]
-    public ActionResult<ApiResponse<bool>> DeleteProduct(int id)
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteProduct(int id)
     {
         try
         {
-            var asortymentyManager = _sferaService.GetManager("Asortymenty");
-            if (asortymentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
-            }
-
-            dynamic? asortyment = null;
-            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(a) == id)
+                var asortymentyManager = _sferaService.GetManager("Asortymenty");
+                if (asortymentyManager == null)
                 {
-                    asortyment = a;
-                    break;
-                }
-            }
-
-            if (asortyment == null)
-            {
-                return NotFound(ApiResponse<bool>.Error($"Product with ID {id} not found"));
-            }
-
-            using (var usuwanyAsortyment = asortymentyManager.Znajdz(asortyment))
-            {
-                if (usuwanyAsortyment == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Product with ID {id} not found"));
+                    return (statusCode: 500, success: false, error: "Failed to get Asortymenty manager", errors: (List<string>?)null);
                 }
 
-                if ((bool)usuwanyAsortyment.Usun())
+                dynamic? asortyment = null;
+                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                 {
-                    _logger.LogInformation("Deleted product {Id}", id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Product deleted successfully"));
+                    if (DynamicPropertyHelper.GetId(a) == id)
+                    {
+                        asortyment = a;
+                        break;
+                    }
                 }
-                else
+
+                if (asortyment == null)
                 {
-                    var errors = GetBusinessObjectErrors(usuwanyAsortyment);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to delete product", errors));
+                    return (statusCode: 404, success: false, error: $"Product with ID {id} not found", errors: (List<string>?)null);
                 }
+
+                using (var usuwanyAsortyment = asortymentyManager.Znajdz(asortyment))
+                {
+                    if (usuwanyAsortyment == null)
+                    {
+                        return (statusCode: 404, success: false, error: $"Product with ID {id} not found", errors: (List<string>?)null);
+                    }
+
+                    if ((bool)usuwanyAsortyment.Usun())
+                    {
+                        return (statusCode: 200, success: true, error: (string?)null, errors: (List<string>?)null);
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(usuwanyAsortyment);
+                        return (statusCode: 400, success: false, error: "Failed to delete product", errors: (List<string>?)errors);
+                    }
+                }
+            });
+
+            if (result.statusCode == 500)
+            {
+                return StatusCode(500, ApiResponse<object>.Error(result.error ?? "Internal error"));
             }
+            if (result.statusCode == 404)
+            {
+                return NotFound(ApiResponse<bool>.Error(result.error ?? "Not found"));
+            }
+            if (result.statusCode == 400)
+            {
+                return BadRequest(ApiResponse<bool>.Error(result.error ?? "Bad request", result.errors ?? new List<string>()));
+            }
+
+            _logger.LogInformation("Deleted product {Id}", id);
+            return Ok(ApiResponse<bool>.Ok(true, "Product deleted successfully"));
         }
         catch (Exception ex)
         {

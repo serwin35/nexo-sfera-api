@@ -787,108 +787,116 @@ public class CustomersController : ControllerBase
     /// Get all customers with optional filtering (returns lightweight DTO for performance)
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<CustomerListItemDto>> GetCustomers([FromQuery] CustomerQueryRequest query)
+    public async Task<ActionResult<PagedResponse<CustomerListItemDto>>> GetCustomers([FromQuery] CustomerQueryRequest query)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (PagedResponse<CustomerListItemDto>?)null;
+                }
+
+                var allPodmioty = new List<object>();
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                {
+                    allPodmioty.Add(p);
+                }
+
+                // Apply filters using foreach to avoid LINQ issues with dynamic types
+                var filteredList = new List<object>();
+
+                foreach (var p in allPodmioty)
+                {
+                    // Filter by active status
+                    if (query.ActiveOnly)
+                    {
+                        var isActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? true;
+                        if (!isActive) continue;
+                    }
+
+                    // Filter by contractors only
+                    if (query.ContractorsOnly)
+                    {
+                        var isContractor = DynamicPropertyHelper.GetNullableBool(p, "Kontrahent") ?? false;
+                        if (!isContractor) continue;
+                    }
+
+                    // Search filter
+                    if (!string.IsNullOrEmpty(query.Search))
+                    {
+                        var nazwaSkrocona = (DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "").ToLower();
+                        var nip = (DynamicPropertyHelper.GetString(p, "NIP") ?? "").ToLower();
+                        var symbol = (DynamicPropertyHelper.GetString(p, "Symbol") ?? "").ToLower();
+                        var searchLower = query.Search.ToLower();
+
+                        if (!nazwaSkrocona.Contains(searchLower) &&
+                            !nip.Contains(searchLower) &&
+                            !symbol.Contains(searchLower))
+                        {
+                            continue;
+                        }
+                    }
+
+                    // Type filter
+                    if (query.Type.HasValue)
+                    {
+                        var podType = DynamicPropertyHelper.GetNullableInt(p, "Typ");
+                        var expectedType = query.Type.Value == CustomerType.Company ? 0 : 1;
+                        if (podType != expectedType) continue;
+                    }
+
+                    // Contractor type filter
+                    if (query.ContractorType.HasValue)
+                    {
+                        var rodzaj = DynamicPropertyHelper.GetNullableInt(p, "RodzajKontrahenta") ?? 0;
+                        if (rodzaj != (int)query.ContractorType.Value) continue;
+                    }
+
+                    // Document block filter
+                    if (query.HasDocumentBlock.HasValue)
+                    {
+                        var hasBlock = DynamicPropertyHelper.GetNullableBool(p, "BlokadaWystawianiaDokumentow") ?? false;
+                        if (hasBlock != query.HasDocumentBlock.Value) continue;
+                    }
+
+                    // EU taxpayer filter
+                    if (query.IsEuTaxpayer.HasValue)
+                    {
+                        var isEu = DynamicPropertyHelper.GetNullableBool(p, "PodatnikUE") ?? false;
+                        if (isEu != query.IsEuTaxpayer.Value) continue;
+                    }
+
+                    filteredList.Add(p);
+                }
+
+                var totalCount = filteredList.Count;
+                var pagedPodmioty = filteredList
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
+
+                var items = new List<CustomerListItemDto>();
+                foreach (var p in pagedPodmioty)
+                {
+                    items.Add(MapToListItemDto(p));
+                }
+
+                return new PagedResponse<CustomerListItemDto>
+                {
+                    Data = items,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            if (response == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Podmioty manager"));
             }
-
-            var allPodmioty = new List<object>();
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                allPodmioty.Add(p);
-            }
-
-            // Apply filters using foreach to avoid LINQ issues with dynamic types
-            var filteredList = new List<object>();
-
-            foreach (var p in allPodmioty)
-            {
-                // Filter by active status
-                if (query.ActiveOnly)
-                {
-                    var isActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? true;
-                    if (!isActive) continue;
-                }
-
-                // Filter by contractors only
-                if (query.ContractorsOnly)
-                {
-                    var isContractor = DynamicPropertyHelper.GetNullableBool(p, "Kontrahent") ?? false;
-                    if (!isContractor) continue;
-                }
-
-                // Search filter
-                if (!string.IsNullOrEmpty(query.Search))
-                {
-                    var nazwaSkrocona = (DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "").ToLower();
-                    var nip = (DynamicPropertyHelper.GetString(p, "NIP") ?? "").ToLower();
-                    var symbol = (DynamicPropertyHelper.GetString(p, "Symbol") ?? "").ToLower();
-                    var searchLower = query.Search.ToLower();
-
-                    if (!nazwaSkrocona.Contains(searchLower) &&
-                        !nip.Contains(searchLower) &&
-                        !symbol.Contains(searchLower))
-                    {
-                        continue;
-                    }
-                }
-
-                // Type filter
-                if (query.Type.HasValue)
-                {
-                    var podType = DynamicPropertyHelper.GetNullableInt(p, "Typ");
-                    var expectedType = query.Type.Value == CustomerType.Company ? 0 : 1;
-                    if (podType != expectedType) continue;
-                }
-
-                // Contractor type filter
-                if (query.ContractorType.HasValue)
-                {
-                    var rodzaj = DynamicPropertyHelper.GetNullableInt(p, "RodzajKontrahenta") ?? 0;
-                    if (rodzaj != (int)query.ContractorType.Value) continue;
-                }
-
-                // Document block filter
-                if (query.HasDocumentBlock.HasValue)
-                {
-                    var hasBlock = DynamicPropertyHelper.GetNullableBool(p, "BlokadaWystawianiaDokumentow") ?? false;
-                    if (hasBlock != query.HasDocumentBlock.Value) continue;
-                }
-
-                // EU taxpayer filter
-                if (query.IsEuTaxpayer.HasValue)
-                {
-                    var isEu = DynamicPropertyHelper.GetNullableBool(p, "PodatnikUE") ?? false;
-                    if (isEu != query.IsEuTaxpayer.Value) continue;
-                }
-
-                filteredList.Add(p);
-            }
-
-            var totalCount = filteredList.Count;
-            var pagedPodmioty = filteredList
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .ToList();
-
-            var items = new List<CustomerListItemDto>();
-            foreach (var p in pagedPodmioty)
-            {
-                items.Add(MapToListItemDto(p));
-            }
-
-            var response = new PagedResponse<CustomerListItemDto>
-            {
-                Data = items,
-                Page = query.Page,
-                PageSize = query.PageSize,
-                TotalCount = totalCount
-            };
 
             return Ok(response);
         }
@@ -903,32 +911,47 @@ public class CustomersController : ControllerBase
     /// Get customer by ID
     /// </summary>
     [HttpGet("{id}")]
-    public ActionResult<ApiResponse<CustomerDto>> GetCustomer(int id)
+    public async Task<ActionResult<ApiResponse<CustomerDto>>> GetCustomer(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (Found: false, ManagerMissing: true, Dto: (CustomerDto?)null);
+                }
+
+                dynamic? podmiot = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                {
+                    if (DynamicPropertyHelper.GetId(p) == id)
+                    {
+                        podmiot = p;
+                        break;
+                    }
+                }
+
+                if (podmiot == null)
+                {
+                    return (Found: false, ManagerMissing: false, Dto: (CustomerDto?)null);
+                }
+
+                return (Found: true, ManagerMissing: false, Dto: (CustomerDto?)MapToDto(podmiot));
+            });
+
+            if (result.ManagerMissing)
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
             }
 
-            dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                if (DynamicPropertyHelper.GetId(p) == id)
-                {
-                    podmiot = p;
-                    break;
-                }
-            }
-
-            if (podmiot == null)
+            if (!result.Found)
             {
                 return NotFound(ApiResponse<CustomerDto>.Error($"Customer with ID {id} not found"));
             }
 
-            return Ok(ApiResponse<CustomerDto>.Ok(MapToDto(podmiot)));
+            return Ok(ApiResponse<CustomerDto>.Ok(result.Dto!));
         }
         catch (Exception ex)
         {
@@ -941,34 +964,49 @@ public class CustomersController : ControllerBase
     /// Get customer by NIP
     /// </summary>
     [HttpGet("by-nip/{nip}")]
-    public ActionResult<ApiResponse<CustomerDto>> GetCustomerByNip(string nip)
+    public async Task<ActionResult<ApiResponse<CustomerDto>>> GetCustomerByNip(string nip)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
+                {
+                    return (Found: false, ManagerMissing: true, Dto: (CustomerDto?)null);
+                }
+
+                var cleanNip = nip.Replace("-", "").Replace(" ", "");
+                dynamic? podmiot = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                {
+                    var podmiotNip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
+                    if (podmiotNip == cleanNip || podmiotNip == nip)
+                    {
+                        podmiot = p;
+                        break;
+                    }
+                }
+
+                if (podmiot == null)
+                {
+                    return (Found: false, ManagerMissing: false, Dto: (CustomerDto?)null);
+                }
+
+                return (Found: true, ManagerMissing: false, Dto: (CustomerDto?)MapToDto(podmiot));
+            });
+
+            if (result.ManagerMissing)
             {
                 return StatusCode(500, ApiResponse<CustomerDto>.Error("Failed to get Podmioty manager"));
             }
 
-            var cleanNip = nip.Replace("-", "").Replace(" ", "");
-            dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                var podmiotNip = DynamicPropertyHelper.GetString(p, "NIP") ?? "";
-                if (podmiotNip == cleanNip || podmiotNip == nip)
-                {
-                    podmiot = p;
-                    break;
-                }
-            }
-
-            if (podmiot == null)
+            if (!result.Found)
             {
                 return NotFound(ApiResponse<CustomerDto>.Error($"Customer with NIP {nip} not found"));
             }
 
-            return Ok(ApiResponse<CustomerDto>.Ok(MapToDto(podmiot)));
+            return Ok(ApiResponse<CustomerDto>.Ok(result.Dto!));
         }
         catch (Exception ex)
         {

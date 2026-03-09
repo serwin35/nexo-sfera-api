@@ -31,31 +31,37 @@ public class EcommerceController : ControllerBase
     /// </summary>
     [HttpGet("integrations")]
     [ProducesResponseType(typeof(ApiResponse<List<IntegrationAccountDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<IntegrationAccountDto>>> GetIntegrationAccounts()
+    public async Task<ActionResult<ApiResponse<List<IntegrationAccountDto>>>> GetIntegrationAccounts()
     {
         try
         {
-            var manager = _sferaService.GetManager("KontaIntegracji");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<IntegrationAccountDto>>.Error("Failed to get KontaIntegracji manager"));
-            }
+                var manager = _sferaService.GetManager("KontaIntegracji");
+                if (manager == null)
+                    return null;
 
-            var allAccounts = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<IntegrationAccountDto>();
+                var allAccounts = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<IntegrationAccountDto>();
 
-            foreach (var acc in allAccounts)
-            {
-                items.Add(new IntegrationAccountDto
+                foreach (var acc in allAccounts)
                 {
-                    Id = DynamicPropertyHelper.GetId(acc),
-                    Name = DynamicPropertyHelper.GetString(acc, "Nazwa") ?? "",
-                    Platform = DynamicPropertyHelper.GetString(acc, "Platforma") ?? "",
-                    IsActive = DynamicPropertyHelper.GetBool(acc, "Aktywny"),
-                    LastSyncDate = DynamicPropertyHelper.GetDateTime(acc, "DataOstatniejSynchronizacji"),
-                    Description = DynamicPropertyHelper.GetString(acc, "Opis")
-                });
-            }
+                    result.Add(new IntegrationAccountDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(acc),
+                        Name = DynamicPropertyHelper.GetString(acc, "Nazwa") ?? "",
+                        Platform = DynamicPropertyHelper.GetString(acc, "Platforma") ?? "",
+                        IsActive = DynamicPropertyHelper.GetBool(acc, "Aktywny"),
+                        LastSyncDate = DynamicPropertyHelper.GetDateTime(acc, "DataOstatniejSynchronizacji"),
+                        Description = DynamicPropertyHelper.GetString(acc, "Opis")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
+                return StatusCode(500, ApiResponse<List<IntegrationAccountDto>>.Error("Failed to get KontaIntegracji manager"));
 
             return Ok(ApiResponse<List<IntegrationAccountDto>>.Ok(items));
         }
@@ -72,33 +78,38 @@ public class EcommerceController : ControllerBase
     [HttpGet("integrations/{id}")]
     [ProducesResponseType(typeof(ApiResponse<IntegrationAccountDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<IntegrationAccountDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<IntegrationAccountDto>> GetIntegrationAccount(int id)
+    public async Task<ActionResult<ApiResponse<IntegrationAccountDto>>> GetIntegrationAccount(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("KontaIntegracji");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("KontaIntegracji");
+                if (manager == null)
+                    return (true, (IntegrationAccountDto?)null);
+
+                var allAccounts = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var account = allAccounts.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
+
+                if (account == null)
+                    return (false, (IntegrationAccountDto?)null);
+
+                return (false, new IntegrationAccountDto
+                {
+                    Id = DynamicPropertyHelper.GetId(account),
+                    Name = DynamicPropertyHelper.GetString(account, "Nazwa") ?? "",
+                    Platform = DynamicPropertyHelper.GetString(account, "Platforma") ?? "",
+                    IsActive = DynamicPropertyHelper.GetBool(account, "Aktywny"),
+                    LastSyncDate = DynamicPropertyHelper.GetDateTime(account, "DataOstatniejSynchronizacji"),
+                    Description = DynamicPropertyHelper.GetString(account, "Opis")
+                });
+            });
+
+            if (managerNull)
                 return StatusCode(500, ApiResponse<IntegrationAccountDto>.Error("Failed to get KontaIntegracji manager"));
-            }
 
-            var allAccounts = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var account = allAccounts.FirstOrDefault(a => DynamicPropertyHelper.GetId(a) == id);
-
-            if (account == null)
-            {
+            if (dto == null)
                 return NotFound(ApiResponse<IntegrationAccountDto>.Error($"Integration account with ID {id} not found"));
-            }
-
-            var dto = new IntegrationAccountDto
-            {
-                Id = DynamicPropertyHelper.GetId(account),
-                Name = DynamicPropertyHelper.GetString(account, "Nazwa") ?? "",
-                Platform = DynamicPropertyHelper.GetString(account, "Platforma") ?? "",
-                IsActive = DynamicPropertyHelper.GetBool(account, "Aktywny"),
-                LastSyncDate = DynamicPropertyHelper.GetDateTime(account, "DataOstatniejSynchronizacji"),
-                Description = DynamicPropertyHelper.GetString(account, "Opis")
-            };
 
             return Ok(ApiResponse<IntegrationAccountDto>.Ok(dto));
         }
@@ -118,7 +129,7 @@ public class EcommerceController : ControllerBase
     /// </summary>
     [HttpGet("offers")]
     [ProducesResponseType(typeof(PagedResponse<OnlineOfferDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<OnlineOfferDto>> GetOnlineOffers(
+    public async Task<ActionResult<PagedResponse<OnlineOfferDto>>> GetOnlineOffers(
         [FromQuery] string? status,
         [FromQuery] int? integrationId,
         [FromQuery] int page = 1,
@@ -126,68 +137,74 @@ public class EcommerceController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("OfertyInternetowe");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("OfertyInternetowe");
+                if (manager == null)
+                    return (null, 0);
+
+                var allOffers = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by status
+                if (!string.IsNullOrEmpty(status))
+                {
+                    allOffers = allOffers.Where(o =>
+                    {
+                        var offerStatus = DynamicPropertyHelper.GetString(o, "Status");
+                        return offerStatus != null && offerStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                // Filter by integration
+                if (integrationId.HasValue)
+                {
+                    allOffers = allOffers.Where(o =>
+                    {
+                        var konto = DynamicPropertyHelper.GetProperty(o, "KontoIntegracji");
+                        return konto != null && DynamicPropertyHelper.GetId(konto) == integrationId.Value;
+                    }).ToList();
+                }
+
+                var totalCount = allOffers.Count;
+                var pagedOffers = allOffers
+                    .OrderByDescending(o => DynamicPropertyHelper.GetDateTime(o, "DataUtworzenia") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<OnlineOfferDto>();
+                foreach (var o in pagedOffers)
+                {
+                    var asortyment = DynamicPropertyHelper.GetProperty(o, "Asortyment");
+
+                    items.Add(new OnlineOfferDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(o),
+                        ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                        ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                        ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                        Title = DynamicPropertyHelper.GetString(o, "Tytul") ?? "",
+                        Price = DynamicPropertyHelper.GetDecimal(o, "Cena"),
+                        Quantity = DynamicPropertyHelper.GetDecimal(o, "Ilosc"),
+                        Status = DynamicPropertyHelper.GetString(o, "Status") ?? "Unknown",
+                        ExternalId = DynamicPropertyHelper.GetString(o, "IdentyfikatorZewnetrzny"),
+                        CreatedDate = DynamicPropertyHelper.GetDateTime(o, "DataUtworzenia"),
+                        LastModifiedDate = DynamicPropertyHelper.GetDateTime(o, "DataModyfikacji")
+                    });
+                }
+
+                return (items, totalCount);
+            });
+
+            if (result.Item1 == null)
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get OfertyInternetowe manager"));
-            }
-
-            var allOffers = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by status
-            if (!string.IsNullOrEmpty(status))
-            {
-                allOffers = allOffers.Where(o =>
-                {
-                    var offerStatus = DynamicPropertyHelper.GetString(o, "Status");
-                    return offerStatus != null && offerStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            // Filter by integration
-            if (integrationId.HasValue)
-            {
-                allOffers = allOffers.Where(o =>
-                {
-                    var konto = DynamicPropertyHelper.GetProperty(o, "KontoIntegracji");
-                    return konto != null && DynamicPropertyHelper.GetId(konto) == integrationId.Value;
-                }).ToList();
-            }
-
-            var totalCount = allOffers.Count;
-            var pagedOffers = allOffers
-                .OrderByDescending(o => DynamicPropertyHelper.GetDateTime(o, "DataUtworzenia") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<OnlineOfferDto>();
-            foreach (var o in pagedOffers)
-            {
-                var asortyment = DynamicPropertyHelper.GetProperty(o, "Asortyment");
-
-                items.Add(new OnlineOfferDto
-                {
-                    Id = DynamicPropertyHelper.GetId(o),
-                    ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
-                    ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                    ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
-                    Title = DynamicPropertyHelper.GetString(o, "Tytul") ?? "",
-                    Price = DynamicPropertyHelper.GetDecimal(o, "Cena"),
-                    Quantity = DynamicPropertyHelper.GetDecimal(o, "Ilosc"),
-                    Status = DynamicPropertyHelper.GetString(o, "Status") ?? "Unknown",
-                    ExternalId = DynamicPropertyHelper.GetString(o, "IdentyfikatorZewnetrzny"),
-                    CreatedDate = DynamicPropertyHelper.GetDateTime(o, "DataUtworzenia"),
-                    LastModifiedDate = DynamicPropertyHelper.GetDateTime(o, "DataModyfikacji")
-                });
-            }
 
             return Ok(new PagedResponse<OnlineOfferDto>
             {
-                Data = items,
+                Data = result.Item1,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.Item2
             });
         }
         catch (Exception ex)
@@ -203,42 +220,47 @@ public class EcommerceController : ControllerBase
     [HttpGet("offers/{id}")]
     [ProducesResponseType(typeof(ApiResponse<OnlineOfferDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<OnlineOfferDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<OnlineOfferDto>> GetOnlineOffer(int id)
+    public async Task<ActionResult<ApiResponse<OnlineOfferDto>>> GetOnlineOffer(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("OfertyInternetowe");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("OfertyInternetowe");
+                if (manager == null)
+                    return (true, (OnlineOfferDto?)null);
+
+                var allOffers = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var offer = allOffers.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
+
+                if (offer == null)
+                    return (false, (OnlineOfferDto?)null);
+
+                var asortyment = DynamicPropertyHelper.GetProperty(offer, "Asortyment");
+
+                return (false, new OnlineOfferDto
+                {
+                    Id = DynamicPropertyHelper.GetId(offer),
+                    ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
+                    ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+                    ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+                    Title = DynamicPropertyHelper.GetString(offer, "Tytul") ?? "",
+                    Description = DynamicPropertyHelper.GetString(offer, "Opis"),
+                    Price = DynamicPropertyHelper.GetDecimal(offer, "Cena"),
+                    Quantity = DynamicPropertyHelper.GetDecimal(offer, "Ilosc"),
+                    Status = DynamicPropertyHelper.GetString(offer, "Status") ?? "Unknown",
+                    ExternalId = DynamicPropertyHelper.GetString(offer, "IdentyfikatorZewnetrzny"),
+                    ExternalUrl = DynamicPropertyHelper.GetString(offer, "LinkZewnetrzny"),
+                    CreatedDate = DynamicPropertyHelper.GetDateTime(offer, "DataUtworzenia"),
+                    LastModifiedDate = DynamicPropertyHelper.GetDateTime(offer, "DataModyfikacji")
+                });
+            });
+
+            if (managerNull)
                 return StatusCode(500, ApiResponse<OnlineOfferDto>.Error("Failed to get OfertyInternetowe manager"));
-            }
 
-            var allOffers = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var offer = allOffers.FirstOrDefault(o => DynamicPropertyHelper.GetId(o) == id);
-
-            if (offer == null)
-            {
+            if (dto == null)
                 return NotFound(ApiResponse<OnlineOfferDto>.Error($"Online offer with ID {id} not found"));
-            }
-
-            var asortyment = DynamicPropertyHelper.GetProperty(offer, "Asortyment");
-
-            var dto = new OnlineOfferDto
-            {
-                Id = DynamicPropertyHelper.GetId(offer),
-                ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
-                ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
-                Title = DynamicPropertyHelper.GetString(offer, "Tytul") ?? "",
-                Description = DynamicPropertyHelper.GetString(offer, "Opis"),
-                Price = DynamicPropertyHelper.GetDecimal(offer, "Cena"),
-                Quantity = DynamicPropertyHelper.GetDecimal(offer, "Ilosc"),
-                Status = DynamicPropertyHelper.GetString(offer, "Status") ?? "Unknown",
-                ExternalId = DynamicPropertyHelper.GetString(offer, "IdentyfikatorZewnetrzny"),
-                ExternalUrl = DynamicPropertyHelper.GetString(offer, "LinkZewnetrzny"),
-                CreatedDate = DynamicPropertyHelper.GetDateTime(offer, "DataUtworzenia"),
-                LastModifiedDate = DynamicPropertyHelper.GetDateTime(offer, "DataModyfikacji")
-            };
 
             return Ok(ApiResponse<OnlineOfferDto>.Ok(dto));
         }
@@ -258,32 +280,38 @@ public class EcommerceController : ControllerBase
     /// </summary>
     [HttpGet("offer-groups")]
     [ProducesResponseType(typeof(ApiResponse<List<OfferGroupDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<OfferGroupDto>>> GetOfferGroups()
+    public async Task<ActionResult<ApiResponse<List<OfferGroupDto>>>> GetOfferGroups()
     {
         try
         {
-            var manager = _sferaService.GetManager("GrupyOfert");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<OfferGroupDto>>.Error("Failed to get GrupyOfert manager"));
-            }
+                var manager = _sferaService.GetManager("GrupyOfert");
+                if (manager == null)
+                    return null;
 
-            var allGroups = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<OfferGroupDto>();
+                var allGroups = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<OfferGroupDto>();
 
-            foreach (var g in allGroups)
-            {
-                var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-
-                items.Add(new OfferGroupDto
+                foreach (var g in allGroups)
                 {
-                    Id = DynamicPropertyHelper.GetId(g),
-                    Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
-                    ParentId = parent != null ? DynamicPropertyHelper.GetId(parent) : null,
-                    ExternalId = DynamicPropertyHelper.GetString(g, "IdentyfikatorZewnetrzny"),
-                    IsActive = DynamicPropertyHelper.GetBool(g, "Aktywny")
-                });
-            }
+                    var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
+
+                    result.Add(new OfferGroupDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(g),
+                        Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
+                        ParentId = parent != null ? DynamicPropertyHelper.GetId(parent) : null,
+                        ExternalId = DynamicPropertyHelper.GetString(g, "IdentyfikatorZewnetrzny"),
+                        IsActive = DynamicPropertyHelper.GetBool(g, "Aktywny")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
+                return StatusCode(500, ApiResponse<List<OfferGroupDto>>.Error("Failed to get GrupyOfert manager"));
 
             return Ok(ApiResponse<List<OfferGroupDto>>.Ok(items));
         }
@@ -303,7 +331,7 @@ public class EcommerceController : ControllerBase
     /// </summary>
     [HttpGet("shipping-lists")]
     [ProducesResponseType(typeof(PagedResponse<ShippingListDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<ShippingListDto>> GetShippingLists(
+    public async Task<ActionResult<PagedResponse<ShippingListDto>>> GetShippingLists(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
         [FromQuery] string? status,
@@ -312,70 +340,76 @@ public class EcommerceController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("ListyWysylkowe");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("ListyWysylkowe");
+                if (manager == null)
+                    return (null, 0);
+
+                var allLists = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by date range
+                if (dateFrom.HasValue)
+                {
+                    allLists = allLists.Where(l =>
+                    {
+                        var date = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia");
+                        return date.HasValue && date.Value >= dateFrom.Value;
+                    }).ToList();
+                }
+
+                if (dateTo.HasValue)
+                {
+                    allLists = allLists.Where(l =>
+                    {
+                        var date = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia");
+                        return date.HasValue && date.Value <= dateTo.Value;
+                    }).ToList();
+                }
+
+                // Filter by status
+                if (!string.IsNullOrEmpty(status))
+                {
+                    allLists = allLists.Where(l =>
+                    {
+                        var listStatus = DynamicPropertyHelper.GetString(l, "Status");
+                        return listStatus != null && listStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var totalCount = allLists.Count;
+                var pagedLists = allLists
+                    .OrderByDescending(l => DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<ShippingListDto>();
+                foreach (var l in pagedLists)
+                {
+                    items.Add(new ShippingListDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(l),
+                        Number = DynamicPropertyHelper.GetString(l, "Numer") ?? "",
+                        CreatedDate = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia"),
+                        Status = DynamicPropertyHelper.GetString(l, "Status") ?? "Unknown",
+                        CarrierName = DynamicPropertyHelper.GetString(l, "NazwaPrzewoznika"),
+                        PackageCount = DynamicPropertyHelper.GetNullableInt(l, "LiczbaPaczek") ?? 0
+                    });
+                }
+
+                return (items, totalCount);
+            });
+
+            if (result.Item1 == null)
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ListyWysylkowe manager"));
-            }
-
-            var allLists = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by date range
-            if (dateFrom.HasValue)
-            {
-                allLists = allLists.Where(l =>
-                {
-                    var date = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia");
-                    return date.HasValue && date.Value >= dateFrom.Value;
-                }).ToList();
-            }
-
-            if (dateTo.HasValue)
-            {
-                allLists = allLists.Where(l =>
-                {
-                    var date = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia");
-                    return date.HasValue && date.Value <= dateTo.Value;
-                }).ToList();
-            }
-
-            // Filter by status
-            if (!string.IsNullOrEmpty(status))
-            {
-                allLists = allLists.Where(l =>
-                {
-                    var listStatus = DynamicPropertyHelper.GetString(l, "Status");
-                    return listStatus != null && listStatus.Equals(status, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allLists.Count;
-            var pagedLists = allLists
-                .OrderByDescending(l => DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<ShippingListDto>();
-            foreach (var l in pagedLists)
-            {
-                items.Add(new ShippingListDto
-                {
-                    Id = DynamicPropertyHelper.GetId(l),
-                    Number = DynamicPropertyHelper.GetString(l, "Numer") ?? "",
-                    CreatedDate = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia"),
-                    Status = DynamicPropertyHelper.GetString(l, "Status") ?? "Unknown",
-                    CarrierName = DynamicPropertyHelper.GetString(l, "NazwaPrzewoznika"),
-                    PackageCount = DynamicPropertyHelper.GetNullableInt(l, "LiczbaPaczek") ?? 0
-                });
-            }
 
             return Ok(new PagedResponse<ShippingListDto>
             {
-                Data = items,
+                Data = result.Item1,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.Item2
             });
         }
         catch (Exception ex)
@@ -390,7 +424,7 @@ public class EcommerceController : ControllerBase
     /// </summary>
     [HttpGet("packages")]
     [ProducesResponseType(typeof(PagedResponse<ShippingPackageDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<ShippingPackageDto>> GetShippingPackages(
+    public async Task<ActionResult<PagedResponse<ShippingPackageDto>>> GetShippingPackages(
         [FromQuery] int? shippingListId,
         [FromQuery] string? trackingNumber,
         [FromQuery] int page = 1,
@@ -398,66 +432,72 @@ public class EcommerceController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("PaczkiWysylkowe");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("PaczkiWysylkowe");
+                if (manager == null)
+                    return (null, 0);
+
+                var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by shipping list
+                if (shippingListId.HasValue)
+                {
+                    allPackages = allPackages.Where(p =>
+                    {
+                        var lista = DynamicPropertyHelper.GetProperty(p, "ListaWysylkowa");
+                        return lista != null && DynamicPropertyHelper.GetId(lista) == shippingListId.Value;
+                    }).ToList();
+                }
+
+                // Filter by tracking number
+                if (!string.IsNullOrEmpty(trackingNumber))
+                {
+                    allPackages = allPackages.Where(p =>
+                    {
+                        var tracking = DynamicPropertyHelper.GetString(p, "NumerSledzenia");
+                        return tracking != null && tracking.Contains(trackingNumber, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var totalCount = allPackages.Count;
+                var pagedPackages = allPackages
+                    .OrderByDescending(p => DynamicPropertyHelper.GetDateTime(p, "DataUtworzenia") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<ShippingPackageDto>();
+                foreach (var p in pagedPackages)
+                {
+                    items.Add(new ShippingPackageDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        TrackingNumber = DynamicPropertyHelper.GetString(p, "NumerSledzenia") ?? "",
+                        Status = DynamicPropertyHelper.GetString(p, "Status") ?? "Unknown",
+                        Weight = DynamicPropertyHelper.GetDecimal(p, "Waga"),
+                        Width = DynamicPropertyHelper.GetDecimal(p, "Szerokosc"),
+                        Height = DynamicPropertyHelper.GetDecimal(p, "Wysokosc"),
+                        Depth = DynamicPropertyHelper.GetDecimal(p, "Glebokosc"),
+                        CarrierName = DynamicPropertyHelper.GetString(p, "NazwaPrzewoznika"),
+                        CreatedDate = DynamicPropertyHelper.GetDateTime(p, "DataUtworzenia"),
+                        ShippedDate = DynamicPropertyHelper.GetDateTime(p, "DataWyslania"),
+                        DeliveredDate = DynamicPropertyHelper.GetDateTime(p, "DataDostarczenia")
+                    });
+                }
+
+                return (items, totalCount);
+            });
+
+            if (result.Item1 == null)
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get PaczkiWysylkowe manager"));
-            }
-
-            var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by shipping list
-            if (shippingListId.HasValue)
-            {
-                allPackages = allPackages.Where(p =>
-                {
-                    var lista = DynamicPropertyHelper.GetProperty(p, "ListaWysylkowa");
-                    return lista != null && DynamicPropertyHelper.GetId(lista) == shippingListId.Value;
-                }).ToList();
-            }
-
-            // Filter by tracking number
-            if (!string.IsNullOrEmpty(trackingNumber))
-            {
-                allPackages = allPackages.Where(p =>
-                {
-                    var tracking = DynamicPropertyHelper.GetString(p, "NumerSledzenia");
-                    return tracking != null && tracking.Contains(trackingNumber, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allPackages.Count;
-            var pagedPackages = allPackages
-                .OrderByDescending(p => DynamicPropertyHelper.GetDateTime(p, "DataUtworzenia") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<ShippingPackageDto>();
-            foreach (var p in pagedPackages)
-            {
-                items.Add(new ShippingPackageDto
-                {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    TrackingNumber = DynamicPropertyHelper.GetString(p, "NumerSledzenia") ?? "",
-                    Status = DynamicPropertyHelper.GetString(p, "Status") ?? "Unknown",
-                    Weight = DynamicPropertyHelper.GetDecimal(p, "Waga"),
-                    Width = DynamicPropertyHelper.GetDecimal(p, "Szerokosc"),
-                    Height = DynamicPropertyHelper.GetDecimal(p, "Wysokosc"),
-                    Depth = DynamicPropertyHelper.GetDecimal(p, "Glebokosc"),
-                    CarrierName = DynamicPropertyHelper.GetString(p, "NazwaPrzewoznika"),
-                    CreatedDate = DynamicPropertyHelper.GetDateTime(p, "DataUtworzenia"),
-                    ShippedDate = DynamicPropertyHelper.GetDateTime(p, "DataWyslania"),
-                    DeliveredDate = DynamicPropertyHelper.GetDateTime(p, "DataDostarczenia")
-                });
-            }
 
             return Ok(new PagedResponse<ShippingPackageDto>
             {
-                Data = items,
+                Data = result.Item1,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.Item2
             });
         }
         catch (Exception ex)
@@ -473,40 +513,45 @@ public class EcommerceController : ControllerBase
     [HttpGet("packages/{id}")]
     [ProducesResponseType(typeof(ApiResponse<ShippingPackageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShippingPackageDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<ShippingPackageDto>> GetShippingPackage(int id)
+    public async Task<ActionResult<ApiResponse<ShippingPackageDto>>> GetShippingPackage(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("PaczkiWysylkowe");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var manager = _sferaService.GetManager("PaczkiWysylkowe");
+                if (manager == null)
+                    return (true, (ShippingPackageDto?)null);
+
+                var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var package = allPackages.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
+
+                if (package == null)
+                    return (false, (ShippingPackageDto?)null);
+
+                return (false, new ShippingPackageDto
+                {
+                    Id = DynamicPropertyHelper.GetId(package),
+                    TrackingNumber = DynamicPropertyHelper.GetString(package, "NumerSledzenia") ?? "",
+                    Status = DynamicPropertyHelper.GetString(package, "Status") ?? "Unknown",
+                    Weight = DynamicPropertyHelper.GetDecimal(package, "Waga"),
+                    Width = DynamicPropertyHelper.GetDecimal(package, "Szerokosc"),
+                    Height = DynamicPropertyHelper.GetDecimal(package, "Wysokosc"),
+                    Depth = DynamicPropertyHelper.GetDecimal(package, "Glebokosc"),
+                    CarrierName = DynamicPropertyHelper.GetString(package, "NazwaPrzewoznika"),
+                    RecipientName = DynamicPropertyHelper.GetString(package, "NazwaOdbiorcy"),
+                    RecipientAddress = DynamicPropertyHelper.GetString(package, "AdresOdbiorcy"),
+                    CreatedDate = DynamicPropertyHelper.GetDateTime(package, "DataUtworzenia"),
+                    ShippedDate = DynamicPropertyHelper.GetDateTime(package, "DataWyslania"),
+                    DeliveredDate = DynamicPropertyHelper.GetDateTime(package, "DataDostarczenia")
+                });
+            });
+
+            if (managerNull)
                 return StatusCode(500, ApiResponse<ShippingPackageDto>.Error("Failed to get PaczkiWysylkowe manager"));
-            }
 
-            var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var package = allPackages.FirstOrDefault(p => DynamicPropertyHelper.GetId(p) == id);
-
-            if (package == null)
-            {
+            if (dto == null)
                 return NotFound(ApiResponse<ShippingPackageDto>.Error($"Shipping package with ID {id} not found"));
-            }
-
-            var dto = new ShippingPackageDto
-            {
-                Id = DynamicPropertyHelper.GetId(package),
-                TrackingNumber = DynamicPropertyHelper.GetString(package, "NumerSledzenia") ?? "",
-                Status = DynamicPropertyHelper.GetString(package, "Status") ?? "Unknown",
-                Weight = DynamicPropertyHelper.GetDecimal(package, "Waga"),
-                Width = DynamicPropertyHelper.GetDecimal(package, "Szerokosc"),
-                Height = DynamicPropertyHelper.GetDecimal(package, "Wysokosc"),
-                Depth = DynamicPropertyHelper.GetDecimal(package, "Glebokosc"),
-                CarrierName = DynamicPropertyHelper.GetString(package, "NazwaPrzewoznika"),
-                RecipientName = DynamicPropertyHelper.GetString(package, "NazwaOdbiorcy"),
-                RecipientAddress = DynamicPropertyHelper.GetString(package, "AdresOdbiorcy"),
-                CreatedDate = DynamicPropertyHelper.GetDateTime(package, "DataUtworzenia"),
-                ShippedDate = DynamicPropertyHelper.GetDateTime(package, "DataWyslania"),
-                DeliveredDate = DynamicPropertyHelper.GetDateTime(package, "DataDostarczenia")
-            };
 
             return Ok(ApiResponse<ShippingPackageDto>.Ok(dto));
         }
@@ -523,42 +568,47 @@ public class EcommerceController : ControllerBase
     [HttpGet("packages/track/{trackingNumber}")]
     [ProducesResponseType(typeof(ApiResponse<ShippingPackageDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<ShippingPackageDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<ShippingPackageDto>> GetPackageByTracking(string trackingNumber)
+    public async Task<ActionResult<ApiResponse<ShippingPackageDto>>> GetPackageByTracking(string trackingNumber)
     {
         try
         {
-            var manager = _sferaService.GetManager("PaczkiWysylkowe");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<ShippingPackageDto>.Error("Failed to get PaczkiWysylkowe manager"));
-            }
+                var manager = _sferaService.GetManager("PaczkiWysylkowe");
+                if (manager == null)
+                    return (true, (ShippingPackageDto?)null);
 
-            var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var package = allPackages.FirstOrDefault(p =>
-            {
-                var tracking = DynamicPropertyHelper.GetString(p, "NumerSledzenia");
-                return tracking != null && tracking.Equals(trackingNumber, StringComparison.OrdinalIgnoreCase);
+                var allPackages = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var package = allPackages.FirstOrDefault(p =>
+                {
+                    var tracking = DynamicPropertyHelper.GetString(p, "NumerSledzenia");
+                    return tracking != null && tracking.Equals(trackingNumber, StringComparison.OrdinalIgnoreCase);
+                });
+
+                if (package == null)
+                    return (false, (ShippingPackageDto?)null);
+
+                return (false, new ShippingPackageDto
+                {
+                    Id = DynamicPropertyHelper.GetId(package),
+                    TrackingNumber = DynamicPropertyHelper.GetString(package, "NumerSledzenia") ?? "",
+                    Status = DynamicPropertyHelper.GetString(package, "Status") ?? "Unknown",
+                    Weight = DynamicPropertyHelper.GetDecimal(package, "Waga"),
+                    Width = DynamicPropertyHelper.GetDecimal(package, "Szerokosc"),
+                    Height = DynamicPropertyHelper.GetDecimal(package, "Wysokosc"),
+                    Depth = DynamicPropertyHelper.GetDecimal(package, "Glebokosc"),
+                    CarrierName = DynamicPropertyHelper.GetString(package, "NazwaPrzewoznika"),
+                    CreatedDate = DynamicPropertyHelper.GetDateTime(package, "DataUtworzenia"),
+                    ShippedDate = DynamicPropertyHelper.GetDateTime(package, "DataWyslania"),
+                    DeliveredDate = DynamicPropertyHelper.GetDateTime(package, "DataDostarczenia")
+                });
             });
 
-            if (package == null)
-            {
-                return NotFound(ApiResponse<ShippingPackageDto>.Error($"Package with tracking number {trackingNumber} not found"));
-            }
+            if (managerNull)
+                return StatusCode(500, ApiResponse<ShippingPackageDto>.Error("Failed to get PaczkiWysylkowe manager"));
 
-            var dto = new ShippingPackageDto
-            {
-                Id = DynamicPropertyHelper.GetId(package),
-                TrackingNumber = DynamicPropertyHelper.GetString(package, "NumerSledzenia") ?? "",
-                Status = DynamicPropertyHelper.GetString(package, "Status") ?? "Unknown",
-                Weight = DynamicPropertyHelper.GetDecimal(package, "Waga"),
-                Width = DynamicPropertyHelper.GetDecimal(package, "Szerokosc"),
-                Height = DynamicPropertyHelper.GetDecimal(package, "Wysokosc"),
-                Depth = DynamicPropertyHelper.GetDecimal(package, "Glebokosc"),
-                CarrierName = DynamicPropertyHelper.GetString(package, "NazwaPrzewoznika"),
-                CreatedDate = DynamicPropertyHelper.GetDateTime(package, "DataUtworzenia"),
-                ShippedDate = DynamicPropertyHelper.GetDateTime(package, "DataWyslania"),
-                DeliveredDate = DynamicPropertyHelper.GetDateTime(package, "DataDostarczenia")
-            };
+            if (dto == null)
+                return NotFound(ApiResponse<ShippingPackageDto>.Error($"Package with tracking number {trackingNumber} not found"));
 
             return Ok(ApiResponse<ShippingPackageDto>.Ok(dto));
         }
@@ -578,32 +628,38 @@ public class EcommerceController : ControllerBase
     /// </summary>
     [HttpGet("package-dimensions")]
     [ProducesResponseType(typeof(ApiResponse<List<PackageDimensionDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PackageDimensionDto>>> GetPackageDimensions()
+    public async Task<ActionResult<ApiResponse<List<PackageDimensionDto>>>> GetPackageDimensions()
     {
         try
         {
-            var manager = _sferaService.GetManager("GabarytyPaczki");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<PackageDimensionDto>>.Error("Failed to get GabarytyPaczki manager"));
-            }
+                var manager = _sferaService.GetManager("GabarytyPaczki");
+                if (manager == null)
+                    return null;
 
-            var allDimensions = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<PackageDimensionDto>();
+                var allDimensions = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<PackageDimensionDto>();
 
-            foreach (var d in allDimensions)
-            {
-                items.Add(new PackageDimensionDto
+                foreach (var d in allDimensions)
                 {
-                    Id = DynamicPropertyHelper.GetId(d),
-                    Name = DynamicPropertyHelper.GetString(d, "Nazwa") ?? "",
-                    Width = DynamicPropertyHelper.GetDecimal(d, "Szerokosc"),
-                    Height = DynamicPropertyHelper.GetDecimal(d, "Wysokosc"),
-                    Depth = DynamicPropertyHelper.GetDecimal(d, "Glebokosc"),
-                    MaxWeight = DynamicPropertyHelper.GetDecimal(d, "MaksymalnaWaga"),
-                    IsDefault = DynamicPropertyHelper.GetBool(d, "Domyslny")
-                });
-            }
+                    result.Add(new PackageDimensionDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(d),
+                        Name = DynamicPropertyHelper.GetString(d, "Nazwa") ?? "",
+                        Width = DynamicPropertyHelper.GetDecimal(d, "Szerokosc"),
+                        Height = DynamicPropertyHelper.GetDecimal(d, "Wysokosc"),
+                        Depth = DynamicPropertyHelper.GetDecimal(d, "Glebokosc"),
+                        MaxWeight = DynamicPropertyHelper.GetDecimal(d, "MaksymalnaWaga"),
+                        IsDefault = DynamicPropertyHelper.GetBool(d, "Domyslny")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
+                return StatusCode(500, ApiResponse<List<PackageDimensionDto>>.Error("Failed to get GabarytyPaczki manager"));
 
             return Ok(ApiResponse<List<PackageDimensionDto>>.Ok(items));
         }

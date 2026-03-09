@@ -4773,6 +4773,10 @@ public class DocumentsController : ControllerBase
         { "card", "KARTA" },
         { "credit", "KREDYT" },
         { "cod", "POBRANIE" },
+        // Electronic payments
+        { "paynow", "PAYNOW" },
+        { "blik", "PAYNOW" },
+        { "pay now", "PAYNOW" },
         // Variations
         { "przelew bankowy", "PRZELEW" },
         { "karta płatnicza", "KARTA" },

@@ -32,7 +32,7 @@ public class DiscountsController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<DiscountDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<DiscountDto>> GetDiscounts(
+    public async Task<ActionResult<PagedResponse<DiscountDto>>> GetDiscounts(
         [FromQuery] DateTime? validAt = null,
         [FromQuery] bool? activeOnly = true,
         [FromQuery] int page = 1,
@@ -40,43 +40,51 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var rabatyManager = _sferaService.GetManager("Rabaty");
-            if (rabatyManager == null) return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
-
-            if (activeOnly == true)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
-            }
+                var rabatyManager = _sferaService.GetManager("Rabaty");
+                if (rabatyManager == null) return (null, 0);
+                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
 
-            var checkDate = validAt ?? DateTime.Now;
-            allRabaty = allRabaty.Where(r =>
-            {
-                var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
-                var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
-                return (!odDaty.HasValue || odDaty.Value <= checkDate) &&
-                       (!doDaty.HasValue || doDaty.Value >= checkDate);
-            }).ToList();
+                if (activeOnly == true)
+                {
+                    allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
+                }
 
-            var totalCount = allRabaty.Count;
-            var pagedRabaty = allRabaty
-                .OrderBy(r => DynamicPropertyHelper.GetString(r, "Symbol"))
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
+                var checkDate = validAt ?? DateTime.Now;
+                allRabaty = allRabaty.Where(r =>
+                {
+                    var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
+                    var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
+                    return (!odDaty.HasValue || odDaty.Value <= checkDate) &&
+                           (!doDaty.HasValue || doDaty.Value >= checkDate);
+                }).ToList();
 
-            var items = new List<DiscountDto>();
-            foreach (var r in pagedRabaty)
-            {
-                items.Add(MapDiscount(r, false));
-            }
+                var totalCount = allRabaty.Count;
+                var pagedRabaty = allRabaty
+                    .OrderBy(r => DynamicPropertyHelper.GetString(r, "Symbol"))
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<DiscountDto>();
+                foreach (var r in pagedRabaty)
+                {
+                    items.Add(MapDiscount(r, false));
+                }
+
+                return (items, totalCount);
+            });
+
+            if (result.Item1 == null)
+                return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
 
             return Ok(new PagedResponse<DiscountDto>
             {
-                Data = items,
+                Data = result.Item1,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.Item2
             });
         }
         catch (Exception ex)
@@ -92,21 +100,29 @@ public class DiscountsController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<DiscountDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<DiscountDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<DiscountDto>> GetDiscount(int id, [FromQuery] bool includeDetails = true)
+    public async Task<ActionResult<ApiResponse<DiscountDto>>> GetDiscount(int id, [FromQuery] bool includeDetails = true)
     {
         try
         {
-            var rabatyManager = _sferaService.GetManager("Rabaty");
-            if (rabatyManager == null) return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
-            var rabat = allRabaty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
-
-            if (rabat == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<DiscountDto>.Error($"Discount with ID {id} not found"));
-            }
+                var rabatyManager = _sferaService.GetManager("Rabaty");
+                if (rabatyManager == null) return (true, (DiscountDto?)null);
+                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
+                var rabat = allRabaty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
 
-            var dto = MapDiscount(rabat, includeDetails);
+                if (rabat == null)
+                    return (false, (DiscountDto?)null);
+
+                return (false, MapDiscount(rabat, includeDetails));
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
+
+            if (dto == null)
+                return NotFound(ApiResponse<DiscountDto>.Error($"Discount with ID {id} not found"));
+
             return Ok(ApiResponse<DiscountDto>.Ok(dto));
         }
         catch (Exception ex)
@@ -122,22 +138,30 @@ public class DiscountsController : ControllerBase
     [HttpGet("by-symbol/{symbol}")]
     [ProducesResponseType(typeof(ApiResponse<DiscountDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<DiscountDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<DiscountDto>> GetDiscountBySymbol(string symbol, [FromQuery] bool includeDetails = true)
+    public async Task<ActionResult<ApiResponse<DiscountDto>>> GetDiscountBySymbol(string symbol, [FromQuery] bool includeDetails = true)
     {
         try
         {
-            var rabatyManager = _sferaService.GetManager("Rabaty");
-            if (rabatyManager == null) return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
-            var rabat = allRabaty.FirstOrDefault(r =>
-                DynamicPropertyHelper.GetString(r, "Symbol") == symbol);
-
-            if (rabat == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<DiscountDto>.Error($"Discount with symbol '{symbol}' not found"));
-            }
+                var rabatyManager = _sferaService.GetManager("Rabaty");
+                if (rabatyManager == null) return (true, (DiscountDto?)null);
+                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
+                var rabat = allRabaty.FirstOrDefault(r =>
+                    DynamicPropertyHelper.GetString(r, "Symbol") == symbol);
 
-            var dto = MapDiscount(rabat, includeDetails);
+                if (rabat == null)
+                    return (false, (DiscountDto?)null);
+
+                return (false, MapDiscount(rabat, includeDetails));
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
+
+            if (dto == null)
+                return NotFound(ApiResponse<DiscountDto>.Error($"Discount with symbol '{symbol}' not found"));
+
             return Ok(ApiResponse<DiscountDto>.Ok(dto));
         }
         catch (Exception ex)
@@ -152,60 +176,72 @@ public class DiscountsController : ControllerBase
     /// </summary>
     [HttpGet("for-contractor/{contractorId}")]
     [ProducesResponseType(typeof(ApiResponse<List<DiscountDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<DiscountDto>>> GetDiscountsForContractor(int contractorId, [FromQuery] bool? activeOnly = true)
+    public async Task<ActionResult<ApiResponse<List<DiscountDto>>>> GetDiscountsForContractor(int contractorId, [FromQuery] bool? activeOnly = true)
     {
         try
         {
-            // Verify contractor exists
-            var kontrahenciManager = _sferaService.GetManager("Podmioty");
-            if (kontrahenciManager == null) return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Podmioty manager not available"));
-            var allKontrahenci = DynamicPropertyHelper.SafeGetAll((object)kontrahenciManager);
-            var kontrahent = allKontrahenci.FirstOrDefault(k => DynamicPropertyHelper.GetId(k) == contractorId);
-
-            if (kontrahent == null)
+            var (status, dtos) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return NotFound(ApiResponse<List<DiscountDto>>.Error($"Contractor with ID {contractorId} not found"));
-            }
+                // Verify contractor exists
+                var kontrahenciManager = _sferaService.GetManager("Podmioty");
+                if (kontrahenciManager == null) return ("podmioty_null", (List<DiscountDto>?)null);
+                var allKontrahenci = DynamicPropertyHelper.SafeGetAll((object)kontrahenciManager);
+                var kontrahent = allKontrahenci.FirstOrDefault(k => DynamicPropertyHelper.GetId(k) == contractorId);
 
-            var rabatyManager = _sferaService.GetManager("Rabaty");
-            if (rabatyManager == null) return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Rabaty manager not available"));
-            var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
+                if (kontrahent == null)
+                    return ("not_found", (List<DiscountDto>?)null);
 
-            if (activeOnly == true)
-            {
-                allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
-            }
+                var rabatyManager = _sferaService.GetManager("Rabaty");
+                if (rabatyManager == null) return ("rabaty_null", (List<DiscountDto>?)null);
+                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
 
-            // Filter by contractor
-            var now = DateTime.Now;
-            var applicableDiscounts = allRabaty
-                .Where(r =>
+                if (activeOnly == true)
                 {
-                    var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
-                    var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
-                    return (!odDaty.HasValue || odDaty.Value <= now) &&
-                           (!doDaty.HasValue || doDaty.Value >= now);
-                })
-                .Where(r =>
-                {
-                    var podmioty = DynamicPropertyHelper.GetCollection((object)r, "Podmioty");
-                    // No subjects = applies to all, OR contractor is in the list
-                    if (!podmioty.Any()) return true;
-                    foreach (var p in podmioty)
+                    allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
+                }
+
+                // Filter by contractor
+                var now = DateTime.Now;
+                var applicableDiscounts = allRabaty
+                    .Where(r =>
                     {
-                        if (DynamicPropertyHelper.GetId(p) == contractorId) return true;
-                    }
-                    return false;
-                })
-                .ToList();
+                        var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
+                        var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
+                        return (!odDaty.HasValue || odDaty.Value <= now) &&
+                               (!doDaty.HasValue || doDaty.Value >= now);
+                    })
+                    .Where(r =>
+                    {
+                        var podmioty = DynamicPropertyHelper.GetCollection((object)r, "Podmioty");
+                        // No subjects = applies to all, OR contractor is in the list
+                        if (!podmioty.Any()) return true;
+                        foreach (var p in podmioty)
+                        {
+                            if (DynamicPropertyHelper.GetId(p) == contractorId) return true;
+                        }
+                        return false;
+                    })
+                    .ToList();
 
-            var applicableDiscountDtos = new List<DiscountDto>();
-            foreach (var r in applicableDiscounts)
-            {
-                applicableDiscountDtos.Add(MapDiscount(r, false));
-            }
+                var applicableDiscountDtos = new List<DiscountDto>();
+                foreach (var r in applicableDiscounts)
+                {
+                    applicableDiscountDtos.Add(MapDiscount(r, false));
+                }
 
-            return Ok(ApiResponse<List<DiscountDto>>.Ok(applicableDiscountDtos));
+                return ("ok", applicableDiscountDtos);
+            });
+
+            if (status == "podmioty_null")
+                return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Podmioty manager not available"));
+
+            if (status == "not_found")
+                return NotFound(ApiResponse<List<DiscountDto>>.Error($"Contractor with ID {contractorId} not found"));
+
+            if (status == "rabaty_null")
+                return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Rabaty manager not available"));
+
+            return Ok(ApiResponse<List<DiscountDto>>.Ok(dtos!));
         }
         catch (Exception ex)
         {

@@ -30,164 +30,171 @@ public class CustomerOrdersController : ControllerBase
     /// Get all customer orders with optional filtering
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<CustomerOrderListItemDto>> GetCustomerOrders([FromQuery] CustomerOrderQueryRequest query)
+    public async Task<ActionResult<PagedResponse<CustomerOrderListItemDto>>> GetCustomerOrders([FromQuery] CustomerOrderQueryRequest query)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var (items, totalCount) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (null, -1);
+
+                var allZamowienia = DynamicPropertyHelper.SafeGetAll((object)zamowienia);
+
+                // Apply filters
+                var filteredList = new List<object>();
+                foreach (var z in allZamowienia)
+                {
+                    // Customer ID filter
+                    if (query.CustomerId.HasValue)
+                    {
+                        var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
+                        if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != query.CustomerId.Value)
+                            continue;
+                    }
+
+                    // Customer NIP filter
+                    if (!string.IsNullOrEmpty(query.CustomerNIP))
+                    {
+                        var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
+                        var nip = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null;
+                        if (nip != query.CustomerNIP)
+                            continue;
+                    }
+
+                    // Warehouse symbol filter
+                    if (!string.IsNullOrEmpty(query.WarehouseSymbol))
+                    {
+                        var magazyn = DynamicPropertyHelper.GetProperty(z, "Magazyn");
+                        var symbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null;
+                        if (symbol != query.WarehouseSymbol)
+                            continue;
+                    }
+
+                    // Date range filter (issue date)
+                    if (query.DateFrom.HasValue)
+                    {
+                        var issueDate = DynamicPropertyHelper.GetDateTime(z, "DataWystawienia");
+                        if (issueDate == null || issueDate < query.DateFrom.Value)
+                            continue;
+                    }
+
+                    if (query.DateTo.HasValue)
+                    {
+                        var issueDate = DynamicPropertyHelper.GetDateTime(z, "DataWystawienia");
+                        if (issueDate == null || issueDate > query.DateTo.Value)
+                            continue;
+                    }
+
+                    // Deadline date range filter
+                    if (query.DeadlineFrom.HasValue)
+                    {
+                        var deadline = DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji");
+                        if (deadline == null || deadline < query.DeadlineFrom.Value)
+                            continue;
+                    }
+
+                    if (query.DeadlineTo.HasValue)
+                    {
+                        var deadline = DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji");
+                        if (deadline == null || deadline > query.DeadlineTo.Value)
+                            continue;
+                    }
+
+                    // Status filter
+                    if (query.StatusId.HasValue)
+                    {
+                        var status = DynamicPropertyHelper.GetProperty(z, "Status");
+                        var statusId = status != null ? DynamicPropertyHelper.GetId(status) : 0;
+                        if (statusId != query.StatusId.Value)
+                            continue;
+                    }
+
+                    // Closed filter
+                    if (query.IsClosed.HasValue)
+                    {
+                        var isClosed = DynamicPropertyHelper.GetNullableBool(z, "Zamkniety") ?? false;
+                        if (isClosed != query.IsClosed.Value)
+                            continue;
+                    }
+
+                    // Overdue filter
+                    if (query.IsOverdue.HasValue && query.IsOverdue.Value)
+                    {
+                        var deadline = DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji");
+                        var isClosed = DynamicPropertyHelper.GetNullableBool(z, "Zamkniety") ?? false;
+                        if (isClosed || deadline == null || deadline >= DateTime.Today)
+                            continue;
+                    }
+
+                    // Search filter
+                    if (!string.IsNullOrEmpty(query.Search))
+                    {
+                        var searchLower = query.Search.ToLower();
+                        var numerWewn = DynamicPropertyHelper.GetProperty(z, "NumerWewnetrzny");
+                        var number = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura")?.ToLower() ?? "" : "";
+                        var externalNum = (DynamicPropertyHelper.GetString(z, "NumerZewnetrzny") ?? "").ToLower();
+                        var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
+                        var customerName = podmiot != null ? (DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "").ToLower() : "";
+
+                        if (!number.Contains(searchLower) && !externalNum.Contains(searchLower) && !customerName.Contains(searchLower))
+                            continue;
+                    }
+
+                    filteredList.Add(z);
+                }
+
+                var count = filteredList.Count;
+
+                // Sorting
+                IEnumerable<object> sortedList = filteredList;
+                if (!string.IsNullOrEmpty(query.SortBy))
+                {
+                    sortedList = query.SortBy.ToLower() switch
+                    {
+                        "deadline" => query.SortDesc
+                            ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji"))
+                            : filteredList.OrderBy(z => DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji")),
+                        "customer" => query.SortDesc
+                            ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetProperty(z, "Podmiot") != null
+                                ? DynamicPropertyHelper.GetString(DynamicPropertyHelper.GetProperty(z, "Podmiot"), "NazwaSkrocona") : "")
+                            : filteredList.OrderBy(z => DynamicPropertyHelper.GetProperty(z, "Podmiot") != null
+                                ? DynamicPropertyHelper.GetString(DynamicPropertyHelper.GetProperty(z, "Podmiot"), "NazwaSkrocona") : ""),
+                        "total" => query.SortDesc
+                            ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDecimal(z, "WartoscBrutto"))
+                            : filteredList.OrderBy(z => DynamicPropertyHelper.GetDecimal(z, "WartoscBrutto")),
+                        _ => query.SortDesc
+                            ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"))
+                            : filteredList.OrderBy(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"))
+                    };
+                }
+                else
+                {
+                    sortedList = filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"));
+                }
+
+                var pagedItems = sortedList
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
+
+                var result = new List<CustomerOrderListItemDto>();
+                foreach (var z in pagedItems)
+                {
+                    result.Add(MapToListItemDto(z));
+                }
+
+                return (result, count);
+            });
+
+            if (totalCount == -1)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
 
-            var allZamowienia = DynamicPropertyHelper.SafeGetAll((object)zamowienia);
-
-            // Apply filters
-            var filteredList = new List<object>();
-            foreach (var z in allZamowienia)
-            {
-                // Customer ID filter
-                if (query.CustomerId.HasValue)
-                {
-                    var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                    if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != query.CustomerId.Value)
-                        continue;
-                }
-
-                // Customer NIP filter
-                if (!string.IsNullOrEmpty(query.CustomerNIP))
-                {
-                    var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                    var nip = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NIP") : null;
-                    if (nip != query.CustomerNIP)
-                        continue;
-                }
-
-                // Warehouse symbol filter
-                if (!string.IsNullOrEmpty(query.WarehouseSymbol))
-                {
-                    var magazyn = DynamicPropertyHelper.GetProperty(z, "Magazyn");
-                    var symbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null;
-                    if (symbol != query.WarehouseSymbol)
-                        continue;
-                }
-
-                // Date range filter (issue date)
-                if (query.DateFrom.HasValue)
-                {
-                    var issueDate = DynamicPropertyHelper.GetDateTime(z, "DataWystawienia");
-                    if (issueDate == null || issueDate < query.DateFrom.Value)
-                        continue;
-                }
-
-                if (query.DateTo.HasValue)
-                {
-                    var issueDate = DynamicPropertyHelper.GetDateTime(z, "DataWystawienia");
-                    if (issueDate == null || issueDate > query.DateTo.Value)
-                        continue;
-                }
-
-                // Deadline date range filter
-                if (query.DeadlineFrom.HasValue)
-                {
-                    var deadline = DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji");
-                    if (deadline == null || deadline < query.DeadlineFrom.Value)
-                        continue;
-                }
-
-                if (query.DeadlineTo.HasValue)
-                {
-                    var deadline = DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji");
-                    if (deadline == null || deadline > query.DeadlineTo.Value)
-                        continue;
-                }
-
-                // Status filter
-                if (query.StatusId.HasValue)
-                {
-                    var status = DynamicPropertyHelper.GetProperty(z, "Status");
-                    var statusId = status != null ? DynamicPropertyHelper.GetId(status) : 0;
-                    if (statusId != query.StatusId.Value)
-                        continue;
-                }
-
-                // Closed filter
-                if (query.IsClosed.HasValue)
-                {
-                    var isClosed = DynamicPropertyHelper.GetNullableBool(z, "Zamkniety") ?? false;
-                    if (isClosed != query.IsClosed.Value)
-                        continue;
-                }
-
-                // Overdue filter
-                if (query.IsOverdue.HasValue && query.IsOverdue.Value)
-                {
-                    var deadline = DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji");
-                    var isClosed = DynamicPropertyHelper.GetNullableBool(z, "Zamkniety") ?? false;
-                    if (isClosed || deadline == null || deadline >= DateTime.Today)
-                        continue;
-                }
-
-                // Search filter
-                if (!string.IsNullOrEmpty(query.Search))
-                {
-                    var searchLower = query.Search.ToLower();
-                    var numerWewn = DynamicPropertyHelper.GetProperty(z, "NumerWewnetrzny");
-                    var number = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura")?.ToLower() ?? "" : "";
-                    var externalNum = (DynamicPropertyHelper.GetString(z, "NumerZewnetrzny") ?? "").ToLower();
-                    var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                    var customerName = podmiot != null ? (DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "").ToLower() : "";
-
-                    if (!number.Contains(searchLower) && !externalNum.Contains(searchLower) && !customerName.Contains(searchLower))
-                        continue;
-                }
-
-                filteredList.Add(z);
-            }
-
-            var totalCount = filteredList.Count;
-
-            // Sorting
-            IEnumerable<object> sortedList = filteredList;
-            if (!string.IsNullOrEmpty(query.SortBy))
-            {
-                sortedList = query.SortBy.ToLower() switch
-                {
-                    "deadline" => query.SortDesc
-                        ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji"))
-                        : filteredList.OrderBy(z => DynamicPropertyHelper.GetDateTime(z, "TerminRealizacji")),
-                    "customer" => query.SortDesc
-                        ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetProperty(z, "Podmiot") != null
-                            ? DynamicPropertyHelper.GetString(DynamicPropertyHelper.GetProperty(z, "Podmiot"), "NazwaSkrocona") : "")
-                        : filteredList.OrderBy(z => DynamicPropertyHelper.GetProperty(z, "Podmiot") != null
-                            ? DynamicPropertyHelper.GetString(DynamicPropertyHelper.GetProperty(z, "Podmiot"), "NazwaSkrocona") : ""),
-                    "total" => query.SortDesc
-                        ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDecimal(z, "WartoscBrutto"))
-                        : filteredList.OrderBy(z => DynamicPropertyHelper.GetDecimal(z, "WartoscBrutto")),
-                    _ => query.SortDesc
-                        ? filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"))
-                        : filteredList.OrderBy(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"))
-                };
-            }
-            else
-            {
-                sortedList = filteredList.OrderByDescending(z => DynamicPropertyHelper.GetDateTime(z, "DataWystawienia"));
-            }
-
-            var pagedItems = sortedList
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .ToList();
-
-            var items = new List<CustomerOrderListItemDto>();
-            foreach (var z in pagedItems)
-            {
-                items.Add(MapToListItemDto(z));
-            }
-
             var response = new PagedResponse<CustomerOrderListItemDto>
             {
-                Data = items,
+                Data = items!,
                 Page = query.Page,
                 PageSize = query.PageSize,
                 TotalCount = totalCount
@@ -245,34 +252,37 @@ public class CustomerOrdersController : ControllerBase
     /// Get customer order by number
     /// </summary>
     [HttpGet("by-number/{number}")]
-    public ActionResult<ApiResponse<CustomerOrderDto>> GetCustomerOrderByNumber(string number)
+    public async Task<ActionResult<ApiResponse<CustomerOrderDto>>> GetCustomerOrderByNumber(string number)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<CustomerOrderDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (CustomerOrderDto?)null;
 
-            dynamic? zamowienie = null;
-            foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-            {
-                var numerWewn = DynamicPropertyHelper.GetProperty(z, "NumerWewnetrzny");
-                var fullNumber = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura") : null;
-                if (fullNumber == number)
+                dynamic? zamowienie = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
                 {
-                    zamowienie = z;
-                    break;
+                    var numerWewn = DynamicPropertyHelper.GetProperty(z, "NumerWewnetrzny");
+                    var fullNumber = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura") : null;
+                    if (fullNumber == number)
+                    {
+                        zamowienie = z;
+                        break;
+                    }
                 }
-            }
 
-            if (zamowienie == null)
+                if (zamowienie == null) return (CustomerOrderDto?)null;
+                return (CustomerOrderDto?)MapToDto(zamowienie);
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<CustomerOrderDto>.Error($"Customer order with number {number} not found"));
             }
 
-            return Ok(ApiResponse<CustomerOrderDto>.Ok(MapToDto(zamowienie)));
+            return Ok(ApiResponse<CustomerOrderDto>.Ok(result));
         }
         catch (Exception ex)
         {
@@ -285,261 +295,275 @@ public class CustomerOrdersController : ControllerBase
     /// Create a new customer order (ZK)
     /// </summary>
     [HttpPost]
-    public ActionResult<ApiResponse<CustomerOrderDto>> CreateCustomerOrder([FromBody] CreateCustomerOrderRequest request)
+    public async Task<ActionResult<ApiResponse<CustomerOrderDto>>> CreateCustomerOrder([FromBody] CreateCustomerOrderRequest request)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (false, "manager_null", 0, "", (CustomerOrderDto?)null, new List<string>());
+
+                // Get default configuration
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
+
+                using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())
+                {
+                    var podmioty = _sferaService.GetManager("Podmioty");
+
+                    // Set customer
+                    if (request.CustomerId.HasValue && podmioty != null)
+                    {
+                        dynamic? podmiot = null;
+                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                        {
+                            if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
+                            {
+                                podmiot = p;
+                                break;
+                            }
+                        }
+                        if (podmiot != null)
+                        {
+                            zamowienie.Dane.Podmiot = podmiot;
+                        }
+                    }
+                    else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
+                    {
+                        dynamic? podmiot = null;
+                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                        {
+                            if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
+                            {
+                                podmiot = p;
+                                break;
+                            }
+                        }
+                        if (podmiot != null)
+                        {
+                            zamowienie.Dane.Podmiot = podmiot;
+                        }
+                    }
+
+                    // Set recipient if different from customer
+                    if (request.RecipientId.HasValue && podmioty != null)
+                    {
+                        dynamic? odbiorca = null;
+                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                        {
+                            if (DynamicPropertyHelper.GetId(p) == request.RecipientId.Value)
+                            {
+                                odbiorca = p;
+                                break;
+                            }
+                        }
+                        if (odbiorca != null)
+                        {
+                            try { zamowienie.Dane.Odbiorca = odbiorca; } catch { }
+                        }
+                    }
+
+                    // Set warehouse
+                    if (request.WarehouseId.HasValue || !string.IsNullOrEmpty(request.WarehouseSymbol))
+                    {
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
+                        {
+                            dynamic? magazyn = null;
+                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
+                            {
+                                if (request.WarehouseId.HasValue && DynamicPropertyHelper.GetId(m) == request.WarehouseId.Value)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                                if (!string.IsNullOrEmpty(request.WarehouseSymbol) && DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                            }
+                            if (magazyn != null)
+                            {
+                                zamowienie.Dane.Magazyn = magazyn;
+                            }
+                        }
+                    }
+
+                    // Set dates
+                    if (request.IssueDate.HasValue)
+                    {
+                        zamowienie.Dane.DataWystawienia = request.IssueDate.Value;
+                    }
+
+                    if (request.DeadlineDate.HasValue)
+                    {
+                        zamowienie.Dane.TerminRealizacji = request.DeadlineDate.Value;
+                    }
+
+                    // Set external/reference numbers
+                    if (!string.IsNullOrEmpty(request.ExternalNumber))
+                    {
+                        try { zamowienie.Dane.NumerZewnetrzny = request.ExternalNumber; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.ReferenceNumber))
+                    {
+                        try { zamowienie.Dane.NumerReferencyjny = request.ReferenceNumber; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Title))
+                    {
+                        try { zamowienie.Dane.Tytul = request.Title; } catch { }
+                    }
+
+                    // Set notes
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        zamowienie.Dane.Uwagi = request.Notes;
+                    }
+
+                    // Set reservation type
+                    if (request.ReservationType.HasValue)
+                    {
+                        try { zamowienie.Dane.TypRezerwacji = request.ReservationType.Value; } catch { }
+                    }
+
+                    // Set split payment
+                    if (request.SplitPayment.HasValue)
+                    {
+                        try { zamowienie.Dane.MechanizmPodzielonejPlatnosci = request.SplitPayment.Value; } catch { }
+                    }
+
+                    // Set price level
+                    if (request.PriceLevelId.HasValue)
+                    {
+                        var cenniki = _sferaService.GetManager("Cenniki");
+                        if (cenniki != null)
+                        {
+                            dynamic? poziom = null;
+                            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
+                            {
+                                if (DynamicPropertyHelper.GetId(c) == request.PriceLevelId.Value)
+                                {
+                                    poziom = c;
+                                    break;
+                                }
+                            }
+                            if (poziom != null)
+                            {
+                                try { zamowienie.Dane.PoziomCen = poziom; } catch { }
+                            }
+                        }
+                    }
+
+                    // Add items
+                    var asortymenty = _sferaService.GetManager("Asortymenty");
+                    foreach (var item in request.Items)
+                    {
+                        dynamic? asortyment = null;
+
+                        if (asortymenty != null)
+                        {
+                            if (item.ProductId.HasValue)
+                            {
+                                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
+                                {
+                                    if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
+                                    {
+                                        asortyment = a;
+                                        break;
+                                    }
+                                }
+                            }
+                            else if (!string.IsNullOrEmpty(item.ProductSymbol))
+                            {
+                                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
+                                {
+                                    if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
+                                    {
+                                        asortyment = a;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (asortyment != null)
+                        {
+                            var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                            var pozycja = zamowienie.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
+
+                            if (pozycja != null)
+                            {
+                                if (item.PriceNet.HasValue)
+                                {
+                                    try { pozycja.Dane.CenaNetto = item.PriceNet.Value; } catch { }
+                                }
+                                else if (item.PriceGross.HasValue)
+                                {
+                                    try { pozycja.Dane.CenaBrutto = item.PriceGross.Value; } catch { }
+                                }
+
+                                if (item.DiscountPercent.HasValue)
+                                {
+                                    try { pozycja.Dane.RabatProcent = item.DiscountPercent.Value; } catch { }
+                                }
+
+                                if (!string.IsNullOrEmpty(item.Description))
+                                {
+                                    try { pozycja.Dane.Opis = item.Description; } catch { }
+                                }
+                            }
+                        }
+                        else if (!string.IsNullOrEmpty(item.Name))
+                        {
+                            // Add item without product reference (manual entry)
+                            try
+                            {
+                                var pozycja = zamowienie.Pozycje.DodajUslugeJednorazowa(item.Name, item.PriceNet ?? 0, item.Quantity);
+                                if (pozycja != null && item.DiscountPercent.HasValue)
+                                {
+                                    pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
+                                }
+                            }
+                            catch { }
+                        }
+                    }
+
+                    if ((bool)zamowienie.Zapisz())
+                    {
+                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie.Dane, "NumerWewnetrzny");
+                        string orderNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") ?? "" : "";
+                        int newId = DynamicPropertyHelper.GetId(zamowienie.Dane);
+                        var dto = MapToDto(zamowienie.Dane);
+                        return (true, "created", newId, orderNumber, (CustomerOrderDto?)dto, new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(zamowienie);
+                        return (false, "save_failed", 0, "", (CustomerOrderDto?)null, errors);
+                    }
+                }
+            });
+
+            var (success, code, newId, orderNumber, dto, errors) = result;
+
+            if (code == "manager_null")
             {
                 return StatusCode(500, ApiResponse<CustomerOrderDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
-
-            // Get default configuration
-            var konfiguracje = _sferaService.GetManager("Konfiguracje");
-            var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
-
-            using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())
+            if (code == "save_failed")
             {
-                var podmioty = _sferaService.GetManager("Podmioty");
-
-                // Set customer
-                if (request.CustomerId.HasValue && podmioty != null)
-                {
-                    dynamic? podmiot = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                    {
-                        if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
-                        {
-                            podmiot = p;
-                            break;
-                        }
-                    }
-                    if (podmiot != null)
-                    {
-                        zamowienie.Dane.Podmiot = podmiot;
-                    }
-                }
-                else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
-                {
-                    dynamic? podmiot = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                    {
-                        if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
-                        {
-                            podmiot = p;
-                            break;
-                        }
-                    }
-                    if (podmiot != null)
-                    {
-                        zamowienie.Dane.Podmiot = podmiot;
-                    }
-                }
-
-                // Set recipient if different from customer
-                if (request.RecipientId.HasValue && podmioty != null)
-                {
-                    dynamic? odbiorca = null;
-                    foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                    {
-                        if (DynamicPropertyHelper.GetId(p) == request.RecipientId.Value)
-                        {
-                            odbiorca = p;
-                            break;
-                        }
-                    }
-                    if (odbiorca != null)
-                    {
-                        try { zamowienie.Dane.Odbiorca = odbiorca; } catch { }
-                    }
-                }
-
-                // Set warehouse
-                if (request.WarehouseId.HasValue || !string.IsNullOrEmpty(request.WarehouseSymbol))
-                {
-                    var magazyny = _sferaService.GetManager("Magazyny");
-                    if (magazyny != null)
-                    {
-                        dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
-                        {
-                            if (request.WarehouseId.HasValue && DynamicPropertyHelper.GetId(m) == request.WarehouseId.Value)
-                            {
-                                magazyn = m;
-                                break;
-                            }
-                            if (!string.IsNullOrEmpty(request.WarehouseSymbol) && DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
-                            {
-                                magazyn = m;
-                                break;
-                            }
-                        }
-                        if (magazyn != null)
-                        {
-                            zamowienie.Dane.Magazyn = magazyn;
-                        }
-                    }
-                }
-
-                // Set dates
-                if (request.IssueDate.HasValue)
-                {
-                    zamowienie.Dane.DataWystawienia = request.IssueDate.Value;
-                }
-
-                if (request.DeadlineDate.HasValue)
-                {
-                    zamowienie.Dane.TerminRealizacji = request.DeadlineDate.Value;
-                }
-
-                // Set external/reference numbers
-                if (!string.IsNullOrEmpty(request.ExternalNumber))
-                {
-                    try { zamowienie.Dane.NumerZewnetrzny = request.ExternalNumber; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.ReferenceNumber))
-                {
-                    try { zamowienie.Dane.NumerReferencyjny = request.ReferenceNumber; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.Title))
-                {
-                    try { zamowienie.Dane.Tytul = request.Title; } catch { }
-                }
-
-                // Set notes
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    zamowienie.Dane.Uwagi = request.Notes;
-                }
-
-                // Set reservation type
-                if (request.ReservationType.HasValue)
-                {
-                    try { zamowienie.Dane.TypRezerwacji = request.ReservationType.Value; } catch { }
-                }
-
-                // Set split payment
-                if (request.SplitPayment.HasValue)
-                {
-                    try { zamowienie.Dane.MechanizmPodzielonejPlatnosci = request.SplitPayment.Value; } catch { }
-                }
-
-                // Set price level
-                if (request.PriceLevelId.HasValue)
-                {
-                    var cenniki = _sferaService.GetManager("Cenniki");
-                    if (cenniki != null)
-                    {
-                        dynamic? poziom = null;
-                        foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
-                        {
-                            if (DynamicPropertyHelper.GetId(c) == request.PriceLevelId.Value)
-                            {
-                                poziom = c;
-                                break;
-                            }
-                        }
-                        if (poziom != null)
-                        {
-                            try { zamowienie.Dane.PoziomCen = poziom; } catch { }
-                        }
-                    }
-                }
-
-                // Add items
-                var asortymenty = _sferaService.GetManager("Asortymenty");
-                foreach (var item in request.Items)
-                {
-                    dynamic? asortyment = null;
-
-                    if (asortymenty != null)
-                    {
-                        if (item.ProductId.HasValue)
-                        {
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                            {
-                                if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
-                                {
-                                    asortyment = a;
-                                    break;
-                                }
-                            }
-                        }
-                        else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                        {
-                            foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                            {
-                                if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
-                                {
-                                    asortyment = a;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-
-                    if (asortyment != null)
-                    {
-                        var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
-                        var pozycja = zamowienie.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
-
-                        if (pozycja != null)
-                        {
-                            if (item.PriceNet.HasValue)
-                            {
-                                try { pozycja.Dane.CenaNetto = item.PriceNet.Value; } catch { }
-                            }
-                            else if (item.PriceGross.HasValue)
-                            {
-                                try { pozycja.Dane.CenaBrutto = item.PriceGross.Value; } catch { }
-                            }
-
-                            if (item.DiscountPercent.HasValue)
-                            {
-                                try { pozycja.Dane.RabatProcent = item.DiscountPercent.Value; } catch { }
-                            }
-
-                            if (!string.IsNullOrEmpty(item.Description))
-                            {
-                                try { pozycja.Dane.Opis = item.Description; } catch { }
-                            }
-                        }
-                    }
-                    else if (!string.IsNullOrEmpty(item.Name))
-                    {
-                        // Add item without product reference (manual entry)
-                        try
-                        {
-                            var pozycja = zamowienie.Pozycje.DodajUslugeJednorazowa(item.Name, item.PriceNet ?? 0, item.Quantity);
-                            if (pozycja != null && item.DiscountPercent.HasValue)
-                            {
-                                pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
-                            }
-                        }
-                        catch { }
-                    }
-                }
-
-                if ((bool)zamowienie.Zapisz())
-                {
-                    var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie.Dane, "NumerWewnetrzny");
-                    string orderNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") ?? "" : "";
-                    _logger.LogInformation("Created customer order {Number}", orderNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetCustomerOrder),
-                        new { id = DynamicPropertyHelper.GetId(zamowienie.Dane) },
-                        ApiResponse<CustomerOrderDto>.Ok(MapToDto(zamowienie.Dane), "Customer order created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(zamowienie);
-                    return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to create customer order", errors));
-                }
+                return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to create customer order", errors));
             }
+
+            _logger.LogInformation("Created customer order {Number}", orderNumber);
+            return CreatedAtAction(
+                nameof(GetCustomerOrder),
+                new { id = newId },
+                ApiResponse<CustomerOrderDto>.Ok(dto!, "Customer order created successfully"));
         }
         catch (Exception ex)
         {
@@ -552,76 +576,88 @@ public class CustomerOrdersController : ControllerBase
     /// Update an existing customer order
     /// </summary>
     [HttpPut("{id}")]
-    public ActionResult<ApiResponse<CustomerOrderDto>> UpdateCustomerOrder(int id, [FromBody] UpdateCustomerOrderRequest request)
+    public async Task<ActionResult<ApiResponse<CustomerOrderDto>>> UpdateCustomerOrder(int id, [FromBody] UpdateCustomerOrderRequest request)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (false, "manager_null", (CustomerOrderDto?)null, new List<string>());
+
+                dynamic? zamowienieDane = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
+                {
+                    if (DynamicPropertyHelper.GetId(z) == id)
+                    {
+                        zamowienieDane = z;
+                        break;
+                    }
+                }
+
+                if (zamowienieDane == null) return (false, "not_found", (CustomerOrderDto?)null, new List<string>());
+
+                using (var zamowienie = zamowienia.Znajdz(zamowienieDane))
+                {
+                    if (zamowienie == null) return (false, "not_found", (CustomerOrderDto?)null, new List<string>());
+
+                    dynamic dane = zamowienie.Dane;
+
+                    if (request.DeadlineDate.HasValue)
+                    {
+                        dane.TerminRealizacji = request.DeadlineDate.Value;
+                    }
+
+                    if (!string.IsNullOrEmpty(request.ExternalNumber))
+                    {
+                        try { dane.NumerZewnetrzny = request.ExternalNumber; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.ReferenceNumber))
+                    {
+                        try { dane.NumerReferencyjny = request.ReferenceNumber; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Title))
+                    {
+                        try { dane.Tytul = request.Title; } catch { }
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        dane.Uwagi = request.Notes;
+                    }
+
+                    if ((bool)zamowienie.Zapisz())
+                    {
+                        var dto = MapToDto(dane);
+                        return (true, "ok", (CustomerOrderDto?)dto, new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(zamowienie);
+                        return (false, "save_failed", (CustomerOrderDto?)null, errors);
+                    }
+                }
+            });
+
+            var (success, code, dto, errors) = result;
+
+            if (code == "manager_null")
             {
                 return StatusCode(500, ApiResponse<CustomerOrderDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
-
-            dynamic? zamowienieDane = null;
-            foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-            {
-                if (DynamicPropertyHelper.GetId(z) == id)
-                {
-                    zamowienieDane = z;
-                    break;
-                }
-            }
-
-            if (zamowienieDane == null)
+            if (code == "not_found")
             {
                 return NotFound(ApiResponse<CustomerOrderDto>.Error($"Customer order with ID {id} not found"));
             }
-
-            using (var zamowienie = zamowienia.Znajdz(zamowienieDane))
+            if (code == "save_failed")
             {
-                if (zamowienie == null)
-                {
-                    return NotFound(ApiResponse<CustomerOrderDto>.Error($"Customer order with ID {id} not found"));
-                }
-
-                dynamic dane = zamowienie.Dane;
-
-                if (request.DeadlineDate.HasValue)
-                {
-                    dane.TerminRealizacji = request.DeadlineDate.Value;
-                }
-
-                if (!string.IsNullOrEmpty(request.ExternalNumber))
-                {
-                    try { dane.NumerZewnetrzny = request.ExternalNumber; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.ReferenceNumber))
-                {
-                    try { dane.NumerReferencyjny = request.ReferenceNumber; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.Title))
-                {
-                    try { dane.Tytul = request.Title; } catch { }
-                }
-
-                if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    dane.Uwagi = request.Notes;
-                }
-
-                if ((bool)zamowienie.Zapisz())
-                {
-                    _logger.LogInformation("Updated customer order {Id}", id);
-                    return Ok(ApiResponse<CustomerOrderDto>.Ok(MapToDto(dane), "Customer order updated successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(zamowienie);
-                    return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to update customer order", errors));
-                }
+                return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to update customer order", errors));
             }
+
+            _logger.LogInformation("Updated customer order {Id}", id);
+            return Ok(ApiResponse<CustomerOrderDto>.Ok(dto!, "Customer order updated successfully"));
         }
         catch (Exception ex)
         {
@@ -634,49 +670,60 @@ public class CustomerOrdersController : ControllerBase
     /// Delete a customer order
     /// </summary>
     [HttpDelete("{id}")]
-    public ActionResult<ApiResponse<bool>> DeleteCustomerOrder(int id)
+    public async Task<ActionResult<ApiResponse<bool>>> DeleteCustomerOrder(int id)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (false, "manager_null", new List<string>());
+
+                dynamic? zamowienieDane = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
+                {
+                    if (DynamicPropertyHelper.GetId(z) == id)
+                    {
+                        zamowienieDane = z;
+                        break;
+                    }
+                }
+
+                if (zamowienieDane == null) return (false, "not_found", new List<string>());
+
+                using (var zamowienie = zamowienia.Znajdz(zamowienieDane))
+                {
+                    if (zamowienie == null) return (false, "not_found", new List<string>());
+
+                    if ((bool)zamowienie.Usun())
+                    {
+                        return (true, "ok", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(zamowienie);
+                        return (false, "delete_failed", errors);
+                    }
+                }
+            });
+
+            var (success, code, errors) = result;
+
+            if (code == "manager_null")
             {
                 return StatusCode(500, ApiResponse<bool>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
-
-            dynamic? zamowienieDane = null;
-            foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-            {
-                if (DynamicPropertyHelper.GetId(z) == id)
-                {
-                    zamowienieDane = z;
-                    break;
-                }
-            }
-
-            if (zamowienieDane == null)
+            if (code == "not_found")
             {
                 return NotFound(ApiResponse<bool>.Error($"Customer order with ID {id} not found"));
             }
-
-            using (var zamowienie = zamowienia.Znajdz(zamowienieDane))
+            if (code == "delete_failed")
             {
-                if (zamowienie == null)
-                {
-                    return NotFound(ApiResponse<bool>.Error($"Customer order with ID {id} not found"));
-                }
-
-                if ((bool)zamowienie.Usun())
-                {
-                    _logger.LogInformation("Deleted customer order {Id}", id);
-                    return Ok(ApiResponse<bool>.Ok(true, "Customer order deleted successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(zamowienie);
-                    return BadRequest(ApiResponse<bool>.Error("Failed to delete customer order", errors));
-                }
+                return BadRequest(ApiResponse<bool>.Error("Failed to delete customer order", errors));
             }
+
+            _logger.LogInformation("Deleted customer order {Id}", id);
+            return Ok(ApiResponse<bool>.Ok(true, "Customer order deleted successfully"));
         }
         catch (Exception ex)
         {
@@ -689,58 +736,70 @@ public class CustomerOrdersController : ControllerBase
     /// Close a customer order (mark as completed/cancelled)
     /// </summary>
     [HttpPost("{id}/close")]
-    public ActionResult<ApiResponse<CustomerOrderDto>> CloseCustomerOrder(int id)
+    public async Task<ActionResult<ApiResponse<CustomerOrderDto>>> CloseCustomerOrder(int id)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (false, "manager_null", (CustomerOrderDto?)null, new List<string>());
+
+                dynamic? zamowienieDane = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
+                {
+                    if (DynamicPropertyHelper.GetId(z) == id)
+                    {
+                        zamowienieDane = z;
+                        break;
+                    }
+                }
+
+                if (zamowienieDane == null) return (false, "not_found", (CustomerOrderDto?)null, new List<string>());
+
+                using (var zamowienie = zamowienia.Znajdz(zamowienieDane))
+                {
+                    if (zamowienie == null) return (false, "not_found", (CustomerOrderDto?)null, new List<string>());
+
+                    try
+                    {
+                        zamowienie.Dane.Zamkniety = true;
+                    }
+                    catch
+                    {
+                        try { zamowienie.Zamknij(); } catch { }
+                    }
+
+                    if ((bool)zamowienie.Zapisz())
+                    {
+                        var dto = MapToDto(zamowienie.Dane);
+                        return (true, "ok", (CustomerOrderDto?)dto, new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(zamowienie);
+                        return (false, "save_failed", (CustomerOrderDto?)null, errors);
+                    }
+                }
+            });
+
+            var (success, code, dto, errors) = result;
+
+            if (code == "manager_null")
             {
                 return StatusCode(500, ApiResponse<CustomerOrderDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
             }
-
-            dynamic? zamowienieDane = null;
-            foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-            {
-                if (DynamicPropertyHelper.GetId(z) == id)
-                {
-                    zamowienieDane = z;
-                    break;
-                }
-            }
-
-            if (zamowienieDane == null)
+            if (code == "not_found")
             {
                 return NotFound(ApiResponse<CustomerOrderDto>.Error($"Customer order with ID {id} not found"));
             }
-
-            using (var zamowienie = zamowienia.Znajdz(zamowienieDane))
+            if (code == "save_failed")
             {
-                if (zamowienie == null)
-                {
-                    return NotFound(ApiResponse<CustomerOrderDto>.Error($"Customer order with ID {id} not found"));
-                }
-
-                try
-                {
-                    zamowienie.Dane.Zamkniety = true;
-                }
-                catch
-                {
-                    try { zamowienie.Zamknij(); } catch { }
-                }
-
-                if ((bool)zamowienie.Zapisz())
-                {
-                    _logger.LogInformation("Closed customer order {Id}", id);
-                    return Ok(ApiResponse<CustomerOrderDto>.Ok(MapToDto(zamowienie.Dane), "Customer order closed successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(zamowienie);
-                    return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to close customer order", errors));
-                }
+                return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to close customer order", errors));
             }
+
+            _logger.LogInformation("Closed customer order {Id}", id);
+            return Ok(ApiResponse<CustomerOrderDto>.Ok(dto!, "Customer order closed successfully"));
         }
         catch (Exception ex)
         {
@@ -753,58 +812,60 @@ public class CustomerOrdersController : ControllerBase
     /// Get realization status of a customer order
     /// </summary>
     [HttpGet("{id}/realization")]
-    public ActionResult<ApiResponse<CustomerOrderRealizationDto>> GetOrderRealization(int id)
+    public async Task<ActionResult<ApiResponse<CustomerOrderRealizationDto>>> GetOrderRealization(int id)
     {
         try
         {
-            var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-            if (zamowienia == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<CustomerOrderRealizationDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                if (zamowienia == null) return (CustomerOrderRealizationDto?)null;
 
-            dynamic? zamowienie = null;
-            foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-            {
-                if (DynamicPropertyHelper.GetId(z) == id)
+                dynamic? zamowienie = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
                 {
-                    zamowienie = z;
-                    break;
+                    if (DynamicPropertyHelper.GetId(z) == id)
+                    {
+                        zamowienie = z;
+                        break;
+                    }
                 }
-            }
 
-            if (zamowienie == null)
+                if (zamowienie == null) return (CustomerOrderRealizationDto?)null;
+
+                var numerWewn = DynamicPropertyHelper.GetProperty(zamowienie, "NumerWewnetrzny");
+                var orderNumber = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura") : null;
+
+                decimal totalQty = 0;
+                decimal realizedQty = 0;
+
+                var pozycje = DynamicPropertyHelper.GetCollection((object)zamowienie, "Pozycje");
+                foreach (var poz in pozycje)
+                {
+                    var qty = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
+                    var realQty = DynamicPropertyHelper.GetDecimal(poz, "IloscZrealizowana");
+                    totalQty += qty;
+                    realizedQty += realQty;
+                }
+
+                return (CustomerOrderRealizationDto?)new CustomerOrderRealizationDto
+                {
+                    OrderId = id,
+                    OrderNumber = orderNumber,
+                    TotalQuantity = totalQty,
+                    RealizedQuantity = realizedQty,
+                    RemainingQuantity = totalQty - realizedQty,
+                    RealizationPercent = totalQty > 0 ? Math.Round((realizedQty / totalQty) * 100, 2) : 0,
+                    IsFullyRealized = totalQty > 0 && realizedQty >= totalQty
+                };
+            });
+
+            if (result == null)
             {
                 return NotFound(ApiResponse<CustomerOrderRealizationDto>.Error($"Customer order with ID {id} not found"));
             }
 
-            var numerWewn = DynamicPropertyHelper.GetProperty(zamowienie, "NumerWewnetrzny");
-            var orderNumber = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura") : null;
-
-            decimal totalQty = 0;
-            decimal realizedQty = 0;
-
-            var pozycje = DynamicPropertyHelper.GetCollection((object)zamowienie, "Pozycje");
-            foreach (var poz in pozycje)
-            {
-                var qty = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
-                var realQty = DynamicPropertyHelper.GetDecimal(poz, "IloscZrealizowana");
-                totalQty += qty;
-                realizedQty += realQty;
-            }
-
-            var realization = new CustomerOrderRealizationDto
-            {
-                OrderId = id,
-                OrderNumber = orderNumber,
-                TotalQuantity = totalQty,
-                RealizedQuantity = realizedQty,
-                RemainingQuantity = totalQty - realizedQty,
-                RealizationPercent = totalQty > 0 ? Math.Round((realizedQty / totalQty) * 100, 2) : 0,
-                IsFullyRealized = totalQty > 0 && realizedQty >= totalQty
-            };
-
-            return Ok(ApiResponse<CustomerOrderRealizationDto>.Ok(realization));
+            return Ok(ApiResponse<CustomerOrderRealizationDto>.Ok(result));
         }
         catch (Exception ex)
         {

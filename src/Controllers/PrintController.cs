@@ -31,29 +31,39 @@ public class PrintController : ControllerBase
     /// </summary>
     [HttpGet("headers")]
     [ProducesResponseType(typeof(ApiResponse<List<PrintHeaderDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PrintHeaderDto>>> GetPrintHeaders()
+    public async Task<ActionResult<ApiResponse<List<PrintHeaderDto>>>> GetPrintHeaders()
     {
         try
         {
-            var manager = _sferaService.GetManager("NaglowkiWydruku");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("NaglowkiWydruku");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allHeaders = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<PrintHeaderDto>();
+
+                foreach (var h in allHeaders)
+                {
+                    result.Add(new PrintHeaderDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(h),
+                        Name = DynamicPropertyHelper.GetString(h, "Nazwa") ?? "",
+                        Content = DynamicPropertyHelper.GetString(h, "Tresc") ?? "",
+                        IsDefault = DynamicPropertyHelper.GetBool(h, "Domyslny"),
+                        IsActive = DynamicPropertyHelper.GetBool(h, "Aktywny")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
             {
                 return StatusCode(500, ApiResponse<List<PrintHeaderDto>>.Error("Failed to get NaglowkiWydruku manager"));
-            }
-
-            var allHeaders = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<PrintHeaderDto>();
-
-            foreach (var h in allHeaders)
-            {
-                items.Add(new PrintHeaderDto
-                {
-                    Id = DynamicPropertyHelper.GetId(h),
-                    Name = DynamicPropertyHelper.GetString(h, "Nazwa") ?? "",
-                    Content = DynamicPropertyHelper.GetString(h, "Tresc") ?? "",
-                    IsDefault = DynamicPropertyHelper.GetBool(h, "Domyslny"),
-                    IsActive = DynamicPropertyHelper.GetBool(h, "Aktywny")
-                });
             }
 
             return Ok(ApiResponse<List<PrintHeaderDto>>.Ok(items));
@@ -71,32 +81,45 @@ public class PrintController : ControllerBase
     [HttpGet("headers/{id}")]
     [ProducesResponseType(typeof(ApiResponse<PrintHeaderDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PrintHeaderDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<PrintHeaderDto>> GetPrintHeader(int id)
+    public async Task<ActionResult<ApiResponse<PrintHeaderDto>>> GetPrintHeader(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("NaglowkiWydruku");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("NaglowkiWydruku");
+                if (manager == null)
+                {
+                    return (true, (PrintHeaderDto?)null);
+                }
+
+                var allHeaders = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var header = allHeaders.FirstOrDefault(h => DynamicPropertyHelper.GetId(h) == id);
+
+                if (header == null)
+                {
+                    return (false, (PrintHeaderDto?)null);
+                }
+
+                return (false, new PrintHeaderDto
+                {
+                    Id = DynamicPropertyHelper.GetId(header),
+                    Name = DynamicPropertyHelper.GetString(header, "Nazwa") ?? "",
+                    Content = DynamicPropertyHelper.GetString(header, "Tresc") ?? "",
+                    IsDefault = DynamicPropertyHelper.GetBool(header, "Domyslny"),
+                    IsActive = DynamicPropertyHelper.GetBool(header, "Aktywny")
+                });
+            });
+
+            if (managerNull)
             {
                 return StatusCode(500, ApiResponse<PrintHeaderDto>.Error("Failed to get NaglowkiWydruku manager"));
             }
 
-            var allHeaders = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var header = allHeaders.FirstOrDefault(h => DynamicPropertyHelper.GetId(h) == id);
-
-            if (header == null)
+            if (dto == null)
             {
                 return NotFound(ApiResponse<PrintHeaderDto>.Error($"Print header with ID {id} not found"));
             }
-
-            var dto = new PrintHeaderDto
-            {
-                Id = DynamicPropertyHelper.GetId(header),
-                Name = DynamicPropertyHelper.GetString(header, "Nazwa") ?? "",
-                Content = DynamicPropertyHelper.GetString(header, "Tresc") ?? "",
-                IsDefault = DynamicPropertyHelper.GetBool(header, "Domyslny"),
-                IsActive = DynamicPropertyHelper.GetBool(header, "Aktywny")
-            };
 
             return Ok(ApiResponse<PrintHeaderDto>.Ok(dto));
         }
@@ -112,29 +135,39 @@ public class PrintController : ControllerBase
     /// </summary>
     [HttpGet("footers")]
     [ProducesResponseType(typeof(ApiResponse<List<PrintFooterDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PrintFooterDto>>> GetPrintFooters()
+    public async Task<ActionResult<ApiResponse<List<PrintFooterDto>>>> GetPrintFooters()
     {
         try
         {
-            var manager = _sferaService.GetManager("StopkiWydruku");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("StopkiWydruku");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allFooters = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<PrintFooterDto>();
+
+                foreach (var f in allFooters)
+                {
+                    result.Add(new PrintFooterDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(f),
+                        Name = DynamicPropertyHelper.GetString(f, "Nazwa") ?? "",
+                        Content = DynamicPropertyHelper.GetString(f, "Tresc") ?? "",
+                        IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslny"),
+                        IsActive = DynamicPropertyHelper.GetBool(f, "Aktywny")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
             {
                 return StatusCode(500, ApiResponse<List<PrintFooterDto>>.Error("Failed to get StopkiWydruku manager"));
-            }
-
-            var allFooters = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<PrintFooterDto>();
-
-            foreach (var f in allFooters)
-            {
-                items.Add(new PrintFooterDto
-                {
-                    Id = DynamicPropertyHelper.GetId(f),
-                    Name = DynamicPropertyHelper.GetString(f, "Nazwa") ?? "",
-                    Content = DynamicPropertyHelper.GetString(f, "Tresc") ?? "",
-                    IsDefault = DynamicPropertyHelper.GetBool(f, "Domyslny"),
-                    IsActive = DynamicPropertyHelper.GetBool(f, "Aktywny")
-                });
             }
 
             return Ok(ApiResponse<List<PrintFooterDto>>.Ok(items));
@@ -152,32 +185,45 @@ public class PrintController : ControllerBase
     [HttpGet("footers/{id}")]
     [ProducesResponseType(typeof(ApiResponse<PrintFooterDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<PrintFooterDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<PrintFooterDto>> GetPrintFooter(int id)
+    public async Task<ActionResult<ApiResponse<PrintFooterDto>>> GetPrintFooter(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("StopkiWydruku");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("StopkiWydruku");
+                if (manager == null)
+                {
+                    return (true, (PrintFooterDto?)null);
+                }
+
+                var allFooters = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var footer = allFooters.FirstOrDefault(f => DynamicPropertyHelper.GetId(f) == id);
+
+                if (footer == null)
+                {
+                    return (false, (PrintFooterDto?)null);
+                }
+
+                return (false, new PrintFooterDto
+                {
+                    Id = DynamicPropertyHelper.GetId(footer),
+                    Name = DynamicPropertyHelper.GetString(footer, "Nazwa") ?? "",
+                    Content = DynamicPropertyHelper.GetString(footer, "Tresc") ?? "",
+                    IsDefault = DynamicPropertyHelper.GetBool(footer, "Domyslny"),
+                    IsActive = DynamicPropertyHelper.GetBool(footer, "Aktywny")
+                });
+            });
+
+            if (managerNull)
             {
                 return StatusCode(500, ApiResponse<PrintFooterDto>.Error("Failed to get StopkiWydruku manager"));
             }
 
-            var allFooters = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var footer = allFooters.FirstOrDefault(f => DynamicPropertyHelper.GetId(f) == id);
-
-            if (footer == null)
+            if (dto == null)
             {
                 return NotFound(ApiResponse<PrintFooterDto>.Error($"Print footer with ID {id} not found"));
             }
-
-            var dto = new PrintFooterDto
-            {
-                Id = DynamicPropertyHelper.GetId(footer),
-                Name = DynamicPropertyHelper.GetString(footer, "Nazwa") ?? "",
-                Content = DynamicPropertyHelper.GetString(footer, "Tresc") ?? "",
-                IsDefault = DynamicPropertyHelper.GetBool(footer, "Domyslny"),
-                IsActive = DynamicPropertyHelper.GetBool(footer, "Aktywny")
-            };
 
             return Ok(ApiResponse<PrintFooterDto>.Ok(dto));
         }
@@ -197,28 +243,38 @@ public class PrintController : ControllerBase
     /// </summary>
     [HttpGet("parameters")]
     [ProducesResponseType(typeof(ApiResponse<List<PrintParameterDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<PrintParameterDto>>> GetPrintParameters()
+    public async Task<ActionResult<ApiResponse<List<PrintParameterDto>>>> GetPrintParameters()
     {
         try
         {
-            var manager = _sferaService.GetManager("ParametryWydruku");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("ParametryWydruku");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allParams = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<PrintParameterDto>();
+
+                foreach (var p in allParams)
+                {
+                    result.Add(new PrintParameterDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(p),
+                        Name = DynamicPropertyHelper.GetString(p, "Nazwa") ?? "",
+                        Value = DynamicPropertyHelper.GetString(p, "Wartosc") ?? "",
+                        Description = DynamicPropertyHelper.GetString(p, "Opis")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
             {
                 return StatusCode(500, ApiResponse<List<PrintParameterDto>>.Error("Failed to get ParametryWydruku manager"));
-            }
-
-            var allParams = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<PrintParameterDto>();
-
-            foreach (var p in allParams)
-            {
-                items.Add(new PrintParameterDto
-                {
-                    Id = DynamicPropertyHelper.GetId(p),
-                    Name = DynamicPropertyHelper.GetString(p, "Nazwa") ?? "",
-                    Value = DynamicPropertyHelper.GetString(p, "Wartosc") ?? "",
-                    Description = DynamicPropertyHelper.GetString(p, "Opis")
-                });
             }
 
             return Ok(ApiResponse<List<PrintParameterDto>>.Ok(items));
@@ -239,7 +295,7 @@ public class PrintController : ControllerBase
     /// </summary>
     [HttpGet("logs")]
     [ProducesResponseType(typeof(PagedResponse<PrintLogDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<PrintLogDto>> GetPrintLogs(
+    public async Task<ActionResult<PagedResponse<PrintLogDto>>> GetPrintLogs(
         [FromQuery] DateTime? dateFrom,
         [FromQuery] DateTime? dateTo,
         [FromQuery] string? documentType,
@@ -248,71 +304,81 @@ public class PrintController : ControllerBase
     {
         try
         {
-            var manager = _sferaService.GetManager("LogaWydruku");
-            if (manager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("LogaWydruku");
+                if (manager == null)
+                {
+                    return (managerNull: true, totalCount: 0, items: new List<PrintLogDto>());
+                }
+
+                var allLogs = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by date range
+                if (dateFrom.HasValue)
+                {
+                    allLogs = allLogs.Where(l =>
+                    {
+                        var date = DynamicPropertyHelper.GetDateTime(l, "DataWydruku");
+                        return date.HasValue && date.Value >= dateFrom.Value;
+                    }).ToList();
+                }
+
+                if (dateTo.HasValue)
+                {
+                    allLogs = allLogs.Where(l =>
+                    {
+                        var date = DynamicPropertyHelper.GetDateTime(l, "DataWydruku");
+                        return date.HasValue && date.Value <= dateTo.Value;
+                    }).ToList();
+                }
+
+                // Filter by document type
+                if (!string.IsNullOrEmpty(documentType))
+                {
+                    allLogs = allLogs.Where(l =>
+                    {
+                        var type = DynamicPropertyHelper.GetString(l, "TypDokumentu");
+                        return type != null && type.Contains(documentType, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var totalCount = allLogs.Count;
+                var pagedLogs = allLogs
+                    .OrderByDescending(l => DynamicPropertyHelper.GetDateTime(l, "DataWydruku") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<PrintLogDto>();
+                foreach (var l in pagedLogs)
+                {
+                    items.Add(new PrintLogDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(l),
+                        DocumentType = DynamicPropertyHelper.GetString(l, "TypDokumentu") ?? "",
+                        DocumentNumber = DynamicPropertyHelper.GetString(l, "NumerDokumentu") ?? "",
+                        PrintDate = DynamicPropertyHelper.GetDateTime(l, "DataWydruku"),
+                        PrintedBy = DynamicPropertyHelper.GetString(l, "Operator") ?? "",
+                        TemplateName = DynamicPropertyHelper.GetString(l, "NazwaSzablonu") ?? "",
+                        PrinterName = DynamicPropertyHelper.GetString(l, "NazwaDrukarki")
+                    });
+                }
+
+                return (managerNull: false, totalCount, items);
+            });
+
+            if (result.managerNull)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get LogaWydruku manager"));
             }
 
-            var allLogs = DynamicPropertyHelper.SafeGetAll((object)manager);
-
-            // Filter by date range
-            if (dateFrom.HasValue)
-            {
-                allLogs = allLogs.Where(l =>
-                {
-                    var date = DynamicPropertyHelper.GetDateTime(l, "DataWydruku");
-                    return date.HasValue && date.Value >= dateFrom.Value;
-                }).ToList();
-            }
-
-            if (dateTo.HasValue)
-            {
-                allLogs = allLogs.Where(l =>
-                {
-                    var date = DynamicPropertyHelper.GetDateTime(l, "DataWydruku");
-                    return date.HasValue && date.Value <= dateTo.Value;
-                }).ToList();
-            }
-
-            // Filter by document type
-            if (!string.IsNullOrEmpty(documentType))
-            {
-                allLogs = allLogs.Where(l =>
-                {
-                    var type = DynamicPropertyHelper.GetString(l, "TypDokumentu");
-                    return type != null && type.Contains(documentType, StringComparison.OrdinalIgnoreCase);
-                }).ToList();
-            }
-
-            var totalCount = allLogs.Count;
-            var pagedLogs = allLogs
-                .OrderByDescending(l => DynamicPropertyHelper.GetDateTime(l, "DataWydruku") ?? DateTime.MinValue)
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<PrintLogDto>();
-            foreach (var l in pagedLogs)
-            {
-                items.Add(new PrintLogDto
-                {
-                    Id = DynamicPropertyHelper.GetId(l),
-                    DocumentType = DynamicPropertyHelper.GetString(l, "TypDokumentu") ?? "",
-                    DocumentNumber = DynamicPropertyHelper.GetString(l, "NumerDokumentu") ?? "",
-                    PrintDate = DynamicPropertyHelper.GetDateTime(l, "DataWydruku"),
-                    PrintedBy = DynamicPropertyHelper.GetString(l, "Operator") ?? "",
-                    TemplateName = DynamicPropertyHelper.GetString(l, "NazwaSzablonu") ?? "",
-                    PrinterName = DynamicPropertyHelper.GetString(l, "NazwaDrukarki")
-                });
-            }
-
             return Ok(new PagedResponse<PrintLogDto>
             {
-                Data = items,
+                Data = result.items,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = totalCount
+                TotalCount = result.totalCount
             });
         }
         catch (Exception ex)
@@ -331,30 +397,40 @@ public class PrintController : ControllerBase
     /// </summary>
     [HttpGet("labels")]
     [ProducesResponseType(typeof(ApiResponse<List<LabelTemplateDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<LabelTemplateDto>>> GetLabelTemplates()
+    public async Task<ActionResult<ApiResponse<List<LabelTemplateDto>>>> GetLabelTemplates()
     {
         try
         {
-            var manager = _sferaService.GetManager("SzablonyNaklejek");
-            if (manager == null)
+            var items = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("SzablonyNaklejek");
+                if (manager == null)
+                {
+                    return null;
+                }
+
+                var allTemplates = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var result = new List<LabelTemplateDto>();
+
+                foreach (var t in allTemplates)
+                {
+                    result.Add(new LabelTemplateDto
+                    {
+                        Id = DynamicPropertyHelper.GetId(t),
+                        Name = DynamicPropertyHelper.GetString(t, "Nazwa") ?? "",
+                        Description = DynamicPropertyHelper.GetString(t, "Opis"),
+                        Width = DynamicPropertyHelper.GetDecimal(t, "Szerokosc"),
+                        Height = DynamicPropertyHelper.GetDecimal(t, "Wysokosc"),
+                        IsActive = DynamicPropertyHelper.GetBool(t, "Aktywny")
+                    });
+                }
+
+                return result;
+            });
+
+            if (items == null)
             {
                 return StatusCode(500, ApiResponse<List<LabelTemplateDto>>.Error("Failed to get SzablonyNaklejek manager"));
-            }
-
-            var allTemplates = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var items = new List<LabelTemplateDto>();
-
-            foreach (var t in allTemplates)
-            {
-                items.Add(new LabelTemplateDto
-                {
-                    Id = DynamicPropertyHelper.GetId(t),
-                    Name = DynamicPropertyHelper.GetString(t, "Nazwa") ?? "",
-                    Description = DynamicPropertyHelper.GetString(t, "Opis"),
-                    Width = DynamicPropertyHelper.GetDecimal(t, "Szerokosc"),
-                    Height = DynamicPropertyHelper.GetDecimal(t, "Wysokosc"),
-                    IsActive = DynamicPropertyHelper.GetBool(t, "Aktywny")
-                });
             }
 
             return Ok(ApiResponse<List<LabelTemplateDto>>.Ok(items));
@@ -372,33 +448,46 @@ public class PrintController : ControllerBase
     [HttpGet("labels/{id}")]
     [ProducesResponseType(typeof(ApiResponse<LabelTemplateDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<LabelTemplateDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<LabelTemplateDto>> GetLabelTemplate(int id)
+    public async Task<ActionResult<ApiResponse<LabelTemplateDto>>> GetLabelTemplate(int id)
     {
         try
         {
-            var manager = _sferaService.GetManager("SzablonyNaklejek");
-            if (manager == null)
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("SzablonyNaklejek");
+                if (manager == null)
+                {
+                    return (true, (LabelTemplateDto?)null);
+                }
+
+                var allTemplates = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var template = allTemplates.FirstOrDefault(t => DynamicPropertyHelper.GetId(t) == id);
+
+                if (template == null)
+                {
+                    return (false, (LabelTemplateDto?)null);
+                }
+
+                return (false, new LabelTemplateDto
+                {
+                    Id = DynamicPropertyHelper.GetId(template),
+                    Name = DynamicPropertyHelper.GetString(template, "Nazwa") ?? "",
+                    Description = DynamicPropertyHelper.GetString(template, "Opis"),
+                    Width = DynamicPropertyHelper.GetDecimal(template, "Szerokosc"),
+                    Height = DynamicPropertyHelper.GetDecimal(template, "Wysokosc"),
+                    IsActive = DynamicPropertyHelper.GetBool(template, "Aktywny")
+                });
+            });
+
+            if (managerNull)
             {
                 return StatusCode(500, ApiResponse<LabelTemplateDto>.Error("Failed to get SzablonyNaklejek manager"));
             }
 
-            var allTemplates = DynamicPropertyHelper.SafeGetAll((object)manager);
-            var template = allTemplates.FirstOrDefault(t => DynamicPropertyHelper.GetId(t) == id);
-
-            if (template == null)
+            if (dto == null)
             {
                 return NotFound(ApiResponse<LabelTemplateDto>.Error($"Label template with ID {id} not found"));
             }
-
-            var dto = new LabelTemplateDto
-            {
-                Id = DynamicPropertyHelper.GetId(template),
-                Name = DynamicPropertyHelper.GetString(template, "Nazwa") ?? "",
-                Description = DynamicPropertyHelper.GetString(template, "Opis"),
-                Width = DynamicPropertyHelper.GetDecimal(template, "Szerokosc"),
-                Height = DynamicPropertyHelper.GetDecimal(template, "Wysokosc"),
-                IsActive = DynamicPropertyHelper.GetBool(template, "Aktywny")
-            };
 
             return Ok(ApiResponse<LabelTemplateDto>.Ok(dto));
         }

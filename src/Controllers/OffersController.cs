@@ -32,7 +32,7 @@ public class OffersController : ControllerBase
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<OfferSummaryDto>), StatusCodes.Status200OK)]
-    public ActionResult<PagedResponse<OfferSummaryDto>> GetOffers(
+    public async Task<ActionResult<PagedResponse<OfferSummaryDto>>> GetOffers(
         [FromQuery] int? customerId = null,
         [FromQuery] DateTime? dateFrom = null,
         [FromQuery] DateTime? dateTo = null,
@@ -44,122 +44,132 @@ public class OffersController : ControllerBase
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            if (ofertyManager == null)
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                if (ofertyManager == null)
+                {
+                    return (PagedResponse<OfferSummaryDto>?)null;
+                }
+
+                var oferty = new List<object>();
+                foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
+                {
+                    oferty.Add(o);
+                }
+
+                if (customerId.HasValue)
+                {
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try { if (o.Podmiot?.Id == customerId.Value) filtered.Add(o); }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
+
+                if (dateFrom.HasValue)
+                {
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try { if ((DateTime?)o.DataWystawienia >= dateFrom.Value) filtered.Add(o); }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
+
+                if (dateTo.HasValue)
+                {
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try { if ((DateTime?)o.DataWystawienia <= dateTo.Value) filtered.Add(o); }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
+
+                if (closedOnly.HasValue && closedOnly.Value)
+                {
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try { if ((bool?)o.Zamkniety == true) filtered.Add(o); }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
+
+                if (acceptedOnly.HasValue && acceptedOnly.Value)
+                {
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try { if ((bool?)o.Zaakceptowany == true) filtered.Add(o); }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
+
+                if (validOnly.HasValue && validOnly.Value)
+                {
+                    var now = DateTime.Now;
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try
+                        {
+                            var od = (DateTime?)o.ObowiazujeOd;
+                            var doo = (DateTime?)o.ObowiazujeDo;
+                            if ((!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now))
+                            {
+                                filtered.Add(o);
+                            }
+                        }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
+
+                // Sort by DataWystawienia descending
+                var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
+                foreach (dynamic o in oferty)
+                {
+                    DateTime? data = null;
+                    try { data = (DateTime?)o.DataWystawienia; } catch { }
+                    sortedOferty.Add((o, data));
+                }
+                sortedOferty = sortedOferty.OrderByDescending(x => x.data).ToList();
+
+                var totalCount = oferty.Count;
+                var pagedOferty = sortedOferty
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<OfferSummaryDto>();
+                foreach (var item in pagedOferty)
+                {
+                    items.Add(MapOfferSummary(item.oferta));
+                }
+
+                return new PagedResponse<OfferSummaryDto>
+                {
+                    Data = items,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            if (response == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Oferty manager"));
             }
 
-            var oferty = new List<object>();
-            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
-            {
-                oferty.Add(o);
-            }
-
-            if (customerId.HasValue)
-            {
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
-                {
-                    try { if (o.Podmiot?.Id == customerId.Value) filtered.Add(o); }
-                    catch { }
-                }
-                oferty = filtered;
-            }
-
-            if (dateFrom.HasValue)
-            {
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
-                {
-                    try { if ((DateTime?)o.DataWystawienia >= dateFrom.Value) filtered.Add(o); }
-                    catch { }
-                }
-                oferty = filtered;
-            }
-
-            if (dateTo.HasValue)
-            {
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
-                {
-                    try { if ((DateTime?)o.DataWystawienia <= dateTo.Value) filtered.Add(o); }
-                    catch { }
-                }
-                oferty = filtered;
-            }
-
-            if (closedOnly.HasValue && closedOnly.Value)
-            {
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
-                {
-                    try { if ((bool?)o.Zamkniety == true) filtered.Add(o); }
-                    catch { }
-                }
-                oferty = filtered;
-            }
-
-            if (acceptedOnly.HasValue && acceptedOnly.Value)
-            {
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
-                {
-                    try { if ((bool?)o.Zaakceptowany == true) filtered.Add(o); }
-                    catch { }
-                }
-                oferty = filtered;
-            }
-
-            if (validOnly.HasValue && validOnly.Value)
-            {
-                var now = DateTime.Now;
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
-                {
-                    try
-                    {
-                        var od = (DateTime?)o.ObowiazujeOd;
-                        var doo = (DateTime?)o.ObowiazujeDo;
-                        if ((!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now))
-                        {
-                            filtered.Add(o);
-                        }
-                    }
-                    catch { }
-                }
-                oferty = filtered;
-            }
-
-            // Sort by DataWystawienia descending
-            var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
-            foreach (dynamic o in oferty)
-            {
-                DateTime? data = null;
-                try { data = (DateTime?)o.DataWystawienia; } catch { }
-                sortedOferty.Add((o, data));
-            }
-            sortedOferty = sortedOferty.OrderByDescending(x => x.data).ToList();
-
-            var totalCount = oferty.Count;
-            var pagedOferty = sortedOferty
-                .Skip((page - 1) * pageSize)
-                .Take(pageSize)
-                .ToList();
-
-            var items = new List<OfferSummaryDto>();
-            foreach (var item in pagedOferty)
-            {
-                items.Add(MapOfferSummary(item.oferta));
-            }
-
-            return Ok(new PagedResponse<OfferSummaryDto>
-            {
-                Data = items,
-                Page = page,
-                PageSize = pageSize,
-                TotalCount = totalCount
-            });
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -174,33 +184,37 @@ public class OffersController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<OfferDto>> GetOffer(int id, [FromQuery] bool includeItems = true)
+    public async Task<ActionResult<ApiResponse<OfferDto>>> GetOffer(int id, [FromQuery] bool includeItems = true)
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            if (ofertyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
-            }
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                if (ofertyManager == null)
+                    return (Found: false, ManagerMissing: true, Dto: (OfferDto?)null);
 
-            dynamic? oferta = null;
-            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
-            {
-                if ((int)o.Id == id)
+                dynamic? oferta = null;
+                foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
-                    oferta = o;
-                    break;
+                    if ((int)o.Id == id)
+                    {
+                        oferta = o;
+                        break;
+                    }
                 }
-            }
 
-            if (oferta == null)
-            {
+                if (oferta == null)
+                    return (Found: false, ManagerMissing: false, Dto: (OfferDto?)null);
+
+                return (Found: true, ManagerMissing: false, Dto: (OfferDto?)MapOffer(oferta, includeItems));
+            });
+
+            if (result.ManagerMissing)
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            if (!result.Found)
                 return NotFound(ApiResponse<OfferDto>.Error($"Offer with ID {id} not found"));
-            }
-
-            var dto = MapOffer(oferta, includeItems);
-            return Ok(ApiResponse<OfferDto>.Ok(dto));
+            return Ok(ApiResponse<OfferDto>.Ok(result.Dto!));
         }
         catch (Exception ex)
         {
@@ -215,38 +229,42 @@ public class OffersController : ControllerBase
     [HttpGet("by-number/{number}")]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<OfferDto>), StatusCodes.Status404NotFound)]
-    public ActionResult<ApiResponse<OfferDto>> GetOfferByNumber(string number, [FromQuery] bool includeItems = true)
+    public async Task<ActionResult<ApiResponse<OfferDto>>> GetOfferByNumber(string number, [FromQuery] bool includeItems = true)
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            if (ofertyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
-            }
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                if (ofertyManager == null)
+                    return (Found: false, ManagerMissing: true, Dto: (OfferDto?)null);
 
-            dynamic? oferta = null;
-            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
-            {
-                try
+                dynamic? oferta = null;
+                foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
-                    string? sygnatura = o.NumerWewnetrzny?.PelnaSygnatura;
-                    if (sygnatura != null && sygnatura.Contains(number))
+                    try
                     {
-                        oferta = o;
-                        break;
+                        string? sygnatura = o.NumerWewnetrzny?.PelnaSygnatura;
+                        if (sygnatura != null && sygnatura.Contains(number))
+                        {
+                            oferta = o;
+                            break;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            if (oferta == null)
-            {
+                if (oferta == null)
+                    return (Found: false, ManagerMissing: false, Dto: (OfferDto?)null);
+
+                return (Found: true, ManagerMissing: false, Dto: (OfferDto?)MapOffer(oferta, includeItems));
+            });
+
+            if (result.ManagerMissing)
+                return StatusCode(500, ApiResponse<OfferDto>.Error("Failed to get Oferty manager"));
+            if (!result.Found)
                 return NotFound(ApiResponse<OfferDto>.Error($"Offer with number {number} not found"));
-            }
-
-            var dto = MapOffer(oferta, includeItems);
-            return Ok(ApiResponse<OfferDto>.Ok(dto));
+            return Ok(ApiResponse<OfferDto>.Ok(result.Dto!));
         }
         catch (Exception ex)
         {
@@ -260,63 +278,68 @@ public class OffersController : ControllerBase
     /// </summary>
     [HttpGet("for-customer/{customerId}")]
     [ProducesResponseType(typeof(ApiResponse<List<OfferSummaryDto>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<OfferSummaryDto>>> GetOffersForCustomer(
+    public async Task<ActionResult<ApiResponse<List<OfferSummaryDto>>>> GetOffersForCustomer(
         int customerId,
         [FromQuery] bool? validOnly = true)
     {
         try
         {
-            var ofertyManager = _sferaService.GetManager("Oferty");
-            if (ofertyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, ApiResponse<List<OfferSummaryDto>>.Error("Failed to get Oferty manager"));
-            }
+                var ofertyManager = _sferaService.GetManager("Oferty");
+                if (ofertyManager == null)
+                    return (Found: false, Items: (List<OfferSummaryDto>?)null);
 
-            var oferty = new List<object>();
-            foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
-            {
-                try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
-                catch { }
-            }
-
-            if (validOnly.HasValue && validOnly.Value)
-            {
-                var now = DateTime.Now;
-                var filtered = new List<object>();
-                foreach (dynamic o in oferty)
+                var oferty = new List<object>();
+                foreach (dynamic o in DynamicPropertyHelper.SafeGetAll((object)ofertyManager))
                 {
-                    try
-                    {
-                        var od = (DateTime?)o.ObowiazujeOd;
-                        var doo = (DateTime?)o.ObowiazujeDo;
-                        var zamkniety = (bool?)o.Zamkniety;
-                        if ((!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now) && zamkniety != true)
-                        {
-                            filtered.Add(o);
-                        }
-                    }
+                    try { if (o.Podmiot?.Id == customerId) oferty.Add(o); }
                     catch { }
                 }
-                oferty = filtered;
-            }
 
-            // Sort by DataWystawienia descending
-            var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
-            foreach (dynamic o in oferty)
-            {
-                DateTime? data = null;
-                try { data = (DateTime?)o.DataWystawienia; } catch { }
-                sortedOferty.Add((o, data));
-            }
-            sortedOferty = sortedOferty.OrderByDescending(x => x.data).ToList();
+                if (validOnly.HasValue && validOnly.Value)
+                {
+                    var now = DateTime.Now;
+                    var filtered = new List<object>();
+                    foreach (dynamic o in oferty)
+                    {
+                        try
+                        {
+                            var od = (DateTime?)o.ObowiazujeOd;
+                            var doo = (DateTime?)o.ObowiazujeDo;
+                            var zamkniety = (bool?)o.Zamkniety;
+                            if ((!od.HasValue || od.Value <= now) && (!doo.HasValue || doo.Value >= now) && zamkniety != true)
+                            {
+                                filtered.Add(o);
+                            }
+                        }
+                        catch { }
+                    }
+                    oferty = filtered;
+                }
 
-            var items = new List<OfferSummaryDto>();
-            foreach (var item in sortedOferty)
-            {
-                items.Add(MapOfferSummary(item.oferta));
-            }
+                // Sort by DataWystawienia descending
+                var sortedOferty = new List<(dynamic oferta, DateTime? data)>();
+                foreach (dynamic o in oferty)
+                {
+                    DateTime? data = null;
+                    try { data = (DateTime?)o.DataWystawienia; } catch { }
+                    sortedOferty.Add((o, data));
+                }
+                sortedOferty = sortedOferty.OrderByDescending(x => x.data).ToList();
 
-            return Ok(ApiResponse<List<OfferSummaryDto>>.Ok(items));
+                var items = new List<OfferSummaryDto>();
+                foreach (var item in sortedOferty)
+                {
+                    items.Add(MapOfferSummary(item.oferta));
+                }
+
+                return (Found: true, Items: (List<OfferSummaryDto>?)items);
+            });
+
+            if (!result.Found)
+                return StatusCode(500, ApiResponse<List<OfferSummaryDto>>.Error("Failed to get Oferty manager"));
+            return Ok(ApiResponse<List<OfferSummaryDto>>.Ok(result.Items!));
         }
         catch (Exception ex)
         {
