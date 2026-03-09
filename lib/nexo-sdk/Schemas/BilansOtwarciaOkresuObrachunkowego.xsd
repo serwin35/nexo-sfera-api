@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema id="BilansOtwarciaOkresuObrachunkowego"
+    targetNamespace="http://schemas.insert.com.pl/2014/hop/bilansotwarciaokresuobrachunkowego"
+    elementFormDefault="qualified"
+    xmlns="http://schemas.insert.com.pl/2014/hop/bilansotwarciaokresuobrachunkowego"
+    xmlns:xs="http://www.w3.org/2001/XMLSchema"
+>
+  
+  <!-- Typy danych -->
+  
+  <xs:complexType name="TPozycjaHistoriiWplywowPozycjiBilansuOtwarcia">
+    <xs:annotation>
+      <xs:documentation>Pozycja historia wpływów środków pieniężnych pozycji bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:attribute name="Dokument" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Dokument.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Kwota" type="xs:decimal" use="required">
+      <xs:annotation>
+        <xs:documentation>Kwota.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="Kurs" type="xs:decimal" use="required">
+      <xs:annotation>
+        <xs:documentation>Kurs.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="LiczbaJednostek" type="xs:int" use="optional" default="1">
+      <xs:annotation>
+        <xs:documentation>Liczba jednostek (może zostać pominięta, przyjęta zostanie wtedy wartość 1).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="THistoriaWplywowPozycjiBilansuOtwarcia">
+    <xs:annotation>
+      <xs:documentation>Historia wpływów środków pieniężnych pozycji bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Pozycja" type="TPozycjaHistoriiWplywowPozycjiBilansuOtwarcia">
+        <xs:annotation>
+          <xs:documentation>Pozycja historia wpływów środków pieniężnych pozycji bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TPozycjaBilansuOtwarcia">
+    <xs:annotation>
+      <xs:documentation>Pozycja bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="HistoriaWplywowWn" type="THistoriaWplywowPozycjiBilansuOtwarcia">
+        <xs:annotation>
+          <xs:documentation>Historia wpływów po stronie Winien środków pieniężnych pozycji bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Konto" type="xs:string" use="required">
+      <xs:annotation>
+        <xs:documentation>Numer konta, np.: 201-0004.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KwotaWn" type="xs:decimal" use="optional">
+      <xs:annotation>
+        <xs:documentation>Kwota Winien.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WalutaWn" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Waluta (symbol, np.: EUR, USD) kwoty Winien. Jeśli pusta, to przyjmowana jest waluta systemowa (PLN).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KwotaWnWWalucieSystemowej" type="xs:decimal" use="optional">
+      <xs:annotation>
+        <xs:documentation>Kwota Winien w walucie systemowej (zł). Nie trzeba jej podawać jeśli waluta także nie jest podana (w takim przypadku wartość z tego pola zostanie zignorowana).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KwotaMa" type="xs:decimal" use="optional">
+      <xs:annotation>
+        <xs:documentation>Kwota Ma.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="WalutaMa" type="xs:string" use="optional">
+      <xs:annotation>
+        <xs:documentation>Waluta (symbol, np.: EUR, USD) kwoty Ma. Jeśli pusta, to przyjmowana jest waluta systemowa (PLN).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+    <xs:attribute name="KwotaMaWWalucieSystemowej" type="xs:decimal" use="optional">
+      <xs:annotation>
+        <xs:documentation>Kwota Ma w walucie systemowej (zł). Nie trzeba jej podawać jeśli waluta także nie jest podana (w takim przypadku wartość z tego pola zostanie zignorowana).</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:complexType name="TPozycjeBilansuOtwarcia">
+    <xs:annotation>
+      <xs:documentation>Kolekcja pozycji bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element minOccurs="0" maxOccurs="unbounded" name="Pozycja" type="TPozycjaBilansuOtwarcia">
+        <xs:annotation>
+          <xs:documentation>Pozycja bilansu otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TBilansOtwarcia">
+    <xs:annotation>
+      <xs:documentation>Bilans otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Pozycje" type="TPozycjeBilansuOtwarcia" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Pozycje.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+
+  <!-- ROOT -->
+
+  <xs:element name="BilansOtwarcia" type="TBilansOtwarcia">
+    <xs:annotation>
+      <xs:documentation>Bilans otwarcia okresu obrachunkowego księgi rachunkowej.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  
+</xs:schema>

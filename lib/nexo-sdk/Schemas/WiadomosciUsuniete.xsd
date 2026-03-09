@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/wiadomosciusuniete"
+           xmlns="http://schemas.insert.com.pl/2014/hop/wiadomosciusuniete"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:element name="WiadomosciUsuniete">
+    <xs:annotation>
+      <xs:documentation>UIDy wiadomości usuniętych.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Wiadomosc" type="TWiadomoscUsunieta">
+          <xs:annotation>
+            <xs:documentation>Wiadomość usunięta.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="TWiadomoscUsunieta">
+    <xs:sequence>
+      <xs:element name="UID" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>UID wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KontoPocztowe" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa konta pocztowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+</xs:schema>

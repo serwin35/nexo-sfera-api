@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/towary"
+           xmlns="http://schemas.insert.com.pl/2015/hop/towary"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+           >
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+  
+  <xs:annotation>
+    <xs:documentation>Parametry kartoteki Asortyment.</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TParametryTowarow">
+    <xs:annotation>
+      <xs:documentation>Parametry asortymentu.</xs:documentation>
+    </xs:annotation>
+    <xs:all>
+
+      <xs:element minOccurs="0" name="Parametry">
+        <xs:annotation>
+          <xs:documentation>Parametry kartoteki.</xs:documentation>
+        </xs:annotation>
+
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" name="AutoNadawanieSymbolu" type="xs:boolean">
+              <xs:annotation>
+                <xs:documentation>Parametr decydujący o automatycznym nadawaniu symbolu w kartotece.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+        
+      </xs:element>
+
+      <xs:element minOccurs="0" name="Szablony">
+        <xs:annotation>
+          <xs:documentation>Szablony towarów: towar, usługa, komplet, opakowanie.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="Szablon">
+              <xs:annotation>
+                <xs:documentation>Parametry szablonu asortymentu, czyli dane domyślne nowej pozycji tej kartoteki.</xs:documentation>
+              </xs:annotation>
+              <xs:complexType>
+                <xs:all>
+                  <xs:element name="JednostkaMiary" minOccurs="0">
+                    <xs:complexType>
+                      <xs:simpleContent>
+                        <xs:extension base="xs:string">
+                          <xs:annotation>
+                            <xs:documentation>Symbol jednostki miary.</xs:documentation>
+                          </xs:annotation>
+                          <xs:attribute name="UtworzStrukture" type="xs:boolean" use="optional">
+                            <xs:annotation>
+                              <xs:documentation>Czy utworzyć strukturę jednostek miar asortymentu na podstawie istniejących jednostek miar.</xs:documentation>
+                            </xs:annotation>
+                          </xs:attribute>
+                        </xs:extension>
+                      </xs:simpleContent>
+                    </xs:complexType>
+                  </xs:element>
+                  <xs:element name="StawkaVat" minOccurs="0" type="xs:string">
+                    <xs:annotation>
+                      <xs:documentation>Symbol stawki VAT przy sprzedaży i zakupie.</xs:documentation>
+                    </xs:annotation>
+                  </xs:element>
+                </xs:all>
+                <xs:attribute name="Rodzaj" type="xs:string" use="required">
+                  <xs:annotation>
+                    <xs:documentation>Rodzaj (TW, US, OP, KT).</xs:documentation>
+                  </xs:annotation>
+                </xs:attribute>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element minOccurs="0" name="Wlasne">
+        <xs:annotation>
+          <xs:documentation>Nazwy standardowych pól własnych.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="Pole" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Nazwa standardowego pola własnego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+      <xs:element minOccurs="0" name="WlasneRozszerzone">
+        <xs:annotation>
+          <xs:documentation>Definicje rozszerzonych pól własnych dla podmiotów.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone" type="wspolne:TPoleWlasneRozszerzone">
+              <xs:annotation>
+                <xs:documentation>Definicja pola własnego rozszerzonego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+
+    </xs:all>
+  </xs:complexType>
+
+  <xs:element name="ParametryTowarow" type="TParametryTowarow">
+    <xs:annotation>
+      <xs:documentation>Parametry asortymentu.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+</xs:schema>

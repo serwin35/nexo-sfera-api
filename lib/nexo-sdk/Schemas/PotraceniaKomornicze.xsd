@@ -1,0 +1,287 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified" elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2015/hop/gratyfikant/potraceniaKomornicze"
+           xmlns="http://schemas.insert.com.pl/2015/hop/gratyfikant/potraceniaKomornicze"
+           xmlns:wspolneGr="http://schemas.insert.com.pl/2015/hop/gratyfikant"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+  <xs:import id="WspolneGrPart" namespace="http://schemas.insert.com.pl/2015/hop/gratyfikant" schemaLocation="WspolneGr.xsd"/>
+
+  <xs:annotation>
+    <xs:documentation>Informacje o potrąceniach komorniczych.</xs:documentation>
+  </xs:annotation>
+
+  <xs:simpleType name="TCzestotliwosc">
+    <xs:restriction base="xs:int">
+      <xs:minInclusive value="1" />
+      <xs:maxInclusive value="12" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TRodzajPotraceniaKom">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="TytulAlimenty">
+        <xs:annotation>
+          <xs:documentation>Tytuł wykonawczy alimentacyjny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="TytulInny">
+        <xs:annotation>
+          <xs:documentation>Tytuł wykonawczy inny.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SplataZaliczki">
+        <xs:annotation>
+          <xs:documentation>Spłata zaliczki.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Kara">
+        <xs:annotation>
+          <xs:documentation>Kara pieniężna.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Inne">
+        <xs:annotation>
+          <xs:documentation>Inne.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TSposobPotracenia">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="DoWyzerowania">
+        <xs:annotation>
+          <xs:documentation>Do wyzerowania salda.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="StalaRata">
+        <xs:annotation>
+          <xs:documentation>Stała rata.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DoWyzerowaniaStalaRata">
+        <xs:annotation>
+          <xs:documentation>Stała rata do wyzerowania salda.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TZawieszenie">
+    <xs:sequence>
+      <xs:element name="Od" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek okresu zawieszenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Do" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny koniec okresu zawieszenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TAnulowanie">
+    <xs:sequence>
+      <xs:element name="Od" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna data anulowania potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Przyczyna" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalna przyczyna anulowania potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TSplata">
+    <xs:sequence>
+      <xs:element name="Opis" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opis spłaty potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DokumentRozliczajacy" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa dokumentu rozliczającego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Data" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Data spłaty potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Miesiac" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Miesiąc, którego dotyczy spłata potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kwota" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Kwota potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SposobRozliczenia" type="wspolneGr:TSposobRozliczenia">
+        <xs:annotation>
+          <xs:documentation>Sposób rozliczenia spłaty potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TPotracenieKomornicze">
+    <xs:sequence>
+      <xs:element name="Pracownik" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Nazwa pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nazwa" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Nazwa potrącenia komorniczego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Skladnik" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Nazwa składnika płacowego na wypłacie.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Czestotliwosc" type="TCzestotliwosc">
+        <xs:annotation>
+          <xs:documentation>Częstotliwość potrącenia (co ile miesięcy).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rodzaj" type="TRodzajPotraceniaKom">
+        <xs:annotation>
+          <xs:documentation>Rodzaj potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SposobPotracenia" type="TSposobPotracenia">
+        <xs:annotation>
+          <xs:documentation>Sposób potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="SumaDoPotracenia" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Suma do potrącenia (obowiązkowa gdy potrącenie jest spłacane do wyzerowania salda).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KwotaPotracenia" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Kwota potrącenia (obowiązkowa gdy potrącenie jest spłacane stałą ratą).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ProcentWynagrodzenia" type="xs:decimal" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Procent wynagrodzenia do potrącenia (obowiązkowy gdy potrącenie nie jest spłacane stałą ratą).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ProcentOchrony" type="xs:decimal">
+        <xs:annotation>
+          <xs:documentation>Procent ochrony wynagrodzenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataOd" type="xs:date">
+        <xs:annotation>
+          <xs:documentation>Początek potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataDo" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opcjonalny koniec potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kolejnosc" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Kolejność potrącenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Zawieszenie" type="TZawieszenie" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące zawieszenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Anulowanie" type="TAnulowanie" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące anulowania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Komornik" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa komornika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Sygnatura" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura sprawy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Splaty" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Spłaty potrącenia.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Splata" type="TSplata" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Spłata potrącenia.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="FlagaWlasna" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:all>
+            <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kolor flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kształt flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="SwiadectwoPracy" type="xs:boolean" default="false">
+      <xs:annotation>
+        <xs:documentation>Czy potrącenia ma być uwzględniane na świadectwie pracy.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+  
+  <xs:complexType name="TPotraceniaKomornicze">
+    <xs:sequence>
+      <xs:element name="PotracenieKomornicze" type="TPotracenieKomornicze" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące potrącenia komorniczego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="PotraceniaKomornicze" type="TPotraceniaKomornicze">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące potracen komorniczych.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+  
+</xs:schema>

@@ -1,0 +1,337 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/procesyofertowe"
+           xmlns="http://schemas.insert.com.pl/2014/hop/procesyofertowe"
+           xmlns:d="http://schemas.insert.com.pl/2014/hop/dzialania"
+           xmlns:k="http://schemas.insert.com.pl/2018/hop/klienci"
+           xmlns:h="http://schemas.insert.com.pl/2014/hop/historiowanie"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import schemaLocation="Klienci.xsd" namespace="http://schemas.insert.com.pl/2018/hop/klienci" />
+  <xs:import schemaLocation="Dzialania.xsd" namespace="http://schemas.insert.com.pl/2014/hop/dzialania" />
+  <xs:import schemaLocation="Historiowanie.xsd" namespace="http://schemas.insert.com.pl/2014/hop/historiowanie" />
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+  
+  <xs:annotation>
+    <xs:documentation>Procesy ofertowe.</xs:documentation>
+  </xs:annotation>
+
+  <xs:element name="ProcesyOfertowe">
+    <xs:annotation>
+      <xs:documentation>Procesy ofertowe.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Proces" type="TProcesOfertowy">
+          <xs:annotation>
+            <xs:documentation>Procesy ofertowe.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="TProcesOfertowy">
+    <xs:annotation>
+      <xs:documentation>Dane procesu ofertowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataUtworzenia" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data utworzenia procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UtworzonyPrzez" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura osoby, która utworzyła proces ofertowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Numer" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Magazyn" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Symbol magazynu oferty.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Klient" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Sygnatura klienta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Przedstawiciel" type="TPrzedstawicielProcesuOfertowego" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Przedstawiciel firmy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Scenariusz" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa scenriusza procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Etap" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Aktualny etap ze scenariusza procesu ofertowego.</xs:documentation>
+        </xs:annotation>        
+      </xs:element>
+      <xs:element name="Kategoria" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Kategoria procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ZrodloPozyskania" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Źródło pozyskania procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="LejekSprzedazy" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy uwzględniać w lejku sprzedaży.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Priorytet" type="d:TPriorytetDzialania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Priorytet procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Opiekun" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura opiekuna procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wynik" type="TWynikProcesuOfertowego" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opisuje z jakim wynikiem zakończył się proces ofertowy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PrzyczynaPorazki" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa przyczyny niepowodzenia procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Terminy">
+        <xs:annotation>
+          <xs:documentation>Termin procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="DzienOd" type="xs:date">
+              <xs:annotation>
+                <xs:documentation>Dzień, w którym zaczyna sie proces.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="DzienDo" type="xs:date">
+              <xs:annotation>
+                <xs:documentation>Dzień, w którym kończy się proces.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="GodzinaOd" type="xs:time" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation>Godzina rozpoczącia procesu ofertowego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="GodzinaDo" type="xs:time" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation>Godzina zakończenia procesu ofertowego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="PokazujWKalendarzu" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy proces ofertowy ma być pokazywany w kalendarzu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KolorWKalendarzu" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa kolor jaki będzie charakteryzował działanie.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <!-- nie istnieje w gt -->
+      <xs:element name="OsobyZaangazowane" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Osoby zaangażowane w proces ofertowy.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="Osoba" type="TOsobaZaangazowanaWProcesOfertowy">
+              <xs:annotation>
+                <xs:documentation>Osoba zaangażowana w proces ofertowy.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <!--<xs:element name="Oferty" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Oferty powiązane z procesem ofertowym.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="0" maxOccurs="unbounded">
+            <xs:element name="Oferta" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Numer procesu ofertowego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>-->
+      <xs:element name="NumerDokumentuZamowienia" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer dokumentu zamówienia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerDokumentuKoncowego" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer dokumentu końcowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OpisTerminuRealizacji" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Termin realizacji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WarunkiPlatnosci" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Warunki płatności.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="WarunkiDostawy" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Warunki dostawy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UwagiNaDokument" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Uwagi na dokument.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OpisSzczegolowy" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opis pełny.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Historia" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Historia zmian działania.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="unbounded">
+            <xs:element name="Wpis" type="h:THistoria">
+              <xs:annotation>
+                <xs:documentation>Wpis do historii.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="WlasneRozszerzone" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych działań.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="PoleRozszerzone" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Pole własne rozszerzone działania. Zawartość tego elementu jest wartością pola.</xs:documentation>
+              </xs:annotation>
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="Nazwa" type="xs:string" use="required">
+                      <xs:annotation>
+                        <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                      </xs:annotation>
+                    </xs:attribute>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="BibliotekaDokumentow" type="wspolne:TBibliotekaDokumentow" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane obiektów z biblioteki dokumentów.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="FlagaWlasna" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:all>
+            <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kolor flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kształt flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TWynikProcesuOfertowego">
+    <xs:annotation>
+      <xs:documentation>Określa wynik procesu ofertowego.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Aktywny" />
+      <xs:enumeration value="Sukces" />
+      <xs:enumeration value="Porazka" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TOsobaZaangazowanaWProcesOfertowy">
+    <xs:annotation>
+      <xs:documentation>Osoba zaangażowana w proces ofertowy.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Sygnatura" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Sygnatura użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TPrzedstawicielProcesuOfertowego">
+    <xs:annotation>
+      <xs:documentation>Przedstawiciel procesu ofertowego.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Imie" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Imię przedstawiciela.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nazwisko" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwisko przedstawiciela.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+</xs:schema>

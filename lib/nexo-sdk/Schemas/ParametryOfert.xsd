@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/parametryofert"
+           xmlns="http://schemas.insert.com.pl/2014/hop/parametryofert"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:annotation>
+    <xs:documentation>Parametry ofert.</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TParametryOfert">
+    <xs:annotation>
+      <xs:documentation>Parametry ofert.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <!-- Ignoruj -->
+      <xs:element name="PoziomCen" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="Nazwa" type="xs:string" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation></xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element name="Kalkulowana" type="xs:int">
+              <xs:annotation>
+                <xs:documentation></xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="PrzeliczaniePozycji" type="TPrzeliczaniePozycji" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sposób przeliczania pozycji.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <!-- Ignoruj -->
+      <xs:element name="Narzut" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation></xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="LiniaKursowWalut" minOccurs="0">
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="RodzajKursu" minOccurs="0">
+              <xs:annotation>
+                <xs:documentation>Rodzaj kursu waluty.</xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="Sprzedazy" />
+                  <xs:enumeration value="Kupna" />
+                  <xs:enumeration value="Sredni" />
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:element>
+            <xs:element name="KursZDnia" type="TKursZDnia">
+              <xs:annotation>
+                <xs:documentation>Określa z jakiego dnia ma być brany kurs.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <!-- Ignoruj -->
+      <xs:element name="PodpowiadajOstatniZnanyKurs" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy podpowiadać ostatni znany kurs.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <!-- Ignoruj -->
+      <xs:element name="OgraniczPrecyzjeCen" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy ograniczać precyzję cen do dwóch miejsc po przecinku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DomyslnaTransakcjaHandlowa" type="TTransakcjaHandlowa" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Domyślna transakcja handlowa.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <!--<xs:element name="ZrodloTransakcjiHandlowej" type="TZrodloTransakcjiHandlowej">
+        <xs:annotation>
+          <xs:documentation>Źródło domyślnej transakcji handlowej.</xs:documentation>
+        </xs:annotation>
+      </xs:element>-->
+      <!--<xs:element name="PrzeliczanieDokumentu" type="TPrzeliczanieDokumentu">
+        <xs:annotation>
+          <xs:documentation>Sposób przeliczania dokumentu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>-->
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="ParametryOfert" type="TParametryOfert">
+    <xs:annotation>
+      <xs:documentation>Parametry ofert.</xs:documentation>
+    </xs:annotation>
+  </xs:element>
+
+  <!--<xs:simpleType name="TZrodloTransakcjiHandlowej">
+    <xs:annotation>
+      <xs:documentation>Wartości dla pola ZrodloTransakcjiHandlowej.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="UstawieniaKlienta">
+        <xs:annotation>
+          <xs:documentation>Domyślna transakcja handlowa jest pobierana z ustawień klienta.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="KonfiguracjaDokumentu">
+        <xs:annotation>
+          <xs:documentation>Domyślna transakcja handlowa jest pobierana z konfiguracji dokumentu.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>-->
+
+  <xs:simpleType name="TPrzeliczaniePozycji">
+    <xs:annotation>
+      <xs:documentation>Sposoby przeliczania pozycji/</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Netto">
+        <xs:annotation>
+          <xs:documentation>Netto.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Brutto">
+        <xs:annotation>
+          <xs:documentation>Brutto.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TKursZDnia">
+    <xs:annotation>
+      <xs:documentation>Dzień z jakiego ma być brany kurs.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="ZPoprzedniegoDnia" />
+      <xs:enumeration value="NaDateWystawienia" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TTransakcjaHandlowa">
+    <xs:annotation>
+      <xs:documentation>Rodzaj transakcji handlowej.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="S">
+        <xs:annotation>
+          <xs:documentation>Sprzedaż krajowa.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WDT">
+        <xs:annotation>
+          <xs:documentation>Wewnątrzwspólnotowa dostawa towarów.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="EX">
+        <xs:annotation>
+          <xs:documentation>Eksport towarów poza UE.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="WTTD">
+        <xs:annotation>
+          <xs:documentation>Transakcja trójstronna (dostawa).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="EXU">
+        <xs:annotation>
+          <xs:documentation>Eksport uslug.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SUPTK">
+        <xs:annotation>
+          <xs:documentation>Świadczenie usług poza terytorium kraju.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OOS">
+        <xs:annotation>
+          <xs:documentation>Odwrotne obciążenie (sprzedaż).</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+</xs:schema>

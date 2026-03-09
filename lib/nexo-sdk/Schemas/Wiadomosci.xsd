@@ -1,0 +1,329 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/wiadomosci"
+           xmlns="http://schemas.insert.com.pl/2014/hop/wiadomosci"
+           xmlns:kp="http://schemas.insert.com.pl/2014/hop/kontapocztowe"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import schemaLocation="KontaPocztowe.xsd" namespace="http://schemas.insert.com.pl/2014/hop/kontapocztowe" />
+  
+  <xs:element name="Wiadomosci">
+    <xs:annotation>
+      <xs:documentation>Wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Wiadomosc" type="TWiadomosc">
+          <xs:annotation>
+            <xs:documentation>Wiadomość.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="TWiadomosc">
+    <xs:annotation>
+      <xs:documentation>Dane wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Konto" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa konta pocztowego, do którego przypisana jest wiadomość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Uzytkownik" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura uzytkownika, który stworzył wiadomość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Klient" type="TKlientWWiadomosci" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura klienta, z którym powiązana jest wiadomość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dzialanie" type="TDzialaniePowiazaneZWiadomoscia" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane identyfikacyjne działania, z którym powiązana jest wiadomość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="ProcesOfertowy" type="TProcesOfertowyPowiazanyZWiadomoscia" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Proces ofertowy powiązany z wiadomością..</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Plik" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Ścieżka do skompresowanego pliku w formacie .eml (E-Mail Message) z wiadomością względem pliku XML.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UIDL" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>UIDL wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataUtworzenia" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data utworzenia wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataOdebrania" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data odebrania wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UsunZalaczniki" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy załączniki zostaną usunięte po wysłaniu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Stan" type="TStanWiadomosci">
+        <xs:annotation>
+          <xs:documentation>Określa stan wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StanUsuniecia" type="TStanUsunieciaWiadomosci">
+        <xs:annotation>
+          <xs:documentation>Określa stan usunięcia wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Folder" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwa folderu, w którym znajduje się wiadomość.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Flaga" type="TFlagaWiadomosci" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Flaga wiadomości z Gestora GT.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Przychodzaca" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Określa, czy jest to wiadomość przychodząca, czy wychodząca.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Przeczytana" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Określa, czy wiadomość jest przeczytana.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Status" type="TStatusWiadomosci">
+        <xs:annotation>
+          <xs:documentation>Określa status wiadomości.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Potwierdzenie" type="TPotwierdzenieWiadomosci" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy użytkownik chce otrzymać status potwierdzenia doręczenia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PrywatnaDla" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura użytkownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="FlagaWlasna" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:all>
+            <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kolor flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kształt flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKlientWWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Klienci w wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Rodzaj" type="TRodzajKlientaWWiadomosci" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj klienta. Domyślnie jest kontrahent.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Sygnatura" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura klienta lub firmy jeśli rodzajem klienta jest PracownikKontrahenta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Imie" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Imię klienta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nazwisko" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwisko klienta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TRodzajKlientaWWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Rodzaj klienta.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Kontrahent" />
+      <xs:enumeration value="PracownikKontrahenta" />
+      <xs:enumeration value="Personel" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TDzialaniePowiazaneZWiadomoscia">
+    <xs:annotation>
+      <xs:documentation>Dane potrzebne do odnalezienia działania powiązanego z wiadomością.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Temat" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Temat działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Typ" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Typ działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wykonawca" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura wykonawcy.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NieOkreslajCzasu" type="xs:boolean">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działanie będzie miało datę początku i końca.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Calodzienne" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działanie jest całodzienne.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Poczatek" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data początku działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Koniec" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data końca działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TProcesOfertowyPowiazanyZWiadomoscia">
+    <xs:annotation>
+      <xs:documentation>Dane procesu ofertowego powiązanego z wiadomością.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Numer" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Numer procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Magazyn" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Magazyn określony w procesie ofertowym.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TStanWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Stan wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Odebrana" />
+      <xs:enumeration value="Wyslana" />
+      <xs:enumeration value="DoWyslania" />
+      <xs:enumeration value="Robocza" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TStanUsunieciaWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Stan usunięcia wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="NieUsunieta" />
+      <xs:enumeration value="Kosz" />
+      <xs:enumeration value="Spam" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TFlagaWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Flaga wiadomości z Gestora GT.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Brak" />
+      <xs:enumeration value="DoZalatwienia" />
+      <xs:enumeration value="Zalatwione" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TStatusWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Opisuje status wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Zwykly">
+        <xs:annotation>
+          <xs:documentation>Zwykły.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Odp">
+        <xs:annotation>
+          <xs:documentation>Odpowiedziano.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Fwd">
+        <xs:annotation>
+          <xs:documentation>Przesłano dalej.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OdpFwd">
+        <xs:annotation>
+          <xs:documentation>Odpowiedziano i przesłano dalej.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TPotwierdzenieWiadomosci">
+    <xs:annotation>
+      <xs:documentation>Potwierdzenie wiadomości.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Brak" />
+      <xs:enumeration value="WyslanoZadanie" />
+      <xs:enumeration value="WyslanoZadanieIOtrzymanoPotwierdzenie" />
+      <xs:enumeration value="OdebranoZadanie" />
+      <xs:enumeration value="OdebranoZadanieIZleconoPotwierdzenie" />
+      <xs:enumeration value="OdebranoZadanieIWyslanoPotwierdzenie" />
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>

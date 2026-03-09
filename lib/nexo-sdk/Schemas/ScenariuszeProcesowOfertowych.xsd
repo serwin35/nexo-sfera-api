@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/scenariuszeprocesowofertowych"
+           xmlns="http://schemas.insert.com.pl/2014/hop/scenariuszeprocesowofertowych"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:annotation>
+    <xs:documentation>Scenariusze procesów ofertowych</xs:documentation>
+  </xs:annotation>
+
+  <xs:complexType name="TScenariuszProcesuOfertowego">
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa scenariusza.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Etapy">
+        <xs:annotation>
+          <xs:documentation>Etapy procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="unbounded">
+            <xs:element name="Etap" type="TEtapProcesuOfertowego">
+              <xs:annotation>
+                <xs:documentation>Etap procesu ofertowego.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TEtapProcesuOfertowego">
+    <xs:annotation>
+      <xs:documentation>Dane dotyczące etapu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Nazwa" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Nazwa etapu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Procent" type="xs:byte">
+        <xs:annotation>
+          <xs:documentation>Procent wykonania procesu ofertowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Zamowienie" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa możliwość wystawienia zamówienia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wydanie" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa możliwość wydania zamówienia.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Zaliczka" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa możliwość wystawienia dokumentu zaliczkowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Koncowy" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa możliwość wystawienia dokumentu końcowego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kolejnosc" type="xs:int">
+        <xs:annotation>
+          <xs:documentation>Określa numer etapu w scenariuszu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:element name="ScenariuszeProcesowOfertowych">
+    <xs:annotation>
+      <xs:documentation>Scenariusze procesow ofertowych.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="Scenariusz" type="TScenariuszProcesuOfertowego" minOccurs="0" maxOccurs="unbounded">
+          <xs:annotation>
+            <xs:documentation>Senariusz procesu ofertowego.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  
+</xs:schema>

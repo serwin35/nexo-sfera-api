@@ -1,0 +1,1016 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema
+  attributeFormDefault="unqualified"
+  elementFormDefault="qualified"
+  xmlns="http://schemas.insert.com.pl/2018/hop/klienci"
+  targetNamespace="http://schemas.insert.com.pl/2018/hop/klienci"
+  xmlns:rachunki="http://schemas.insert.com.pl/2013/hop/rachunkibankowe"
+  xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:annotation>
+    <xs:documentation>Kartoteka klientów</xs:documentation>
+  </xs:annotation>
+
+  <xs:include schemaLocation="ParametryKontrahentow.xsd"/>
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+  <xs:import id="RachunkiBankowe" namespace="http://schemas.insert.com.pl/2013/hop/rachunkibankowe" schemaLocation="RachunkiBankowe.xsd"/>
+
+  <xs:complexType name="PrzedstawicielFirmy">
+    <xs:annotation>
+      <xs:documentation>Przedstawiciel firmy.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Firma" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Symbol podmiotu-firmy, którego jest przedstawicielem.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Dzial" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dział w jakim pracuje przedstawiciel.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Stanowisko" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Stanowisko na jakim pracuje przedstawiciel.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Pokoj" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Pokój w którym pracuje przedstawiciel.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+    <xs:attribute name="Podstawowy" type="xs:boolean" use="optional">
+      <xs:annotation>
+        <xs:documentation>Określa, czy jest to podstawowy kontakt.</xs:documentation>
+      </xs:annotation>
+    </xs:attribute>
+  </xs:complexType>
+
+  <xs:element name="Podmioty">
+    <xs:annotation>
+      <xs:documentation>Dane o podmiotach (klientach).</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element minOccurs="0" maxOccurs="unbounded" name="Podmiot">
+          <xs:annotation>
+            <xs:documentation>Dane podmiotu (klienta).</xs:documentation>
+          </xs:annotation>
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element minOccurs="0" name="Sygnatura" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Symbol podmiotu. Opcjonalny tylko dla podmiotów jednorazowych.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element minOccurs="0" name="Aktywny" type="xs:boolean">
+                <xs:annotation>
+                  <xs:documentation>Znacznik określający aktywność klienta. Domyślnie aktywny.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:choice>
+                <xs:element minOccurs="0" name="DaneFirmy">
+                  <xs:annotation>
+                    <xs:documentation>Dane podmiotu o typie Firma.</xs:documentation>
+                  </xs:annotation>
+                  <xs:complexType>
+                    <xs:all>
+                      <xs:element name="REGON" type="xs:string" minOccurs="0">
+                        <xs:annotation>
+                          <xs:documentation>REGON podmiotu. Niepoprawny nie zostanie zaimportowany.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element name="Nazwa" type="xs:string">
+                        <xs:annotation>
+                          <xs:documentation>Pełna nazwa podmiotu.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element name="NazwaSkrocona" type="xs:string">
+                        <xs:annotation>
+                          <xs:documentation>Skrócona nazwa podmiotu.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                    </xs:all>
+                  </xs:complexType>
+                </xs:element>
+                <xs:element minOccurs="0" name="DaneOsoby">
+                  <xs:annotation>
+                    <xs:documentation>Dane podmiotu o typie Osoba.</xs:documentation>
+                  </xs:annotation>
+                  <xs:complexType>
+                    <xs:all>
+                      <xs:element name="Imie" type="xs:string">
+                        <xs:annotation>
+                          <xs:documentation>Imię osoby.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element name="Nazwisko" type="xs:string">
+                        <xs:annotation>
+                          <xs:documentation>Nazwisko osoby.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element name="PESEL" type="xs:string" minOccurs="0">
+                        <xs:annotation>
+                          <xs:documentation>Numer PESEL osoby.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element name="DokumentTozsamosci" type="wspolne:DokumentTozsamosci" minOccurs="0">
+                        <xs:annotation>
+                          <xs:documentation>Cechy dokumentu tożsamości osoby.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element name="PrzedstawicielFirmy" type="PrzedstawicielFirmy" minOccurs="0">
+                        <xs:annotation>
+                          <xs:documentation>Dane związane z przedstawicielstwem osoby.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                      <xs:element minOccurs="0" name="RolnikRyczaltowy" type="xs:boolean">
+                        <xs:annotation>
+                          <xs:documentation>Określa czy osoba jest rolnikiem ryczałtowym.</xs:documentation>
+                        </xs:annotation>
+                      </xs:element>
+                    </xs:all>
+                  </xs:complexType>
+                </xs:element>
+              </xs:choice>
+              <xs:element name="NIP" type="xs:string" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>NIP podmiotu.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="UE" minOccurs="0" type="wspolne:FirmaUE">
+                <xs:annotation>
+                  <xs:documentation>Cechy rejestracji podmiotu w zakresie handlu w UE.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Kontakty" type="wspolne:Kontakty" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Dane kontaktowe podmiotu.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="Adresy" type="wspolne:Adresy">
+                <xs:annotation>
+                  <xs:documentation>Adresy podmiotu.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Uwagi" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Uwagi do podmiotu.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Region" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Nazwa regionu, do którego należy podmiot.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Branze">
+                <xs:annotation>
+                  <xs:documentation>Kolekcja przypisanych branży.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Branza" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Nazwa branży.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Grupa" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Nazwa grupy, do której należy podmiot.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              
+              <xs:element minOccurs="0" name="Cechy">
+                <xs:annotation>
+                  <xs:documentation>Kolekcja przypisanych cech.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Cecha" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Nazwa cechy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="RachunkiBankowe">
+                <xs:annotation>
+                  <xs:documentation>Lista rachunków bankowych podmiotu.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Rachunek" type="rachunki:TRachunekBankowyKlienta">
+                      <xs:annotation>
+                        <xs:documentation>Rachunek bankowy podmiotu.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Wlasne">
+                <xs:annotation>
+                  <xs:documentation>Wartości pól własnych podmiotu.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Pole">
+                      <xs:annotation>
+                        <xs:documentation>Pole własne podmiotu. Zawartość tego elementu jest wartością pola.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:simpleContent>
+                          <xs:extension base="xs:string">
+                            <xs:attribute name="Nazwa" type="xs:string" use="required">
+                              <xs:annotation>
+                                <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                              </xs:annotation>
+                            </xs:attribute>
+                          </xs:extension>
+                        </xs:simpleContent>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="WlasneRozszerzone">
+                <xs:annotation>
+                  <xs:documentation>Wartości pól własnych podmiotu.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="PoleRozszerzone">
+                      <xs:annotation>
+                        <xs:documentation>Pole własne rozszerzone podmiotu. Zawartość tego elementu jest wartością pola.</xs:documentation>
+                      </xs:annotation>
+                      <xs:complexType>
+                        <xs:simpleContent>
+                          <xs:extension base="xs:string">
+                            <xs:attribute name="Nazwa" type="xs:string" use="required">
+                              <xs:annotation>
+                                <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                              </xs:annotation>
+                            </xs:attribute>
+                          </xs:extension>
+                        </xs:simpleContent>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Oddzialy">
+                <xs:annotation>
+                  <xs:documentation>Lista oddziałów podmiotu.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:sequence>
+                    <xs:element minOccurs="0" maxOccurs="unbounded" name="Oddzial" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Symbol firmy będącej oddziałem podmiotu.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:sequence>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Opiekun" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Symbol użytkownika będącego opiekunem podmiotu. Jeśli ten element będzie pusty nie zostanie ustawiony żaden opiekun. Jeśli tego elementu nie będzie to opiekun będzie domyślny, czyli wykonujący przeniesienie danych Szef.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="PreferowanyKontakt" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Nazwa preferowanego przez podmiot rodzaju kontaktu. Jeśli nie istnieje to zostanie dodany. Przykłady: telefon, faks, e-mail.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="ZgodaDaneOsobowe" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Zgoda na przetwarzanie danych osobowych.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:attribute name="Jest" use="optional" type="xs:boolean">
+                    <xs:annotation>
+                      <xs:documentation>Określa, czy została wyrażona zgoda na przetwarzanie danych osobowych.</xs:documentation>
+                    </xs:annotation>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element name="ZgodaMarketing" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Zgoda na wysyłanie informacji marketingowych.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:attribute name="Jest" use="optional" type="xs:boolean">
+                    <xs:annotation>
+                      <xs:documentation>Określa, czy została wyrażona zgoda na wysyłanie informacji marketingowych.</xs:documentation>
+                    </xs:annotation>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element name="ZgodaKomunikacja" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Zgoda na wysyłanie informacji drogą elektroniczną.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:attribute name="Jest" use="optional" type="xs:boolean">
+                    <xs:annotation>
+                      <xs:documentation>Określa, czy została wyrażona zgoda na wysyłanie informacji drogą elektroniczną.</xs:documentation>
+                    </xs:annotation>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+                
+              <xs:element name="Zgody" type="TZgody" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Dane dotyczące zgód wyrażonych i odrzuconych przez klienta.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="OpisKsiegowy" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślny opis księgowy przypisany podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="UwagiKsiegowe" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślne uwagi księgowe przypisane podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="EwVATSpOpis" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślny opis ewidencji VAT sprzedaży przypisany podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="EwVATSpTransakcja">
+                <xs:annotation>
+                  <xs:documentation>Domyślna transakcja ewidencji VAT sprzedaży przypisana podmiotowi.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="null"></xs:enumeration>
+                    <xs:enumeration value="DK">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa krajowa.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="DK-ZVP">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa krajowa - zwrot VAT podróżnym.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="DPTK">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa towarów i usług poza terytorium kraju.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="SUPTK">
+                      <xs:annotation>
+                        <xs:documentation>Świadczenie usług, poza terytorium kraju.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WDT">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowa dostawa towarów.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="IU-N">
+                      <xs:annotation>
+                        <xs:documentation>Import usług (podatek należny).</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="IU-PU-N">
+                      <xs:annotation>
+                        <xs:documentation>Import usług, dla których podatkiem jest usługobiorca (podatek należny).</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="IT-PU-N">
+                      <xs:annotation>
+                        <xs:documentation>Import towarów w procedurze uproszczonej (podatek należny).</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="ET">
+                      <xs:annotation>
+                        <xs:documentation>Eksport towarów.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WTT-D">
+                      <xs:annotation>
+                        <xs:documentation>Transakcja trójstronna (dostawa).</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="RL">
+                      <xs:annotation>
+                        <xs:documentation>Remanent likwidacyjny.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WNT-N">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowe nabycie towarów (podatek należny).</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WNT-ST-N">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowe nabycie towarów - środek transportu (podatek należny).</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="DTU-PN-D">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa towarów i świadczenie usług, dla których podatnikiem jest nabywca - dostawa.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="DTU-PN-N">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa towarów i świadczenie usług, dla których podatnikiem jest nabywca - nabycie.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+
+              <xs:element name="EwVATZakOpis" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślny opis ewidencji VAT zakupu przypisany podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="EwVATZakTransakcja">
+                <xs:annotation>
+                  <xs:documentation>Domyślna transakcja ewidencji VAT zakupu przypisana podmiotowi.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="null"></xs:enumeration>
+                    <xs:enumeration value="NKST">
+                      <xs:annotation>
+                        <xs:documentation>Nabycie krajowe środka trwałego.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="NK">
+                      <xs:annotation>
+                        <xs:documentation>Nabycie krajowe.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WNT">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowe nabycie towarów.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WNT-ST">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowe nabycie towarów - środek transportu.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="IU">
+                      <xs:annotation>
+                        <xs:documentation>Import usług.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="IU-PU">
+                      <xs:annotation>
+                        <xs:documentation>Import usług, dla których podatnikiem jest usługobiorca.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="WTT-N">
+                      <xs:annotation>
+                        <xs:documentation>Transakcja trójstronna - nabycie.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="RC">
+                      <xs:annotation>
+                        <xs:documentation>Odwrócone obciążenie.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="IT-PU">
+                      <xs:annotation>
+                        <xs:documentation>Import towarów w procedurze uproszczonej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="NK-K">
+                      <xs:annotation>
+                        <xs:documentation>Korekta podatku naliczonego od pozostałych nabyć.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="NKST-K">
+                      <xs:annotation>
+                        <xs:documentation>Korekta podatku naliczonego od nabyć środków trwałych.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="EwVATZakEksp">
+                <xs:annotation>
+                  <xs:documentation>Domyślne odliczenie dla pojazdów.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="null"></xs:enumeration>
+                    <xs:enumeration value="nd">
+                      <xs:annotation>
+                        <xs:documentation>Nie dotyczy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="czesciowe">
+                      <xs:annotation>
+                        <xs:documentation>Częściowe odliczenie.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="pelne">
+                      <xs:annotation>
+                        <xs:documentation>Pełne odliczenie.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="EwVATZakRodzaj">
+                <xs:annotation>
+                  <xs:documentation>Domyślny rodzaj zakupu.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="null"></xs:enumeration>
+                    <xs:enumeration value="inwestycyjne">
+                      <xs:annotation>
+                        <xs:documentation>Inwestycyjne</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="zaopatrzeniowe">
+                      <xs:annotation>
+                        <xs:documentation>Zaopatrzeniowe.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="kosztowe">
+                      <xs:annotation>
+                        <xs:documentation>Kosztowe.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="EwVATZakRodzajOdl">
+                <xs:annotation>
+                  <xs:documentation>Domyślny rodzaj odliczenia.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="null"></xs:enumeration>
+                    <xs:enumeration value="calkowite">
+                      <xs:annotation>
+                        <xs:documentation>Całkowite.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="proporcjonalne">
+                      <xs:annotation>
+                        <xs:documentation>Proporcjonalne.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="brak">
+                      <xs:annotation>
+                        <xs:documentation>Bez odliczenia.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+              
+              
+              <xs:element minOccurs="0" name="Wielkosc">
+                <xs:annotation>
+                  <xs:documentation>Wielkość firmy w postaci liczby pracowników.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:positiveInteger">
+                    <xs:enumeration value="1">
+                      <xs:annotation>
+                        <xs:documentation>Firma jednoosobowa - sam właściciel, 0 pracowników.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="2">
+                      <xs:annotation>
+                        <xs:documentation>1 do 10 pracowników.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="3">
+                      <xs:annotation>
+                        <xs:documentation>11 do 50 pracowników.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="4">
+                      <xs:annotation>
+                        <xs:documentation>51 do 100 pracowników.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="5">
+                      <xs:annotation>
+                        <xs:documentation>Ponad 100 pracowników.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+              <xs:element name="CennikGlowny" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Symbol cennika głównego przypisanego podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="CennikDodatkowy" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Symbol cennika dodatkowego przypisanego podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="Rabat" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Nazwa rabatu przypisanego podmiotowi.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+                
+              <xs:element name="Negocjacja" minOccurs="0" type="xs:boolean">
+                <xs:annotation>
+                  <xs:documentation>Określa czy możliwa jest negocjacja ceny z kontrahentem.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="Kredyt" type="TKredytKupiecki">
+                <xs:annotation>
+                  <xs:documentation>Określa parametry kredytowania kupieckiego dla kontrahenta.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="MetodaKasowa" type="xs:boolean">
+                <xs:annotation>
+                  <xs:documentation>Określa czy podmiot rozlicza się przy pomocy metody kasowej.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="Komunikat" minOccurs="0">
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element name="Tekst" type ="xs:string" minOccurs="0" >
+                      <xs:annotation>
+                        <xs:documentation>Treść komunikatu wyświetlanego przy wystawianiu dokumentu podmiotowi.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element name="Data" type ="xs:date" minOccurs="0">
+                      <xs:annotation>
+                        <xs:documentation>Data, od której ma być wyświetlany komunikat przy wystawianiu dokumentu podmiotowi, gdy atrybut Pokaz ma wartosc OdDaty.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:all>
+                  <xs:attribute name="Pokaz" use="required">
+                    <xs:annotation>
+                      <xs:documentation>Określa, kiedy komunikat ma być pokazywany.</xs:documentation>
+                    </xs:annotation>
+                    <xs:simpleType>
+                      <xs:restriction base="xs:string">
+                        <xs:enumeration value="Zawsze">
+                          <xs:annotation>
+                            <xs:documentation>Komunikat ma być wyświetlany zawsze.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                        <xs:enumeration value="OdDaty">
+                          <xs:annotation>
+                            <xs:documentation>Komunikat ma być wyświetlany po upływie daty podanej w elemencie Data.</xs:documentation>
+                          </xs:annotation>
+                        </xs:enumeration>
+                      </xs:restriction>
+                    </xs:simpleType>
+                  </xs:attribute>
+                  <xs:attribute name="Aktywny" use="required" type="xs:boolean">
+                    <xs:annotation>
+                      <xs:documentation>Określa, czy komunikat przy wystawianu dokumentu podmiotowi ma być pokazywany.</xs:documentation>
+                    </xs:annotation>
+                  </xs:attribute>
+                </xs:complexType>
+              </xs:element>
+              <xs:element name="BibliotekaDokumentow" type="wspolne:TBibliotekaDokumentow" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Dane obiektów z biblioteki dokumentów.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+              <xs:element name="FlagaWlasna" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Dane flagi własnej.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Kolor flagi własnej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Kształt flagi własnej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+                      <xs:annotation>
+                        <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+
+              <xs:element name="Waluta" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślna waluta na dokumencie.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="SposobWyliczaniaDokumentu" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Domyślny sposób wyliczania dokumentu (netto/brutto).</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:string">
+                    <xs:enumeration value="netto" />
+                    <xs:enumeration value="brutto" />
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+              <xs:element name="ObslugaOplatyCukrowej" minOccurs="0">
+                <xs:annotation>
+                  <xs:documentation>Sposób obsługi opłaty cukrowej.</xs:documentation>
+                </xs:annotation>
+                <xs:simpleType>
+                  <xs:restriction base="xs:int">
+                    <xs:enumeration value="0">
+                      <xs:annotation>
+                        <xs:documentation>Brak obsługi opłaty cukrowej.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                    <xs:enumeration value="1">
+                      <xs:annotation>
+                        <xs:documentation>Obsługuj przy sprzedaży.</xs:documentation>
+                      </xs:annotation>
+                    </xs:enumeration>
+                  </xs:restriction>
+                </xs:simpleType>
+              </xs:element>
+
+              <xs:element name="TransakcjaHandlowaSprzedaz" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślna transakcja handlowa przy sprzedaży.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element name="TransakcjaHandlowaZakup" minOccurs="0" type="xs:string">
+                <xs:annotation>
+                  <xs:documentation>Domyślna transakcja handlowa przy sprzedaży.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+            
+              <xs:element name="CzynnyPlatnikVat" minOccurs="0" type="xs:boolean">
+                <xs:annotation>
+                  <xs:documentation>Znacznik informujący czy firma jest czynnym płatnikiem VAT.</xs:documentation>
+                </xs:annotation>
+              </xs:element>
+
+              <xs:element minOccurs="0" name="ProceduryJpkVatSprzedazy">
+                <xs:annotation>
+                  <xs:documentation>Procedury JPK sprzedaży.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element minOccurs="1" name="SW" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Sprzedaż wysyłkowa - Dostawa w ramach sprzedaży wysyłkowej z terytorium kraju, o której mowa w art. 23 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>   
+                    <xs:element minOccurs="1" name="EE" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Usługi telekomunikacyjne - Świadczenie usług telekomunikacyjnych, nadawczych i elektronicznych, o których mowa w art. 28k ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>   
+                    <xs:element minOccurs="1" name="TP" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Powiązania nabywcy i dostawcy - Istniejące powiązania między nabywcą a dokonującym dostawy towarów lub usługodawcą, o których mowa w art. 32 ust. 2 pkt 1 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>      
+                    <xs:element minOccurs="1" name="TT_WNT" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Transakcja trójstronna - nabycie - Wewnątrzwspólnotowe nabycie towarów dokonane przez drugiego w kolejności podatnika VAT w ramach transakcji trójstronnej w procedurze uproszczonej, o której mowa w dziale XII rozdziale 8 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>      
+                    <xs:element minOccurs="1" name="TT_D" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Transakcja trójstronna - dostawa - Dostawa towarów poza terytorium kraju dokonana przez drugiego w kolejności podatnika VAT w ramach transakcji trójstronnej w procedurze uproszczonej, o której mowa w dziale XII rozdziale 8 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>     
+                    <xs:element minOccurs="1" name="MR_T" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Świadczenie usług turystyki - Świadczenie usług turystyki opodatkowane na zasadach marży zgodnie z art. 119 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>   
+                    <xs:element minOccurs="1" name="MR_UZ" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa towarów używanych - Dostawa towarów używanych, dzieł sztuki, przedmiotów kolekcjonerskich i antyków, opodatkowana na zasadach marży zgodnie z art. 120 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>    
+                    <xs:element minOccurs="1" name="I_42" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowa dostawa po imporcie (procedura celna 42) - Wewnątrzwspólnotowa dostawa towarów następująca po imporcie tych towarów w ramach procedury celnej 42 (import).</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>    
+                    <xs:element minOccurs="1" name="I_63" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Wewnątrzwspólnotowa dostawa po imporcie (procedura celna 63) - Wewnątrzwspólnotowa dostawa towarów następująca po imporcie tych towarów w ramach procedury celnej 63 (import).</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>  
+                    <xs:element minOccurs="1" name="B_SPV" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Transfer bonu jednego przeznaczenia - Transfer bonu jednego przeznaczenia dokonany przez podatnika działającego we własnym imieniu, opodatkowany zgodnie z art. 8a ust. 1 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>  
+                    <xs:element minOccurs="1" name="B_SPV_DOSTAWA" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Dostawa dotycząca bonu jednego przeznaczenia - Dostawa towarów oraz świadczenie usług, których dotyczy bon jednego przeznaczenia na rzecz podatnika, który wyemitował bon zgodnie z art. 8a ust. 4 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element> 
+                    <xs:element minOccurs="1" name="B_MPV_PROWIZJA" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Pośrednictwo transferu bonu różnego przeznaczenia - Świadczenie usług pośrednictwa oraz innych usług dotyczących transferu bonu różnego przeznaczenia, opodatkowane zgodnie z art. 8b ust. 2 ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element> 
+                    <xs:element minOccurs="1" name="MPP" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Mechanizm podzielonej płatności - Transakcja objęta obowiązkiem stosowania mechanizmu podzielonej płatności.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>    
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+            
+              <xs:element minOccurs="0" name="ProceduryJpkVatZakupu">
+                <xs:annotation>
+                  <xs:documentation>Procedury JPK zakupu.</xs:documentation>
+                </xs:annotation>
+                <xs:complexType>
+                  <xs:all>
+                    <xs:element minOccurs="1" name="MPP" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Mechanizm podzielonej płatności - Transakcja objęta obowiązkiem stosowania mechanizmu podzielonej płatności.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                    <xs:element minOccurs="1" name="IMP" type="xs:boolean">
+                      <xs:annotation>
+                        <xs:documentation>Import towarów - Oznaczenie dotyczące podatku naliczonego z tytułu importu towarów, w tym importu towarów rozliczanego zgodnie z art. 33a ustawy.</xs:documentation>
+                      </xs:annotation>
+                    </xs:element>
+                  </xs:all>
+                </xs:complexType>
+              </xs:element>
+                
+            </xs:sequence>
+
+            <xs:attribute name="Typ" use="required">
+              <xs:annotation>
+                <xs:documentation>Typ podmiotu (Osoba, Firma, PodmiotCesyjny).</xs:documentation>
+              </xs:annotation>
+              <xs:simpleType>
+                <xs:restriction base="xs:string">
+                  <xs:enumeration value="Osoba">
+                    <xs:annotation>
+                      <xs:documentation>Podmiot jest osobą.</xs:documentation>
+                    </xs:annotation>
+                  </xs:enumeration>
+                  <xs:enumeration value="Firma">
+                    <xs:annotation>
+                      <xs:documentation>Podmiot jest firmą.</xs:documentation>
+                    </xs:annotation>
+                  </xs:enumeration>
+                  <xs:enumeration value="PodmiotCesyjny">
+                    <xs:annotation>
+                      <xs:documentation>Podmiot jest podmiotem cesyjnym.</xs:documentation>
+                    </xs:annotation>
+                  </xs:enumeration>
+                </xs:restriction>
+              </xs:simpleType>
+            </xs:attribute>
+            <xs:attribute name="Dostawca" type="xs:boolean" use="required">
+              <xs:annotation>
+                <xs:documentation>Określa, czy podmiot jest dostawcą.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="Odbiorca" type="xs:boolean" use="required">
+              <xs:annotation>
+                <xs:documentation>Określa, czy podmiot jest odbiorcą.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="Jednorazowy" type="xs:boolean" use="optional">
+              <xs:annotation>
+                <xs:documentation>Określa, czy podmiot jest kontrahentem jednorazowym.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+            <xs:attribute name="Szef" type="xs:boolean" use="optional">
+              <xs:annotation>
+                <xs:documentation>Określa, czy podmiot jest szefem.</xs:documentation>
+              </xs:annotation>
+            </xs:attribute>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+  
+  <xs:complexType name="TZgody">
+    <xs:sequence>
+      <xs:element name="Zgoda" type="TZgoda" minOccurs="0" maxOccurs="unbounded">
+        <xs:annotation>
+          <xs:documentation>Dane dotyczące zaakceptowania/odrzuecenia zgody na przetwarzanie danych.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+  
+  <xs:complexType name="TZgoda">
+    <xs:sequence>
+      <xs:element name="CelPrzetwarzania" type="wspolne:Obowiazkowy">
+        <xs:annotation>
+          <xs:documentation>Nazwa skrócona celu przetwarzania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Status" type="TStatusZgody">
+        <xs:annotation>
+          <xs:documentation>Status zgody.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataZapytania" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data zapytania</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataOdpowiedzi" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data odpowiedzi</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataWycofania" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data wycofania</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TStatusZgody">
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Nieokreslony">
+        <xs:annotation>
+          <xs:documentation>Nieokreślony.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Oczekuje">
+        <xs:annotation>
+          <xs:documentation>Oczekuje na odpowiedź.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Zaakceptowano">
+        <xs:annotation>
+          <xs:documentation>Zaakceptowano zgodę.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Odrzucono">
+        <xs:annotation>
+          <xs:documentation>Odrzucono zgodę.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Wycofano">
+        <xs:annotation>
+          <xs:documentation>Wycofano zgodę.</xs:documentation>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+  
+</xs:schema>

@@ -1,0 +1,357 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<xs:schema attributeFormDefault="unqualified"
+           elementFormDefault="qualified"
+           targetNamespace="http://schemas.insert.com.pl/2014/hop/dzialania"
+           xmlns="http://schemas.insert.com.pl/2014/hop/dzialania"
+           xmlns:k="http://schemas.insert.com.pl/2014/hop/kalendarze"
+           xmlns:td="http://schemas.insert.com.pl/2014/hop/typydzialan"
+           xmlns:h="http://schemas.insert.com.pl/2014/hop/historiowanie"
+           xmlns:wspolne="http://schemas.insert.com.pl/2013/hop"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+  <xs:import schemaLocation="TypyDzialan.xsd" namespace="http://schemas.insert.com.pl/2014/hop/typydzialan" />
+  <xs:import schemaLocation="Kalendarze.xsd" namespace="http://schemas.insert.com.pl/2014/hop/kalendarze" />
+  <xs:import schemaLocation="Historiowanie.xsd" namespace="http://schemas.insert.com.pl/2014/hop/historiowanie" />
+  <xs:import id="WspolnePart" namespace="http://schemas.insert.com.pl/2013/hop" schemaLocation="Wspolne.xsd"/>
+
+  <xs:complexType name="TDzialanie">
+    <xs:sequence>
+      <xs:element name="Id" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Identyfikator dzialania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Temat" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Temat działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Typ" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Typ działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Rodzaj" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kierunek" type="td:TKierunekDzialania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Kierunek działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="StopienRealizacji" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Stopień realizacji działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Kategoria" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Kategoria działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Klasa" type="TKlasaDzialania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Klasa działania (z Gestora GT).</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerDokumentuPowielanego" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer dokumentu dla działania klasy powielającej dokument.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NumerProcesuOfertowego" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Numer procesu ofertowego powiązanego z działaniem.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="DataUtworzenia" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data uwtorzenia działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="UtworzonePrzez" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura osoby, która utworzyła działanie.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Klienci" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Klienci.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="unbounded">
+            <xs:element name="Klient" type="TKlientWDzialaniu">
+              <xs:annotation>
+                <xs:documentation>Klient.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Lokalizacja" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Lokalizacja działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Zajety" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy wykonawca będzie zajęty, czy wolny w trakcie wykonywania działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Prywatne" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działanie jest widoczne tylko dla twórcy oraz kierownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Priorytet" type="TPriorytetDzialania" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Priorytet działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="NieOkreslajCzasu" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działanie będzie miało datę początku i końca.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Calodzienne" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działanie jest całodzienne.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Poczatek" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data początku działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Koniec" type="xs:dateTime" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Data końca działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="PokazujWKalendarzu" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działanie ma być pokazywane w kalendarzu.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="KolorWKalendarzu" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa kolor jaki będzie charakteryzował działanie.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Przypomnienie" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa ile minut przed działaniem pojawi sie przypomnienie informujące o jego początku.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Cykliczne" type="xs:boolean" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Określa, czy działąnie będzie cykliczne.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="IdDzialaniaZrodlowego" type="xs:int" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Identyfikator działania źródłowego - wymagany jeśli działanie jest edycja pojedynczego wystąpienia działania cyklicznego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OryginalnaDataWystapienia" type="xs:date" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Oryginalna data wystąpienia działania cyklicznego.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Cykl" type="k:TCykl" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Definiuje cykliczność wystąpień działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Wykonawca" type="TOsobaZaangazowanaWDzialanie" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Osoba zajmująca się działaniem.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OsobyZaangazowane" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Osoby zaangażowane w działanie.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="unbounded">
+            <xs:element name="Osoba" type="TOsobaZaangazowanaWDzialanie">
+              <xs:annotation>
+                <xs:documentation>Osoba zaangażowana w działanie.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="Opis" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Opis działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="OpisSzczegolowy" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Szczegółowy opis działania.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Historia" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Historia zmian działania.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence minOccurs="1" maxOccurs="unbounded">
+            <xs:element name="Wpis" type="h:THistoria">
+              <xs:annotation>
+                <xs:documentation>Wpis do historii.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="WlasneRozszerzone" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Wartości pól własnych działań.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:sequence>
+            <xs:element name="PoleRozszerzone" minOccurs="0" maxOccurs="unbounded">
+              <xs:annotation>
+                <xs:documentation>Pole własne rozszerzone działania. Zawartość tego elementu jest wartością pola.</xs:documentation>
+              </xs:annotation>
+              <xs:complexType>
+                <xs:simpleContent>
+                  <xs:extension base="xs:string">
+                    <xs:attribute name="Nazwa" type="xs:string" use="required">
+                      <xs:annotation>
+                        <xs:documentation>Nazwa pola własnego.</xs:documentation>
+                      </xs:annotation>
+                    </xs:attribute>
+                  </xs:extension>
+                </xs:simpleContent>
+              </xs:complexType>
+            </xs:element>
+          </xs:sequence>
+        </xs:complexType>
+      </xs:element>
+      <xs:element name="BibliotekaDokumentow" type="wspolne:TBibliotekaDokumentow" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane obiektów z biblioteki dokumentów.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="FlagaWlasna" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Dane flagi własnej.</xs:documentation>
+        </xs:annotation>
+        <xs:complexType>
+          <xs:all>
+            <xs:element minOccurs="1" maxOccurs="1" name="Kolor" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kolor flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Ksztalt" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Kształt flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+            <xs:element minOccurs="0" maxOccurs="1" name="Komentarz" type="xs:string">
+              <xs:annotation>
+                <xs:documentation>Komentarz flagi własnej.</xs:documentation>
+              </xs:annotation>
+            </xs:element>
+          </xs:all>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:element name="Dzialania">
+    <xs:annotation>
+      <xs:documentation>Działania.</xs:documentation>
+    </xs:annotation>
+    <xs:complexType>
+      <xs:sequence minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Dzialanie" type="TDzialanie">
+          <xs:annotation>
+            <xs:documentation>Działanie.</xs:documentation>
+          </xs:annotation>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:simpleType name="TPriorytetDzialania">
+    <xs:annotation>
+      <xs:documentation>Określa ważność działania.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Nieustalony" />
+      <xs:enumeration value="Niski" />
+      <xs:enumeration value="Zwykly" />
+      <xs:enumeration value="Wysoki" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:complexType name="TOsobaZaangazowanaWDzialanie">
+    <xs:annotation>
+      <xs:documentation>Osoba zaangażowana w działanie.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Sygnatura" type="xs:string">
+        <xs:annotation>
+          <xs:documentation>Sygnatura pracownika.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="TKlientWDzialaniu">
+    <xs:annotation>
+      <xs:documentation>Klienci w działaniu.</xs:documentation>
+    </xs:annotation>
+    <xs:sequence>
+      <xs:element name="Rodzaj" type="TRodzajKlienta" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Rodzaj klienta. Domyślnie jest kontrahent.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Sygnatura" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Sygnatura klienta lub firmy jeśli rodzajem klienta jest PracownikKontrahenta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Imie" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Imię klienta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+      <xs:element name="Nazwisko" type="xs:string" minOccurs="0">
+        <xs:annotation>
+          <xs:documentation>Nazwisko klienta.</xs:documentation>
+        </xs:annotation>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:simpleType name="TRodzajKlienta">
+    <xs:annotation>
+      <xs:documentation>Rodzaj klienta.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Kontrahent" />
+      <xs:enumeration value="PracownikKontrahenta" />
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="TKlasaDzialania">
+    <xs:annotation>
+      <xs:documentation>Klasa z Gestora GT.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="xs:string">
+      <xs:enumeration value="Zwykle" />
+      <xs:enumeration value="Windykacyjne" />
+      <xs:enumeration value="PowielajaceDokument" />
+    </xs:restriction>
+  </xs:simpleType>
+
+</xs:schema>
