@@ -1,0 +1,173 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Wersja (np. 1.0.0)'
+        required: true
+        default: '0.0.0'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ustal wersję
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $ver = "${{ github.event.inputs.version }}"
+          } else {
+            $rawRef = "${{ github.ref_name }}"
+            $ver = $rawRef.TrimStart("v")
+          }
+          "VERSION=$ver" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "TAG=v$ver"    | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          Write-Host "Wersja: $ver"
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Pobierz SDK Nexo
+        env:
+          SDK_DOWNLOAD_URL: ${{ secrets.NEXO_SDK_URL }}
+          SDK_DOWNLOAD_TOKEN: ${{ secrets.NEXO_SDK_TOKEN }}
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Path "src\lib\nexo-sdk" -Force | Out-Null
+
+          if ($env:SDK_DOWNLOAD_URL) {
+            Write-Host "Pobieranie SDK z prywatnego URL..."
+            $headers = @{}
+            if ($env:SDK_DOWNLOAD_TOKEN) {
+              $headers["Authorization"] = "Bearer $env:SDK_DOWNLOAD_TOKEN"
+            }
+            Invoke-WebRequest -Uri $env:SDK_DOWNLOAD_URL -OutFile "nexo-sdk.zip" -Headers $headers
+            Expand-Archive -Path "nexo-sdk.zip" -DestinationPath "src\lib\nexo-sdk" -Force
+            Remove-Item "nexo-sdk.zip"
+            Write-Host "SDK pobrane OK"
+          } elseif (Test-Path "nexoSDK_58.0.2.8985\Bin") {
+            Write-Host "Używam lokalnego SDK..."
+            .\scripts\setup-sdk.ps1
+          } else {
+            Write-Error "Brak SDK. Skonfiguruj secret NEXO_SDK_URL."
+            exit 1
+          }
+
+      - name: Restore
+        run: dotnet restore src/NexoSferaApi.csproj
+
+      - name: Publish (self-contained, win-x64)
+        shell: pwsh
+        run: |
+          dotnet publish src/NexoSferaApi.csproj `
+            --configuration Release `
+            --runtime win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:PublishReadyToRun=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=false `
+            -p:DebugType=embedded `
+            --output ./dist `
+            --nologo
+
+      - name: Przygotuj dist/
+        shell: pwsh
+        run: |
+          # Plik konfiguracyjny
+          Copy-Item "src\appsettings.template.json" "dist\appsettings.json" -Force
+
+          # Usuń pliki developerskie
+          Remove-Item "dist\*.pdb"                       -ErrorAction SilentlyContinue
+          Remove-Item "dist\appsettings.Development.json" -ErrorAction SilentlyContinue
+          Remove-Item "dist\web.config"                  -ErrorAction SilentlyContinue
+
+          # INSTALL.md
+          $ver = "${{ steps.version.outputs.VERSION }}"
+          @"
+          # NexoSferaApi v$ver — Instalacja
+
+          ## Wymagania
+          - Windows 10/11 lub Windows Server 2016+
+          - InsERT Nexo z aktywną licencją na moduł Sfera
+          - SQL Server z bazą danych Nexo
+          - .NET Runtime NIE jest wymagany (aplikacja jest samodzielna)
+
+          ## Szybki start
+
+          1. Rozpakuj ZIP do folderu, np. C:\NexoSferaApi\
+          2. Edytuj appsettings.json:
+             - Server     → nazwa instancji SQL Server (np. (local)\INSERTNEXO)
+             - Database   → nazwa bazy danych Nexo
+             - NexoLogin  → login operatora Nexo
+             - NexoPassword → hasło operatora
+             - Product    → Subiekt / Rachmistrz / Rewizor / Gestor
+             - ApiKeys    → ustaw własny sekretny klucz API
+          3. Uruchom NexoSferaApi.exe
+          4. API:     http://localhost:5000
+             Swagger:  http://localhost:5000/swagger
+
+          ## Uruchamianie jako usługa Windows (PowerShell jako Administrator)
+
+              sc.exe create NexoSferaApi binPath= "C:\NexoSferaApi\NexoSferaApi.exe" start= auto
+              sc.exe description NexoSferaApi "REST API dla InsERT Nexo/Sfera"
+              sc.exe start NexoSferaApi
+
+          ## Kontakt
+
+          mateusz.serwinowski@dmservice.pl
+          "@ | Out-File "dist\INSTALL.md" -Encoding UTF8
+
+          Write-Host "Zawartość dist/:"
+          Get-ChildItem dist | Format-Table Name, @{L="MB";E={[math]::Round($_.Length/1MB,1)}}
+
+      - name: Pakuj do ZIP
+        shell: pwsh
+        run: |
+          $ver     = "${{ steps.version.outputs.VERSION }}"
+          $zipName = "NexoSferaApi-v${ver}-win-x64.zip"
+          Compress-Archive -Path "dist\*" -DestinationPath $zipName -CompressionLevel Optimal
+          $sizeMB  = [math]::Round((Get-Item $zipName).Length / 1MB, 1)
+          Write-Host "ZIP: $zipName ($sizeMB MB)"
+          "ZIP_NAME=$zipName" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Utwórz GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.TAG }}
+          name: "NexoSferaApi v${{ steps.version.outputs.VERSION }}"
+          body: |
+            ## NexoSferaApi v${{ steps.version.outputs.VERSION }}
+
+            REST API dla InsERT Nexo/Sfera — Subiekt, Rachmistrz, Rewizor, Gestor.
+
+            ### Instalacja
+            1. Pobierz plik ZIP poniżej
+            2. Rozpakuj do dowolnego folderu
+            3. Edytuj `appsettings.json` (serwer SQL, login Nexo, klucz API)
+            4. Uruchom `NexoSferaApi.exe`
+            5. Swagger: http://localhost:5000/swagger
+
+            **Wymagania:** Windows 10/11+, InsERT Nexo z licencją Sfera
+            **Kontakt:** mateusz.serwinowski@dmservice.pl
+          files: ${{ env.ZIP_NAME }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
