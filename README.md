@@ -1,8 +1,27 @@
-# Nexo Sfera REST API
+<div align="center">
 
-**REST API dla systemu InsERT Nexo / Subiekt / Rachmistrz / Rewizor / Gestor**
+# 🔗 Nexo Sfera REST API
 
-Rozwijane przez **DMservice** | Kontakt: mateusz.serwinowski@dmservice.pl
+**Profesjonalne REST API dla systemu InsERT Nexo**
+Subiekt · Rachmistrz · Rewizor · Gratyfikant · Gestor
+
+[![.NET](https://img.shields.io/badge/.NET_8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
+[![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://docs.microsoft.com/en-us/dotnet/csharp/)
+[![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](http://mssql-insert.sys.dmservice.pl:5000/swagger)
+[![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
+
+[![GitHub stars](https://img.shields.io/github/stars/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/issues)
+[![Last commit](https://img.shields.io/github/last-commit/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/commits)
+
+Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski@dmservice.pl
+
+</div>
+
+---
+
+> 🚀 **Demo:** http://mssql-insert.sys.dmservice.pl:5000/swagger
+> 🔑 Wymagany klucz API w nagłówku `X-API-Key`
 
 ---
 
@@ -17,14 +36,14 @@ Rozwijane przez **DMservice** | Kontakt: mateusz.serwinowski@dmservice.pl
 
 ---
 
-## Wymagania
+## ⚙️ Wymagania
 
 - Windows 10/11 lub Windows Server
 - .NET 8.0 SDK
-- Zainstalowany InsERT Nexo z licencja na Sfere
-- SQL Server z baza danych Nexo
+- Zainstalowany InsERT Nexo z licencją na Sferę
+- SQL Server z bazą danych Nexo
 
-## Konfiguracja
+## 🔧 Konfiguracja
 
 Edytuj plik `src/appsettings.json`:
 
@@ -51,22 +70,22 @@ Edytuj plik `src/appsettings.json`:
 | `Database` | Nazwa bazy danych Nexo |
 | `UseWindowsAuth` | `true` dla autentykacji Windows, `false` dla SQL |
 | `SqlLogin` | Login SQL (gdy UseWindowsAuth = false) |
-| `SqlPassword` | Haslo SQL (gdy UseWindowsAuth = false) |
+| `SqlPassword` | Hasło SQL (gdy UseWindowsAuth = false) |
 | `NexoLogin` | Login operatora Nexo |
-| `NexoPassword` | Haslo operatora Nexo |
+| `NexoPassword` | Hasło operatora Nexo |
 | `Product` | Produkt: Subiekt, Rachmistrz, Rewizor, Gratyfikant, Gestor |
 
-## Uruchomienie
+## 🚀 Uruchomienie
 
 ```bash
 cd src
 dotnet run
 ```
 
-API bedzie dostepne pod adresem: `http://localhost:5000`
+API będzie dostępne pod adresem: `http://localhost:5000`
 Swagger UI: `http://localhost:5000/swagger`
 
-## Multi-tenant (wiele firm)
+## 🏢 Multi-tenant (wiele firm)
 
 API obsługuje scenariusze multi-tenant, gdzie różne klucze API mogą korzystać z różnych operatorów Nexo. To umożliwia obsługę wielu firm lub działów w ramach jednej instancji API.
 
@@ -163,133 +182,133 @@ curl -X POST http://localhost:5000/api/documents/sales-invoice \
 - Regularnie rotuj klucze API
 - Nadawaj minimalne wymagane uprawnienia operatorom Nexo
 
-## Srodowisko testowe
+## 🌐 Środowisko testowe
 
 - **API URL:** `http://mssql-insert.sys.dmservice.pl:5000/`
 - **Swagger:** `http://mssql-insert.sys.dmservice.pl:5000/swagger`
 - **API Key:** Wymagany w headerze `X-API-Key`
 
-## Endpointy API
+## 📡 Endpointy API
 
-### Health Check
+### 🔷 Health Check
 - `GET /api/health` - Status API
-- `GET /api/health/sfera` - Status polaczenia ze Sfera
-- `POST /api/health/reconnect` - Ponowne polaczenie
+- `GET /api/health/sfera` - Status połączenia ze Sferą
+- `POST /api/health/reconnect` - Ponowne połączenie
 
-### Kontrahenci (Customers)
-- `GET /api/customers` - Lista kontrahentow
+### 🔷 Kontrahenci (Customers)
+- `GET /api/customers` - Lista kontrahentów
 - `GET /api/customers/{id}` - Kontrahent po ID
 - `GET /api/customers/by-nip/{nip}` - Kontrahent po NIP
-- `POST /api/customers` - Utworz kontrahenta
+- `POST /api/customers` - Utwórz kontrahenta
 - `PUT /api/customers/{id}` - Aktualizuj kontrahenta
-- `DELETE /api/customers/{id}` - Usun kontrahenta
+- `DELETE /api/customers/{id}` - Usuń kontrahenta
 
-### Produkty (Products)
-- `GET /api/products` - Lista produktow
+### 🔷 Produkty (Products)
+- `GET /api/products` - Lista produktów
 - `GET /api/products/{id}` - Produkt po ID
 - `GET /api/products/by-symbol/{symbol}` - Produkt po symbolu
 - `GET /api/products/by-ean/{ean}` - Produkt po EAN
-- `POST /api/products` - Utworz produkt
+- `POST /api/products` - Utwórz produkt
 - `PUT /api/products/{id}` - Aktualizuj produkt
-- `DELETE /api/products/{id}` - Usun produkt
+- `DELETE /api/products/{id}` - Usuń produkt
 
-### Dokumenty handlowe (Documents)
-- `GET /api/documents` - Lista dokumentow
+### 🔷 Dokumenty handlowe (Documents)
+- `GET /api/documents` - Lista dokumentów
 - `GET /api/documents/{id}` - Dokument po ID
 - `GET /api/documents/by-number/{number}` - Dokument po numerze
-- `POST /api/documents/sales-invoice` - Utworz fakture sprzedazy (FS)
-- `POST /api/documents/receipt` - Utworz paragon
-- `POST /api/documents/customer-order` - Utworz zamowienie od klienta (ZK)
-- `POST /api/documents/purchase-invoice` - Utworz fakture zakupu (FZ)
+- `POST /api/documents/sales-invoice` - Utwórz fakturę sprzedaży (FS)
+- `POST /api/documents/receipt` - Utwórz paragon
+- `POST /api/documents/customer-order` - Utwórz zamówienie od klienta (ZK)
+- `POST /api/documents/purchase-invoice` - Utwórz fakturę zakupu (FZ)
 
-### Dokumenty magazynowe (Warehouse Documents)
-- `GET /api/warehouse-documents` - Lista dokumentow magazynowych
+### 🔷 Dokumenty magazynowe (Warehouse Documents)
+- `GET /api/warehouse-documents` - Lista dokumentów magazynowych
 - `GET /api/warehouse-documents/{id}` - Dokument po ID
-- `POST /api/warehouse-documents/wz` - Utworz wydanie zewnetrzne (WZ)
-- `POST /api/warehouse-documents/pz` - Utworz przyjecie zewnetrzne (PZ)
-- `POST /api/warehouse-documents/rw` - Utworz rozchod wewnetrzny (RW)
-- `POST /api/warehouse-documents/pw` - Utworz przychod wewnetrzny (PW)
-- `POST /api/warehouse-documents/mm` - Utworz przesuniecie miedzymagazynowe (MM)
-- `POST /api/warehouse-documents/{id}/associate` - Powiaz dokumenty (np. RW z PW)
+- `POST /api/warehouse-documents/wz` - Utwórz wydanie zewnętrzne (WZ)
+- `POST /api/warehouse-documents/pz` - Utwórz przyjęcie zewnętrzne (PZ)
+- `POST /api/warehouse-documents/rw` - Utwórz rozchód wewnętrzny (RW)
+- `POST /api/warehouse-documents/pw` - Utwórz przychód wewnętrzny (PW)
+- `POST /api/warehouse-documents/mm` - Utwórz przesunięcie międzymagazynowe (MM)
+- `POST /api/warehouse-documents/{id}/associate` - Powiąż dokumenty (np. RW z PW)
 
-### Platnosci (Payments)
+### 🔷 Płatności (Payments)
 - `GET /api/payments/cash` - Lista operacji kasowych
 - `GET /api/payments/cash/{id}` - Operacja kasowa po ID
-- `POST /api/payments/cash/kp` - Utworz KP (przyjecie gotowki)
-- `POST /api/payments/cash/kw` - Utworz KW (wydanie gotowki)
+- `POST /api/payments/cash/kp` - Utwórz KP (przyjęcie gotówki)
+- `POST /api/payments/cash/kw` - Utwórz KW (wydanie gotówki)
 - `GET /api/payments/bank` - Lista operacji bankowych
 - `GET /api/payments/bank/{id}` - Operacja bankowa po ID
-- `POST /api/payments/bank/bp` - Utworz BP (wplata bankowa)
-- `POST /api/payments/bank/bw` - Utworz BW (wyplata bankowa)
-- `GET /api/payments/settlements` - Lista rozrachunkow
+- `POST /api/payments/bank/bp` - Utwórz BP (wpłata bankowa)
+- `POST /api/payments/bank/bw` - Utwórz BW (wypłata bankowa)
+- `GET /api/payments/settlements` - Lista rozrachunków
 
-### Oferty (Offers) - Gestor
+### 🔷 Oferty (Offers) — Gestor
 - `GET /api/offers` - Lista ofert
 - `GET /api/offers/{id}` - Oferta po ID
 - `GET /api/offers/by-number/{number}` - Oferta po numerze
-- `POST /api/offers` - Utworz oferte
-- `POST /api/offers/{id}/accept` - Zaakceptuj oferte
-- `POST /api/offers/{id}/close` - Zamknij oferte
+- `POST /api/offers` - Utwórz ofertę
+- `POST /api/offers/{id}/accept` - Zaakceptuj ofertę
+- `POST /api/offers/{id}/close` - Zamknij ofertę
 
-### Magazyny (Warehouses)
-- `GET /api/warehouses` - Lista magazynow
+### 🔷 Magazyny (Warehouses)
+- `GET /api/warehouses` - Lista magazynów
 - `GET /api/warehouses/{symbol}` - Magazyn po symbolu
 - `GET /api/warehouses/stock/{productSymbol}` - Stan magazynowy produktu
 
-### Stany magazynowe (Inventory)
-- `GET /api/inventory` - Lista stanow magazynowych
+### 🔷 Stany magazynowe (Inventory)
+- `GET /api/inventory` - Lista stanów magazynowych
 - `GET /api/inventory/product/{id}` - Stan dla produktu
-- `GET /api/inventory/movements` - Historia ruchow magazynowych
+- `GET /api/inventory/movements` - Historia ruchów magazynowych
 - `GET /api/inventory/valuation` - Wycena magazynu
 
-### Slowniki (Dictionary)
+### 🔷 Słowniki (Dictionary)
 - `GET /api/dictionary/vat-rates` - Stawki VAT
 - `GET /api/dictionary/units` - Jednostki miary
 - `GET /api/dictionary/currencies` - Waluty
 - `GET /api/dictionary/exchange-rates` - Kursy walut
-- `GET /api/dictionary/payment-methods` - Formy platnosci
+- `GET /api/dictionary/payment-methods` - Formy płatności
 - `GET /api/dictionary/price-lists` - Cenniki
 - `GET /api/dictionary/countries` - Kraje
 
-### Raporty finansowe (Finance Reports)
+### 🔷 Raporty finansowe (Finance Reports)
 - `GET /api/finance/cash-registers` - Stanowiska kasowe
 - `GET /api/finance/cash-reports` - Raporty kasowe
 - `GET /api/finance/bank-accounts` - Rachunki bankowe
-- `GET /api/finance/bank-statements` - Wyciagi bankowe
+- `GET /api/finance/bank-statements` - Wyciągi bankowe
 - `GET /api/finance/aging-report` - Raport wiekowania
 
-### System
+### 🔷 System
 - `GET /api/system/info` - Informacje o firmie
 - `GET /api/system/operator` - Aktualny operator
 - `GET /api/system/license` - Informacje o licencji
 
-### Deklaracje (Declarations)
+### 🔷 Deklaracje (Declarations)
 - `GET /api/declarations/vat` - Lista deklaracji VAT
-- `GET /api/declarations/vat/{id}` - Szczegoly deklaracji
+- `GET /api/declarations/vat/{id}` - Szczegóły deklaracji
 - `GET /api/declarations/types` - Typy deklaracji
 
-### JPK
-- `GET /api/jpk` - Lista plikow JPK
-- `GET /api/jpk/{id}` - Szczegoly JPK
+### 🔷 JPK
+- `GET /api/jpk` - Lista plików JPK
+- `GET /api/jpk/{id}` - Szczegóły JPK
 - `GET /api/jpk/types` - Typy JPK
 
-### Konfiguracje
+### 🔷 Konfiguracje
 - `GET /api/configurations/categories` - Kategorie konfiguracji
-- `GET /api/configurations/documents` - Konfiguracje dokumentow
+- `GET /api/configurations/documents` - Konfiguracje dokumentów
 - `GET /api/configurations/numbering` - Konfiguracje numeracji
 
-### Raporty
-- `GET /api/reports/types` - Typy raportow
-- `GET /api/reports/sales/summary` - Podsumowanie sprzedazy
-- `GET /api/reports/sales/by-product` - Sprzedaz wg produktow
-- `GET /api/reports/sales/by-customer` - Sprzedaz wg klientow
+### 🔷 Raporty
+- `GET /api/reports/types` - Typy raportów
+- `GET /api/reports/sales/summary` - Podsumowanie sprzedaży
+- `GET /api/reports/sales/by-product` - Sprzedaż wg produktów
+- `GET /api/reports/sales/by-customer` - Sprzedaż wg klientów
 
-### E-commerce
+### 🔷 E-commerce
 - `GET /api/ecommerce/integrations` - Integracje e-commerce
 - `GET /api/ecommerce/offers` - Oferty internetowe
-- `GET /api/ecommerce/packages` - Paczki wysylkowe
+- `GET /api/ecommerce/packages` - Paczki wysyłkowe
 
-## Przyklady uzycia
+## 💡 Przykłady użycia
 
 ### Utworzenie kontrahenta
 
@@ -314,7 +333,7 @@ curl -X POST http://localhost:5000/api/customers \
   }'
 ```
 
-### Utworzenie faktury sprzedazy
+### Utworzenie faktury sprzedaży
 
 ```bash
 curl -X POST http://localhost:5000/api/documents/sales-invoice \
@@ -374,7 +393,7 @@ curl -X POST http://localhost:5000/api/warehouse-documents/wz \
   }'
 ```
 
-### Utworzenie dokumentu PW (Przychod wewnetrzny)
+### Utworzenie dokumentu PW (Przychód wewnętrzny)
 
 ```bash
 curl -X POST http://localhost:5000/api/warehouse-documents/pw \
@@ -400,7 +419,7 @@ curl -X POST http://localhost:5000/api/warehouse-documents/pw \
   }'
 ```
 
-### Utworzenie dokumentu RW (Rozchod wewnetrzny)
+### Utworzenie dokumentu RW (Rozchód wewnętrzny)
 
 ```bash
 curl -X POST http://localhost:5000/api/warehouse-documents/rw \
@@ -426,9 +445,9 @@ curl -X POST http://localhost:5000/api/warehouse-documents/rw \
   }'
 ```
 
-**Uwaga:** Dla dokumentow RW ceny moga byc ignorowane - system automatycznie wycenia rozchod wg metody FIFO/LIFO/sredniej wazonej skonfigurowanej w systemie.
+**Uwaga:** Dla dokumentów RW ceny mogą być ignorowane — system automatycznie wycenia rozchód wg metody FIFO/LIFO/średniej ważonej skonfigurowanej w systemie.
 
-### Utworzenie dokumentu MM (Przesuniecie miedzymagazynowe)
+### Utworzenie dokumentu MM (Przesunięcie międzymagazynowe)
 
 ```bash
 curl -X POST http://localhost:5000/api/warehouse-documents/mm \
@@ -448,10 +467,10 @@ curl -X POST http://localhost:5000/api/warehouse-documents/mm \
   }'
 ```
 
-### Powiazanie dokumentow magazynowych (skojarzenie RW z PW)
+### Powiązanie dokumentów magazynowych (skojarzenie RW z PW)
 
 ```bash
-# Najpierw utworz dokumenty PW i RW, a nastepnie polacz je przez ID
+# Najpierw utwórz dokumenty PW i RW, a następnie połącz je przez ID
 curl -X POST http://localhost:5000/api/warehouse-documents/109622/associate \
   -H "Content-Type: application/json" \
   -H "X-API-Key: your-api-key" \
@@ -461,7 +480,7 @@ curl -X POST http://localhost:5000/api/warehouse-documents/109622/associate \
   }'
 ```
 
-Odpowiedz:
+Odpowiedź:
 ```json
 {
   "success": true,
@@ -509,14 +528,14 @@ curl -X POST http://localhost:5000/api/payments/cash/kp \
   }'
 ```
 
-### Pobranie listy produktow z filtrowaniem
+### Pobranie listy produktów z filtrowaniem
 
 ```bash
 curl "http://localhost:5000/api/products?search=laptop&activeOnly=true&page=1&pageSize=20" \
   -H "X-API-Key: your-api-key"
 ```
 
-## Struktura projektu
+## 📁 Struktura projektu
 
 ```
 nexo-sfera-api/
@@ -525,7 +544,7 @@ nexo-sfera-api/
 │   ├── Services/            # Serwisy (Sfera)
 │   ├── Models/
 │   │   ├── Dto/             # Data Transfer Objects
-│   │   ├── Requests/        # Modele requestow
+│   │   ├── Requests/        # Modele requestów
 │   │   └── Responses/       # Modele odpowiedzi
 │   ├── Configuration/       # Konfiguracja
 │   ├── Authentication/      # API Key auth
@@ -537,17 +556,17 @@ nexo-sfera-api/
 └── README.md
 ```
 
-## Wazne informacje techniczne
+## 🔬 Ważne informacje techniczne
 
 ### Entity Framework 6 i .NET 8
 
-SDK Nexo Sfera uzywa Entity Framework 6, ktory wymaga specjalnej obslugi w .NET 8:
+SDK Nexo Sfera używa Entity Framework 6, który wymaga specjalnej obsługi w .NET 8:
 
-1. **WindowsFormsSynchronizationContext** - wymagany do poprawnego dzialania EF6
-2. **STA Thread** - operacje SDK musza byc wykonywane w watku STA
-3. **ExecuteWithLockAsync** - wszystkie operacje tworzenia dokumentow uzywaja tego wrappera
+1. **WindowsFormsSynchronizationContext** — wymagany do poprawnego działania EF6
+2. **STA Thread** — operacje SDK muszą być wykonywane w wątku STA
+3. **ExecuteWithLockAsync** — wszystkie operacje tworzenia dokumentów używają tego wrappera
 
-### Wzorzec tworzenia dokumentow
+### Wzorzec tworzenia dokumentów
 
 ```csharp
 // 1. Ustaw magazyn na Dokument (nie na Dane!)
@@ -564,18 +583,18 @@ pozycja.Ilosc = quantity;
 faktura.Zapisz();
 ```
 
-## Uwagi techniczne
+## 📝 Uwagi techniczne
 
 ### Walidacja stanów magazynowych dla usług
 
-API automatycznie pomija walidację stanów magazynowych dla produktów typu **usługa** (Rodzaj_Id = 1). 
+API automatycznie pomija walidację stanów magazynowych dla produktów typu **usługa** (Rodzaj_Id = 1).
 
 Oznacza to, że:
 - ✅ Usługi mogą być dodawane do dokumentów sprzedaży bez sprawdzania stanów
 - ✅ Nie pojawią się błędy typu "Insufficient stock for 'USLUGA001'"
 - ✅ Usługi są rozpoznawane po właściwości `Rodzaj_Id = 1` w tabeli Asortymenty
 
-**Przykład**: 
+**Przykład**:
 ```
 Produkt: DMSUSGI00081 (Usługa)
 Rodzaj_Id: 1
@@ -603,9 +622,9 @@ Wszystkie odpowiedzi API zawierają pełne informacje o statusie dokumentu:
 }
 ```
 
-- `statusId` - ID numeryczne statusu
-- `status` - Nazwa statusu (czytelna dla człowieka)
-- `statusSymbol` - Symbol statusu (do porównań programistycznych)
+- `statusId` — ID numeryczne statusu
+- `status` — Nazwa statusu (czytelna dla człowieka)
+- `statusSymbol` — Symbol statusu (do porównań programistycznych)
 
 ### Pomijanie uwag importowych
 
@@ -624,6 +643,10 @@ Uwagi są dodawane normalnie dla:
 - Zamówień (ZK, ZD)
 - Innych typów dokumentów
 
-## Licencja
+## 📄 Licencja
 
-Projekt wymaga waznej licencji InsERT Nexo z modulem Sfera.
+Projekt wymaga ważnej licencji InsERT Nexo z modułem Sfera.
+
+---
+
+⭐ Jeśli projekt jest przydatny, zostaw gwiazdkę!
