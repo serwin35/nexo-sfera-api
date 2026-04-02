@@ -342,6 +342,8 @@ public class SferaService : ISferaService, IDisposable
                 "SpisyInwentaryzacyjne" => _sfera.SpisyInwentaryzacyjne(),
                 // InsERT.Moria.Deklaracje - Tax declarations
                 "Deklaracje" => _sfera.Deklaracje(),
+                // InsERT.Moria.DeklaracjeZUS - ZUS declarations (SDK 60.0.0: new creation methods)
+                "DeklaracjeZUS" => _sfera.DeklaracjeZUS(),
                 // InsERT.Moria.Intrastat - Intrastat declarations
                 "DeklaracjeIntrastat" => _sfera.DeklaracjeIntrastat(),
                 // InsERT.Moria.KontrolaSkarbowa - JPK (Jednolity Plik Kontrolny)
@@ -350,6 +352,10 @@ public class SferaService : ISferaService, IDisposable
                 "FabrykaDefinicjiJPK" => _sfera.FabrykaDefinicjiJPK(),
                 "WersjeDefinicjiJPK" => _sfera.WersjeDefinicjiJPK(),
                 "KonfiguracjeGeneratora" => _sfera.KonfiguracjeGeneratora(),
+                // InsERT.Moria.Ksiegowosc - Accounting (SDK 60.0.0: accruals/deferrals)
+                "RozliczeniaMiedzyokresowe" => _sfera.RozliczeniaMiedzyokresowe(),
+                // InsERT.Moria.ProcesyKsiegowoKadrowe - Accounting/HR processes (SDK 60.0.0)
+                "ProcesyKsiegowoKadrowe" => _sfera.ProcesyKsiegowoKadrowe(),
                 // InsERT.Moria.Raporty - Reports
                 "Raporty" => _sfera.Raporty(),
                 // InsERT.Moria.Wydruki - Print templates

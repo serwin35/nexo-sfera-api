@@ -1040,7 +1040,10 @@ public class CustomerOrdersController : ControllerBase
                 ValueVat = DynamicPropertyHelper.GetDecimalFirstOf(dane, "WartoscVat"),
                 ValueGross = valueGross,
                 IsReserved = DynamicPropertyHelper.GetNullableBool(dane, "Zarezerwowana") ?? false,
-                ReservedQuantity = DynamicPropertyHelper.GetDecimal(dane, "IloscZarezerwowana")
+                ReservedQuantity = DynamicPropertyHelper.GetDecimal(dane, "IloscZarezerwowana"),
+                // SDK 60.0.0: PozycjaZamowieniaWysylkowego.WartoscKaucji/WalutaKaucji
+                DepositValue = DynamicPropertyHelper.GetNullableDecimal(dane, "WartoscKaucji"),
+                DepositCurrency = DynamicPropertyHelper.GetString(dane, "WalutaKaucji", "Symbol")
             });
         }
 

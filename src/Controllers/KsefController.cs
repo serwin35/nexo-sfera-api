@@ -25,6 +25,7 @@ public class KsefController : ControllerBase
     private const int StatusPobranyNumerKsef = 2;
     private const int StatusPobraneUpo = 3;
     private const int StatusBlad = 4;
+    private const int StatusNieokreslony = 11; // SDK 60.0.0: StatusKSeF.Nieokreslony
 
     public KsefController(ISferaService sferaService, ILogger<KsefController> logger)
     {
@@ -878,6 +879,7 @@ public class KsefController : ControllerBase
             "pobranynumerksef" or "ksefnumberreceived" => StatusPobranyNumerKsef,
             "pobraneupo" or "uporeceived" => StatusPobraneUpo,
             "blad" or "error" => StatusBlad,
+            "nieokreslony" or "undefined" => StatusNieokreslony,
             _ => null
         };
     }
@@ -925,8 +927,25 @@ public class KsefController : ControllerBase
             CustomerName = DynamicPropertyHelper.GetString(d, "NazwaKlienta"),
             Value = DynamicPropertyHelper.GetNullableDecimal(d, "Wartosc"),
             IsSchemaValid = DynamicPropertyHelper.GetBool(d, "ZgodnyZeSchematem"),
-            HasUpo = status == StatusPobraneUpo
+            HasUpo = status == StatusPobraneUpo,
+            // SDK 60.0.0 new fields
+            SellerNIP = DynamicPropertyHelper.GetString(d, "NIPSprzedawcy"),
+            Checksum = ConvertChecksum(DynamicPropertyHelper.GetProperty(d, "SumaKontrolna"))
         };
+    }
+
+    private static string? ConvertChecksum(dynamic? checksumBytes)
+    {
+        if (checksumBytes == null) return null;
+        try
+        {
+            byte[] bytes = (byte[])checksumBytes;
+            return Convert.ToBase64String(bytes);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private static string? GetDocumentTypeDescription(int? rodzaj)
@@ -949,6 +968,7 @@ public class KsefController : ControllerBase
             StatusPobranyNumerKsef => "KsefNumberReceived",
             StatusPobraneUpo => "UpoReceived",
             StatusBlad => "Error",
+            StatusNieokreslony => "Undefined",
             _ => status.ToString()
         };
     }

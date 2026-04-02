@@ -188,9 +188,13 @@ public class KsefStatusDto
     public string? KsefNumber { get; set; }
     public DateTime? SendDate { get; set; }
     public DateTime? AcceptanceDate { get; set; }
-    public string? SessionId { get; set; }
     public string? ErrorMessage { get; set; }
     public bool? IsRequired { get; set; }
+
+    /// <summary>
+    /// Seller NIP from e-invoice (SDK 60.0.0: DokumentElektroniczny.NIPSprzedawcy)
+    /// </summary>
+    public string? SellerNIP { get; set; }
 }
 
 /// <summary>

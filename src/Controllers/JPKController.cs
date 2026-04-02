@@ -187,7 +187,9 @@ public class JPKController : ControllerBase
                     UpoNumber = DynamicPropertyHelper.GetString(jpk, "NumerUPO"),
                     SubmittedDate = DynamicPropertyHelper.GetDateTime(jpk, "DataWyslania"),
                     AcceptedDate = DynamicPropertyHelper.GetDateTime(jpk, "DataPotwierdzenia"),
+                    // SDK 60.0.0: IRezultat.KomunikatBledu renamed to Komunikat, try both
                     ErrorMessage = DynamicPropertyHelper.GetString(jpk, "KomunikatBledu")
+                                ?? DynamicPropertyHelper.GetString(jpk, "Komunikat")
                 };
 
                 return (found: true, managerNull: false, dto: (JpkStatusDto?)statusDto);

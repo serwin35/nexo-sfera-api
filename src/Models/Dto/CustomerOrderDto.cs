@@ -210,6 +210,16 @@ public class CustomerOrderItemDto
     // Reservation
     public bool IsReserved { get; set; }
     public decimal? ReservedQuantity { get; set; }
+
+    /// <summary>
+    /// Deposit (kaucja) value (SDK 60.0.0: PozycjaZamowieniaWysylkowego.WartoscKaucji)
+    /// </summary>
+    public decimal? DepositValue { get; set; }
+
+    /// <summary>
+    /// Deposit currency symbol (SDK 60.0.0: PozycjaZamowieniaWysylkowego.WalutaKaucji)
+    /// </summary>
+    public string? DepositCurrency { get; set; }
 }
 
 /// <summary>

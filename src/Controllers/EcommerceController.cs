@@ -394,7 +394,9 @@ public class EcommerceController : ControllerBase
                         CreatedDate = DynamicPropertyHelper.GetDateTime(l, "DataUtworzenia"),
                         Status = DynamicPropertyHelper.GetString(l, "Status") ?? "Unknown",
                         CarrierName = DynamicPropertyHelper.GetString(l, "NazwaPrzewoznika"),
-                        PackageCount = DynamicPropertyHelper.GetNullableInt(l, "LiczbaPaczek") ?? 0
+                        PackageCount = DynamicPropertyHelper.GetNullableInt(l, "LiczbaPaczek") ?? 0,
+                        // SDK 60.0.0: ListaWysylkowa.AdresPodjazduKuriera
+                        CourierPickupAddress = DynamicPropertyHelper.GetString(l, "AdresPodjazduKuriera")
                     });
                 }
 
@@ -651,7 +653,9 @@ public class EcommerceController : ControllerBase
                         Height = DynamicPropertyHelper.GetDecimal(d, "Wysokosc"),
                         Depth = DynamicPropertyHelper.GetDecimal(d, "Glebokosc"),
                         MaxWeight = DynamicPropertyHelper.GetDecimal(d, "MaksymalnaWaga"),
-                        IsDefault = DynamicPropertyHelper.GetBool(d, "Domyslny")
+                        IsDefault = DynamicPropertyHelper.GetBool(d, "Domyslny"),
+                        // SDK 60.0.0: GabarytPaczki.Kolejnosc
+                        SortOrder = DynamicPropertyHelper.GetInt(d, "Kolejnosc")
                     });
                 }
 
@@ -759,6 +763,11 @@ public class ShippingListDto
     public string Status { get; set; } = string.Empty;
     public string? CarrierName { get; set; }
     public int PackageCount { get; set; }
+
+    /// <summary>
+    /// Courier pickup address (SDK 60.0.0: ListaWysylkowa.AdresPodjazduKuriera)
+    /// </summary>
+    public string? CourierPickupAddress { get; set; }
 }
 
 /// <summary>
@@ -793,6 +802,11 @@ public class PackageDimensionDto
     public decimal Depth { get; set; }
     public decimal MaxWeight { get; set; }
     public bool IsDefault { get; set; }
+
+    /// <summary>
+    /// Sort order (SDK 60.0.0: GabarytPaczki.Kolejnosc)
+    /// </summary>
+    public int SortOrder { get; set; }
 }
 
 /// <summary>

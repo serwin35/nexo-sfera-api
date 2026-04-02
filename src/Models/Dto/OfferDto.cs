@@ -45,6 +45,11 @@ public class OfferDto
     // Items
     public int ItemCount { get; set; }
     public List<OfferItemDto>? Items { get; set; }
+
+    /// <summary>
+    /// Creation timestamp (SDK 60.0.0: ProcesOfertowy.Utworzono)
+    /// </summary>
+    public DateTimeOffset? CreatedAt { get; set; }
 }
 
 /// <summary>

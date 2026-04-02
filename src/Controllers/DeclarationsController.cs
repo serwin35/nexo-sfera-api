@@ -238,7 +238,11 @@ public class DeclarationsController : ControllerBase
             new() { Code = "VAT-7K", Name = "VAT-7K", Description = "Kwartalna deklaracja VAT (do 09/2020)", Period = "Quarterly" },
             new() { Code = "VAT-7D", Name = "VAT-7D", Description = "Deklaracja VAT dla małych podatników", Period = "Quarterly" },
             new() { Code = "VAT-UE", Name = "VAT-UE", Description = "Informacja podsumowująca VAT-UE", Period = "Monthly" },
-            new() { Code = "VAT-27", Name = "VAT-27", Description = "Informacja o WNT", Period = "Monthly" }
+            new() { Code = "VAT-27", Name = "VAT-27", Description = "Informacja o WNT", Period = "Monthly" },
+            // SDK 60.0.0: ZUS declarations (IDeklaracjeZUS new creation methods)
+            new() { Code = "ZUS-DRA", Name = "ZUS DRA", Description = "Deklaracja rozliczeniowa ZUS", Period = "Monthly" },
+            new() { Code = "ZUS-RUD", Name = "ZUS RUD", Description = "Deklaracja zgłoszeniowa ZUS RUD", Period = "OneTime" },
+            new() { Code = "ZUS-ZGL", Name = "ZUS Zgłoszeniowa", Description = "Deklaracja zgłoszeniowa ZUS", Period = "OneTime" }
         };
 
         return Ok(ApiResponse<List<DeclarationTypeDto>>.Ok(types));
@@ -280,6 +284,145 @@ public class DeclarationsController : ControllerBase
             4 => "Rejected",        // Odrzucony
             5 => "Corrected",       // Skorygowany
             _ => "Unknown"
+        };
+    }
+
+    #endregion
+
+    #region ZUS Declarations (SDK 60.0.0)
+
+    /// <summary>
+    /// Get ZUS declarations list (SDK 60.0.0: IDeklaracjeZUS new methods)
+    /// </summary>
+    [HttpGet("zus")]
+    [ProducesResponseType(typeof(PagedResponse<ZusDeclarationDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResponse<ZusDeclarationDto>>> GetZusDeclarations(
+        [FromQuery] int? year,
+        [FromQuery] int? month,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var (items, totalCount) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DeklaracjeZUS");
+                if (manager == null) return (null, -1);
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                if (year.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        // SDK 60.0.0: ProcesKsiegowoKadrowy.Okres replaces DotyczyMiesiaca/DotyczyRoku
+                        var okres = DynamicPropertyHelper.GetDateTime(d, "Okres");
+                        if (okres.HasValue) return okres.Value.Year == year.Value;
+                        // Fallback to Rok for backward compat
+                        var rok = DynamicPropertyHelper.GetNullableInt(d, "Rok");
+                        return rok.HasValue && rok.Value == year.Value;
+                    }).ToList();
+                }
+
+                if (month.HasValue)
+                {
+                    allDeklaracje = allDeklaracje.Where(d =>
+                    {
+                        var okres = DynamicPropertyHelper.GetDateTime(d, "Okres");
+                        if (okres.HasValue) return okres.Value.Month == month.Value;
+                        var miesiac = DynamicPropertyHelper.GetNullableInt(d, "Miesiac");
+                        return miesiac.HasValue && miesiac.Value == month.Value;
+                    }).ToList();
+                }
+
+                var count = allDeklaracje.Count;
+                var pagedDeklaracje = allDeklaracje
+                    .OrderByDescending(d => DynamicPropertyHelper.GetDateTime(d, "Okres") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var result = new List<ZusDeclarationDto>();
+                foreach (var d in pagedDeklaracje)
+                {
+                    result.Add(MapZusDeclaration(d));
+                }
+
+                return (result, count);
+            });
+
+            if (totalCount == -1)
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get DeklaracjeZUS manager"));
+
+            return Ok(new PagedResponse<ZusDeclarationDto>
+            {
+                Data = items!,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = totalCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting ZUS declarations");
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving ZUS declarations", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get ZUS declaration by ID
+    /// </summary>
+    [HttpGet("zus/{id}")]
+    [ProducesResponseType(typeof(ApiResponse<ZusDeclarationDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ZusDeclarationDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<ZusDeclarationDto>>> GetZusDeclaration(int id)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager("DeklaracjeZUS");
+                if (manager == null) return (ZusDeclarationDto?)null;
+
+                var allDeklaracje = DynamicPropertyHelper.SafeGetAll((object)manager);
+                var deklaracja = allDeklaracje.FirstOrDefault(d => DynamicPropertyHelper.GetId(d) == id);
+
+                if (deklaracja == null) return (ZusDeclarationDto?)null;
+                return (ZusDeclarationDto?)MapZusDeclaration(deklaracja);
+            });
+
+            if (result == null)
+                return NotFound(ApiResponse<ZusDeclarationDto>.Error($"ZUS declaration with ID {id} not found"));
+
+            return Ok(ApiResponse<ZusDeclarationDto>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting ZUS declaration {Id}", id);
+            return StatusCode(500, ApiResponse<ZusDeclarationDto>.Error("Error retrieving ZUS declaration", new List<string> { ex.Message }));
+        }
+    }
+
+    private static ZusDeclarationDto MapZusDeclaration(dynamic d)
+    {
+        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(d, "NumerWewnetrzny");
+        var platnik = DynamicPropertyHelper.GetProperty(d, "Platnik");
+
+        return new ZusDeclarationDto
+        {
+            Id = DynamicPropertyHelper.GetId(d),
+            Number = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
+            Type = DynamicPropertyHelper.GetString(d, "TypDeklaracji"),
+            // SDK 60.0.0: Okres replaces DotyczyMiesiaca/DotyczyRoku
+            Period = DynamicPropertyHelper.GetDateTime(d, "Okres"),
+            Status = DynamicPropertyHelper.GetString(d, "Status"),
+            CreatedDate = DynamicPropertyHelper.GetDateTime(d, "DataUtworzenia"),
+            // SDK 60.0.0: DeklaracjaZUS.Platnik
+            PayerName = platnik != null ? DynamicPropertyHelper.GetString(platnik, "Nazwa") : null,
+            PayerNIP = platnik != null ? DynamicPropertyHelper.GetString(platnik, "NIP") : null,
+            // SDK 60.0.0: DeklaracjaZUS.MaxIdDokumentu
+            MaxDocumentId = DynamicPropertyHelper.GetNullableLong(d, "MaxIdDokumentu"),
+            Description = DynamicPropertyHelper.GetString(d, "Opis")
         };
     }
 
@@ -333,6 +476,35 @@ public class DeclarationTypeDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string Period { get; set; } = "Monthly";
+}
+
+/// <summary>
+/// ZUS declaration DTO (SDK 60.0.0: IDeklaracjeZUS enhancements)
+/// </summary>
+public class ZusDeclarationDto
+{
+    public int Id { get; set; }
+    public string? Number { get; set; }
+    public string? Type { get; set; }
+    /// <summary>
+    /// Period (SDK 60.0.0: ProcesKsiegowoKadrowy.Okres replaces DotyczyMiesiaca/DotyczyRoku)
+    /// </summary>
+    public DateTime? Period { get; set; }
+    public string? Status { get; set; }
+    public DateTime? CreatedDate { get; set; }
+    /// <summary>
+    /// Payer name (SDK 60.0.0: DeklaracjaZUS.Platnik)
+    /// </summary>
+    public string? PayerName { get; set; }
+    /// <summary>
+    /// Payer NIP (SDK 60.0.0: DeklaracjaZUS.Platnik)
+    /// </summary>
+    public string? PayerNIP { get; set; }
+    /// <summary>
+    /// Max document ID (SDK 60.0.0: DeklaracjaZUS.MaxIdDokumentu)
+    /// </summary>
+    public long? MaxDocumentId { get; set; }
+    public string? Description { get; set; }
 }
 
 #endregion

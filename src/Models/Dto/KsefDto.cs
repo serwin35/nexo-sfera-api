@@ -25,6 +25,16 @@ public class ElectronicDocumentDto
     public bool IsSchemaValid { get; set; }
     public string? InvoiceType { get; set; }
     public bool HasUpo { get; set; }
+
+    /// <summary>
+    /// Seller NIP (SDK 60.0.0: DokumentElektroniczny.NIPSprzedawcy)
+    /// </summary>
+    public string? SellerNIP { get; set; }
+
+    /// <summary>
+    /// Document checksum (SDK 60.0.0: DokumentElektroniczny.SumaKontrolna)
+    /// </summary>
+    public string? Checksum { get; set; }
 }
 
 /// <summary>

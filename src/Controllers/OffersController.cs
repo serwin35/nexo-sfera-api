@@ -731,7 +731,9 @@ public class OffersController : ControllerBase
             GrossValue = GetDynamicDecimal(o, "WartoscBrutto"),
             TaxValue = GetDynamicDecimal(o, "WartoscVat"),
             CurrencySymbol = GetDynamicString(o, "Waluta", "Symbol") ?? "PLN",
-            ItemCount = GetDynamicInt(o, "Pozycje", "Count")
+            ItemCount = GetDynamicInt(o, "Pozycje", "Count"),
+            // SDK 60.0.0: ProcesOfertowy.Utworzono
+            CreatedAt = GetDynamicDateTimeOffset(o, "Utworzono")
         };
 
         if (includeItems)
@@ -883,6 +885,17 @@ public class OffersController : ControllerBase
             if (val == null) return null;
             if (prop2 != null) val = GetProperty(val, prop2);
             return (DateTime?)val;
+        }
+        catch { return null; }
+    }
+
+    private static DateTimeOffset? GetDynamicDateTimeOffset(dynamic obj, string prop1)
+    {
+        try
+        {
+            dynamic val = GetProperty(obj, prop1);
+            if (val == null) return null;
+            return (DateTimeOffset?)val;
         }
         catch { return null; }
     }

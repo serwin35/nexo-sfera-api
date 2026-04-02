@@ -6171,9 +6171,10 @@ public class DocumentsController : ControllerBase
                 Status = ksefStatus,
                 SendDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWyslaniaDoKSeF"),
                 AcceptanceDate = DynamicPropertyHelper.GetDateTime(dokument, "DataAkceptacjiKSeF"),
-                SessionId = DynamicPropertyHelper.GetString(dokument, "SesjaKSeF"),
                 ErrorMessage = DynamicPropertyHelper.GetString(dokument, "BladKSeF"),
-                IsRequired = DynamicPropertyHelper.GetNullableBool(dokument, "WymagaKSeF")
+                IsRequired = DynamicPropertyHelper.GetNullableBool(dokument, "WymagaKSeF"),
+                // SDK 60.0.0: SesjaInteraktywnaKsef removed, NIPSprzedawcy added
+                SellerNIP = DynamicPropertyHelper.GetString(dokument, "NIPSprzedawcy")
             };
         }
         catch
