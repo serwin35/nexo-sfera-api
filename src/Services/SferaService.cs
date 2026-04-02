@@ -378,6 +378,71 @@ public class SferaService : ISferaService, IDisposable
                 // E-invoice (KSeF) - use reflection to call extension methods
                 "FabrykaGeneratorowEFaktury" => GetEInvoiceManager("FabrykaGeneratorowEFaktury"),
                 "KoordynatorWysylaniaEFaktur" => GetEInvoiceManager("KoordynatorWysylaniaEFaktur"),
+                // InsERT.Moria.Promocje - Promotions
+                "Promocje" => _sfera.Promocje(),
+                // InsERT.Moria.Kurierzy - Courier integrations
+                "Kurierzy" => _sfera.Kurierzy(),
+                // InsERT.Moria.SladRewizyjny - Audit trail
+                "SladRewizyjny" => _sfera.SladRewizyjny(),
+                // InsERT.Moria.Komentarze - Comments
+                "Komentarze" => _sfera.Komentarze(),
+                // InsERT.Moria.BibliotekaZalacznikow - Attachments
+                "BibliotekaZalacznikow" => _sfera.BibliotekaZalacznikow(),
+                // InsERT.Moria.EwidencjaVAT - VAT records
+                "ZapisyWEwidencjiVATSprzedazy" => _sfera.ZapisyWEwidencjiVATSprzedazy(),
+                "ZapisyWEwidencjiVATZakupu" => _sfera.ZapisyWEwidencjiVATZakupu(),
+                // InsERT.Moria.DokumentyDoKsiegowania - Documents for booking
+                "DokumentyDoKsiegowania" => _sfera.DokumentyDoKsiegowania(),
+                // InsERT.Moria.ImportKsiegowy - Accounting import
+                "ImportKsiegowy" => _sfera.ImportKsiegowy(),
+                // InsERT.Moria.Kadry - Full HR
+                "Pracownicy" => _sfera.Pracownicy(),
+                "Umowy" => _sfera.Umowy(),
+                "Absencje" => _sfera.Absencje(),
+                // InsERT.Moria.Place - Payroll
+                "ListyPlac" => _sfera.ListyPlac(),
+                "RachunkiDoUmow" => _sfera.RachunkiDoUmow(),
+                // InsERT.Moria.PolaWlasne2 - Custom fields v2
+                "PolaWlasne" => _sfera.PolaWlasne(),
+                // InsERT.Moria.GaleriaZdjec - Photo gallery
+                "GaleriaZdjec" => _sfera.GaleriaZdjec(),
+                // InsERT.Moria.Kalendarze - Calendars
+                "Kalendarze" => _sfera.Kalendarze(),
+                // InsERT.Moria.ModelOrganizacyjny - Org structure
+                "Oddzialy" => _sfera.Oddzialy(),
+                "CentraKosztow" => _sfera.CentraKosztow(),
+                // InsERT.Moria.Dzialania - Activities/CRM
+                "Dzialania" => _sfera.Dzialania(),
+                // InsERT.Moria.Procesy - Business processes
+                "Procesy" => _sfera.Procesy(),
+                // InsERT.Moria.Serwis - Service orders
+                "ZleceniaSerwisowe" => _sfera.ZleceniaSerwisowe(),
+                // InsERT.Moria.SrodkiTrwale - Fixed assets
+                "SrodkiTrwale" => _sfera.SrodkiTrwale(),
+                // InsERT.Moria.Pojazdy - Fleet management
+                "Pojazdy" => _sfera.Pojazdy(),
+                // InsERT.Moria.Archiwa - Archives
+                "DaneArchiwalne" => _sfera.DaneArchiwalne(),
+                // InsERT.Moria.DowodyWewnetrzne - Internal documents
+                "DowodyWewnetrzne" => _sfera.DowodyWewnetrzne(),
+                // InsERT.Moria.SprawozdaniaFinansowe - Financial statements
+                "SprawozdaniaFinansowe" => _sfera.SprawozdaniaFinansowe(),
+                // InsERT.Moria.Uprawnienia - Permissions
+                "Uprawnienia" => _sfera.Uprawnienia(),
+                // InsERT.Moria.Remanenty - Remainders
+                "Remanenty" => _sfera.Remanenty(),
+                // InsERT.Moria.PPK - Employee Capital Plans
+                "PPK" => _sfera.PPK(),
+                // InsERT.Moria.KlienciBiura - Office clients
+                "KlienciBiura" => _sfera.KlienciBiura(),
+                // InsERT.Moria.Komunikacja - Communication/notifications
+                "Komunikacja" => _sfera.Komunikacja(),
+                // InsERT.Moria.Parametry - System parameters
+                "Parametry" => _sfera.Parametry(),
+                // InsERT.Moria.OperacjeZewnetrzne - External operations
+                "OperacjeZewnetrzne" => _sfera.OperacjeZewnetrzne(),
+                // InsERT.Moria.Urzadzenia - Devices (fiscal printers, readers)
+                "Urzadzenia" => _sfera.Urzadzenia(),
                 // Aliases - map to the actual SDK manager methods
                 "DokumentyHandlowe" => _sfera.DokumentySprzedazy(), // alias - same manager used for e-invoice generation
                 "OfertyDlaKlientow" => _sfera.Oferty(), // alias - same manager
