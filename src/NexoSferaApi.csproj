@@ -187,6 +187,116 @@
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Inwentaryzacja.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <!-- Additional SDK references for SferaService extension methods -->
+    <Reference Include="InsERT.Moria.ProcesyKsiegowoKadrowe">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.ProcesyKsiegowoKadrowe.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Kurierzy">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Kurierzy.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.ImportKsiegowy">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.ImportKsiegowy.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Kadry">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Kadry.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Place">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Place.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.PolaWlasne2">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.PolaWlasne2.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.GaleriaZdjec">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.GaleriaZdjec.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Ksiegowosc">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Ksiegowosc.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Procesy">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Procesy.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Archiwa">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Archiwa.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.PPK">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.PPK.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.KlienciBiura">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.KlienciBiura.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Komunikacja">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Komunikacja.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.OperacjeZewnetrzne">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.OperacjeZewnetrzne.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Urzadzenia.Core">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Urzadzenia.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Dzialania">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Dzialania.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Kalendarze">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Kalendarze.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.DowodyWewnetrzne">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.DowodyWewnetrzne.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.SprawozdaniaFinansowe">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.SprawozdaniaFinansowe.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Uprawnienia">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Uprawnienia.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Remanenty">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Remanenty.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Pojazdy">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Pojazdy.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.SrodkiTrwale">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.SrodkiTrwale.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Parametry">
+
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Parametry.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.BibliotekaZalacznikow">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.BibliotekaZalacznikow.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Waluty">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Waluty.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Moria.Cenniki">
+      <HintPath>$(NexoSdkPath)\InsERT.Moria.Cenniki.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 
   <!-- Copy ALL SDK files to output directory -->
