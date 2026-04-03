@@ -19,37 +19,6 @@ using InsERT.Moria.Raporty;
 using InsERT.Moria.Wydruki;
 using InsERT.Moria.HandelElektroniczny;
 using InsERT.Moria.Naklejki;
-using InsERT.Moria.ProcesyKsiegowoKadrowe;
-using InsERT.Moria.Kurierzy;
-using InsERT.Moria.SladRewizyjny;
-using InsERT.Moria.EwidencjaVAT;
-using InsERT.Moria.ImportKsiegowy;
-using InsERT.Moria.Kadry;
-using InsERT.Moria.Place;
-using InsERT.Moria.PolaWlasne2;
-using InsERT.Moria.GaleriaZdjec;
-using InsERT.Moria.Ksiegowosc;
-using InsERT.Moria.Procesy;
-using InsERT.Moria.Archiwa;
-using InsERT.Moria.PPK;
-using InsERT.Moria.KlienciBiura;
-using InsERT.Moria.Komunikacja;
-using InsERT.Moria.OperacjeZewnetrzne;
-using InsERT.Moria.Urzadzenia.Core;
-using InsERT.Moria.Dzialania;
-using InsERT.Moria.Kalendarze;
-using InsERT.Moria.DowodyWewnetrzne;
-using InsERT.Moria.SprawozdaniaFinansowe;
-using InsERT.Moria.Uprawnienia;
-using InsERT.Moria.Remanenty;
-using InsERT.Moria.Pojazdy;
-using InsERT.Moria.SrodkiTrwale;
-using InsERT.Moria.Parametry;
-using InsERT.Moria.BibliotekaZalacznikow;
-
-using InsERT.Moria.Waluty;
-using InsERT.Moria.DokumentyDoKsiegowania;
-
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 using System.Collections.Concurrent;
@@ -386,7 +355,7 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Ksiegowosc - Accounting (SDK 60.0.0: accruals/deferrals)
                 "RozliczeniaMiedzyokresowe" => _sfera.RozliczeniaMiedzyokresowe(),
                 // InsERT.Moria.ProcesyKsiegowoKadrowe - Accounting/HR processes (SDK 60.0.0)
-                "ProcesyKsiegowoKadrowe" => _sfera.ProcesyKsiegowoKadrowe(),
+                "ProcesyKsiegowoKadrowe" => GetExtensionManager("ProcesyKsiegowoKadrowe"),
                 // InsERT.Moria.Raporty - Reports
                 "Raporty" => _sfera.Raporty(),
                 // InsERT.Moria.Wydruki - Print templates
@@ -412,40 +381,40 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Promocje - Promotions
                 "Promocje" => _sfera.Promocje(),
                 // InsERT.Moria.Kurierzy - Courier integrations
-                "Kurierzy" => _sfera.Kurierzy(),
+                "Kurierzy" => GetExtensionManager("Kurierzy"),
                 // InsERT.Moria.SladRewizyjny - Audit trail
-                "SladRewizyjny" => _sfera.SladRewizyjny(),
+                "SladRewizyjny" => GetExtensionManager("SladRewizyjny"),
                 // InsERT.Moria.Komentarze - Comments
                 "Komentarze" => _sfera.Komentarze(),
                 // InsERT.Moria.BibliotekaZalacznikow - Attachments
                 "BibliotekaZalacznikow" => _sfera.BibliotekaZalacznikow(),
                 // InsERT.Moria.EwidencjaVAT - VAT records
-                "ZapisyWEwidencjiVATSprzedazy" => _sfera.ZapisyWEwidencjiVATSprzedazy(),
-                "ZapisyWEwidencjiVATZakupu" => _sfera.ZapisyWEwidencjiVATZakupu(),
+                "ZapisyWEwidencjiVATSprzedazy" => GetExtensionManager("ZapisyWEwidencjiVATSprzedazy"),
+                "ZapisyWEwidencjiVATZakupu" => GetExtensionManager("ZapisyWEwidencjiVATZakupu"),
                 // InsERT.Moria.DokumentyDoKsiegowania - Documents for booking
                 "DokumentyDoKsiegowania" => _sfera.DokumentyDoKsiegowania(),
                 // InsERT.Moria.ImportKsiegowy - Accounting import
-                "ImportKsiegowy" => _sfera.ImportKsiegowy(),
+                "ImportKsiegowy" => GetExtensionManager("ImportKsiegowy"),
                 // InsERT.Moria.Kadry - Full HR
-                "Pracownicy" => _sfera.Pracownicy(),
-                "Umowy" => _sfera.Umowy(),
-                "Absencje" => _sfera.Absencje(),
+                "Pracownicy" => GetExtensionManager("Pracownicy"),
+                "Umowy" => GetExtensionManager("Umowy"),
+                "Absencje" => GetExtensionManager("Absencje"),
                 // InsERT.Moria.Place - Payroll
-                "ListyPlac" => _sfera.ListyPlac(),
-                "RachunkiDoUmow" => _sfera.RachunkiDoUmow(),
+                "ListyPlac" => GetExtensionManager("ListyPlac"),
+                "RachunkiDoUmow" => GetExtensionManager("RachunkiDoUmow"),
                 // InsERT.Moria.PolaWlasne2 - Custom fields v2
-                "PolaWlasne" => _sfera.PolaWlasne(),
+                "PolaWlasne" => GetExtensionManager("PolaWlasne"),
                 // InsERT.Moria.GaleriaZdjec - Photo gallery
-                "GaleriaZdjec" => _sfera.GaleriaZdjec(),
+                "GaleriaZdjec" => GetExtensionManager("GaleriaZdjec"),
                 // InsERT.Moria.Kalendarze - Calendars
                 "Kalendarze" => _sfera.Kalendarze(),
                 // InsERT.Moria.ModelOrganizacyjny - Org structure
                 "Oddzialy" => _sfera.Oddzialy(),
-                "CentraKosztow" => _sfera.CentraKosztow(),
+                "CentraKosztow" => GetExtensionManager("CentraKosztow"),
                 // InsERT.Moria.Dzialania - Activities/CRM
                 "Dzialania" => _sfera.Dzialania(),
                 // InsERT.Moria.Procesy - Business processes
-                "Procesy" => _sfera.Procesy(),
+                "Procesy" => GetExtensionManager("Procesy"),
                 // InsERT.Moria.Serwis - Service orders
                 "ZleceniaSerwisowe" => _sfera.ZleceniaSerwisowe(),
                 // InsERT.Moria.SrodkiTrwale - Fixed assets
@@ -453,7 +422,7 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Pojazdy - Fleet management
                 "Pojazdy" => _sfera.Pojazdy(),
                 // InsERT.Moria.Archiwa - Archives
-                "DaneArchiwalne" => _sfera.DaneArchiwalne(),
+                "DaneArchiwalne" => GetExtensionManager("DaneArchiwalne"),
                 // InsERT.Moria.DowodyWewnetrzne - Internal documents
                 "DowodyWewnetrzne" => _sfera.DowodyWewnetrzne(),
                 // InsERT.Moria.SprawozdaniaFinansowe - Financial statements
@@ -463,17 +432,17 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Remanenty - Remainders
                 "Remanenty" => _sfera.Remanenty(),
                 // InsERT.Moria.PPK - Employee Capital Plans
-                "PPK" => _sfera.PPK(),
+                "PPK" => GetExtensionManager("PPK"),
                 // InsERT.Moria.KlienciBiura - Office clients
-                "KlienciBiura" => _sfera.KlienciBiura(),
+                "KlienciBiura" => GetExtensionManager("KlienciBiura"),
                 // InsERT.Moria.Komunikacja - Communication/notifications
-                "Komunikacja" => _sfera.Komunikacja(),
+                "Komunikacja" => GetExtensionManager("Komunikacja"),
                 // InsERT.Moria.Parametry - System parameters
                 "Parametry" => _sfera.Parametry(),
                 // InsERT.Moria.OperacjeZewnetrzne - External operations
-                "OperacjeZewnetrzne" => _sfera.OperacjeZewnetrzne(),
+                "OperacjeZewnetrzne" => GetExtensionManager("OperacjeZewnetrzne"),
                 // InsERT.Moria.Urzadzenia - Devices (fiscal printers, readers)
-                "Urzadzenia" => _sfera.Urzadzenia(),
+                "Urzadzenia" => GetExtensionManager("Urzadzenia"),
                 // Aliases - map to the actual SDK manager methods
                 "DokumentyHandlowe" => _sfera.DokumentySprzedazy(), // alias - same manager used for e-invoice generation
                 "OfertyDlaKlientow" => _sfera.Oferty(), // alias - same manager
@@ -534,59 +503,55 @@ public class SferaService : ISferaService, IDisposable
     }
 
     /// <summary>
-    /// Gets e-invoice managers (FabrykaGeneratorowEFaktury, KoordynatorWysylaniaEFaktur) via reflection.
-    /// These are extension methods that may be in different namespaces across SDK versions.
+    /// Gets a manager by finding and invoking an extension method on Uchwyt via reflection.
+    /// Searches ALL loaded InsERT.Moria.* assemblies for a static extension method with the given name
+    /// that takes Uchwyt as its first parameter. This makes the code resilient to SDK version differences
+    /// where extension methods may be defined in different assemblies.
     /// </summary>
-    private dynamic? GetEInvoiceManager(string methodName)
+    private dynamic? GetExtensionManager(string methodName)
     {
         if (_sfera == null) return null;
 
-        // Try to find and call the extension method via reflection
-        // Extension methods are static methods on extension classes
-        var extensionAssemblies = new[]
-        {
-            "InsERT.Moria.Sfera",
-            "InsERT.Moria.Dokumenty",
-            "InsERT.Moria.EFaktura",
-            "InsERT.Moria"
-        };
-
         foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
         {
-            if (asm.FullName == null) continue;
+            if (asm.FullName == null || !asm.FullName.Contains("InsERT.Moria")) continue;
 
-            foreach (var assemblyPrefix in extensionAssemblies)
+            try
             {
-                if (!asm.FullName.Contains(assemblyPrefix)) continue;
-
-                try
+                foreach (var type in asm.GetTypes())
                 {
-                    // Look for static extension classes
-                    foreach (var type in asm.GetTypes())
+                    // Extension methods are defined in static classes
+                    if (!type.IsClass || !type.IsAbstract || !type.IsSealed) continue;
+
+                    var method = type.GetMethod(methodName,
+                        System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public,
+                        null, new[] { typeof(InsERT.Moria.Sfera.Uchwyt) }, null);
+
+                    if (method != null)
                     {
-                        if (!type.IsClass || !type.IsAbstract || !type.IsSealed) continue; // Static classes
-
-                        var method = type.GetMethod(methodName,
-                            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public,
-                            null, new[] { typeof(InsERT.Moria.Sfera.Uchwyt) }, null);
-
-                        if (method != null)
-                        {
-                            _logger.LogInformation("Found e-invoice method {Method} in {Type}", methodName, type.FullName);
-                            return method.Invoke(null, new object[] { _sfera });
-                        }
+                        _logger.LogDebug("Found extension method {Method} in {Type}", methodName, type.FullName);
+                        return method.Invoke(null, new object[] { _sfera });
                     }
                 }
-                catch (Exception ex)
-                {
-                    _logger.LogDebug(ex, "Error searching for {Method} in assembly {Assembly}", methodName, asm.FullName);
-                }
+            }
+            catch (System.Reflection.ReflectionTypeLoadException)
+            {
+                // Some assemblies may fail to load types - skip them
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error searching for {Method} in assembly {Assembly}", methodName, asm.FullName);
             }
         }
 
-        _logger.LogWarning("E-invoice method {Method} not found in SDK", methodName);
+        _logger.LogWarning("Extension method {Method} not found on Uchwyt in any loaded InsERT.Moria assembly", methodName);
         return null;
     }
+
+    /// <summary>
+    /// Alias for GetExtensionManager - kept for backward compatibility with e-invoice code.
+    /// </summary>
+    private dynamic? GetEInvoiceManager(string methodName) => GetExtensionManager(methodName);
 
     /// <summary>
     /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call
