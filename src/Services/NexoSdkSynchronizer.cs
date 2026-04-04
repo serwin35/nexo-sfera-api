@@ -82,11 +82,27 @@ public static class NexoSdkSynchronizer
                 logger?.LogWarning("[SDK Sync] Local {Dll} not found, will copy from deployment.", SferaDllName);
             }
 
+            // Prefer parent "Binaries" directory if it has more DLLs (SelloConnector etc. are subsets)
+            var parentDir = Path.GetDirectoryName(dllDir);
+            if (parentDir != null &&
+                Path.GetFileName(parentDir).Equals("Binaries", StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(Path.Combine(parentDir, SferaDllName)))
+            {
+                var parentDllCount = Directory.GetFiles(parentDir, "*.dll").Length;
+                var selectedDllCount = Directory.GetFiles(dllDir, "*.dll").Length;
+                if (parentDllCount > selectedDllCount)
+                {
+                    logger?.LogInformation("[SDK Sync] Using parent Binaries dir ({ParentCount} DLLs) instead of {SubDir} ({SubCount} DLLs)",
+                        parentDllCount, Path.GetFileName(dllDir), selectedDllCount);
+                    dllDir = parentDir;
+                }
+            }
+
             // Copy DLLs
             logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", dllDir, runtimeDir);
             CopyDlls(dllDir, runtimeDir, result, logger);
 
-            // Also copy from parent/sibling directories to catch DLLs not in the selected subdirectory
+            // Also copy from related directories to catch any remaining missing DLLs
             CopyMissingFromRelatedDirs(dllDir, runtimeDir, result, logger);
 
             // Optionally sync to lib/nexo-sdk/ source directory
