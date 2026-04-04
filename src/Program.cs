@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.Loader;
 using Microsoft.OpenApi.Models;
 using ModelContextProtocol.AspNetCore;
 using NexoSferaApi.Configuration;
@@ -6,6 +7,15 @@ using NexoSferaApi.Services;
 using NexoSferaApi.Middleware;
 using NexoSferaApi.Authentication;
 using NexoSferaApi.Helpers;
+
+// Register assembly resolver to find Nexo SDK DLLs that .NET runtime can't locate automatically
+AssemblyLoadContext.Default.Resolving += (context, assemblyName) =>
+{
+    var dllPath = Path.Combine(AppContext.BaseDirectory, $"{assemblyName.Name}.dll");
+    if (File.Exists(dllPath))
+        return context.LoadFromAssemblyPath(dllPath);
+    return null;
+};
 
 // Synchronize SDK DLLs from nexo installation before loading any assemblies
 try
