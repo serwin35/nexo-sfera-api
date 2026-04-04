@@ -98,9 +98,25 @@ public static class NexoSdkSynchronizer
                 }
             }
 
-            // Copy DLLs
-            logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", dllDir, runtimeDir);
-            CopyDlls(dllDir, runtimeDir, result, logger);
+            // Check if .zip-cache has a matching Moria version with more complete DLLs
+            var zipCacheDir = FindMatchingZipCache(dllDir, logger);
+            if (zipCacheDir != null)
+            {
+                // Use zip-cache as primary source (official SDK packages, fully consistent)
+                logger?.LogInformation("[SDK Sync] Using .zip-cache as primary source: {Dir}", zipCacheDir);
+                logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", zipCacheDir, runtimeDir);
+                CopyDlls(zipCacheDir, runtimeDir, result, logger);
+
+                // Then fill in any remaining from the deployment Binaries
+                logger?.LogInformation("[SDK Sync] Filling remaining DLLs from deployment: {Source}", dllDir);
+                FillMissingDlls(dllDir, runtimeDir, result, logger);
+            }
+            else
+            {
+                // Copy DLLs from deployment
+                logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", dllDir, runtimeDir);
+                CopyDlls(dllDir, runtimeDir, result, logger);
+            }
 
             // Also copy from related directories to catch any remaining missing DLLs
             CopyMissingFromRelatedDirs(dllDir, runtimeDir, result, logger);
@@ -357,6 +373,75 @@ public static class NexoSdkSynchronizer
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Finds a matching Moria version in the .zip-cache directory.
+    /// The .zip-cache contains official SDK packages with fully consistent DLL versions.
+    /// </summary>
+    private static string? FindMatchingZipCache(string deploymentDir, ILogger? logger)
+    {
+        try
+        {
+            // Get SDK version from the Sfera DLL in the deployment
+            var sferaDll = Path.Combine(deploymentDir, SferaDllName);
+            if (!File.Exists(sferaDll)) return null;
+
+            var versionInfo = FileVersionInfo.GetVersionInfo(sferaDll);
+            var productVersion = versionInfo.ProductVersion;
+            if (string.IsNullOrEmpty(productVersion)) return null;
+
+            // Extract version number (e.g. "60.0.0.9195" from "60.0.0.9195+hash")
+            var versionPart = productVersion.Split('+')[0];
+
+            // Look for .zip-cache/Moria-{version} directory
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            if (string.IsNullOrEmpty(localAppData)) return null;
+
+            var zipCacheDir = Path.Combine(localAppData, "InsERT", "Deployments", ".zip-cache", $"Moria-{versionPart}");
+            if (Directory.Exists(zipCacheDir))
+            {
+                var dllCount = Directory.GetFiles(zipCacheDir, "*.dll").Length;
+                logger?.LogDebug("[SDK Sync] Found .zip-cache for Moria-{Version}: {Dir} ({Count} DLLs)",
+                    versionPart, zipCacheDir, dllCount);
+                if (dllCount > 100) // Only use if it has a substantial number of DLLs
+                    return zipCacheDir;
+            }
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug("[SDK Sync] Error searching .zip-cache: {Error}", ex.Message);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Copies only DLLs that are missing in the destination directory.
+    /// </summary>
+    private static void FillMissingDlls(string sourceDir, string destDir, SdkSyncResult result, ILogger? logger)
+    {
+        try
+        {
+            var dllFiles = Directory.GetFiles(sourceDir, "*.dll");
+            var filled = 0;
+            foreach (var sourceFile in dllFiles)
+            {
+                var fileName = Path.GetFileName(sourceFile);
+                var destFile = Path.Combine(destDir, fileName);
+                if (File.Exists(destFile)) continue;
+                try
+                {
+                    File.Copy(sourceFile, destFile, overwrite: false);
+                    filled++;
+                    result.FilesCopied++;
+                }
+                catch { /* skip */ }
+            }
+            if (filled > 0)
+                logger?.LogInformation("[SDK Sync] Filled {Count} missing DLLs from deployment.", filled);
+        }
+        catch { /* ignore */ }
     }
 
     private static void CopyDlls(string sourceDir, string destDir, SdkSyncResult result, ILogger? logger)
