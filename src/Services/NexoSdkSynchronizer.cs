@@ -86,6 +86,9 @@ public static class NexoSdkSynchronizer
             logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", dllDir, runtimeDir);
             CopyDlls(dllDir, runtimeDir, result, logger);
 
+            // Also copy from parent/sibling directories to catch DLLs not in the selected subdirectory
+            CopyMissingFromRelatedDirs(dllDir, runtimeDir, result, logger);
+
             // Optionally sync to lib/nexo-sdk/ source directory
             if (alsoSyncSource && !string.IsNullOrEmpty(sourceLibDir) && Directory.Exists(sourceLibDir))
             {
@@ -378,6 +381,65 @@ public static class NexoSdkSynchronizer
                 result.Errors.Add($"Failed: {fileName} - {ex.Message}");
                 logger?.LogWarning(ex, "[SDK Sync] Failed to copy: {File}", fileName);
             }
+        }
+    }
+
+    /// <summary>
+    /// Searches parent and sibling directories of the selected SDK directory for DLLs
+    /// that are missing in the destination. This handles cases where DLLs like
+    /// InsERT.WebServices.Client.Documents.dll exist in a different subdirectory
+    /// of the deployment than the one containing InsERT.Moria.Sfera.dll.
+    /// </summary>
+    private static void CopyMissingFromRelatedDirs(string selectedDir, string destDir, SdkSyncResult result, ILogger? logger)
+    {
+        try
+        {
+            var parentDir = Path.GetDirectoryName(selectedDir);
+            if (parentDir == null || !Directory.Exists(parentDir)) return;
+
+            // Search parent + all sibling directories for *.dll files
+            var searchDirs = new List<string> { parentDir };
+            try
+            {
+                searchDirs.AddRange(Directory.GetDirectories(parentDir));
+            }
+            catch { /* ignore permission errors */ }
+
+            var copiedExtra = 0;
+            foreach (var searchDir in searchDirs)
+            {
+                if (string.Equals(searchDir, selectedDir, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string[] dllFiles;
+                try { dllFiles = Directory.GetFiles(searchDir, "*.dll"); }
+                catch { continue; }
+
+                foreach (var sourceFile in dllFiles)
+                {
+                    var fileName = Path.GetFileName(sourceFile);
+                    var destFile = Path.Combine(destDir, fileName);
+
+                    // Only copy if missing in destination
+                    if (File.Exists(destFile)) continue;
+
+                    try
+                    {
+                        File.Copy(sourceFile, destFile, overwrite: false);
+                        copiedExtra++;
+                        result.FilesCopied++;
+                        logger?.LogDebug("[SDK Sync] Copied (from related dir): {File}", fileName);
+                    }
+                    catch { /* skip if locked or failed */ }
+                }
+            }
+
+            if (copiedExtra > 0)
+                logger?.LogInformation("[SDK Sync] Copied {Count} additional DLLs from related directories.", copiedExtra);
+        }
+        catch (Exception ex)
+        {
+            logger?.LogDebug("[SDK Sync] Error searching related directories: {Error}", ex.Message);
         }
     }
 
