@@ -98,27 +98,23 @@ public static class NexoSdkSynchronizer
                 }
             }
 
-            // Check if .zip-cache has a matching Moria version with more complete DLLs
+            // Only FILL MISSING DLLs — never overwrite what lib/nexo-sdk/ already provided via build.
+            // The build's CopySdkFiles target copies from lib/nexo-sdk/ (the source of truth in git).
+            // SDK Sync's role is to add any DLLs that lib/nexo-sdk/ doesn't have.
+            logger?.LogInformation("[SDK Sync] Filling missing DLLs from deployment (not overwriting existing)...");
+
+            // First try .zip-cache (official SDK packages, fully consistent versions)
             var zipCacheDir = FindMatchingZipCache(dllDir, logger);
             if (zipCacheDir != null)
             {
-                // Use zip-cache as primary source (official SDK packages, fully consistent)
-                logger?.LogInformation("[SDK Sync] Using .zip-cache as primary source: {Dir}", zipCacheDir);
-                logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", zipCacheDir, runtimeDir);
-                CopyDlls(zipCacheDir, runtimeDir, result, logger);
-
-                // Then fill in any remaining from the deployment Binaries
-                logger?.LogInformation("[SDK Sync] Filling remaining DLLs from deployment: {Source}", dllDir);
-                FillMissingDlls(dllDir, runtimeDir, result, logger);
-            }
-            else
-            {
-                // Copy DLLs from deployment
-                logger?.LogInformation("[SDK Sync] Syncing DLLs from {Source} to {Dest}...", dllDir, runtimeDir);
-                CopyDlls(dllDir, runtimeDir, result, logger);
+                logger?.LogInformation("[SDK Sync] Primary fill source: .zip-cache {Dir}", zipCacheDir);
+                FillMissingDlls(zipCacheDir, runtimeDir, result, logger);
             }
 
-            // Also copy from related directories to catch any remaining missing DLLs
+            // Then fill from deployment Binaries
+            FillMissingDlls(dllDir, runtimeDir, result, logger);
+
+            // Also fill from related directories
             CopyMissingFromRelatedDirs(dllDir, runtimeDir, result, logger);
 
             // Optionally sync to lib/nexo-sdk/ source directory
