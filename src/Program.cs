@@ -256,10 +256,18 @@ app.MapControllers();
 app.MapMcp("/mcp");
 
 // Initialize Sfera connection on startup
-using (var scope = app.Services.CreateScope())
+try
 {
-    var sferaService = scope.ServiceProvider.GetRequiredService<ISferaService>();
-    await sferaService.InitializeAsync();
+    using (var scope = app.Services.CreateScope())
+    {
+        var sferaService = scope.ServiceProvider.GetRequiredService<ISferaService>();
+        await sferaService.InitializeAsync();
+    }
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Program");
+    logger.LogError(ex, "Failed to initialize Sfera connection on startup. The API will start but Sfera endpoints may not work until reconnected.");
 }
 
 app.Run();
