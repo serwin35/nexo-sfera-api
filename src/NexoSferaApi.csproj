@@ -315,11 +315,4 @@
     <Copy SourceFiles="@(SdkFiles)" DestinationFolder="$(OutputPath)%(RecursiveDir)" SkipUnchangedFiles="true" />
   </Target>
 
-  <ItemGroup>
-    <Reference Include="InsERT.WebServices.Client.Documents">
-      <HintPath>path\to\InsERT.WebServices.Client.Documents.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-  </ItemGroup>
-
 </Project>
