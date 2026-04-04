@@ -308,52 +308,52 @@
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyIsNull_Name_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Wartość w polu &apos;{0}&apos; nie może być pusta..
+              Looks up a localized string similar to Wartość w polu własnym &apos;{0}&apos; nie może być pusta..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyIsNull_NoName_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Wartość w polu nie może być pusta..
+              Looks up a localized string similar to Wartość w polu własnym nie może być pusta..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_MaxLength_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć co najwyżej znaków: {1}..
+              Looks up a localized string similar to Tekst w polu własnym &apos;{0}&apos; musi mieć co najwyżej znaków: {1}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_MinLength_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć co najmniej znaków: {1}..
+              Looks up a localized string similar to Tekst w polu własnym &apos;{0}&apos; musi mieć co najmniej znaków: {1}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_Range_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć znaków: od {1} do {2}..
+              Looks up a localized string similar to Tekst w polu własnym &apos;{0}&apos; musi mieć znaków: od {1} do {2}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_Name_Specific_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu &apos;{0}&apos; musi mieć znaków: dokładnie {1}..
+              Looks up a localized string similar to Tekst w polu własnym &apos;{0}&apos; musi mieć znaków: dokładnie {1}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_MaxLength_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu musi mieć co najwyżej znaków: {0}..
+              Looks up a localized string similar to Tekst w polu własnym musi mieć co najwyżej znaków: {0}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_MinLength_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu musi mieć co najmniej znaków: {0}..
+              Looks up a localized string similar to Tekst w polu własnym musi mieć co najmniej znaków: {0}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_Range_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu musi mieć znaków: od {0} do {1}..
+              Looks up a localized string similar to Tekst w polu własnym musi mieć znaków: od {0} do {1}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.ExtensionPropertyStringLength_NoName_Specific_DataErrorMessage">
             <summary>
-              Looks up a localized string similar to Tekst w polu musi mieć znaków: dokładnie {0}..
+              Looks up a localized string similar to Tekst w polu własnym musi mieć znaków: dokładnie {0}..
             </summary>
         </member>
         <member name="P:InsERT.Mox.Core.Properties.Resources.GetOriginalValueQueryFailedExceptionMessage">
@@ -633,6 +633,19 @@
         <member name="F:InsERT.Mox.BusinessObjects.BusinessObjectState.Done">
             <summary>
             Obiekt zakończył pracę.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.IOwnerBusinessObject">
+            <summary>
+            Interfejs wykorzystywany na potrzeby sfery zdarzeniowej. Jeśli obiekt biznesowy implementuje ten interfejs, 
+            to przy stosowaniu walidacji sprawdzana jest również dziedzina posiadanych obiektów.
+            </summary>
+        </member>
+        <member name="T:InsERT.Mox.BusinessObjects.IHasOwnerBusinessObject">
+            <summary>
+            Interfejs wykorzystywany na potrzeby sfery zdarzeniowej. Jeśli obiekt biznesowy implementuje ten interfejs, 
+            to zdarzenia typu <c>PrzedZmianaWlasciwosci</c> oraz <c>PoZmianieWlasciwosci</c> będą również wywoływane 
+            w pluginach obsługujących obiekt biznesowy zwracany przez właściwość <c>Owner</c>.
             </summary>
         </member>
         <member name="T:InsERT.Mox.BusinessObjects.IRuntimeStorage">

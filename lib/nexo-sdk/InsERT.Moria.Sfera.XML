@@ -4833,6 +4833,20 @@
             <param name="uchwyt">Punkt dostępu do obiektów sferycznych</param>
             <returns>Wygenerowany obiekt typu 'InsERT.Moria.ProcesyKlientowBiura.IProcesyBiura'</returns>
         </member>
+        <member name="M:InsERT.Moria.Sfera.UchwytRozszerzenia.ProcesyKsiegowoKadrowe(InsERT.Moria.Sfera.Uchwyt)">
+            <summary>
+            Metoda udostępniająca obiekt typu 'InsERT.Moria.ProcesyKsiegowoKadrowe.IProcesyKsiegowoKadrowe' w sferze.
+            </summary>
+            <param name="sfera">Uchwyt sferyczny</param>
+            <returns>Wygenerowany obiekt typu 'InsERT.Moria.ProcesyKsiegowoKadrowe.IProcesyKsiegowoKadrowe'</returns>
+        </member>
+        <member name="M:InsERT.Moria.Sfera.UchwytRozszerzenia.ProcesyKsiegowoKadrowe(InsERT.Moria.Rozszerzanie.IUchwyt)">
+            <summary>
+            Metoda udostępniająca obiekt typu 'InsERT.Moria.ProcesyKsiegowoKadrowe.IProcesyKsiegowoKadrowe' dla punktu dostępu do obiektów sferycznych.
+            </summary>
+            <param name="uchwyt">Punkt dostępu do obiektów sferycznych</param>
+            <returns>Wygenerowany obiekt typu 'InsERT.Moria.ProcesyKsiegowoKadrowe.IProcesyKsiegowoKadrowe'</returns>
+        </member>
         <member name="M:InsERT.Moria.Sfera.UchwytRozszerzenia.ProcesyOfertowe(InsERT.Moria.Sfera.Uchwyt)">
             <summary>
             Metoda udostępniająca obiekt typu 'InsERT.Moria.Procesy.IProcesyOfertowe' w sferze.
