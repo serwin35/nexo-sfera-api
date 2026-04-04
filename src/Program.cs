@@ -223,16 +223,6 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Add the Sfera service to the container
-builder.Services.AddSingleton<NexoSferaApi.Services.SferaService>();
-
-using (var scope = app.Services.CreateScope())
-{
-    // Upewnij się, że nie ma innej zmiennej o tej nazwie w tym zakresie
-    var sferaService = scope.ServiceProvider.GetRequiredService<NexoSferaApi.Services.SferaService>();
-    await sferaService.InitializeAsync();
-}
-
 // Configure the HTTP request pipeline
 
 // Add error handling middleware first
@@ -268,7 +258,7 @@ app.MapMcp("/mcp");
 // Initialize Sfera connection on startup
 using (var scope = app.Services.CreateScope())
 {
-    var sferaService = scope.ServiceProvider.GetRequiredService<NexoSferaApi.Services.SferaService>();
+    var sferaService = scope.ServiceProvider.GetRequiredService<ISferaService>();
     await sferaService.InitializeAsync();
 }
 
