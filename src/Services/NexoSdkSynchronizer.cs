@@ -394,45 +394,71 @@ public static class NexoSdkSynchronizer
     {
         try
         {
-            // Walk up to find the deployment root (e.g. DMserviceXXX or the Nexo deployments folder)
-            var deploymentRoot = Path.GetDirectoryName(selectedDir); // Binaries
-            var grandParent = deploymentRoot != null ? Path.GetDirectoryName(deploymentRoot) : null; // DMserviceXXX
-            var searchRoot = grandParent ?? deploymentRoot;
+            // Build list of search roots: selected deployment, then all other known InsERT locations
+            var searchRoots = new List<string>();
 
-            if (searchRoot == null || !Directory.Exists(searchRoot)) return;
+            // 1. Walk up from selected dir to deployment root
+            var binaries = Path.GetDirectoryName(selectedDir);
+            var deploymentDir = binaries != null ? Path.GetDirectoryName(binaries) : null;
+            if (deploymentDir != null && Directory.Exists(deploymentDir))
+                searchRoots.Add(deploymentDir);
 
-            logger?.LogDebug("[SDK Sync] Searching for additional DLLs recursively in: {Root}", searchRoot);
-
-            // Recursively find all DLLs under the deployment root
-            string[] allDlls;
-            try { allDlls = Directory.GetFiles(searchRoot, "*.dll", SearchOption.AllDirectories); }
-            catch { return; }
-
-            var copiedExtra = 0;
-            foreach (var sourceFile in allDlls)
+            // 2. All Nexo deployments directory (sibling deployments)
+            var deploymentsNexo = deploymentDir != null ? Path.GetDirectoryName(deploymentDir) : null;
+            if (deploymentsNexo != null && Directory.Exists(deploymentsNexo))
             {
-                // Skip files from the directory we already copied
-                if (sourceFile.StartsWith(selectedDir, StringComparison.OrdinalIgnoreCase))
-                    continue;
-
-                var fileName = Path.GetFileName(sourceFile);
-                var destFile = Path.Combine(destDir, fileName);
-
-                // Only copy if missing in destination
-                if (File.Exists(destFile)) continue;
-
                 try
                 {
-                    File.Copy(sourceFile, destFile, overwrite: false);
-                    copiedExtra++;
-                    result.FilesCopied++;
-                    logger?.LogDebug("[SDK Sync] Copied (from related dir): {File}", fileName);
+                    foreach (var siblingDeployment in Directory.GetDirectories(deploymentsNexo))
+                    {
+                        if (!string.Equals(siblingDeployment, deploymentDir, StringComparison.OrdinalIgnoreCase))
+                            searchRoots.Add(siblingDeployment);
+                    }
                 }
-                catch { /* skip if locked or failed */ }
+                catch { /* ignore */ }
+            }
+
+            // 3. Program Files InsERT locations
+            foreach (var pf in new[] { @"C:\Program Files (x86)\InsERT", @"C:\Program Files\InsERT" })
+            {
+                if (Directory.Exists(pf) && !searchRoots.Contains(pf))
+                    searchRoots.Add(pf);
+            }
+
+            var copiedExtra = 0;
+            foreach (var searchRoot in searchRoots)
+            {
+                string[] allDlls;
+                try { allDlls = Directory.GetFiles(searchRoot, "*.dll", SearchOption.AllDirectories); }
+                catch { continue; }
+
+                logger?.LogDebug("[SDK Sync] Searching for missing DLLs in: {Root} ({Count} DLLs found)", searchRoot, allDlls.Length);
+
+                foreach (var sourceFile in allDlls)
+                {
+                    if (sourceFile.StartsWith(selectedDir, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    var fileName = Path.GetFileName(sourceFile);
+                    var destFile = Path.Combine(destDir, fileName);
+
+                    if (File.Exists(destFile)) continue;
+
+                    try
+                    {
+                        File.Copy(sourceFile, destFile, overwrite: false);
+                        copiedExtra++;
+                        result.FilesCopied++;
+                        logger?.LogDebug("[SDK Sync] Copied (from related dir): {File} from {Source}", fileName, Path.GetDirectoryName(sourceFile));
+                    }
+                    catch { /* skip if locked or failed */ }
+                }
             }
 
             if (copiedExtra > 0)
                 logger?.LogInformation("[SDK Sync] Copied {Count} additional DLLs from related directories.", copiedExtra);
+            else
+                logger?.LogDebug("[SDK Sync] No additional missing DLLs found in {Count} search roots.", searchRoots.Count);
         }
         catch (Exception ex)
         {
