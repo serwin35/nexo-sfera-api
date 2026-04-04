@@ -36,7 +36,15 @@ public class ContractorGroupsController : ControllerBase
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var grupy = _sferaService.GetManager("Grupy");
+                dynamic? grupy = null;
+                try
+                {
+                    grupy = _sferaService.GetManager("Grupy");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get Grupy manager");
+                }
                 if (grupy == null)
                 {
                     return (managerNull: true, response: (PagedResponse<ContractorGroupListItemDto>?)null);
