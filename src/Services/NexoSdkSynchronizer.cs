@@ -394,44 +394,41 @@ public static class NexoSdkSynchronizer
     {
         try
         {
-            var parentDir = Path.GetDirectoryName(selectedDir);
-            if (parentDir == null || !Directory.Exists(parentDir)) return;
+            // Walk up to find the deployment root (e.g. DMserviceXXX or the Nexo deployments folder)
+            var deploymentRoot = Path.GetDirectoryName(selectedDir); // Binaries
+            var grandParent = deploymentRoot != null ? Path.GetDirectoryName(deploymentRoot) : null; // DMserviceXXX
+            var searchRoot = grandParent ?? deploymentRoot;
 
-            // Search parent + all sibling directories for *.dll files
-            var searchDirs = new List<string> { parentDir };
-            try
-            {
-                searchDirs.AddRange(Directory.GetDirectories(parentDir));
-            }
-            catch { /* ignore permission errors */ }
+            if (searchRoot == null || !Directory.Exists(searchRoot)) return;
+
+            logger?.LogDebug("[SDK Sync] Searching for additional DLLs recursively in: {Root}", searchRoot);
+
+            // Recursively find all DLLs under the deployment root
+            string[] allDlls;
+            try { allDlls = Directory.GetFiles(searchRoot, "*.dll", SearchOption.AllDirectories); }
+            catch { return; }
 
             var copiedExtra = 0;
-            foreach (var searchDir in searchDirs)
+            foreach (var sourceFile in allDlls)
             {
-                if (string.Equals(searchDir, selectedDir, StringComparison.OrdinalIgnoreCase))
+                // Skip files from the directory we already copied
+                if (sourceFile.StartsWith(selectedDir, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                string[] dllFiles;
-                try { dllFiles = Directory.GetFiles(searchDir, "*.dll"); }
-                catch { continue; }
+                var fileName = Path.GetFileName(sourceFile);
+                var destFile = Path.Combine(destDir, fileName);
 
-                foreach (var sourceFile in dllFiles)
+                // Only copy if missing in destination
+                if (File.Exists(destFile)) continue;
+
+                try
                 {
-                    var fileName = Path.GetFileName(sourceFile);
-                    var destFile = Path.Combine(destDir, fileName);
-
-                    // Only copy if missing in destination
-                    if (File.Exists(destFile)) continue;
-
-                    try
-                    {
-                        File.Copy(sourceFile, destFile, overwrite: false);
-                        copiedExtra++;
-                        result.FilesCopied++;
-                        logger?.LogDebug("[SDK Sync] Copied (from related dir): {File}", fileName);
-                    }
-                    catch { /* skip if locked or failed */ }
+                    File.Copy(sourceFile, destFile, overwrite: false);
+                    copiedExtra++;
+                    result.FilesCopied++;
+                    logger?.LogDebug("[SDK Sync] Copied (from related dir): {File}", fileName);
                 }
+                catch { /* skip if locked or failed */ }
             }
 
             if (copiedExtra > 0)
