@@ -223,6 +223,16 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Add the Sfera service to the container
+builder.Services.AddSingleton<NexoSferaApi.Services.SferaService>();
+
+using (var scope = app.Services.CreateScope())
+{
+    // Upewnij się, że nie ma innej zmiennej o tej nazwie w tym zakresie
+    var sferaService = scope.ServiceProvider.GetRequiredService<NexoSferaApi.Services.SferaService>();
+    await sferaService.InitializeAsync();
+}
+
 // Configure the HTTP request pipeline
 
 // Add error handling middleware first
@@ -256,18 +266,10 @@ app.MapControllers();
 app.MapMcp("/mcp");
 
 // Initialize Sfera connection on startup
-var sferaService = app.Services.GetRequiredService<ISferaService>();
-var logger = app.Services.GetRequiredService<ILogger<Program>>();
-
-try
+using (var scope = app.Services.CreateScope())
 {
-    logger.LogInformation("Initializing Sfera connection...");
+    var sferaService = scope.ServiceProvider.GetRequiredService<NexoSferaApi.Services.SferaService>();
     await sferaService.InitializeAsync();
-    logger.LogInformation("Sfera connection initialized successfully");
-}
-catch (Exception ex)
-{
-    logger.LogError(ex, "Failed to initialize Sfera connection. API will start but Sfera operations will fail.");
 }
 
 app.Run();
