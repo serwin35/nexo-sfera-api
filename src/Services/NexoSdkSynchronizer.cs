@@ -264,8 +264,9 @@ public static class NexoSdkSynchronizer
     }
 
     /// <summary>
-    /// From multiple DLL paths, picks the directory containing the newest version.
-    /// Uses last write time since InsERT DLLs have obfuscated FileVersion (1.0.0.0).
+    /// From multiple DLL paths, picks the best directory for SDK DLLs.
+    /// Groups by same-size DLLs (same version), then prefers the directory with the most DLLs
+    /// (complete deployment over subset like SelloConnector). Falls back to newest by write time.
     /// </summary>
     private static string? PickNewest(List<string> dllPaths, ILogger? logger)
     {
@@ -277,11 +278,10 @@ public static class NexoSdkSynchronizer
             return dir;
         }
 
-        logger?.LogDebug("[SDK Sync] Found {Count} copies, selecting newest by write time...", dllPaths.Count);
+        logger?.LogDebug("[SDK Sync] Found {Count} copies, selecting best by version and completeness...", dllPaths.Count);
 
-        string? bestPath = null;
-        DateTime bestTime = DateTime.MinValue;
-
+        // Collect info about each candidate
+        var candidates = new List<(string dllPath, string dir, long size, DateTime writeTime, int dllCount)>();
         foreach (var dllPath in dllPaths)
         {
             try
@@ -290,28 +290,31 @@ public static class NexoSdkSynchronizer
                 var dir = Path.GetDirectoryName(dllPath)!;
                 var dirName = Path.GetFileName(dir);
                 var parentName = Path.GetFileName(Path.GetDirectoryName(dir) ?? "");
+                var dllCount = Directory.GetFiles(dir, "*.dll").Length;
 
-                logger?.LogDebug("[SDK Sync]   {Parent}/{Dir}: size={Size}, modified={Time}",
-                    parentName, dirName, info.Length, info.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"));
+                logger?.LogDebug("[SDK Sync]   {Parent}/{Dir}: size={Size}, modified={Time}, dllCount={Count}",
+                    parentName, dirName, info.Length, info.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"), dllCount);
 
-                if (info.LastWriteTimeUtc > bestTime)
-                {
-                    bestTime = info.LastWriteTimeUtc;
-                    bestPath = dllPath;
-                }
+                candidates.Add((dllPath, dir, info.Length, info.LastWriteTimeUtc, dllCount));
             }
             catch { /* skip unreadable */ }
         }
 
-        if (bestPath != null)
-        {
-            var result = Path.GetDirectoryName(bestPath)!;
-            logger?.LogInformation("[SDK Sync] Selected newest deployment: {Dir} (modified {Time})",
-                result, bestTime.ToString("yyyy-MM-dd HH:mm:ss"));
-            return result;
-        }
+        if (candidates.Count == 0)
+            return Path.GetDirectoryName(dllPaths[0])!;
 
-        return Path.GetDirectoryName(dllPaths[0])!;
+        // Find the newest version (by size — same version = same size due to obfuscation)
+        var newestSize = candidates.OrderByDescending(c => c.writeTime).First().size;
+
+        // Among candidates with the same version (size), prefer the one with most DLLs
+        var bestCandidates = candidates.Where(c => c.size == newestSize).ToList();
+        var best = bestCandidates.Count > 0
+            ? bestCandidates.OrderByDescending(c => c.dllCount).First()
+            : candidates.OrderByDescending(c => c.writeTime).First();
+
+        logger?.LogInformation("[SDK Sync] Selected deployment: {Dir} (modified {Time}, {Count} DLLs in dir)",
+            best.dir, best.writeTime.ToString("yyyy-MM-dd HH:mm:ss"), best.dllCount);
+        return best.dir;
     }
 
     private static string ComputeFileHash(string filePath)
