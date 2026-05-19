@@ -7,7 +7,7 @@ Subiekt · Rachmistrz · Rewizor · Gratyfikant · Gestor
 
 [![.NET](https://img.shields.io/badge/.NET_8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
 [![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://docs.microsoft.com/en-us/dotnet/csharp/)
-[![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](http://mssql-insert.sys.dmservice.pl:5000/swagger)
+[![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](http://localhost:5000/swagger)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 
 [![GitHub stars](https://img.shields.io/github/stars/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/stargazers)
@@ -20,7 +20,7 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 
 ---
 
-> 🚀 **Demo:** http://mssql-insert.sys.dmservice.pl:5000/swagger
+> 🚀 **Demo:** http://localhost:5000/swagger
 > 🔑 Wymagany klucz API w nagłówku `X-API-Key`
 
 ---
@@ -184,8 +184,8 @@ curl -X POST http://localhost:5000/api/documents/sales-invoice \
 
 ## 🌐 Środowisko testowe
 
-- **API URL:** `http://mssql-insert.sys.dmservice.pl:5000/`
-- **Swagger:** `http://mssql-insert.sys.dmservice.pl:5000/swagger`
+- **API URL:** `http://localhost:5000/`
+- **Swagger:** `http://localhost:5000/swagger`
 - **API Key:** Wymagany w headerze `X-API-Key`
 
 ## 📡 Endpointy API
