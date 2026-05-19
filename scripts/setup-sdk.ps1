@@ -1,106 +1,208 @@
 # Setup InsERT Nexo SDK for build
-# This script copies required SDK DLLs from the full SDK installation to the lib folder
+# Copies required SDK DLLs from a full SDK installation to the lib folder.
+#
+# Default source: docs\nexoSDK_60.1.1.9292\Bin (latest SDK shipped with this repo)
+# Default target: src\lib\nexo-sdk (matches NexoSdkPath in NexoSferaApi.csproj)
+#
+# Usage:
+#   .\scripts\setup-sdk.ps1                       # use defaults (60.1.1)
+#   .\scripts\setup-sdk.ps1 -SdkSourcePath "C:\Other\Bin"
+#   .\scripts\setup-sdk.ps1 -SyncRootLib          # also sync legacy root .\lib\nexo-sdk
+#   .\scripts\setup-sdk.ps1 -DryRun               # show what would happen without copying
 
 param(
-    [string]$SdkSourcePath = "..\nexoSDK_58.0.2.8985\Bin",
-    [string]$TargetPath = "src\lib\nexo-sdk"
+    [string]$SdkSourcePath = "docs\nexoSDK_60.1.1.9292\Bin",
+    [string]$TargetPath    = "src\lib\nexo-sdk",
+    [switch]$SyncRootLib,
+    [switch]$DryRun
 )
 
 $ErrorActionPreference = "Stop"
 
-# List of required DLLs (only those referenced in csproj)
+# DLLs explicitly referenced by NexoSferaApi.csproj (must exist in SDK source).
+# Keep this list in sync with <Reference Include="..."> entries in the csproj.
 $requiredDlls = @(
+    # --- Core SDK / runtime ---
     "InsERT.Moria.API.dll",
     "InsERT.Moria.Sfera.dll",
     "InsERT.Moria.ModelDanych.dll",
+    "InsERT.Mox.Core.dll",
+    "InsERT.Common.Product.dll",
+    "InsERT.Mox.EntityFrameworkSupport.dll",
+    "InsERT.Mox.EntityFramework.Core.dll",
+    "InsERT.Mox.EntityFramework.Ms.SqlServer.dll",
+    "InsERT.Moria.DaneDomyslne.dll",
+    "InsERT.Moria.Security.Core.dll",
+    "InsERT.Moria.Security.dll",
+    "InsERT.Mox.Security.Sql.dll",
+
+    # --- Sales / inventory / logistics ---
     "InsERT.Moria.Asortymenty.dll",
     "InsERT.Moria.Klienci.dll",
+    "InsERT.Moria.KlienciBiura.dll",
     "InsERT.Moria.ModelOrganizacyjny.dll",
     "InsERT.Moria.Promocje.dll",
     "InsERT.Moria.Logistyka.dll",
+    "InsERT.Moria.Inwentaryzacja.dll",
+    "InsERT.Moria.Remanenty.dll",
+    "InsERT.Moria.Slowniki.dll",
+    "InsERT.Moria.Cenniki.dll",
+    "InsERT.Moria.Waluty.dll",
+    "InsERT.Moria.Naklejki.dll",
+
+    # --- Documents & e-invoicing ---
+    "InsERT.Moria.DokumentyDoKsiegowania.dll",
+    "InsERT.Moria.DokumentyDoKsiegowania.Wspomaganie.dll",
+    "InsERT.Moria.EwidencjaVAT.dll",
+    "InsERT.Moria.DowodyWewnetrzne.dll",
+
+    # --- Finance ---
     "InsERT.Moria.Finanse.dll",
     "InsERT.Moria.Kasa.dll",
     "InsERT.Moria.Bank.dll",
     "InsERT.Moria.Rozrachunki.dll",
-    "InsERT.Mox.Core.dll",
-    "InsERT.Common.Product.dll",
-    "InsERT.Mox.EntityFrameworkSupport.dll",
-    "InsERT.Moria.DaneDomyslne.dll",
-    "InsERT.Mox.EntityFramework.Core.dll",
-    "InsERT.Moria.Security.Core.dll",
-    "InsERT.Moria.Security.dll",
-    "InsERT.Mox.Security.Sql.dll",
-    # Additional dependencies that may be needed at runtime
-    "InsERT.Moria.Dokumenty.dll",
-    "InsERT.Moria.Slowniki.dll",
-    "InsERT.Moria.CennikiICeny.dll",
-    "InsERT.Moria.Inwentaryzacja.dll",
+
+    # --- Accounting / fiscal ---
+    "InsERT.Moria.Ksiegowosc.dll",
+    "InsERT.Moria.ImportKsiegowy.dll",
+    "InsERT.Moria.ProcesyKsiegowoKadrowe.dll",
     "InsERT.Moria.Deklaracje.dll",
     "InsERT.Moria.Intrastat.dll",
     "InsERT.Moria.KontrolaSkarbowa.dll",
+    "InsERT.Moria.SprawozdaniaFinansowe.dll",
     "InsERT.Moria.Raporty.dll",
-    "InsERT.Moria.Wydruki.dll",
+
+    # --- HR & payroll ---
+    "InsERT.Moria.Kadry.dll",
+    "InsERT.Moria.Place.dll",
+    "InsERT.Moria.PPK.dll",
+
+    # --- Assets & fleet ---
+    "InsERT.Moria.SrodkiTrwale.dll",
+    "InsERT.Moria.Pojazdy.dll",
+
+    # --- Cross-cutting / utilities ---
+    "InsERT.Moria.Wspolne.dll",
+    "InsERT.Moria.SladRewizyjny.dll",
+    "InsERT.Moria.Komentarze.dll",
+    "InsERT.Moria.BibliotekaZalacznikow.dll",
+    "InsERT.Moria.Parametry.dll",
+    "InsERT.Moria.Uprawnienia.dll",
+    "InsERT.Moria.PolaWlasne2.dll",
+    "InsERT.Moria.GaleriaZdjec.dll",
+    "InsERT.Moria.Archiwa.dll",
+    "InsERT.Moria.Procesy.dll",
+    "InsERT.Moria.Dzialania.dll",
+    "InsERT.Moria.Kalendarze.dll",
+    "InsERT.Moria.Komunikacja.dll",
+    "InsERT.Moria.OperacjeZewnetrzne.dll",
+    "InsERT.Moria.Urzadzenia.Core.dll",
+
+    # --- E-commerce / shipping ---
     "InsERT.Moria.HandelElektroniczny.dll",
-    "InsERT.Moria.Naklejki.dll"
+    "InsERT.Moria.Kurierzy.dll",
+    "InsERT.Moria.Wydruki.dll"
 )
+
+# Note: csproj also declares <Reference Include="InsERT.Moria.Dokumenty"> and
+# <Reference Include="InsERT.Moria.CennikiICeny">, but those DLLs do not exist
+# as standalone assemblies in the SDK Bin folder (their namespaces are exposed
+# through InsERT.Moria.API.dll). They are intentionally NOT copied here.
+
+function Sync-SdkFolder {
+    param(
+        [string]$Source,
+        [string]$Target,
+        [string]$Label,
+        [string[]]$Dlls,
+        [switch]$DryRun
+    )
+
+    Write-Host ""
+    Write-Host "Target: $Label" -ForegroundColor Cyan
+    Write-Host "  -> $Target"
+
+    if (-not (Test-Path $Target)) {
+        if ($DryRun) {
+            Write-Host "  Would create directory: $Target" -ForegroundColor Yellow
+        } else {
+            New-Item -ItemType Directory -Path $Target -Force | Out-Null
+            Write-Host "  Created directory: $Target" -ForegroundColor Green
+        }
+    }
+
+    $copied = 0
+    $missing = @()
+
+    foreach ($dll in $Dlls) {
+        $sourceFile = Join-Path $Source $dll
+        $targetFile = Join-Path $Target $dll
+
+        if (Test-Path $sourceFile) {
+            if ($DryRun) {
+                Write-Host "  Would copy: $dll" -ForegroundColor Gray
+            } else {
+                Copy-Item $sourceFile $targetFile -Force
+                Write-Host "  Copied: $dll" -ForegroundColor Green
+            }
+            $copied++
+        } else {
+            $missing += $dll
+            Write-Host "  Missing: $dll" -ForegroundColor Yellow
+        }
+    }
+
+    Write-Host "  Summary: $copied copied, $($missing.Count) missing"
+    return [pscustomobject]@{ Copied = $copied; Missing = $missing }
+}
 
 Write-Host "InsERT Nexo SDK Setup Script" -ForegroundColor Cyan
 Write-Host "=============================" -ForegroundColor Cyan
 
-# Resolve paths
+# Resolve paths relative to repo root (script lives in .\scripts)
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$rootDir = Split-Path -Parent $scriptDir
-$sourcePath = Join-Path $rootDir $SdkSourcePath
-$targetPath = Join-Path $rootDir $TargetPath
+$rootDir   = Split-Path -Parent $scriptDir
+$sourcePath = if ([System.IO.Path]::IsPathRooted($SdkSourcePath)) { $SdkSourcePath } else { Join-Path $rootDir $SdkSourcePath }
+$targetPath = if ([System.IO.Path]::IsPathRooted($TargetPath))    { $TargetPath }    else { Join-Path $rootDir $TargetPath }
 
 Write-Host "Source: $sourcePath"
-Write-Host "Target: $targetPath"
 
-# Check if source exists
 if (-not (Test-Path $sourcePath)) {
     Write-Error "SDK source path not found: $sourcePath"
     Write-Host ""
-    Write-Host "Please ensure the Nexo SDK is extracted to: $SdkSourcePath" -ForegroundColor Yellow
-    Write-Host "Download from InsERT partner portal or use your licensed SDK." -ForegroundColor Yellow
+    Write-Host "Hint: extract the SDK to $SdkSourcePath, or pass -SdkSourcePath '<path-to-Bin>'." -ForegroundColor Yellow
+    Write-Host "Latest known SDK shipped with this repo: docs\nexoSDK_60.1.1.9292\Bin" -ForegroundColor Yellow
     exit 1
 }
 
-# Create target directory
-if (-not (Test-Path $targetPath)) {
-    New-Item -ItemType Directory -Path $targetPath -Force | Out-Null
-    Write-Host "Created target directory: $targetPath" -ForegroundColor Green
-}
-
-# Copy DLLs
-$copied = 0
-$missing = @()
-
-foreach ($dll in $requiredDlls) {
-    $sourceFile = Join-Path $sourcePath $dll
-    $targetFile = Join-Path $targetPath $dll
-
-    if (Test-Path $sourceFile) {
-        Copy-Item $sourceFile $targetFile -Force
-        Write-Host "  Copied: $dll" -ForegroundColor Green
-        $copied++
-    } else {
-        $missing += $dll
-        Write-Host "  Missing: $dll" -ForegroundColor Yellow
+# Detect SDK version from InsERT.Moria.API.dll for confirmation
+$apiDll = Join-Path $sourcePath "InsERT.Moria.API.dll"
+if (Test-Path $apiDll) {
+    try {
+        $ver = (Get-Item $apiDll).VersionInfo.FileVersion
+        Write-Host "Detected SDK build: InsERT.Moria.API.dll v$ver" -ForegroundColor Cyan
+    } catch {
+        Write-Host "Could not read SDK version metadata." -ForegroundColor Yellow
     }
 }
 
-Write-Host ""
-Write-Host "Summary:" -ForegroundColor Cyan
-Write-Host "  Copied: $copied DLLs"
-Write-Host "  Missing: $($missing.Count) DLLs"
+$results = @()
+$results += Sync-SdkFolder -Source $sourcePath -Target $targetPath -Label "Build target (csproj NexoSdkPath)" -Dlls $requiredDlls -DryRun:$DryRun
 
-if ($missing.Count -gt 0) {
+if ($SyncRootLib) {
+    $rootLibPath = Join-Path $rootDir "lib\nexo-sdk"
+    $results += Sync-SdkFolder -Source $sourcePath -Target $rootLibPath -Label "Legacy root lib\nexo-sdk" -Dlls $requiredDlls -DryRun:$DryRun
+}
+
+Write-Host ""
+Write-Host "Done." -ForegroundColor Green
+$totalMissing = ($results | ForEach-Object { $_.Missing.Count } | Measure-Object -Sum).Sum
+if ($totalMissing -gt 0) {
     Write-Host ""
-    Write-Host "Missing DLLs (may cause runtime issues):" -ForegroundColor Yellow
-    foreach ($dll in $missing) {
-        Write-Host "  - $dll" -ForegroundColor Yellow
-    }
+    Write-Host "Some DLLs were missing in the source folder. Review the lists above." -ForegroundColor Yellow
+    Write-Host "If those modules are not needed by your build configuration, this is safe to ignore." -ForegroundColor Yellow
 }
-
-Write-Host ""
-Write-Host "SDK setup complete!" -ForegroundColor Green
+if ($DryRun) {
+    Write-Host ""
+    Write-Host "Dry run only - no files were modified." -ForegroundColor Yellow
+}
