@@ -222,13 +222,53 @@ if ($SyncRootLib) {
     $results += Sync-SdkFolder -Source $sourcePath -Target $rootLibPath -Label "Legacy root lib\nexo-sdk" -Dlls $requiredDlls -DryRun:$DryRun
 }
 
+# Second pass: DLLs missing in the chosen source are searched for in ALL other known
+# SDK locations (other deployments, .zip-cache, Program Files, docs SDK package).
+# Deployments contain only the modules licensed/used by that client - e.g. a deployment
+# without Intrastat lacks InsERT.Moria.Intrastat.dll even though the build requires it.
+$stillMissing = @($results | ForEach-Object { $_.Missing } | Select-Object -Unique)
+if ($stillMissing.Count -gt 0) {
+    Write-Host ""
+    Write-Host "Searching other SDK locations for $($stillMissing.Count) missing DLL(s)..." -ForegroundColor Cyan
+
+    $extraRoots = @()
+    $docsDir = Join-Path $rootDir "docs"
+    Get-ChildItem -Path $docsDir -Directory -Filter "nexoSDK_*" -ErrorAction SilentlyContinue |
+        ForEach-Object { $extraRoots += (Join-Path $_.FullName "Bin") }
+    $extraRoots += "$env:LOCALAPPDATA\InsERT\Deployments"   # all deployments + .zip-cache
+    $extraRoots += "${env:ProgramFiles(x86)}\InsERT"
+    $extraRoots += "$env:ProgramFiles\InsERT"
+
+    foreach ($dll in $stillMissing) {
+        $found = $null
+        foreach ($root in $extraRoots) {
+            if (-not (Test-Path $root)) { continue }
+            $found = Get-ChildItem -Path $root -Recurse -Filter $dll -ErrorAction SilentlyContinue |
+                Sort-Object LastWriteTime -Descending | Select-Object -First 1
+            if ($found) { break }
+        }
+
+        if ($found) {
+            if ($DryRun) {
+                Write-Host "  Would copy: $dll  <- $($found.DirectoryName)" -ForegroundColor Gray
+            } else {
+                Copy-Item $found.FullName (Join-Path $targetPath $dll) -Force
+                Write-Host "  Recovered: $dll  <- $($found.DirectoryName)" -ForegroundColor Green
+            }
+            $stillMissing = @($stillMissing | Where-Object { $_ -ne $dll })
+        } else {
+            Write-Host "  Not found anywhere: $dll" -ForegroundColor Red
+        }
+    }
+}
+
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
-$totalMissing = ($results | ForEach-Object { $_.Missing.Count } | Measure-Object -Sum).Sum
-if ($totalMissing -gt 0) {
+if ($stillMissing.Count -gt 0) {
     Write-Host ""
-    Write-Host "Some DLLs were missing in the source folder. Review the lists above." -ForegroundColor Yellow
-    Write-Host "If those modules are not needed by your build configuration, this is safe to ignore." -ForegroundColor Yellow
+    Write-Host "Still missing after searching all locations: $($stillMissing -join ', ')" -ForegroundColor Red
+    Write-Host "These DLLs are REQUIRED by the build (referenced in NexoSferaApi.csproj)." -ForegroundColor Yellow
+    Write-Host "Copy them from the SDK documentation package (docs\nexoSDK_*\Bin) on a machine that has it." -ForegroundColor Yellow
 }
 if ($DryRun) {
     Write-Host ""
