@@ -6,6 +6,7 @@ out/
 # IDE
 .vs/
 .vscode/
+.idea/
 *.user
 *.suo
 
@@ -24,11 +25,14 @@ out/
 # NuGet
 packages/
 *.nupkg
-src/lib/nexo-sdk/libcef.dll
-src/lib/nexo-sdk/Deklaracje/Wydruki.zip
-lib/nexo-sdk/libcef.dll
-lib/nexo-sdk/Deklaracje/Wydruki.zip
-lib/nexo-sdk/Deklaracje/Wydruki.HF.zip
+
+# SDK DLLs are never tracked - src/lib/nexo-sdk is filled by scripts/setup-sdk.ps1 or CI (NEXO_SDK_URL)
+src/lib/
+lib/nexo-sdk/
+
+# Claude working files
+scratchpad/
+**/CLAUDE.md
 /lib/Eksporter stanów z Subiekta nexo PRO
 /lib/Importer Dokumentów XML do Subiekta nexo PRO
 /docs/nexoSDK_59.1.1.9137/

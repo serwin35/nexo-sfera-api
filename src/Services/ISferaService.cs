@@ -5,6 +5,13 @@ namespace NexoSferaApi.Services;
 public interface ISferaService
 {
     Task InitializeAsync();
+
+    /// <summary>
+    /// Disposes the current Sfera connection (if any) and connects again with current settings.
+    /// Runs entirely on the SDK STA thread, so it never interleaves with in-flight operations.
+    /// </summary>
+    Task ReinitializeAsync();
+
     Uchwyt GetSfera();
     bool IsConnected { get; }
 

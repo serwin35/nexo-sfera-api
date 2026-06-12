@@ -10,29 +10,30 @@ Subiekt · Rachmistrz · Rewizor · Gratyfikant · Gestor
 [![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](http://localhost:5000/swagger)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 
-[![GitHub stars](https://img.shields.io/github/stars/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/stargazers)
-[![GitHub issues](https://img.shields.io/github/issues/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/issues)
-[![Last commit](https://img.shields.io/github/last-commit/serwin35/nexo-sfera-api?style=flat-square)](https://github.com/serwin35/nexo-sfera-api/commits)
-
 Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski@dmservice.pl
 
 </div>
 
 ---
 
-> 🚀 **Demo:** http://localhost:5000/swagger
-> 🔑 Wymagany klucz API w nagłówku `X-API-Key`
+> 🚀 **Swagger UI (pełny katalog endpointów):** http://localhost:5000/swagger
+> 🔑 Autoryzacja kluczem API — patrz [Autentykacja](#-autentykacja)
+> 📦 Wersja SDK: **nexo 60.1.1.9292** (`docs/nexoSDK_60.1.1.9292/`)
 
 ---
 
 ## 📋 Spis treści
 
-- [Wymagania](#wymagania)
-- [Konfiguracja](#konfiguracja)
-- [Multi-tenant (wiele firm)](#multi-tenant-wiele-firm)
-- [Autentykacja](#autentykacja)
-- [Endpointy API](#endpointy-api)
-- [Przykłady użycia](#przykłady-użycia)
+- [Wymagania](#%EF%B8%8F-wymagania)
+- [Konfiguracja](#-konfiguracja)
+- [Uruchomienie](#-uruchomienie)
+- [Autentykacja](#-autentykacja)
+- [Multi-tenant (wiele firm)](#-multi-tenant-wiele-firm)
+- [Konwencje API](#-konwencje-api)
+- [Moduły API](#-moduły-api)
+- [Integracja z Laravel](#-integracja-z-laravel)
+- [Przykłady użycia](#-przykłady-użycia)
+- [Architektura i uwagi techniczne](#-architektura-i-uwagi-techniczne)
 
 ---
 
@@ -40,12 +41,12 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 
 - Windows 10/11 lub Windows Server
 - .NET 8.0 SDK
-- Zainstalowany InsERT Nexo z licencją na Sferę
+- Zainstalowany InsERT Nexo z licencją na **Sferę**
 - SQL Server z bazą danych Nexo
 
 ## 🔧 Konfiguracja
 
-Edytuj plik `src/appsettings.json`:
+Skopiuj `src/appsettings.template.json` do `src/appsettings.json` i uzupełnij:
 
 ```json
 {
@@ -56,24 +57,26 @@ Edytuj plik `src/appsettings.json`:
     "SqlLogin": null,
     "SqlPassword": null,
     "NexoLogin": "Szef",
-    "NexoPassword": "robocze",
+    "NexoPassword": "",
     "Product": "Subiekt"
   }
 }
 ```
-
-### Parametry konfiguracji
 
 | Parametr | Opis |
 |----------|------|
 | `Server` | Nazwa instancji SQL Server |
 | `Database` | Nazwa bazy danych Nexo |
 | `UseWindowsAuth` | `true` dla autentykacji Windows, `false` dla SQL |
-| `SqlLogin` | Login SQL (gdy UseWindowsAuth = false) |
-| `SqlPassword` | Hasło SQL (gdy UseWindowsAuth = false) |
-| `NexoLogin` | Login operatora Nexo |
-| `NexoPassword` | Hasło operatora Nexo |
-| `Product` | Produkt: Subiekt, Rachmistrz, Rewizor, Gratyfikant, Gestor |
+| `SqlLogin` / `SqlPassword` | Dane logowania SQL (gdy `UseWindowsAuth = false`) |
+| `NexoLogin` / `NexoPassword` | Operator Nexo (domyślny) |
+| `Product` | Subiekt, Rachmistrz, Rewizor, Gratyfikant |
+| `AutoSyncSdk` | Automatyczna synchronizacja DLL-i SDK z instalacji nexo przy starcie |
+| `NexoInstallPath` | Ścieżka instalacji nexo (domyślnie wykrywana) |
+
+Wszystkie parametry można nadpisać zmiennymi środowiskowymi `SFERA_*` (np. `SFERA_SERVER`, `SFERA_NEXO_LOGIN`); klucz API — `API_KEY`, port — `API_PORT`.
+
+> ⚠️ **Nie commituj `appsettings.json` z realnymi danymi.** Używaj zmiennych środowiskowych w produkcji.
 
 ## 🚀 Uruchomienie
 
@@ -82,16 +85,25 @@ cd src
 dotnet run
 ```
 
-API będzie dostępne pod adresem: `http://localhost:5000`
-Swagger UI: `http://localhost:5000/swagger`
+- API: `http://localhost:5000`
+- Swagger UI: `http://localhost:5000/swagger`
+- Specyfikacja OpenAPI: `http://localhost:5000/swagger/v1/swagger.json`
+
+## 🔐 Autentykacja
+
+Każde żądanie (poza `GET /api/health` i `GET /api/settings/info`) wymaga klucza API. Obsługiwane formy (w kolejności preferencji):
+
+```
+Authorization: Bearer {klucz-api}     # preferowana
+X-API-Key: {klucz-api}                # legacy
+?api_key={klucz-api}                  # tylko do testów — klucz ląduje w logach!
+```
+
+Endpoint MCP (`/mcp`, integracja z agentami AI) podlega tej samej autoryzacji.
 
 ## 🏢 Multi-tenant (wiele firm)
 
-API obsługuje scenariusze multi-tenant, gdzie różne klucze API mogą korzystać z różnych operatorów Nexo. To umożliwia obsługę wielu firm lub działów w ramach jednej instancji API.
-
-### Konfiguracja kluczy API z osobnymi operatorami
-
-Edytuj plik `src/appsettings.json`:
+Różne klucze API mogą pracować jako różni operatorzy Nexo — to umożliwia obsługę wielu firm/działów jedną instancją API:
 
 ```json
 {
@@ -108,16 +120,6 @@ Edytuj plik `src/appsettings.json`:
         "CompanyDescription": "Firma A - Oddział Warszawa"
       },
       {
-        "Key": "klucz-api-firma-b",
-        "Name": "Firma B - E-commerce",
-        "IsActive": true,
-        "NexoLogin": "operator2",
-        "NexoPassword": "haslo2",
-        "DefaultWarehouse": "MG2",
-        "DefaultBranch": "KRK",
-        "CompanyDescription": "Firma B - Oddział Kraków"
-      },
-      {
         "Key": "klucz-api-default",
         "Name": "Klucz domyślny",
         "IsActive": true,
@@ -128,185 +130,130 @@ Edytuj plik `src/appsettings.json`:
 }
 ```
 
-### Parametry klucza API
-
 | Parametr | Wymagany | Opis |
 |----------|----------|------|
-| `Key` | **Tak** | Unikalny klucz API (używany w nagłówku Authorization) |
-| `Name` | **Tak** | Nazwa opisowa klucza dla celów identyfikacji |
-| `IsActive` | **Tak** | Czy klucz jest aktywny (`true`/`false`) |
-| `NexoLogin` | Nie | Login operatora Nexo dla tego klucza (opcjonalnie) |
-| `NexoPassword` | Nie | Hasło operatora Nexo dla tego klucza (opcjonalnie) |
-| `Database` | Nie | Nazwa bazy danych Nexo (dla scenariuszy z wieloma bazami) |
-| `DefaultWarehouse` | Nie | Domyślny symbol magazynu |
-| `DefaultBranch` | Nie | Domyślny symbol oddziału |
-| `CompanyDescription` | Nie | Opis firmy/kontekstu dla celów logowania |
+| `Key` | **Tak** | Unikalny klucz API |
+| `Name` | **Tak** | Nazwa opisowa klucza |
+| `IsActive` | **Tak** | Czy klucz jest aktywny |
+| `NexoLogin` / `NexoPassword` | Nie | Operator Nexo dla tego klucza; brak = operator domyślny z sekcji `Sfera` |
+| `Database` | Nie | **Osobna baza Nexo (= osobna firma) dla tego klucza**; brak = baza domyślna |
+| `DefaultWarehouse` / `DefaultBranch` | Nie | Magazyn/oddział ustawiany w kontekście każdego żądania tym kluczem |
+| `CompanyDescription` | Nie | Opis do celów logowania |
 
-### Jak działa multi-tenant
+### Jak to działa
 
-1. **Autentykacja**: Każde żądanie API jest autoryzowane kluczem API przekazanym w nagłówku `Authorization: Bearer {klucz}`
+1. **Połączenie per baza** — `SferaConnectionPool` utrzymuje osobne połączenie SDK (z własnym wątkiem STA) dla każdej bazy z konfiguracji kluczy; połączenia powstają leniwie przy pierwszym żądaniu danym kluczem.
+2. **Routing per żądanie** — `SferaServiceRouter` czyta claims klucza i kieruje **każdą** operację (wszystkie 61 kontrolerów, bez wyjątków) do właściwego połączenia.
+3. **Operator i kontekst** — przed każdą operacją router wymusza operatora i magazyn/oddział klucza; klucz **bez** własnego operatora zawsze wraca do operatora domyślnego, więc kontekst jednej firmy nie przecieka do drugiej.
+4. **Izolacja danych** — każdy operator widzi w Nexo tylko to, na co pozwalają jego uprawnienia; osobne bazy są odizolowane całkowicie.
 
-2. **Przełączanie operatora**: Jeśli klucz API ma zdefiniowane `NexoLogin` i `NexoPassword`, system automatycznie przełącza się na tego operatora przed wykonaniem operacji
-
-3. **Izolacja danych**: Każdy operator w Nexo ma własne uprawnienia i widzi tylko dane, do których ma dostęp
-
-4. **Domyślny operator**: Jeśli klucz API nie ma zdefiniowanych danych operatora, używany jest operator z sekcji `Sfera.NexoLogin`/`Sfera.NexoPassword`
-
-### Przykład użycia
-
-```bash
-# Firma A - operator1
-curl -X POST http://localhost:5000/api/documents/sales-invoice \
-  -H "Authorization: Bearer klucz-api-firma-a" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "CustomerId": 123,
-    "Items": [...]
-  }'
-
-# Firma B - operator2
-curl -X POST http://localhost:5000/api/documents/sales-invoice \
-  -H "Authorization: Bearer klucz-api-firma-b" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "CustomerId": 456,
-    "Items": [...]
-  }'
-```
+Uwaga wydajnościowa: operacje **w ramach jednej bazy** wykonują się sekwencyjnie (jeden wątek STA na bazę), ale różne firmy/bazy pracują na osobnych wątkach — równolegle. Pierwsze żądanie do nowej bazy płaci koszt nawiązania połączenia (kilka sekund).
 
 ### Bezpieczeństwo
 
-⚠️ **Ważne**:
-- Przechowuj klucze API w bezpiecznym miejscu (np. zmienne środowiskowe, Azure Key Vault)
+- Przechowuj klucze API w zmiennych środowiskowych / sejfie, rotuj regularnie
 - Używaj HTTPS w produkcji
-- Regularnie rotuj klucze API
-- Nadawaj minimalne wymagane uprawnienia operatorom Nexo
+- Nadawaj operatorom Nexo minimalne wymagane uprawnienia
 
-## 🌐 Środowisko testowe
+## 📐 Konwencje API
 
-- **API URL:** `http://localhost:5000/`
-- **Swagger:** `http://localhost:5000/swagger`
-- **API Key:** Wymagany w headerze `X-API-Key`
+### Koperta odpowiedzi
 
-## 📡 Endpointy API
+Odpowiedzi pojedyncze (`ApiResponse<T>`):
 
-### 🔷 Health Check
-- `GET /api/health` - Status API
-- `GET /api/health/sfera` - Status połączenia ze Sferą
-- `POST /api/health/reconnect` - Ponowne połączenie
+```json
+{ "success": true, "data": { ... }, "message": null, "errors": null }
+```
 
-### 🔷 Kontrahenci (Customers)
-- `GET /api/customers` - Lista kontrahentów
-- `GET /api/customers/{id}` - Kontrahent po ID
-- `GET /api/customers/by-nip/{nip}` - Kontrahent po NIP
-- `POST /api/customers` - Utwórz kontrahenta
-- `PUT /api/customers/{id}` - Aktualizuj kontrahenta
-- `DELETE /api/customers/{id}` - Usuń kontrahenta
+Odpowiedzi listowe (`PagedResponse<T>`):
 
-### 🔷 Produkty (Products)
-- `GET /api/products` - Lista produktów
-- `GET /api/products/{id}` - Produkt po ID
-- `GET /api/products/by-symbol/{symbol}` - Produkt po symbolu
-- `GET /api/products/by-ean/{ean}` - Produkt po EAN
-- `POST /api/products` - Utwórz produkt
-- `PUT /api/products/{id}` - Aktualizuj produkt
-- `DELETE /api/products/{id}` - Usuń produkt
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "page": 1,
+  "pageSize": 50,
+  "totalCount": 1234,
+  "totalPages": 25,
+  "hasNextPage": true,
+  "hasPreviousPage": false
+}
+```
 
-### 🔷 Dokumenty handlowe (Documents)
-- `GET /api/documents` - Lista dokumentów
-- `GET /api/documents/{id}` - Dokument po ID
-- `GET /api/documents/by-number/{number}` - Dokument po numerze
-- `POST /api/documents/sales-invoice` - Utwórz fakturę sprzedaży (FS)
-- `POST /api/documents/receipt` - Utwórz paragon
-- `POST /api/documents/customer-order` - Utwórz zamówienie od klienta (ZK)
-- `POST /api/documents/purchase-invoice` - Utwórz fakturę zakupu (FZ)
+Błędy: `success: false` + `message`/`errors`, status HTTP 400/404/500. (Część starszych endpointów zwraca jeszcze surowe obiekty — trwa ujednolicanie.)
 
-### 🔷 Dokumenty magazynowe (Warehouse Documents)
-- `GET /api/warehouse-documents` - Lista dokumentów magazynowych
-- `GET /api/warehouse-documents/{id}` - Dokument po ID
-- `POST /api/warehouse-documents/wz` - Utwórz wydanie zewnętrzne (WZ)
-- `POST /api/warehouse-documents/pz` - Utwórz przyjęcie zewnętrzne (PZ)
-- `POST /api/warehouse-documents/rw` - Utwórz rozchód wewnętrzny (RW)
-- `POST /api/warehouse-documents/pw` - Utwórz przychód wewnętrzny (PW)
-- `POST /api/warehouse-documents/mm` - Utwórz przesunięcie międzymagazynowe (MM)
-- `POST /api/warehouse-documents/{id}/associate` - Powiąż dokumenty (np. RW z PW)
+### Paginacja i filtrowanie
 
-### 🔷 Płatności (Payments)
-- `GET /api/payments/cash` - Lista operacji kasowych
-- `GET /api/payments/cash/{id}` - Operacja kasowa po ID
-- `POST /api/payments/cash/kp` - Utwórz KP (przyjęcie gotówki)
-- `POST /api/payments/cash/kw` - Utwórz KW (wydanie gotówki)
-- `GET /api/payments/bank` - Lista operacji bankowych
-- `GET /api/payments/bank/{id}` - Operacja bankowa po ID
-- `POST /api/payments/bank/bp` - Utwórz BP (wpłata bankowa)
-- `POST /api/payments/bank/bw` - Utwórz BW (wypłata bankowa)
-- `GET /api/payments/settlements` - Lista rozrachunków
+Endpointy listowe przyjmują `?page=1&pageSize=50` oraz filtry specyficzne dla zasobu (np. `search`, `activeOnly`, zakresy dat) — szczegóły w Swaggerze.
 
-### 🔷 Oferty (Offers) — Gestor
-- `GET /api/offers` - Lista ofert
-- `GET /api/offers/{id}` - Oferta po ID
-- `GET /api/offers/by-number/{number}` - Oferta po numerze
-- `POST /api/offers` - Utwórz ofertę
-- `POST /api/offers/{id}/accept` - Zaakceptuj ofertę
-- `POST /api/offers/{id}/close` - Zamknij ofertę
+### Współbieżność — ważne dla integratora
 
-### 🔷 Magazyny (Warehouses)
-- `GET /api/warehouses` - Lista magazynów
-- `GET /api/warehouses/{symbol}` - Magazyn po symbolu
-- `GET /api/warehouses/stock/{productSymbol}` - Stan magazynowy produktu
+SDK Sfery działa na **jednym dedykowanym wątku STA** — wszystkie operacje SDK wykonują się **sekwencyjnie**. Konsekwencje:
 
-### 🔷 Stany magazynowe (Inventory)
-- `GET /api/inventory` - Lista stanów magazynowych
-- `GET /api/inventory/product/{id}` - Stan dla produktu
-- `GET /api/inventory/movements` - Historia ruchów magazynowych
-- `GET /api/inventory/valuation` - Wycena magazynu
+- Równoległe żądania są kolejkowane, nie wykonują się jednocześnie
+- Długa operacja (np. generowanie JPK) opóźnia kolejne żądania
+- Po stronie klienta ustaw rozsądne timeouty i unikaj agresywnego fan-outu
 
-### 🔷 Słowniki (Dictionary)
-- `GET /api/dictionary/vat-rates` - Stawki VAT
-- `GET /api/dictionary/units` - Jednostki miary
-- `GET /api/dictionary/currencies` - Waluty
-- `GET /api/dictionary/exchange-rates` - Kursy walut
-- `GET /api/dictionary/payment-methods` - Formy płatności
-- `GET /api/dictionary/price-lists` - Cenniki
-- `GET /api/dictionary/countries` - Kraje
+### Diagnostyka połączenia
 
-### 🔷 Raporty finansowe (Finance Reports)
-- `GET /api/finance/cash-registers` - Stanowiska kasowe
-- `GET /api/finance/cash-reports` - Raporty kasowe
-- `GET /api/finance/bank-accounts` - Rachunki bankowe
-- `GET /api/finance/bank-statements` - Wyciągi bankowe
-- `GET /api/finance/aging-report` - Raport wiekowania
+- `GET /api/health` — status API (anonimowy)
+- `GET /api/health/sfera` — status połączenia ze Sferą
+- `POST /api/health/reconnect` — pełna rekonekcja (dispose + connect na wątku STA)
 
-### 🔷 System
-- `GET /api/system/info` - Informacje o firmie
-- `GET /api/system/operator` - Aktualny operator
-- `GET /api/system/license` - Informacje o licencji
+## 📡 Moduły API
 
-### 🔷 Deklaracje (Declarations)
-- `GET /api/declarations/vat` - Lista deklaracji VAT
-- `GET /api/declarations/vat/{id}` - Szczegóły deklaracji
-- `GET /api/declarations/types` - Typy deklaracji
+Pełny, zawsze aktualny katalog **354 endpointów** znajdziesz w **Swagger UI** (`/swagger`). Przegląd modułów:
 
-### 🔷 JPK
-- `GET /api/jpk` - Lista plików JPK
-- `GET /api/jpk/{id}` - Szczegóły JPK
-- `GET /api/jpk/types` - Typy JPK
+| Domena | Moduły (route prefix) |
+|--------|----------------------|
+| **Sprzedaż i zakupy** | `documents` (FS/FZ/PA/korekty/zaliczki/marża), `customer-orders` (ZK), `orders` (ZD), `offers` (oferty Gestor), `promotions`, `discounts` |
+| **Magazyn** | `warehouse-documents` (WZ/PZ/RW/PW/MM), `warehouses`, `inventory` (stany, ruchy, wycena), `assembly` (kompletacja ZM), `remainders` (remanenty) |
+| **Kartoteki** | `customers` + `contractor-groups`, `products` + `product-groups/-attributes/-templates/-symbols`, `photo-gallery`, `custom-fields` |
+| **Finanse** | `payments` (KP/KW/BP/BW, rozrachunki), `finance-reports` (kasy, rachunki, wyciągi, wiekowanie), `vat-registry`, `accruals` (RMK) |
+| **Księgowość** | `booking-documents` (dekretacja), `accounting-import`, `internal-documents` (DW), `financial-statements`, `archives` |
+| **Podatki i deklaracje** | `jpk`, `ksef` (e-faktury), `declarations` (VAT/ZUS), `intrastat` |
+| **Kadry i płace** | `employees`, `contracts`, `payroll` (listy płac), `absences`, `ppk` |
+| **Majątek** | `fixed-assets` (środki trwałe), `fleet` (pojazdy) |
+| **CRM i serwis** | `activities` (działania CRM), `service-orders` (zlecenia serwisowe), `comments`, `calendars`, `attachments` |
+| **E-commerce i logistyka** | `ecommerce` (integracje, oferty internetowe, paczki), `couriers` |
+| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
+| **System** | `health`, `system` (firma, operator, licencja), `audit-trail`, `reports`, `office-clients`, `diagnostics` (tylko do debugowania) |
 
-### 🔷 Konfiguracje
-- `GET /api/configurations/categories` - Kategorie konfiguracji
-- `GET /api/configurations/documents` - Konfiguracje dokumentów
-- `GET /api/configurations/numbering` - Konfiguracje numeracji
+## 🐘 Integracja z Laravel
 
-### 🔷 Raporty
-- `GET /api/reports/types` - Typy raportów
-- `GET /api/reports/sales/summary` - Podsumowanie sprzedaży
-- `GET /api/reports/sales/by-product` - Sprzedaż wg produktów
-- `GET /api/reports/sales/by-customer` - Sprzedaż wg klientów
+```php
+// config/services.php
+'nexo' => [
+    'base_url' => env('NEXO_API_URL', 'http://nexo-host:5000'),
+    'api_key'  => env('NEXO_API_KEY'),
+],
+```
 
-### 🔷 E-commerce
-- `GET /api/ecommerce/integrations` - Integracje e-commerce
-- `GET /api/ecommerce/offers` - Oferty internetowe
-- `GET /api/ecommerce/packages` - Paczki wysyłkowe
+```php
+use Illuminate\Support\Facades\Http;
+
+$nexo = Http::baseUrl(config('services.nexo.base_url'))
+    ->withToken(config('services.nexo.api_key'))   // Authorization: Bearer
+    ->timeout(120)                                  // operacje SDK są sekwencyjne!
+    ->acceptJson();
+
+// Lista produktów
+$products = $nexo->get('/api/products', ['search' => 'laptop', 'page' => 1, 'pageSize' => 20])
+    ->json('data');
+
+// Faktura sprzedaży
+$invoice = $nexo->post('/api/documents/sales-invoice', [
+    'customerNIP' => '1234567890',
+    'warehouseSymbol' => 'MAG',
+    'items' => [
+        ['productSymbol' => 'TOWAR001', 'quantity' => 5, 'priceNet' => 100.00],
+    ],
+])->json();
+
+if (! $invoice['success']) {
+    Log::error('Nexo API error', $invoice['errors'] ?? []);
+}
+```
 
 ## 💡 Przykłady użycia
 
@@ -315,7 +262,7 @@ curl -X POST http://localhost:5000/api/documents/sales-invoice \
 ```bash
 curl -X POST http://localhost:5000/api/customers \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "symbol": "KLIENT001",
     "shortName": "Firma ABC",
@@ -338,19 +285,13 @@ curl -X POST http://localhost:5000/api/customers \
 ```bash
 curl -X POST http://localhost:5000/api/documents/sales-invoice \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "type": 1,
     "customerNIP": "1234567890",
     "warehouseSymbol": "MAG",
-    "notes": "Faktura testowa",
     "items": [
-      {
-        "productId": 123,
-        "productSymbol": "TOWAR001",
-        "quantity": 5,
-        "priceNet": 100.00
-      }
+      { "productSymbol": "TOWAR001", "quantity": 5, "priceNet": 100.00 }
     ]
   }'
 ```
@@ -360,166 +301,49 @@ curl -X POST http://localhost:5000/api/documents/sales-invoice \
 ```bash
 curl -X POST http://localhost:5000/api/documents/receipt \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "warehouseSymbol": "MAG",
-    "notes": "Paragon testowy",
     "items": [
-      {
-        "productSymbol": "TOWAR001",
-        "quantity": 2,
-        "priceGross": 123.00
-      }
+      { "productSymbol": "TOWAR001", "quantity": 2, "priceGross": 123.00 }
     ]
   }'
 ```
 
-### Utworzenie dokumentu WZ
-
-```bash
-curl -X POST http://localhost:5000/api/warehouse-documents/wz \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
-  -d '{
-    "warehouseSymbol": "MAG",
-    "customerNIP": "1234567890",
-    "notes": "Wydanie zewnetrzne",
-    "items": [
-      {
-        "productId": 123,
-        "quantity": 10
-      }
-    ]
-  }'
-```
-
-### Utworzenie dokumentu PW (Przychód wewnętrzny)
+### Dokumenty magazynowe (WZ / PZ / RW / PW / MM)
 
 ```bash
 curl -X POST http://localhost:5000/api/warehouse-documents/pw \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "warehouseSymbol": "MG",
-    "issueDate": "2024-05-06T00:00:00",
+    "issueDate": "2026-05-06T00:00:00",
     "notes": "Import z systemu zewnetrznego",
     "items": [
-      {
-        "productSymbol": "TOWAR001",
-        "quantity": 4.0,
-        "unit": "szt.",
-        "priceNet": 16.05
-      },
-      {
-        "productEan": "5901234123457",
-        "quantity": 10.0,
-        "priceNet": 25.00
-      }
+      { "productSymbol": "TOWAR001", "quantity": 4.0, "unit": "szt.", "priceNet": 16.05 },
+      { "productEan": "5901234123457", "quantity": 10.0, "priceNet": 25.00 }
     ]
   }'
 ```
 
-### Utworzenie dokumentu RW (Rozchód wewnętrzny)
+Dla MM dodaj `targetWarehouseSymbol`. Dla RW ceny mogą być ignorowane — system wycenia rozchód wg metody FIFO/LIFO/średniej ważonej skonfigurowanej w Nexo.
+
+### Powiązanie dokumentów (np. RW z PW)
 
 ```bash
-curl -X POST http://localhost:5000/api/warehouse-documents/rw \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
-  -d '{
-    "warehouseSymbol": "MG",
-    "issueDate": "2024-05-06T11:08:08",
-    "notes": "Zuzycie wewnetrzne - produkcja",
-    "items": [
-      {
-        "productSymbol": "MATERIAL001",
-        "quantity": 4.0,
-        "unit": "szt.",
-        "priceNet": 13.90
-      },
-      {
-        "productId": 456,
-        "quantity": 2.5,
-        "priceNet": 19.95
-      }
-    ]
-  }'
-```
-
-**Uwaga:** Dla dokumentów RW ceny mogą być ignorowane — system automatycznie wycenia rozchód wg metody FIFO/LIFO/średniej ważonej skonfigurowanej w systemie.
-
-### Utworzenie dokumentu MM (Przesunięcie międzymagazynowe)
-
-```bash
-curl -X POST http://localhost:5000/api/warehouse-documents/mm \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
-  -d '{
-    "warehouseSymbol": "MAG1",
-    "targetWarehouseSymbol": "MAG2",
-    "issueDate": "2024-05-06T00:00:00",
-    "notes": "Przesuniecie towaru",
-    "items": [
-      {
-        "productSymbol": "TOWAR001",
-        "quantity": 5.0
-      }
-    ]
-  }'
-```
-
-### Powiązanie dokumentów magazynowych (skojarzenie RW z PW)
-
-```bash
-# Najpierw utwórz dokumenty PW i RW, a następnie połącz je przez ID
 curl -X POST http://localhost:5000/api/warehouse-documents/109622/associate \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
-  -d '{
-    "targetDocumentId": 109623,
-    "relationType": "related"
-  }'
+  -H "Authorization: Bearer your-api-key" \
+  -d '{ "targetDocumentId": 109623, "relationType": "related" }'
 ```
 
-Odpowiedź:
-```json
-{
-  "success": true,
-  "data": {
-    "sourceDocumentId": 109622,
-    "targetDocumentId": 109623,
-    "relationType": "related"
-  },
-  "message": "Documents RW MG/2026/01/1 and PW MG/2026/01/1 associated successfully"
-}
-```
-
-### Utworzenie oferty (Gestor)
-
-```bash
-curl -X POST http://localhost:5000/api/offers \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
-  -d '{
-    "customerNIP": "1234567890",
-    "validUntil": "2026-02-28",
-    "notes": "Oferta handlowa",
-    "items": [
-      {
-        "productId": 123,
-        "productSymbol": "TOWAR001",
-        "quantity": 100,
-        "unitPriceNet": 50.00
-      }
-    ]
-  }'
-```
-
-### Utworzenie operacji kasowej KP
+### Operacja kasowa KP
 
 ```bash
 curl -X POST http://localhost:5000/api/payments/cash/kp \
   -H "Content-Type: application/json" \
-  -H "X-API-Key: your-api-key" \
+  -H "Authorization: Bearer your-api-key" \
   -d '{
     "amount": 1000.00,
     "description": "Wplata gotowki",
@@ -528,45 +352,38 @@ curl -X POST http://localhost:5000/api/payments/cash/kp \
   }'
 ```
 
-### Pobranie listy produktów z filtrowaniem
+## 🔬 Architektura i uwagi techniczne
 
-```bash
-curl "http://localhost:5000/api/products?search=laptop&activeOnly=true&page=1&pageSize=20" \
-  -H "X-API-Key: your-api-key"
-```
-
-## 📁 Struktura projektu
+### Struktura projektu
 
 ```
 nexo-sfera-api/
 ├── src/
-│   ├── Controllers/         # Kontrolery REST (18+)
-│   ├── Services/            # Serwisy (Sfera)
-│   ├── Models/
-│   │   ├── Dto/             # Data Transfer Objects
-│   │   ├── Requests/        # Modele requestów
-│   │   └── Responses/       # Modele odpowiedzi
-│   ├── Configuration/       # Konfiguracja
-│   ├── Authentication/      # API Key auth
-│   ├── Helpers/             # Helpery
-│   ├── Middleware/          # Middleware
-│   ├── Program.cs           # Entry point
-│   └── appsettings.json     # Konfiguracja
-├── nexoSDK_58.0.2.8985/     # SDK Nexo Sfera v58
-└── README.md
+│   ├── Controllers/         # 61 kontrolerów REST
+│   ├── Services/            # SferaService (wątek STA), synchronizator SDK
+│   ├── Models/              # Dto / Requests / Responses
+│   ├── Helpers/             # DynamicPropertyHelper, walidacja stanów
+│   ├── Authentication/      # API Key auth (Bearer / X-API-Key)
+│   ├── Configuration/       # SferaSettings, ApiKeySettings
+│   ├── Middleware/          # Obsługa błędów
+│   ├── Mcp/                 # Narzędzia MCP dla agentów AI (patrz MCP.md)
+│   └── Program.cs
+├── lib/nexo-sdk/            # DLL-e SDK Nexo
+├── docs/
+│   ├── nexoSDK_60.1.1.9292/ # Oficjalna dokumentacja SDK (nieśledzona w git)
+│   └── AUDIT-2026-06-12.md  # Audyt jakości i mapa pokrycia SDK
+└── scripts/                 # Skrypty deploy/diagnostyka
 ```
 
-## 🔬 Ważne informacje techniczne
+### Entity Framework 6, STA i .NET 8
 
-### Entity Framework 6 i .NET 8
+SDK Nexo Sfera używa EF6 i był projektowany pod aplikacje desktopowe:
 
-SDK Nexo Sfera używa Entity Framework 6, który wymaga specjalnej obsługi w .NET 8:
+1. **Dedykowany wątek STA** — wszystkie operacje SDK wykonuje jeden wątek z `WindowsFormsSynchronizationContext` (wymóg EF6)
+2. **`ExecuteWithLockAsync`** — każdy dostęp do SDK z kontrolera musi przejść przez ten wrapper (serializacja pracy na wątku STA); obiekty `dynamic` SDK **nie mogą opuścić** lambdy
+3. **Rekonekcja** — `POST /api/health/reconnect` bezpiecznie ubija i odtwarza połączenie na wątku STA
 
-1. **WindowsFormsSynchronizationContext** — wymagany do poprawnego działania EF6
-2. **STA Thread** — operacje SDK muszą być wykonywane w wątku STA
-3. **ExecuteWithLockAsync** — wszystkie operacje tworzenia dokumentów używają tego wrappera
-
-### Wzorzec tworzenia dokumentów
+### Wzorzec tworzenia dokumentów (SDK)
 
 ```csharp
 // 1. Ustaw magazyn na Dokument (nie na Dane!)
@@ -583,69 +400,23 @@ pozycja.Ilosc = quantity;
 faktura.Zapisz();
 ```
 
-## 📝 Uwagi techniczne
-
 ### Walidacja stanów magazynowych dla usług
 
-API automatycznie pomija walidację stanów magazynowych dla produktów typu **usługa** (Rodzaj_Id = 1).
+API pomija walidację stanów dla produktów typu **usługa** (`Rodzaj_Id = 1`) — usługi można dodawać do dokumentów sprzedaży bez sprawdzania stanów. Walidacja działa normalnie dla towarów (0), kompletów (2) i materiałów (3).
 
-Oznacza to, że:
-- ✅ Usługi mogą być dodawane do dokumentów sprzedaży bez sprawdzania stanów
-- ✅ Nie pojawią się błędy typu "Insufficient stock for 'USLUGA001'"
-- ✅ Usługi są rozpoznawane po właściwości `Rodzaj_Id = 1` w tabeli Asortymenty
-
-**Przykład**:
-```
-Produkt: DMSUSGI00081 (Usługa)
-Rodzaj_Id: 1
-Stan magazynowy: 0 (nie ma znaczenia)
-Walidacja: POMINIĘTA ✓
-```
-
-Walidacja stanów działa normalnie dla:
-- Towarów (Rodzaj_Id = 0)
-- Kompletów (Rodzaj_Id = 2)
-- Materiałów (Rodzaj_Id = 3)
-
-### Statusy dokumentów w odpowiedziach API
-
-Wszystkie odpowiedzi API zawierają pełne informacje o statusie dokumentu:
+### Statusy dokumentów w odpowiedziach
 
 ```json
-{
-  "id": 12345,
-  "number": "FS/2026/01/123",
-  "statusId": 3,
-  "status": "Zrealizowano",
-  "statusSymbol": "ZREAL",
-  ...
-}
+{ "id": 12345, "number": "FS/2026/01/123", "statusId": 3, "status": "Zrealizowano", "statusSymbol": "ZREAL" }
 ```
-
-- `statusId` — ID numeryczne statusu
-- `status` — Nazwa statusu (czytelna dla człowieka)
-- `statusSymbol` — Symbol statusu (do porównań programistycznych)
 
 ### Pomijanie uwag importowych
 
-API automatycznie pomija dodawanie uwag typu "Import ILUO: ..." dla:
-- Faktur sprzedaży (FS)
-- Faktur zakupu (FZ)
-- Paragonów (PA)
-- Korekt faktur
-- Faktur zaliczkowych
-- Faktur VAT marża
-
-Jeśli przekażesz pole `notes` w żądaniu tworzenia tych dokumentów, zostanie ono **zignorowane** i zalogowane jako informacja.
-
-Uwagi są dodawane normalnie dla:
-- Dokumentów magazynowych (WZ, PZ, RW, PW, MM)
-- Zamówień (ZK, ZD)
-- Innych typów dokumentów
+Pole `notes` jest **ignorowane** (i logowane) przy tworzeniu FS, FZ, PA, korekt, faktur zaliczkowych i VAT marża; działa normalnie dla dokumentów magazynowych i zamówień.
 
 ## 📄 Licencja
 
-Projekt wymaga ważnej licencji InsERT Nexo z modułem Sfera.
+Projekt wymaga ważnej licencji InsERT Nexo z modułem Sfera. Licencja komercyjna DMservice.
 
 ---
 

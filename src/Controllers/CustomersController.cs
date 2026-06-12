@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NexoSferaApi.Filters;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
@@ -30,35 +31,41 @@ public class CustomersController : ControllerBase
     /// Diagnostic endpoint to inspect Sfera Uchwyt available members
     /// </summary>
     [HttpGet("debug/sfera-info")]
-    public ActionResult<object> GetSferaInfo()
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> GetSferaInfo()
     {
         try
         {
-            object sferaObj = _sferaService.GetSfera();
-            Type type = sferaObj.GetType();
-
-            var methodNames = new List<string>();
-            foreach (var m in type.GetMethods())
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                if (!methodNames.Contains(m.Name))
-                    methodNames.Add(m.Name);
-            }
-            methodNames.Sort();
+                object sferaObj = _sferaService.GetSfera();
+                Type type = sferaObj.GetType();
 
-            var propertyNames = new List<string>();
-            foreach (var p in type.GetProperties())
-            {
-                if (!propertyNames.Contains(p.Name))
-                    propertyNames.Add(p.Name);
-            }
-            propertyNames.Sort();
+                var methodNames = new List<string>();
+                foreach (var m in type.GetMethods())
+                {
+                    if (!methodNames.Contains(m.Name))
+                        methodNames.Add(m.Name);
+                }
+                methodNames.Sort();
 
-            return Ok(new
-            {
-                TypeName = type.FullName,
-                Methods = methodNames,
-                Properties = propertyNames
+                var propertyNames = new List<string>();
+                foreach (var p in type.GetProperties())
+                {
+                    if (!propertyNames.Contains(p.Name))
+                        propertyNames.Add(p.Name);
+                }
+                propertyNames.Sort();
+
+                return (object)new
+                {
+                    TypeName = type.FullName,
+                    Methods = methodNames,
+                    Properties = propertyNames
+                };
             });
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -70,172 +77,178 @@ public class CustomersController : ControllerBase
     /// Test accessing Podmioty (customers) manager
     /// </summary>
     [HttpGet("debug/test-podmioty")]
-    public ActionResult<object> TestPodmioty()
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> TestPodmioty()
     {
         try
         {
-            dynamic sfera = _sferaService.GetSfera();
-            var results = new Dictionary<string, object>();
-
-            // Find Podmioty type from loaded assemblies
-            Type? podmiotyType = null;
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                try
+                dynamic sfera = _sferaService.GetSfera();
+                var results = new Dictionary<string, object>();
+
+                // Find Podmioty type from loaded assemblies
+                Type? podmiotyType = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
                 {
-                    if (asm.FullName != null && asm.FullName.Contains("InsERT.Moria.Klienci"))
+                    try
                     {
-                        podmiotyType = asm.GetType("InsERT.Moria.Klienci.Podmioty");
-                        if (podmiotyType != null) break;
+                        if (asm.FullName != null && asm.FullName.Contains("InsERT.Moria.Klienci"))
+                        {
+                            podmiotyType = asm.GetType("InsERT.Moria.Klienci.Podmioty");
+                            if (podmiotyType != null) break;
+                        }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            if (podmiotyType == null)
-            {
-                return Ok(new { Error = "Podmioty type not found in loaded assemblies" });
-            }
-
-            results["PodmiotyTypeFound"] = podmiotyType.FullName ?? "unknown";
-
-            // Check PodajObiektTypu method signatures
-            object sferaObj = _sferaService.GetSfera();
-            Type sferaType = sferaObj.GetType();
-            var podajMethods = new List<object>();
-            foreach (var m in sferaType.GetMethods())
-            {
-                if (m.Name == "PodajObiektTypu")
+                if (podmiotyType == null)
                 {
-                    var paramList = new List<string>();
-                    foreach (var p in m.GetParameters())
-                    {
-                        paramList.Add($"{p.ParameterType.Name} {p.Name}");
-                    }
-                    var paramInfo = string.Join(", ", paramList);
-                    podajMethods.Add(new {
-                        Signature = $"{m.Name}({paramInfo}) -> {m.ReturnType.Name}",
-                        IsGeneric = m.IsGenericMethod,
-                        GenericArgCount = m.IsGenericMethod ? m.GetGenericArguments().Length : 0,
-                        ParamCount = m.GetParameters().Length
-                    });
+                    return (object)new { Error = "Podmioty type not found in loaded assemblies" };
                 }
-            }
-            results["PodajObiektTypuSignatures"] = podajMethods;
 
-            // Try to get Podmioty manager using generic method
-            dynamic? podmioty = null;
-            try
-            {
-                // First try: find generic method with 0 parameters
-                System.Reflection.MethodInfo? genericMethod = null;
+                results["PodmiotyTypeFound"] = podmiotyType.FullName ?? "unknown";
+
+                // Check PodajObiektTypu method signatures
+                object sferaObj = _sferaService.GetSfera();
+                Type sferaType = sferaObj.GetType();
+                var podajMethods = new List<object>();
                 foreach (var m in sferaType.GetMethods())
                 {
-                    if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
+                    if (m.Name == "PodajObiektTypu")
                     {
-                        genericMethod = m;
-                        break;
+                        var paramList = new List<string>();
+                        foreach (var p in m.GetParameters())
+                        {
+                            paramList.Add($"{p.ParameterType.Name} {p.Name}");
+                        }
+                        var paramInfo = string.Join(", ", paramList);
+                        podajMethods.Add(new {
+                            Signature = $"{m.Name}({paramInfo}) -> {m.ReturnType.Name}",
+                            IsGeneric = m.IsGenericMethod,
+                            GenericArgCount = m.IsGenericMethod ? m.GetGenericArguments().Length : 0,
+                            ParamCount = m.GetParameters().Length
+                        });
                     }
                 }
+                results["PodajObiektTypuSignatures"] = podajMethods;
 
-                if (genericMethod != null)
+                // Try to get Podmioty manager using generic method
+                dynamic? podmioty = null;
+                try
                 {
-                    var concreteMethod = genericMethod.MakeGenericMethod(podmiotyType);
-                    podmioty = concreteMethod.Invoke(sferaObj, null);
-                    results["MethodUsed"] = "Generic<T>() with 0 params";
-                }
-                else
-                {
-                    // Second try: find method that takes Type parameter
-                    System.Reflection.MethodInfo? typeParamMethod = null;
+                    // First try: find generic method with 0 parameters
+                    System.Reflection.MethodInfo? genericMethod = null;
                     foreach (var m in sferaType.GetMethods())
                     {
-                        if (m.Name == "PodajObiektTypu" && !m.IsGenericMethod && m.GetParameters().Length == 1)
+                        if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
                         {
-                            var paramType = m.GetParameters()[0].ParameterType;
-                            if (paramType == typeof(Type) || paramType.Name == "Type")
-                            {
-                                typeParamMethod = m;
-                                break;
-                            }
+                            genericMethod = m;
+                            break;
                         }
                     }
 
-                    if (typeParamMethod != null)
+                    if (genericMethod != null)
                     {
-                        podmioty = typeParamMethod.Invoke(sferaObj, new object[] { podmiotyType });
-                        results["MethodUsed"] = "PodajObiektTypu(Type)";
+                        var concreteMethod = genericMethod.MakeGenericMethod(podmiotyType);
+                        podmioty = concreteMethod.Invoke(sferaObj, null);
+                        results["MethodUsed"] = "Generic<T>() with 0 params";
                     }
                     else
                     {
-                        results["MethodUsed"] = "No suitable method found";
-                    }
-                }
-
-                if (podmioty != null)
-                {
-                    Type mgrType = podmioty.GetType();
-                    var mgrMethods = new List<string>();
-                    foreach (var m in mgrType.GetMethods())
-                    {
-                        if (!mgrMethods.Contains(m.Name))
-                            mgrMethods.Add(m.Name);
-                    }
-                    mgrMethods.Sort();
-
-                    var mgrProps = new List<string>();
-                    foreach (var p in mgrType.GetProperties())
-                    {
-                        if (!mgrProps.Contains(p.Name))
-                            mgrProps.Add(p.Name);
-                    }
-                    mgrProps.Sort();
-
-                    results["PodmiotyManager"] = new {
-                        Found = true,
-                        Type = mgrType.FullName,
-                        Methods = mgrMethods,
-                        Properties = mgrProps
-                    };
-
-                    // Try to access Dane property (common pattern)
-                    try
-                    {
-                        var dane = podmioty.Dane;
-                        if (dane != null)
+                        // Second try: find method that takes Type parameter
+                        System.Reflection.MethodInfo? typeParamMethod = null;
+                        foreach (var m in sferaType.GetMethods())
                         {
-                            Type daneType = dane.GetType();
-                            var daneMethods = new List<string>();
-                            foreach (var m in daneType.GetMethods())
+                            if (m.Name == "PodajObiektTypu" && !m.IsGenericMethod && m.GetParameters().Length == 1)
                             {
-                                if (!daneMethods.Contains(m.Name))
-                                    daneMethods.Add(m.Name);
+                                var paramType = m.GetParameters()[0].ParameterType;
+                                if (paramType == typeof(Type) || paramType.Name == "Type")
+                                {
+                                    typeParamMethod = m;
+                                    break;
+                                }
                             }
-                            daneMethods.Sort();
+                        }
 
-                            results["PodmiotyDane"] = new {
-                                Found = true,
-                                Type = daneType.FullName,
-                                Methods = daneMethods
-                            };
+                        if (typeParamMethod != null)
+                        {
+                            podmioty = typeParamMethod.Invoke(sferaObj, new object[] { podmiotyType });
+                            results["MethodUsed"] = "PodajObiektTypu(Type)";
+                        }
+                        else
+                        {
+                            results["MethodUsed"] = "No suitable method found";
                         }
                     }
-                    catch (Exception ex)
+
+                    if (podmioty != null)
                     {
-                        results["PodmiotyDane"] = new { Found = false, Error = ex.Message };
+                        Type mgrType = podmioty.GetType();
+                        var mgrMethods = new List<string>();
+                        foreach (var m in mgrType.GetMethods())
+                        {
+                            if (!mgrMethods.Contains(m.Name))
+                                mgrMethods.Add(m.Name);
+                        }
+                        mgrMethods.Sort();
+
+                        var mgrProps = new List<string>();
+                        foreach (var p in mgrType.GetProperties())
+                        {
+                            if (!mgrProps.Contains(p.Name))
+                                mgrProps.Add(p.Name);
+                        }
+                        mgrProps.Sort();
+
+                        results["PodmiotyManager"] = new {
+                            Found = true,
+                            Type = mgrType.FullName,
+                            Methods = mgrMethods,
+                            Properties = mgrProps
+                        };
+
+                        // Try to access Dane property (common pattern)
+                        try
+                        {
+                            var dane = podmioty.Dane;
+                            if (dane != null)
+                            {
+                                Type daneType = dane.GetType();
+                                var daneMethods = new List<string>();
+                                foreach (var m in daneType.GetMethods())
+                                {
+                                    if (!daneMethods.Contains(m.Name))
+                                        daneMethods.Add(m.Name);
+                                }
+                                daneMethods.Sort();
+
+                                results["PodmiotyDane"] = new {
+                                    Found = true,
+                                    Type = daneType.FullName,
+                                    Methods = daneMethods
+                                };
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            results["PodmiotyDane"] = new { Found = false, Error = ex.Message };
+                        }
+                    }
+                    else
+                    {
+                        results["PodmiotyManager"] = new { Found = false, Error = "podmioty object is null" };
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    results["PodmiotyManager"] = new { Found = false, Error = "podmioty object is null" };
+                    results["PodmiotyManager"] = new { Found = false, Error = ex.Message };
                 }
-            }
-            catch (Exception ex)
-            {
-                results["PodmiotyManager"] = new { Found = false, Error = ex.Message };
-            }
 
-            return Ok(results);
+                return (object)results;
+            });
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -247,70 +260,81 @@ public class CustomersController : ControllerBase
     /// Explore Szczegoly (detailed address) properties
     /// </summary>
     [HttpGet("debug/address-details/{id}")]
-    public ActionResult<object> GetAddressSzczegoly(int id)
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> GetAddressSzczegoly(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
-            }
-
-            dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                if (DynamicPropertyHelper.GetId(p) == id)
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
                 {
-                    podmiot = p;
-                    break;
+                    return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
-            }
 
-            if (podmiot == null)
-            {
-                return NotFound(new { Error = $"Customer {id} not found" });
-            }
+                dynamic? podmiot = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
+                {
+                    if (DynamicPropertyHelper.GetId(p) == id)
+                    {
+                        podmiot = p;
+                        break;
+                    }
+                }
 
-            var adresPodmiotu = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
-            if (adresPodmiotu == null)
-            {
-                return Ok(new { CustomerId = id, AdresPodstawowy = "null" });
-            }
+                if (podmiot == null)
+                {
+                    return (Status: 404, Data: (object)new { Error = $"Customer {id} not found" });
+                }
 
-            var szczegoly = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Szczegoly");
-            if (szczegoly == null)
-            {
-                return Ok(new {
+                var adresPodmiotu = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
+                if (adresPodmiotu == null)
+                {
+                    return (Status: 200, Data: (object)new { CustomerId = id, AdresPodstawowy = "null" });
+                }
+
+                var szczegoly = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Szczegoly");
+                if (szczegoly == null)
+                {
+                    return (Status: 200, Data: (object)new {
+                        CustomerId = id,
+                        Szczegoly = "null",
+                        Linia1 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia1"),
+                        Linia2 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia2"),
+                        LiniaCalosc = DynamicPropertyHelper.GetString(adresPodmiotu, "LiniaCalosc")
+                    });
+                }
+
+                Type szczegolyType = szczegoly.GetType();
+                var props = new Dictionary<string, string>();
+                foreach (var prop in szczegolyType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(szczegoly);
+                        props[prop.Name] = value?.ToString() ?? "null";
+                    }
+                    catch (Exception ex)
+                    {
+                        props[prop.Name] = $"Error: {ex.Message}";
+                    }
+                }
+
+                return (Status: 200, Data: (object)new
+                {
                     CustomerId = id,
-                    Szczegoly = "null",
-                    Linia1 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia1"),
-                    Linia2 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia2"),
-                    LiniaCalosc = DynamicPropertyHelper.GetString(adresPodmiotu, "LiniaCalosc")
+                    SzczegolyType = szczegolyType.FullName,
+                    Properties = props.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
                 });
-            }
-
-            Type szczegolyType = szczegoly.GetType();
-            var props = new Dictionary<string, string>();
-            foreach (var prop in szczegolyType.GetProperties())
-            {
-                try
-                {
-                    var value = prop.GetValue(szczegoly);
-                    props[prop.Name] = value?.ToString() ?? "null";
-                }
-                catch (Exception ex)
-                {
-                    props[prop.Name] = $"Error: {ex.Message}";
-                }
-            }
-
-            return Ok(new
-            {
-                CustomerId = id,
-                SzczegolyType = szczegolyType.FullName,
-                Properties = props.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
             });
+
+            return result.Status switch
+            {
+                404 => NotFound(result.Data),
+                500 => StatusCode(500, result.Data),
+                _ => Ok(result.Data)
+            };
         }
         catch (Exception ex)
         {
@@ -322,100 +346,111 @@ public class CustomersController : ControllerBase
     /// Explore AdresPodstawowy properties for a customer
     /// </summary>
     [HttpGet("debug/address/{id}")]
-    public ActionResult<object> GetAddressDetails(int id)
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> GetAddressDetails(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
-            }
-
-            dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                if (DynamicPropertyHelper.GetId(p) == id)
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
                 {
-                    podmiot = p;
-                    break;
+                    return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
-            }
 
-            if (podmiot == null)
-            {
-                return NotFound(new { Error = $"Customer {id} not found" });
-            }
-
-            var result = new Dictionary<string, object>();
-            result["CustomerId"] = id;
-            result["CustomerName"] = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "";
-
-            // Check AdresPodstawowy
-            var adresPodstawowy = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
-            if (adresPodstawowy != null)
-            {
-                Type adresType = adresPodstawowy.GetType();
-                var adresProps = new Dictionary<string, string>();
-                foreach (var prop in adresType.GetProperties())
+                dynamic? podmiot = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
-                    try
+                    if (DynamicPropertyHelper.GetId(p) == id)
                     {
-                        var value = prop.GetValue(adresPodstawowy);
-                        adresProps[prop.Name] = value?.ToString() ?? "null";
-                    }
-                    catch (Exception ex)
-                    {
-                        adresProps[prop.Name] = $"Error: {ex.Message}";
+                        podmiot = p;
+                        break;
                     }
                 }
-                result["AdresPodstawowy"] = new
-                {
-                    Type = adresType.FullName,
-                    Properties = adresProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
-                };
-            }
-            else
-            {
-                result["AdresPodstawowy"] = "null";
-            }
 
-            // Check Adresy collection
-            var adresy = DynamicPropertyHelper.GetCollection((object)podmiot, "Adresy");
-            var adresyList = new List<object>();
-            foreach (var adr in adresy)
-            {
-                Type adrType = adr.GetType();
-                var adrProps = new Dictionary<string, string>();
-                foreach (var prop in adrType.GetProperties())
+                if (podmiot == null)
                 {
-                    try
+                    return (Status: 404, Data: (object)new { Error = $"Customer {id} not found" });
+                }
+
+                var result = new Dictionary<string, object>();
+                result["CustomerId"] = id;
+                result["CustomerName"] = DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") ?? "";
+
+                // Check AdresPodstawowy
+                var adresPodstawowy = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
+                if (adresPodstawowy != null)
+                {
+                    Type adresType = adresPodstawowy.GetType();
+                    var adresProps = new Dictionary<string, string>();
+                    foreach (var prop in adresType.GetProperties())
                     {
-                        var value = prop.GetValue(adr);
-                        if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string))
+                        try
                         {
-                            adrProps[prop.Name] = $"[{value.GetType().Name}]";
+                            var value = prop.GetValue(adresPodstawowy);
+                            adresProps[prop.Name] = value?.ToString() ?? "null";
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            adrProps[prop.Name] = value?.ToString() ?? "null";
+                            adresProps[prop.Name] = $"Error: {ex.Message}";
                         }
                     }
-                    catch
+                    result["AdresPodstawowy"] = new
                     {
-                        adrProps[prop.Name] = "Error reading";
-                    }
+                        Type = adresType.FullName,
+                        Properties = adresProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                    };
                 }
-                adresyList.Add(new
+                else
                 {
-                    Type = adrType.FullName,
-                    Properties = adrProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
-                });
-            }
-            result["Adresy"] = adresyList;
-            result["AdresyCount"] = adresyList.Count;
+                    result["AdresPodstawowy"] = "null";
+                }
 
-            return Ok(result);
+                // Check Adresy collection
+                var adresy = DynamicPropertyHelper.GetCollection((object)podmiot, "Adresy");
+                var adresyList = new List<object>();
+                foreach (var adr in adresy)
+                {
+                    Type adrType = adr.GetType();
+                    var adrProps = new Dictionary<string, string>();
+                    foreach (var prop in adrType.GetProperties())
+                    {
+                        try
+                        {
+                            var value = prop.GetValue(adr);
+                            if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string))
+                            {
+                                adrProps[prop.Name] = $"[{value.GetType().Name}]";
+                            }
+                            else
+                            {
+                                adrProps[prop.Name] = value?.ToString() ?? "null";
+                            }
+                        }
+                        catch
+                        {
+                            adrProps[prop.Name] = "Error reading";
+                        }
+                    }
+                    adresyList.Add(new
+                    {
+                        Type = adrType.FullName,
+                        Properties = adrProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                    });
+                }
+                result["Adresy"] = adresyList;
+                result["AdresyCount"] = adresyList.Count;
+
+                return (Status: 200, Data: (object)result);
+            });
+
+            return lockResult.Status switch
+            {
+                404 => NotFound(lockResult.Data),
+                500 => StatusCode(500, lockResult.Data),
+                _ => Ok(lockResult.Data)
+            };
         }
         catch (Exception ex)
         {
@@ -427,148 +462,159 @@ public class CustomersController : ControllerBase
     /// Test loading customer with Znajdz (gets full entity with relations)
     /// </summary>
     [HttpGet("debug/znajdz/{id}")]
-    public ActionResult<object> TestZnajdz(int id)
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> TestZnajdz(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
-            }
-
-            // First find the entity
-            dynamic? podmiotDane = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                if (DynamicPropertyHelper.GetId(p) == id)
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
                 {
-                    podmiotDane = p;
-                    break;
-                }
-            }
-
-            if (podmiotDane == null)
-            {
-                return NotFound(new { Error = $"Customer {id} not found" });
-            }
-
-            // Use Znajdz to get full business object
-            using (var podmiotBO = podmioty.Znajdz(podmiotDane))
-            {
-                if (podmiotBO == null)
-                {
-                    return NotFound(new { Error = $"Znajdz returned null for customer {id}" });
+                    return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
 
-                var result = new Dictionary<string, object>();
-
-                // Get Dane property
-                dynamic dane = podmiotBO.Dane;
-                Type daneType = dane.GetType();
-
-                result["BusinessObjectType"] = podmiotBO.GetType().FullName ?? "unknown";
-                result["DaneType"] = daneType.FullName ?? "unknown";
-
-                // List all properties on Dane
-                var daneProps = new Dictionary<string, object>();
-                foreach (var prop in daneType.GetProperties())
+                // First find the entity
+                dynamic? podmiotDane = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
+                    if (DynamicPropertyHelper.GetId(p) == id)
+                    {
+                        podmiotDane = p;
+                        break;
+                    }
+                }
+
+                if (podmiotDane == null)
+                {
+                    return (Status: 404, Data: (object)new { Error = $"Customer {id} not found" });
+                }
+
+                // Use Znajdz to get full business object
+                using (var podmiotBO = podmioty.Znajdz(podmiotDane))
+                {
+                    if (podmiotBO == null)
+                    {
+                        return (Status: 404, Data: (object)new { Error = $"Znajdz returned null for customer {id}" });
+                    }
+
+                    var result = new Dictionary<string, object>();
+
+                    // Get Dane property
+                    dynamic dane = podmiotBO.Dane;
+                    Type daneType = dane.GetType();
+
+                    result["BusinessObjectType"] = podmiotBO.GetType().FullName ?? "unknown";
+                    result["DaneType"] = daneType.FullName ?? "unknown";
+
+                    // List all properties on Dane
+                    var daneProps = new Dictionary<string, object>();
+                    foreach (var prop in daneType.GetProperties())
+                    {
+                        try
+                        {
+                            var value = prop.GetValue(dane);
+                            if (value == null)
+                            {
+                                daneProps[prop.Name] = "null";
+                            }
+                            else if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(decimal))
+                            {
+                                daneProps[prop.Name] = value.ToString() ?? "null";
+                            }
+                            else
+                            {
+                                daneProps[prop.Name] = $"[{value.GetType().Name}]";
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            daneProps[prop.Name] = $"Error: {ex.Message}";
+                        }
+                    }
+                    result["DaneProperties"] = daneProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
+
+                    // Try to get address
                     try
                     {
-                        var value = prop.GetValue(dane);
-                        if (value == null)
+                        var adresGlowny = DynamicPropertyHelper.GetProperty(dane, "AdresGlowny");
+                        if (adresGlowny != null)
                         {
-                            daneProps[prop.Name] = "null";
-                        }
-                        else if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) || prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(decimal))
-                        {
-                            daneProps[prop.Name] = value.ToString() ?? "null";
+                            result["AdresGlowny"] = new
+                            {
+                                Ulica = DynamicPropertyHelper.GetString(adresGlowny, "Ulica"),
+                                NumerDomu = DynamicPropertyHelper.GetString(adresGlowny, "NumerDomu"),
+                                Miejscowosc = DynamicPropertyHelper.GetString(adresGlowny, "Miejscowosc"),
+                                KodPocztowy = DynamicPropertyHelper.GetString(adresGlowny, "KodPocztowy")
+                            };
                         }
                         else
                         {
-                            daneProps[prop.Name] = $"[{value.GetType().Name}]";
+                            result["AdresGlowny"] = "null";
                         }
                     }
                     catch (Exception ex)
                     {
-                        daneProps[prop.Name] = $"Error: {ex.Message}";
+                        result["AdresGlowny"] = $"Error: {ex.Message}";
                     }
-                }
-                result["DaneProperties"] = daneProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
 
-                // Try to get address
-                try
-                {
-                    var adresGlowny = DynamicPropertyHelper.GetProperty(dane, "AdresGlowny");
-                    if (adresGlowny != null)
+                    // Try Adresy collection on business object
+                    try
                     {
-                        result["AdresGlowny"] = new
+                        var adresy = DynamicPropertyHelper.GetProperty(podmiotBO, "Adresy");
+                        if (adresy != null)
                         {
-                            Ulica = DynamicPropertyHelper.GetString(adresGlowny, "Ulica"),
-                            NumerDomu = DynamicPropertyHelper.GetString(adresGlowny, "NumerDomu"),
-                            Miejscowosc = DynamicPropertyHelper.GetString(adresGlowny, "Miejscowosc"),
-                            KodPocztowy = DynamicPropertyHelper.GetString(adresGlowny, "KodPocztowy")
-                        };
-                    }
-                    else
-                    {
-                        result["AdresGlowny"] = "null";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    result["AdresGlowny"] = $"Error: {ex.Message}";
-                }
-
-                // Try Adresy collection on business object
-                try
-                {
-                    var adresy = DynamicPropertyHelper.GetProperty(podmiotBO, "Adresy");
-                    if (adresy != null)
-                    {
-                        var adresyList = new List<object>();
-                        foreach (var adr in (dynamic)adresy)
-                        {
-                            adresyList.Add(new
+                            var adresyList = new List<object>();
+                            foreach (var adr in (dynamic)adresy)
                             {
-                                Id = DynamicPropertyHelper.GetId(adr),
-                                Ulica = DynamicPropertyHelper.GetString(adr, "Ulica"),
-                                Miejscowosc = DynamicPropertyHelper.GetString(adr, "Miejscowosc")
-                            });
+                                adresyList.Add(new
+                                {
+                                    Id = DynamicPropertyHelper.GetId(adr),
+                                    Ulica = DynamicPropertyHelper.GetString(adr, "Ulica"),
+                                    Miejscowosc = DynamicPropertyHelper.GetString(adr, "Miejscowosc")
+                                });
+                            }
+                            result["AdresyFromBO"] = adresyList;
                         }
-                        result["AdresyFromBO"] = adresyList;
+                        else
+                        {
+                            result["AdresyFromBO"] = "null";
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        result["AdresyFromBO"] = "null";
+                        result["AdresyFromBO"] = $"Error: {ex.Message}";
                     }
-                }
-                catch (Exception ex)
-                {
-                    result["AdresyFromBO"] = $"Error: {ex.Message}";
-                }
 
-                // Try Kontakty
-                try
-                {
-                    var kontakty = DynamicPropertyHelper.GetProperty(podmiotBO, "Kontakty");
-                    if (kontakty != null)
+                    // Try Kontakty
+                    try
                     {
-                        result["KontaktyType"] = kontakty.GetType().FullName;
+                        var kontakty = DynamicPropertyHelper.GetProperty(podmiotBO, "Kontakty");
+                        if (kontakty != null)
+                        {
+                            result["KontaktyType"] = kontakty.GetType().FullName;
+                        }
+                        else
+                        {
+                            result["Kontakty"] = "null";
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        result["Kontakty"] = "null";
+                        result["Kontakty"] = $"Error: {ex.Message}";
                     }
-                }
-                catch (Exception ex)
-                {
-                    result["Kontakty"] = $"Error: {ex.Message}";
-                }
 
-                return Ok(result);
-            }
+                    return (Status: 200, Data: (object)result);
+                }
+            });
+
+            return lockResult.Status switch
+            {
+                404 => NotFound(lockResult.Data),
+                500 => StatusCode(500, lockResult.Data),
+                _ => Ok(lockResult.Data)
+            };
         }
         catch (Exception ex)
         {
@@ -580,77 +626,88 @@ public class CustomersController : ControllerBase
     /// Explore properties of a single Podmiot entity
     /// </summary>
     [HttpGet("debug/podmiot-properties/{id}")]
-    public ActionResult<object> GetPodmiotProperties(int id)
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> GetPodmiotProperties(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
-            }
-
-            dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                if (DynamicPropertyHelper.GetId(p) == id)
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
                 {
-                    podmiot = p;
-                    break;
+                    return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
-            }
 
-            if (podmiot == null)
-            {
-                return NotFound(new { Error = $"Customer {id} not found" });
-            }
-
-            Type podmiotType = podmiot.GetType();
-            var properties = new Dictionary<string, object>();
-
-            foreach (var prop in podmiotType.GetProperties())
-            {
-                try
+                dynamic? podmiot = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
-                    var value = prop.GetValue(podmiot);
-                    var valueType = value?.GetType().Name ?? "null";
-
-                    // For collections, get count
-                    if (value != null && value.GetType().Name.Contains("Collection"))
+                    if (DynamicPropertyHelper.GetId(p) == id)
                     {
-                        try
+                        podmiot = p;
+                        break;
+                    }
+                }
+
+                if (podmiot == null)
+                {
+                    return (Status: 404, Data: (object)new { Error = $"Customer {id} not found" });
+                }
+
+                Type podmiotType = podmiot.GetType();
+                var properties = new Dictionary<string, object>();
+
+                foreach (var prop in podmiotType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(podmiot);
+                        var valueType = value?.GetType().Name ?? "null";
+
+                        // For collections, get count
+                        if (value != null && value.GetType().Name.Contains("Collection"))
                         {
-                            int count = 0;
-                            foreach (var _ in (dynamic)value) count++;
-                            properties[prop.Name] = new { Type = valueType, Count = count };
+                            try
+                            {
+                                int count = 0;
+                                foreach (var _ in (dynamic)value) count++;
+                                properties[prop.Name] = new { Type = valueType, Count = count };
+                            }
+                            catch
+                            {
+                                properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                            }
                         }
-                        catch
+                        else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string) && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal))
                         {
-                            properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                            properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
+                        }
+                        else
+                        {
+                            properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
                         }
                     }
-                    else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string) && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal))
+                    catch (Exception ex)
                     {
-                        properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
-                    }
-                    else
-                    {
-                        properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
+                        properties[prop.Name] = new { Error = ex.Message };
                     }
                 }
-                catch (Exception ex)
-                {
-                    properties[prop.Name] = new { Error = ex.Message };
-                }
-            }
 
-            return Ok(new
-            {
-                Id = id,
-                EntityType = podmiotType.FullName,
-                PropertyCount = properties.Count,
-                Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                return (Status: 200, Data: (object)new
+                {
+                    Id = id,
+                    EntityType = podmiotType.FullName,
+                    PropertyCount = properties.Count,
+                    Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                });
             });
+
+            return lockResult.Status switch
+            {
+                404 => NotFound(lockResult.Data),
+                500 => StatusCode(500, lockResult.Data),
+                _ => Ok(lockResult.Data)
+            };
         }
         catch (Exception ex)
         {
@@ -662,40 +719,46 @@ public class CustomersController : ControllerBase
     /// Test GetManager method directly
     /// </summary>
     [HttpGet("debug/test-getmanager")]
-    public ActionResult<object> TestGetManager()
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> TestGetManager()
     {
         try
         {
-            var results = new Dictionary<string, object>();
-
-            // Test each manager
-            var managersToTest = new[] { "Podmioty", "Asortymenty", "Dokumenty", "Magazyny" };
-
-            foreach (var managerName in managersToTest)
+            var results = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                try
+                var data = new Dictionary<string, object>();
+
+                // Test each manager
+                var managersToTest = new[] { "Podmioty", "Asortymenty", "Dokumenty", "Magazyny" };
+
+                foreach (var managerName in managersToTest)
                 {
-                    var manager = _sferaService.GetManager(managerName);
-                    if (manager != null)
+                    try
                     {
-                        Type mgrType = manager.GetType();
-                        results[managerName] = new
+                        var manager = _sferaService.GetManager(managerName);
+                        if (manager != null)
                         {
-                            Success = true,
-                            Type = mgrType.FullName,
-                            HasDane = mgrType.GetProperty("Dane") != null
-                        };
+                            Type mgrType = manager.GetType();
+                            data[managerName] = new
+                            {
+                                Success = true,
+                                Type = mgrType.FullName,
+                                HasDane = mgrType.GetProperty("Dane") != null
+                            };
+                        }
+                        else
+                        {
+                            data[managerName] = new { Success = false, Error = "Returned null" };
+                        }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        results[managerName] = new { Success = false, Error = "Returned null" };
+                        data[managerName] = new { Success = false, Error = ex.Message, ExType = ex.GetType().Name };
                     }
                 }
-                catch (Exception ex)
-                {
-                    results[managerName] = new { Success = false, Error = ex.Message, ExType = ex.GetType().Name };
-                }
-            }
+
+                return (object)data;
+            });
 
             return Ok(results);
         }
@@ -709,73 +772,84 @@ public class CustomersController : ControllerBase
     /// Debug endpoint to explore all properties of a customer entity
     /// </summary>
     [HttpGet("debug/properties/{id}")]
-    public ActionResult<object> GetCustomerProperties(int id)
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> GetCustomerProperties(int id)
     {
         try
         {
-            var podmioty = _sferaService.GetManager("Podmioty");
-            if (podmioty == null)
+            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, new { Error = "Failed to get Podmioty manager" });
-            }
-
-            dynamic? podmiot = null;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                if (DynamicPropertyHelper.GetId(p) == id)
+                var podmioty = _sferaService.GetManager("Podmioty");
+                if (podmioty == null)
                 {
-                    podmiot = p;
-                    break;
+                    return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
-            }
 
-            if (podmiot == null)
-            {
-                return NotFound(new { Error = $"Customer {id} not found" });
-            }
-
-            Type podmiotType = podmiot.GetType();
-            var properties = new SortedDictionary<string, object?>();
-
-            foreach (var prop in podmiotType.GetProperties())
-            {
-                try
+                dynamic? podmiot = null;
+                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
                 {
-                    var value = prop.GetValue(podmiot);
-                    if (value == null)
+                    if (DynamicPropertyHelper.GetId(p) == id)
                     {
-                        properties[prop.Name] = null;
-                    }
-                    else if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) ||
-                             prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(decimal) ||
-                             Nullable.GetUnderlyingType(prop.PropertyType) != null)
-                    {
-                        properties[prop.Name] = value;
-                    }
-                    else if (value.GetType().Name.Contains("Collection"))
-                    {
-                        int count = 0;
-                        try { foreach (var _ in (dynamic)value) count++; } catch { }
-                        properties[prop.Name] = $"[Collection: {count} items]";
-                    }
-                    else
-                    {
-                        properties[prop.Name] = $"[{value.GetType().Name}]";
+                        podmiot = p;
+                        break;
                     }
                 }
-                catch (Exception ex)
-                {
-                    properties[prop.Name] = $"Error: {ex.Message}";
-                }
-            }
 
-            return Ok(new
-            {
-                Id = id,
-                EntityType = podmiotType.FullName,
-                PropertyCount = properties.Count,
-                Properties = properties
+                if (podmiot == null)
+                {
+                    return (Status: 404, Data: (object)new { Error = $"Customer {id} not found" });
+                }
+
+                Type podmiotType = podmiot.GetType();
+                var properties = new SortedDictionary<string, object?>();
+
+                foreach (var prop in podmiotType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(podmiot);
+                        if (value == null)
+                        {
+                            properties[prop.Name] = null;
+                        }
+                        else if (prop.PropertyType.IsPrimitive || prop.PropertyType == typeof(string) ||
+                                 prop.PropertyType == typeof(DateTime) || prop.PropertyType == typeof(decimal) ||
+                                 Nullable.GetUnderlyingType(prop.PropertyType) != null)
+                        {
+                            properties[prop.Name] = value;
+                        }
+                        else if (value.GetType().Name.Contains("Collection"))
+                        {
+                            int count = 0;
+                            try { foreach (var _ in (dynamic)value) count++; } catch { }
+                            properties[prop.Name] = $"[Collection: {count} items]";
+                        }
+                        else
+                        {
+                            properties[prop.Name] = $"[{value.GetType().Name}]";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        properties[prop.Name] = $"Error: {ex.Message}";
+                    }
+                }
+
+                return (Status: 200, Data: (object)new
+                {
+                    Id = id,
+                    EntityType = podmiotType.FullName,
+                    PropertyCount = properties.Count,
+                    Properties = properties
+                });
             });
+
+            return lockResult.Status switch
+            {
+                404 => NotFound(lockResult.Data),
+                500 => StatusCode(500, lockResult.Data),
+                _ => Ok(lockResult.Data)
+            };
         }
         catch (Exception ex)
         {

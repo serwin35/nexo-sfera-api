@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NexoSferaApi.Filters;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 using NexoSferaApi.Helpers;
@@ -18,6 +19,7 @@ namespace NexoSferaApi.Controllers;
 [Route("api/diagnostics")]
 [Authorize]
 [Tags("Diagnostics")]
+[DevelopmentOnly]
 public class DiagnosticsController : ControllerBase
 {
     private readonly ISferaService _sferaService;
@@ -1217,7 +1219,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// </summary>
     [HttpGet("sdk-structure")]
     [ProducesResponseType(typeof(ApiResponse<SdkStructureResponse>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<SdkStructureResponse>> GetSdkStructure(
+    public async Task<ActionResult<ApiResponse<SdkStructureResponse>>> GetSdkStructure(
         [FromQuery] bool includeProperties = true,
         [FromQuery] bool includeMethods = true,
         [FromQuery] bool includeManagerSchemas = true,
@@ -1225,29 +1227,34 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var response = new SdkStructureResponse();
-
-            // 1. Discover all InsERT assemblies
-            response.Assemblies = DiscoverInsertAssemblies();
-
-            // 2. Analyze Sfera (Uchwyt) object
-            response.SferaObject = AnalyzeSferaObject(sfera, includeProperties, includeMethods);
-
-            // 3. Get available managers and their schemas
-            response.Managers = DiscoverManagers(includeManagerSchemas, maxEntitiesPerManager);
-
-            // 4. Discover available services/interfaces
-            response.AvailableServices = DiscoverAvailableServices();
-
-            // 5. Get extension method namespaces
-            response.ExtensionNamespaces = new List<string>
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                "InsERT.Moria.Asortymenty",
-                "InsERT.Moria.Klienci",
-                "InsERT.Moria.Dokumenty",
-                "InsERT.Moria.Logistyka"
-            };
+                var sfera = _sferaService.GetSfera();
+                var sdkResponse = new SdkStructureResponse();
+
+                // 1. Discover all InsERT assemblies
+                sdkResponse.Assemblies = DiscoverInsertAssemblies();
+
+                // 2. Analyze Sfera (Uchwyt) object
+                sdkResponse.SferaObject = AnalyzeSferaObject(sfera, includeProperties, includeMethods);
+
+                // 3. Get available managers and their schemas
+                sdkResponse.Managers = DiscoverManagers(includeManagerSchemas, maxEntitiesPerManager);
+
+                // 4. Discover available services/interfaces
+                sdkResponse.AvailableServices = DiscoverAvailableServices();
+
+                // 5. Get extension method namespaces
+                sdkResponse.ExtensionNamespaces = new List<string>
+                {
+                    "InsERT.Moria.Asortymenty",
+                    "InsERT.Moria.Klienci",
+                    "InsERT.Moria.Dokumenty",
+                    "InsERT.Moria.Logistyka"
+                };
+
+                return sdkResponse;
+            });
 
             return Ok(ApiResponse<SdkStructureResponse>.Ok(response));
         }
@@ -1265,102 +1272,112 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// </summary>
     [HttpGet("manager/{managerName}")]
     [ProducesResponseType(typeof(ApiResponse<ManagerDetailResponse>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<ManagerDetailResponse>> GetManagerDetails(
+    public async Task<ActionResult<ApiResponse<ManagerDetailResponse>>> GetManagerDetails(
         string managerName,
         [FromQuery] int sampleEntities = 3)
     {
         try
         {
-            var manager = _sferaService.GetManager(managerName);
-            if (manager == null)
+            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager(managerName);
+                if (manager == null)
+                {
+                    return (Found: false, Response: (ManagerDetailResponse?)null);
+                }
+
+                var response = new ManagerDetailResponse
+                {
+                    Name = managerName,
+                    ManagerType = ((object)manager).GetType().FullName,
+                    Properties = new List<PropertyInfo_>(),
+                    Methods = new List<MethodInfo_>(),
+                    EntitySchema = new EntitySchema(),
+                    SampleEntities = new List<Dictionary<string, object?>>()
+                };
+
+                // Analyze manager object
+                var managerType = ((object)manager).GetType();
+
+                foreach (var prop in managerType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    response.Properties.Add(new PropertyInfo_
+                    {
+                        Name = prop.Name,
+                        Type = prop.PropertyType.Name,
+                        CanRead = prop.CanRead,
+                        CanWrite = prop.CanWrite
+                    });
+                }
+
+                foreach (var method in managerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                {
+                    if (method.IsSpecialName) continue;
+                    response.Methods.Add(new MethodInfo_
+                    {
+                        Name = method.Name,
+                        ReturnType = method.ReturnType.Name,
+                        Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
+                    });
+                }
+
+                // Get entity schema from first entity
+                try
+                {
+                    var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
+                    if (dane != null)
+                    {
+                        dynamic? wszystkie = dane.Wszystkie();
+                        if (wszystkie != null)
+                        {
+                            int count = 0;
+                            foreach (var entity in wszystkie)
+                            {
+                                if (count == 0)
+                                {
+                                    // Get schema from first entity
+                                    response.EntitySchema = GetEntitySchema(entity);
+                                }
+
+                                if (count < sampleEntities)
+                                {
+                                    // Get sample entity data
+                                    response.SampleEntities.Add(GetEntityData(entity, response.EntitySchema));
+                                }
+                                count++;
+
+                                if (count >= sampleEntities) break;
+                            }
+                            response.TotalEntityCount = count;
+
+                            // Get actual count
+                            try
+                            {
+                                int totalCount = 0;
+                                foreach (var _ in wszystkie)
+                                {
+                                    totalCount++;
+                                }
+                                response.TotalEntityCount = totalCount;
+                            }
+                            catch { }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    response.SchemaError = ex.Message;
+                }
+
+                return (Found: true, Response: (ManagerDetailResponse?)response);
+            });
+
+            if (!lockResult.Found)
             {
                 return NotFound(ApiResponse<ManagerDetailResponse>.Error($"Manager '{managerName}' not found"));
             }
 
-            var response = new ManagerDetailResponse
-            {
-                Name = managerName,
-                ManagerType = ((object)manager).GetType().FullName,
-                Properties = new List<PropertyInfo_>(),
-                Methods = new List<MethodInfo_>(),
-                EntitySchema = new EntitySchema(),
-                SampleEntities = new List<Dictionary<string, object?>>()
-            };
-
-            // Analyze manager object
-            var managerType = ((object)manager).GetType();
-
-            foreach (var prop in managerType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            {
-                response.Properties.Add(new PropertyInfo_
-                {
-                    Name = prop.Name,
-                    Type = prop.PropertyType.Name,
-                    CanRead = prop.CanRead,
-                    CanWrite = prop.CanWrite
-                });
-            }
-
-            foreach (var method in managerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            {
-                if (method.IsSpecialName) continue;
-                response.Methods.Add(new MethodInfo_
-                {
-                    Name = method.Name,
-                    ReturnType = method.ReturnType.Name,
-                    Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
-                });
-            }
-
-            // Get entity schema from first entity
-            try
-            {
-                var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
-                if (dane != null)
-                {
-                    dynamic? wszystkie = dane.Wszystkie();
-                    if (wszystkie != null)
-                    {
-                        int count = 0;
-                        foreach (var entity in wszystkie)
-                        {
-                            if (count == 0)
-                            {
-                                // Get schema from first entity
-                                response.EntitySchema = GetEntitySchema(entity);
-                            }
-
-                            if (count < sampleEntities)
-                            {
-                                // Get sample entity data
-                                response.SampleEntities.Add(GetEntityData(entity, response.EntitySchema));
-                            }
-                            count++;
-
-                            if (count >= sampleEntities) break;
-                        }
-                        response.TotalEntityCount = count;
-
-                        // Get actual count
-                        try
-                        {
-                            int totalCount = 0;
-                            foreach (var _ in wszystkie)
-                            {
-                                totalCount++;
-                            }
-                            response.TotalEntityCount = totalCount;
-                        }
-                        catch { }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                response.SchemaError = ex.Message;
-            }
-
-            return Ok(ApiResponse<ManagerDetailResponse>.Ok(response));
+            return Ok(ApiResponse<ManagerDetailResponse>.Ok(lockResult.Response!));
         }
         catch (Exception ex)
         {
@@ -1376,142 +1393,157 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// </summary>
     [HttpGet("manager/{managerName}/entity/{id}")]
     [ProducesResponseType(typeof(ApiResponse<EntityExplorerResponse>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<EntityExplorerResponse>> ExploreEntity(
+    public async Task<ActionResult<ApiResponse<EntityExplorerResponse>>> ExploreEntity(
         string managerName,
         int id,
         [FromQuery] bool deep = false)
     {
         try
         {
-            var manager = _sferaService.GetManager(managerName);
-            if (manager == null)
+            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = _sferaService.GetManager(managerName);
+                if (manager == null)
+                {
+                    return (Status: 404, ManagerMissing: true, EntityMissing: false, Response: (EntityExplorerResponse?)null);
+                }
+
+                dynamic? entity = null;
+                var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
+                if (dane != null)
+                {
+                    // Try Znajdz method first
+                    try
+                    {
+                        entity = dane.Znajdz(id);
+                    }
+                    catch
+                    {
+                        // Fallback to iteration
+                        dynamic? wszystkie = dane.Wszystkie();
+                        if (wszystkie != null)
+                        {
+                            foreach (var e in wszystkie)
+                            {
+                                if (DynamicPropertyHelper.GetId(e) == id)
+                                {
+                                    entity = e;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                if (entity == null)
+                {
+                    return (Status: 404, ManagerMissing: false, EntityMissing: true, Response: (EntityExplorerResponse?)null);
+                }
+
+                var response = new EntityExplorerResponse
+                {
+                    ManagerName = managerName,
+                    EntityId = id,
+                    EntityType = ((object)entity).GetType().FullName,
+                    Schema = GetEntitySchema(entity),
+                    Data = new Dictionary<string, object?>(),
+                    NestedObjects = new Dictionary<string, object?>(),
+                    Collections = new Dictionary<string, List<Dictionary<string, object?>>>()
+                };
+
+                // Get all property values
+                var entityType = ((object)entity).GetType();
+                foreach (var prop in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                {
+                    try
+                    {
+                        var value = prop.GetValue(entity);
+
+                        if (value == null)
+                        {
+                            response.Data[prop.Name] = null;
+                        }
+                        else if (IsSimpleType(prop.PropertyType))
+                        {
+                            response.Data[prop.Name] = value;
+                        }
+                        else if (deep)
+                        {
+                            // Handle complex types and collections
+                            if (IsCollection(prop.PropertyType))
+                            {
+                                var items = new List<Dictionary<string, object?>>();
+                                try
+                                {
+                                    foreach (var item in (dynamic)value)
+                                    {
+                                        var itemData = new Dictionary<string, object?>();
+                                        var itemType = ((object)item).GetType();
+                                        foreach (var itemProp in itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                                        {
+                                            try
+                                            {
+                                                if (IsSimpleType(itemProp.PropertyType))
+                                                {
+                                                    itemData[itemProp.Name] = itemProp.GetValue(item);
+                                                }
+                                            }
+                                            catch { }
+                                        }
+                                        if (itemData.Any())
+                                            items.Add(itemData);
+                                        if (items.Count >= 5) break;
+                                    }
+                                }
+                                catch { }
+                                if (items.Any())
+                                    response.Collections[prop.Name] = items;
+                            }
+                            else
+                            {
+                                // Nested object
+                                var nestedData = new Dictionary<string, object?>();
+                                var nestedType = value.GetType();
+                                foreach (var nestedProp in nestedType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                                {
+                                    try
+                                    {
+                                        if (IsSimpleType(nestedProp.PropertyType))
+                                        {
+                                            nestedData[nestedProp.Name] = nestedProp.GetValue(value);
+                                        }
+                                    }
+                                    catch { }
+                                }
+                                if (nestedData.Any())
+                                    response.NestedObjects[prop.Name] = nestedData;
+                            }
+                        }
+                        else
+                        {
+                            response.Data[prop.Name] = $"[{prop.PropertyType.Name}]";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        response.Data[prop.Name] = $"[Error: {ex.Message}]";
+                    }
+                }
+
+                return (Status: 200, ManagerMissing: false, EntityMissing: false, Response: (EntityExplorerResponse?)response);
+            });
+
+            if (lockResult.ManagerMissing)
             {
                 return NotFound(ApiResponse<EntityExplorerResponse>.Error($"Manager '{managerName}' not found"));
             }
 
-            dynamic? entity = null;
-            var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
-            if (dane != null)
-            {
-                // Try Znajdz method first
-                try
-                {
-                    entity = dane.Znajdz(id);
-                }
-                catch
-                {
-                    // Fallback to iteration
-                    dynamic? wszystkie = dane.Wszystkie();
-                    if (wszystkie != null)
-                    {
-                        foreach (var e in wszystkie)
-                        {
-                            if (DynamicPropertyHelper.GetId(e) == id)
-                            {
-                                entity = e;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (entity == null)
+            if (lockResult.EntityMissing)
             {
                 return NotFound(ApiResponse<EntityExplorerResponse>.Error($"Entity with ID {id} not found in {managerName}"));
             }
 
-            var response = new EntityExplorerResponse
-            {
-                ManagerName = managerName,
-                EntityId = id,
-                EntityType = ((object)entity).GetType().FullName,
-                Schema = GetEntitySchema(entity),
-                Data = new Dictionary<string, object?>(),
-                NestedObjects = new Dictionary<string, object?>(),
-                Collections = new Dictionary<string, List<Dictionary<string, object?>>>()
-            };
-
-            // Get all property values
-            var entityType = ((object)entity).GetType();
-            foreach (var prop in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            {
-                try
-                {
-                    var value = prop.GetValue(entity);
-
-                    if (value == null)
-                    {
-                        response.Data[prop.Name] = null;
-                    }
-                    else if (IsSimpleType(prop.PropertyType))
-                    {
-                        response.Data[prop.Name] = value;
-                    }
-                    else if (deep)
-                    {
-                        // Handle complex types and collections
-                        if (IsCollection(prop.PropertyType))
-                        {
-                            var items = new List<Dictionary<string, object?>>();
-                            try
-                            {
-                                foreach (var item in (dynamic)value)
-                                {
-                                    var itemData = new Dictionary<string, object?>();
-                                    var itemType = ((object)item).GetType();
-                                    foreach (var itemProp in itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                                    {
-                                        try
-                                        {
-                                            if (IsSimpleType(itemProp.PropertyType))
-                                            {
-                                                itemData[itemProp.Name] = itemProp.GetValue(item);
-                                            }
-                                        }
-                                        catch { }
-                                    }
-                                    if (itemData.Any())
-                                        items.Add(itemData);
-                                    if (items.Count >= 5) break;
-                                }
-                            }
-                            catch { }
-                            if (items.Any())
-                                response.Collections[prop.Name] = items;
-                        }
-                        else
-                        {
-                            // Nested object
-                            var nestedData = new Dictionary<string, object?>();
-                            var nestedType = value.GetType();
-                            foreach (var nestedProp in nestedType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                            {
-                                try
-                                {
-                                    if (IsSimpleType(nestedProp.PropertyType))
-                                    {
-                                        nestedData[nestedProp.Name] = nestedProp.GetValue(value);
-                                    }
-                                }
-                                catch { }
-                            }
-                            if (nestedData.Any())
-                                response.NestedObjects[prop.Name] = nestedData;
-                        }
-                    }
-                    else
-                    {
-                        response.Data[prop.Name] = $"[{prop.PropertyType.Name}]";
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response.Data[prop.Name] = $"[Error: {ex.Message}]";
-                }
-            }
-
-            return Ok(ApiResponse<EntityExplorerResponse>.Ok(response));
+            return Ok(ApiResponse<EntityExplorerResponse>.Ok(lockResult.Response!));
         }
         catch (Exception ex)
         {
@@ -1548,101 +1580,106 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// </summary>
     [HttpGet("services/try/{typeName}")]
     [ProducesResponseType(typeof(ApiResponse<ServiceInstanceResponse>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<ServiceInstanceResponse>> TryGetService(string typeName)
+    public async Task<ActionResult<ApiResponse<ServiceInstanceResponse>>> TryGetService(string typeName)
     {
         try
         {
-            var sfera = _sferaService.GetSfera();
-            var response = new ServiceInstanceResponse { TypeName = typeName };
-
-            // Find the type
-            Type? serviceType = null;
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                var sfera = _sferaService.GetSfera();
+                var serviceResponse = new ServiceInstanceResponse { TypeName = typeName };
+
+                // Find the type
+                Type? serviceType = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    try
+                    {
+                        serviceType = asm.GetType(typeName);
+                        if (serviceType != null)
+                        {
+                            serviceResponse.AssemblyName = asm.GetName().Name;
+                            break;
+                        }
+                    }
+                    catch { }
+                }
+
+                if (serviceType == null)
+                {
+                    serviceResponse.Success = false;
+                    serviceResponse.Error = "Type not found in any loaded assembly";
+                    return serviceResponse;
+                }
+
+                serviceResponse.TypeFound = true;
+                serviceResponse.IsInterface = serviceType.IsInterface;
+                serviceResponse.BaseType = serviceType.BaseType?.Name;
+
+                // Try to get instance via PodajObiektTypu
                 try
                 {
-                    serviceType = asm.GetType(typeName);
-                    if (serviceType != null)
+                    var sferaType = sfera.GetType();
+                    MethodInfo? genericMethod = null;
+                    foreach (var m in sferaType.GetMethods())
                     {
-                        response.AssemblyName = asm.GetName().Name;
-                        break;
-                    }
-                }
-                catch { }
-            }
-
-            if (serviceType == null)
-            {
-                response.Success = false;
-                response.Error = "Type not found in any loaded assembly";
-                return Ok(ApiResponse<ServiceInstanceResponse>.Ok(response));
-            }
-
-            response.TypeFound = true;
-            response.IsInterface = serviceType.IsInterface;
-            response.BaseType = serviceType.BaseType?.Name;
-
-            // Try to get instance via PodajObiektTypu
-            try
-            {
-                var sferaType = sfera.GetType();
-                MethodInfo? genericMethod = null;
-                foreach (var m in sferaType.GetMethods())
-                {
-                    if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
-                    {
-                        genericMethod = m;
-                        break;
-                    }
-                }
-
-                if (genericMethod != null)
-                {
-                    var concreteMethod = genericMethod.MakeGenericMethod(serviceType);
-                    var instance = concreteMethod.Invoke(sfera, null);
-
-                    if (instance != null)
-                    {
-                        response.Success = true;
-                        response.InstanceType = instance.GetType().FullName;
-                        response.Methods = new List<MethodInfo_>();
-                        response.Properties = new List<PropertyInfo_>();
-
-                        var instanceType = instance.GetType();
-                        foreach (var prop in instanceType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                        if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
                         {
-                            response.Properties.Add(new PropertyInfo_
-                            {
-                                Name = prop.Name,
-                                Type = prop.PropertyType.Name,
-                                CanRead = prop.CanRead,
-                                CanWrite = prop.CanWrite
-                            });
-                        }
-
-                        foreach (var method in instanceType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-                        {
-                            if (method.IsSpecialName) continue;
-                            response.Methods.Add(new MethodInfo_
-                            {
-                                Name = method.Name,
-                                ReturnType = method.ReturnType.Name,
-                                Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
-                            });
+                            genericMethod = m;
+                            break;
                         }
                     }
-                    else
+
+                    if (genericMethod != null)
                     {
-                        response.Success = false;
-                        response.Error = "PodajObiektTypu returned null";
+                        var concreteMethod = genericMethod.MakeGenericMethod(serviceType);
+                        var instance = concreteMethod.Invoke(sfera, null);
+
+                        if (instance != null)
+                        {
+                            serviceResponse.Success = true;
+                            serviceResponse.InstanceType = instance.GetType().FullName;
+                            serviceResponse.Methods = new List<MethodInfo_>();
+                            serviceResponse.Properties = new List<PropertyInfo_>();
+
+                            var instanceType = instance.GetType();
+                            foreach (var prop in instanceType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+                            {
+                                serviceResponse.Properties.Add(new PropertyInfo_
+                                {
+                                    Name = prop.Name,
+                                    Type = prop.PropertyType.Name,
+                                    CanRead = prop.CanRead,
+                                    CanWrite = prop.CanWrite
+                                });
+                            }
+
+                            foreach (var method in instanceType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+                            {
+                                if (method.IsSpecialName) continue;
+                                serviceResponse.Methods.Add(new MethodInfo_
+                                {
+                                    Name = method.Name,
+                                    ReturnType = method.ReturnType.Name,
+                                    Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
+                                });
+                            }
+                        }
+                        else
+                        {
+                            serviceResponse.Success = false;
+                            serviceResponse.Error = "PodajObiektTypu returned null";
+                        }
                     }
                 }
-            }
-            catch (Exception ex)
-            {
-                response.Success = false;
-                response.Error = ex.InnerException?.Message ?? ex.Message;
-            }
+                catch (Exception ex)
+                {
+                    serviceResponse.Success = false;
+                    serviceResponse.Error = ex.InnerException?.Message ?? ex.Message;
+                }
+
+                return serviceResponse;
+            });
 
             return Ok(ApiResponse<ServiceInstanceResponse>.Ok(response));
         }

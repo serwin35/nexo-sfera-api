@@ -1,2 +1,0 @@
-data;data zaksiêgowania;identyfikator;operacja;kupuj¹cy;prowizja;kwota
-{data};{data};0D1BB312-4144-42AC-AB34-E614A1F1AA05;ZK 1/OUTLET/2024;Anna Zawadzka;1,23;656,12

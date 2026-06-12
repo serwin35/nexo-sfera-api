@@ -131,13 +131,9 @@ public class SettingsController : ControllerBase
 
         try
         {
-            // Dispose current connection and reinitialize
-            if (_sferaService is IDisposable disposable)
-            {
-                disposable.Dispose();
-            }
-
-            await _sferaService.InitializeAsync();
+            // Reinitialize on the SDK STA thread - never dispose the singleton service itself,
+            // that would permanently kill the work queue for the whole application.
+            await _sferaService.ReinitializeAsync();
 
             result.Success = true;
             result.Message = "Reconnection successful";

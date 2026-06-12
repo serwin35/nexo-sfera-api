@@ -47,6 +47,7 @@ public class SferaService : ISferaService, IDisposable
 
     // Track currently logged-in operator for per-request operator switching
     private string? _currentNexoLogin;
+    private string? _currentNexoPassword;
 
     // Dedicated STA thread for ALL SDK operations - mimics desktop app behavior
     private Thread? _sdkThread;
@@ -55,13 +56,31 @@ public class SferaService : ISferaService, IDisposable
     private bool _threadStarted;
     private readonly object _threadLock = new();
 
+    // WinForms application-level setup (SetCompatibleTextRenderingDefault in particular)
+    // may only run once per process, BEFORE the first window handle is created.
+    // With multiple pooled connections (one STA thread each) only the first thread may do it.
+    private static int s_winFormsInitialized;
+
+    // Current working context (warehouse/branch) - tracked so per-request tenant context
+    // only touches the SDK when it actually changes. Accessed on the STA thread only.
+    private string? _currentWarehouse;
+    private string? _currentBranch;
+
     public bool IsConnected => _sfera != null;
 
-    public SferaService(IOptions<SferaSettings> settings, ILogger<SferaService> logger)
+    /// <summary>The database this connection is bound to.</summary>
+    public string Database => _settings.Database;
+
+    public SferaService(SferaSettings settings, ILogger<SferaService> logger)
     {
-        _settings = settings.Value;
+        _settings = settings;
         _logger = logger;
         StartSdkThread();
+    }
+
+    public SferaService(IOptions<SferaSettings> settings, ILogger<SferaService> logger)
+        : this(settings.Value, logger)
+    {
     }
 
     /// <summary>
@@ -86,9 +105,15 @@ public class SferaService : ISferaService, IDisposable
                     // CRITICAL: Initialize Windows Forms context on this STA thread
                     // This is REQUIRED for Entity Framework 6 to work correctly!
                     // Without this, EF6 throws "Index was out of range" errors during document creation.
-                    Application.SetHighDpiMode(HighDpiMode.SystemAware);
-                    Application.EnableVisualStyles();
-                    Application.SetCompatibleTextRenderingDefault(false);
+                    // Application-level setup may only run once per process (the SDK pool creates
+                    // one SferaService per database) - SetCompatibleTextRenderingDefault throws
+                    // if called after the first window handle exists.
+                    if (Interlocked.Exchange(ref s_winFormsInitialized, 1) == 0)
+                    {
+                        Application.SetHighDpiMode(HighDpiMode.SystemAware);
+                        Application.EnableVisualStyles();
+                        Application.SetCompatibleTextRenderingDefault(false);
+                    }
 
                     // Create a hidden form to initialize the SynchronizationContext
                     // This mimics how desktop apps (like Subiekt) initialize their UI thread
@@ -137,54 +162,102 @@ public class SferaService : ISferaService, IDisposable
         {
             if (_sfera != null) return;
 
-            try
-            {
-                _logger.LogInformation("Connecting to Sfera on STA thread (ThreadId: {ThreadId}): Server={Server}, Database={Database}",
-                    Environment.CurrentManagedThreadId, _settings.Server, _settings.Database);
-
-                var menedzerPolaczen = new MenedzerPolaczen();
-
-                DanePolaczenia danePolaczenia;
-                if (_settings.UseWindowsAuth)
-                {
-                    danePolaczenia = DanePolaczenia.Jawne(
-                        serwer: _settings.Server,
-                        baza: _settings.Database,
-                        autentykacjaWindowsDoSerwera: true);
-                }
-                else
-                {
-                    danePolaczenia = DanePolaczenia.Jawne(
-                        serwer: _settings.Server,
-                        baza: _settings.Database,
-                        uzytkownikSerwera: _settings.SqlLogin,
-                        hasloUzytkownikaSerwera: _settings.SqlPassword);
-                }
-
-                var productId = GetProductId(_settings.Product);
-                _sfera = menedzerPolaczen.Polacz(danePolaczenia, productId);
-
-                if (!_sfera.ZalogujOperatora(_settings.NexoLogin, _settings.NexoPassword))
-                {
-                    throw new InvalidOperationException($"Failed to login operator: {_settings.NexoLogin}");
-                }
-
-                // Track the initial operator for per-request switching
-                _currentNexoLogin = _settings.NexoLogin;
-
-                // Set working context - CRITICAL for document creation
-                // SDK examples show this is required before any document operations
-                SetWorkingContext();
-
-                _logger.LogInformation("Successfully connected to Sfera on STA thread");
-                _logger.LogInformation("SDK STA thread: Initialization complete, thread ready for work items");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to connect to Sfera");
-                throw;
-            }
+            ConnectCore();
         });
+    }
+
+    public async Task ReinitializeAsync()
+    {
+        // Dispose the current connection (if any) and connect again - all on the STA thread,
+        // so in-flight work items are never interleaved with the reconnect.
+        await ExecuteOnSdkThreadAsync(() =>
+        {
+            if (_sfera != null)
+            {
+                try
+                {
+                    _sfera.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error disposing previous Sfera connection during reconnect");
+                }
+
+                _sfera = null;
+                _currentNexoLogin = null;
+                _currentNexoPassword = null;
+                _currentWarehouse = null;
+                _currentBranch = null;
+            }
+
+            ConnectCore();
+        });
+    }
+
+    /// <summary>
+    /// Establishes the Sfera connection, logs in the default operator and sets the working context.
+    /// Must run on the SDK STA thread.
+    /// </summary>
+    private void ConnectCore()
+    {
+        try
+        {
+            _logger.LogInformation("Connecting to Sfera on STA thread (ThreadId: {ThreadId}): Server={Server}, Database={Database}",
+                Environment.CurrentManagedThreadId, _settings.Server, _settings.Database);
+
+            var menedzerPolaczen = new MenedzerPolaczen();
+
+            DanePolaczenia danePolaczenia;
+            if (_settings.UseWindowsAuth)
+            {
+                danePolaczenia = DanePolaczenia.Jawne(
+                    serwer: _settings.Server,
+                    baza: _settings.Database,
+                    autentykacjaWindowsDoSerwera: true);
+            }
+            else
+            {
+                danePolaczenia = DanePolaczenia.Jawne(
+                    serwer: _settings.Server,
+                    baza: _settings.Database,
+                    uzytkownikSerwera: _settings.SqlLogin,
+                    hasloUzytkownikaSerwera: _settings.SqlPassword);
+            }
+
+            var productId = GetProductId(_settings.Product);
+            _sfera = menedzerPolaczen.Polacz(danePolaczenia, productId);
+
+            if (!_sfera.ZalogujOperatora(_settings.NexoLogin, _settings.NexoPassword))
+            {
+                throw new InvalidOperationException($"Failed to login operator: {_settings.NexoLogin}");
+            }
+
+            // Track the initial operator for per-request switching
+            _currentNexoLogin = _settings.NexoLogin;
+            _currentNexoPassword = _settings.NexoPassword;
+
+            // Set working context - CRITICAL for document creation
+            // SDK examples show this is required before any document operations
+            SetWorkingContext();
+
+            _logger.LogInformation("Successfully connected to Sfera on STA thread");
+            _logger.LogInformation("SDK STA thread: Initialization complete, thread ready for work items");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to connect to Sfera");
+
+            // Don't leave a half-initialized handle behind (e.g. connected but operator login failed) -
+            // IsConnected must reflect a fully usable connection.
+            try { _sfera?.Dispose(); } catch { /* best effort */ }
+            _sfera = null;
+            _currentNexoLogin = null;
+            _currentNexoPassword = null;
+            _currentWarehouse = null;
+            _currentBranch = null;
+
+            throw;
+        }
     }
 
     /// <summary>
@@ -624,6 +697,7 @@ public class SferaService : ISferaService, IDisposable
             if (!string.IsNullOrEmpty(_settings.DefaultWarehouse))
             {
                 kontekst.UstawMagazynWedlugSymbolu(_settings.DefaultWarehouse);
+                _currentWarehouse = _settings.DefaultWarehouse;
                 _logger.LogInformation("Set warehouse context: {Warehouse}", _settings.DefaultWarehouse);
             }
 
@@ -631,6 +705,7 @@ public class SferaService : ISferaService, IDisposable
             if (!string.IsNullOrEmpty(_settings.DefaultBranch))
             {
                 kontekst.UstawOddzialWedlugSymbolu(_settings.DefaultBranch);
+                _currentBranch = _settings.DefaultBranch;
                 _logger.LogInformation("Set branch context: {Branch}", _settings.DefaultBranch);
             }
 
@@ -675,16 +750,22 @@ public class SferaService : ISferaService, IDisposable
             {
                 _logger.LogError("Failed to login operator: {Login}. Attempting to restore previous operator.", (object)nexoLogin);
 
-                // Try to restore previous operator
-                if (!string.IsNullOrEmpty(_currentNexoLogin))
+                // Try to restore the previous operator with ITS password (not the default one),
+                // falling back to the default operator from settings.
+                var restored = !string.IsNullOrEmpty(_currentNexoLogin)
+                    && _sfera.ZalogujOperatora(_currentNexoLogin, _currentNexoPassword ?? "");
+
+                if (!restored && _sfera.ZalogujOperatora(_settings.NexoLogin, _settings.NexoPassword))
                 {
-                    _sfera.ZalogujOperatora(_currentNexoLogin, _settings.NexoPassword);
+                    _currentNexoLogin = _settings.NexoLogin;
+                    _currentNexoPassword = _settings.NexoPassword;
                 }
 
                 return false;
             }
 
             _currentNexoLogin = nexoLogin;
+            _currentNexoPassword = nexoPassword;
             _logger.LogInformation("Successfully switched to operator: {Login}", (object)nexoLogin);
             return true;
         }
@@ -699,6 +780,67 @@ public class SferaService : ISferaService, IDisposable
     /// Gets the currently logged-in operator login.
     /// </summary>
     public string? GetCurrentOperatorLogin() => _currentNexoLogin;
+
+    /// <summary>
+    /// Ensures the requested operator is logged in; with no requested login, ensures the
+    /// DEFAULT operator from settings (so a tenant switched by a previous request never
+    /// leaks into requests authenticated with keys that don't override the operator).
+    /// Must be called on the SDK STA thread.
+    /// </summary>
+    public bool EnsureOperator(string? requestedLogin, string? requestedPassword)
+    {
+        var targetLogin = string.IsNullOrEmpty(requestedLogin) ? _settings.NexoLogin : requestedLogin;
+        var targetPassword = string.IsNullOrEmpty(requestedLogin) ? _settings.NexoPassword : (requestedPassword ?? "");
+
+        if (targetLogin == _currentNexoLogin)
+        {
+            return true;
+        }
+
+        return SwitchOperatorIfNeeded(targetLogin, targetPassword);
+    }
+
+    /// <summary>
+    /// Applies the per-request working context (warehouse/branch). With no requested values,
+    /// restores this connection's defaults. Only touches the SDK when the context actually
+    /// changes. Must be called on the SDK STA thread.
+    /// </summary>
+    public void ApplyRequestContext(string? requestedWarehouse, string? requestedBranch)
+    {
+        if (_sfera == null) return;
+
+        var targetWarehouse = string.IsNullOrEmpty(requestedWarehouse) ? _settings.DefaultWarehouse : requestedWarehouse;
+        var targetBranch = string.IsNullOrEmpty(requestedBranch) ? _settings.DefaultBranch : requestedBranch;
+
+        if (targetWarehouse == _currentWarehouse && targetBranch == _currentBranch)
+        {
+            return;
+        }
+
+        try
+        {
+            var kontekst = _sfera.Kontekst();
+
+            if (!string.IsNullOrEmpty(targetWarehouse) && targetWarehouse != _currentWarehouse)
+            {
+                kontekst.UstawMagazynWedlugSymbolu(targetWarehouse);
+                _currentWarehouse = targetWarehouse;
+                _logger.LogInformation("Switched warehouse context to {Warehouse}", targetWarehouse);
+            }
+
+            if (!string.IsNullOrEmpty(targetBranch) && targetBranch != _currentBranch)
+            {
+                kontekst.UstawOddzialWedlugSymbolu(targetBranch);
+                _currentBranch = targetBranch;
+                _logger.LogInformation("Switched branch context to {Branch}", targetBranch);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to apply request context (warehouse: {Warehouse}, branch: {Branch})",
+                targetWarehouse, targetBranch);
+        }
+    }
 
     private static ProductId GetProductId(string product)
     {
@@ -724,15 +866,26 @@ public class SferaService : ISferaService, IDisposable
 
     /// <summary>
     /// Executes an async SDK operation on the dedicated STA thread.
-    /// Note: The async operation itself runs on the SDK thread, blocking it until complete.
-    /// For truly async operations, consider wrapping the result.
+    /// The STA thread has a WindowsFormsSynchronizationContext, so await continuations inside
+    /// the operation are posted back to this thread - they can only run if the message queue
+    /// is pumped. Blocking with GetResult() alone would therefore deadlock; we pump messages
+    /// (Application.DoEvents) while waiting so posted continuations execute on the STA thread.
     /// </summary>
     public async Task<T> ExecuteWithLockAsync<T>(Func<Task<T>> operation)
     {
-        // We need to run the async operation on the SDK thread, but we can't await inside
-        // the work queue action. So we run it synchronously with .Result
-        // This is acceptable because we're on a dedicated thread.
-        return await ExecuteOnSdkThreadAsync(() => operation().GetAwaiter().GetResult());
+        return await ExecuteOnSdkThreadAsync(() =>
+        {
+            var task = operation();
+            while (!task.IsCompleted)
+            {
+                Application.DoEvents();
+                if (!task.IsCompleted)
+                {
+                    Thread.Sleep(1);
+                }
+            }
+            return task.GetAwaiter().GetResult();
+        });
     }
 
     /// <summary>

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NexoSferaApi.Filters;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
@@ -30,6 +31,7 @@ public class ProductsController : ControllerBase
     /// Explore properties of a single Asortyment entity
     /// </summary>
     [HttpGet("debug/properties/{id}")]
+    [DevelopmentOnly]
     public async Task<ActionResult<object>> GetProductProperties(int id)
     {
         try

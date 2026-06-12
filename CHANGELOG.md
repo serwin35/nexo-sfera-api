@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-06-12)
+- **True multi-company support** - new `SferaConnectionPool` (one SDK connection with its own STA thread per Nexo database) and `SferaServiceRouter` (routes every `ISferaService` call to the tenant's connection based on API key claims). Per-key `Database`, `NexoLogin`/`NexoPassword`, `DefaultWarehouse`, `DefaultBranch` are now enforced on EVERY request across all 61 controllers - previously operator switching worked only in 2 controllers and `Database` was ignored. Keys without an operator override are forced back to the default operator (no tenant leakage). Requires verification on Windows: multiple `Uchwyt` connections in one process.
+  - Behavior changes: reconnect endpoints (`/api/health/reconnect`, `/api/settings/connection/reconnect`) now reconnect only the calling key's database connection; failed per-key operator login now surfaces as HTTP 500 with a clear message (previously a 4xx-ish error shaped per endpoint); the duplicated operator-switching helpers were removed from DocumentsController and WarehouseDocumentsController (the router owns switching now)
+- **SDK DLLs removed from git entirely** - legacy root `lib/nexo-sdk/` deleted; `src/lib/nexo-sdk` stays the (untracked) build location, filled by `scripts/setup-sdk.ps1` locally or the `NEXO_SDK_URL` download step in CI (`.github/workflows/build.yml`)
+
+### Security (2026-06-12)
+- **MCP endpoint now requires authorization** - `/mcp` exposed write tools (invoices, receipts, customers) without any auth; now protected by the same API key scheme as REST
+- **Secrets untracked from git** - `src/appsettings.json` (API key + Nexo credentials) removed from tracking; rotate the exposed keys
+- **Debug endpoints gated to Development** - `debug/*` endpoints and `DiagnosticsController` return 404 outside the Development environment
+
+### Fixed (2026-06-12)
+- **Thread safety completed across all 61 controllers** - wrapped the last 22 unlocked endpoints (DocumentsController ×10 incl. `GET /api/documents`, corrections, advance/VAT-margin invoices, associations; CustomersController debug ×8; DiagnosticsController ×4) in `ExecuteWithLockAsync`
+- **Reconnect actually reconnects** - new `ReinitializeAsync()` disposes the stale SDK handle and reconnects on the STA thread; previously `POST /api/health/reconnect` was a no-op and `POST /api/settings/connection/reconnect` disposed the singleton service permanently
+- **Operator restore after failed switch** - previous operator is restored with its own tracked password (was: always the default password), with fallback to the default operator
+- **Async `ExecuteWithLockAsync` deadlock risk** - now pumps WinForms messages while waiting so continuations posted to the STA synchronization context can run
+- **Failed login no longer leaves a half-initialized connection** - `IsConnected` reflects a fully usable connection
+- **Manager-unavailable no longer masked as 404** - `GET /api/documents/{id}` and `by-number` return 500 when the SDK manager cannot be obtained
+
+### Removed (2026-06-12)
+- Stale work logs (`FIXES_SUMMARY.md`, `IMPLEMENTATION_SUMMARY.md`, `RECEIPT_FIX_SUMMARY.md`, `SERVICE_VALIDATION_FIX.md`, `API-COMPLETION-PLAN.md`, `sdk-structure.md`), ghost dirs (`src/src/`, empty `src/scripts/`)
+- Untracked from git: `src/lib/nexo-sdk/` DLL mirror (canonical copy stays in `lib/nexo-sdk/`), `.idea/`, auto-generated `CLAUDE.md` stubs
+
+### Docs (2026-06-12)
+- README rewritten: full module map (61 controllers), API conventions (response envelope, pagination, STA concurrency), Laravel integration example, honest multi-tenant status; audit report at `docs/AUDIT-2026-06-12.md` with SDK 60.1.1 coverage roadmap
+
 ### Added
 - **Service-type product detection in stock validation** - Added `IsService()` method to `StockValidationHelper` that identifies service products by checking `Rodzaj_Id = 1`
 - **Automatic stock validation skip for services** - Services no longer trigger "insufficient stock" errors since they don't require physical inventory

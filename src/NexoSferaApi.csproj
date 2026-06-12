@@ -33,6 +33,7 @@
 
   <!-- Configurable SDK Path - can be overridden via command line or environment -->
   <!-- Usage: dotnet build -p:NexoSdkPath="C:\Path\To\SDK" -->
+  <!-- SDK DLLs are not tracked in git: fill src\lib\nexo-sdk via scripts\setup-sdk.ps1 (local) or the SDK download step in CI -->
   <PropertyGroup>
     <NexoSdkPath Condition="'$(NexoSdkPath)' == ''">lib\nexo-sdk</NexoSdkPath>
   </PropertyGroup>

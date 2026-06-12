@@ -24,7 +24,7 @@ dotnet build
 
 ## Local Development Setup
 
-1. **Extract SDK** - Extract your licensed InsERT Nexo SDK to `nexoSDK_58.0.2.8985/` folder
+1. **Extract SDK** - Extract your licensed InsERT Nexo SDK to `docs/nexoSDK_60.1.1.9292/` folder
 
 2. **Run setup script**:
    ```powershell
@@ -45,7 +45,7 @@ Store your SDK DLLs as a zip file on a private server/storage and configure secr
 1. **Create SDK package**:
    ```powershell
    # Create minimal SDK package with required DLLs only
-   $dlls = Get-ChildItem "nexoSDK_58.0.2.8985\Bin" -Filter "InsERT.*.dll"
+   $dlls = Get-ChildItem "docs/nexoSDK_60.1.1.9292\Bin" -Filter "InsERT.*.dll"
    Compress-Archive -Path $dlls.FullName -DestinationPath "nexo-sdk-minimal.zip"
    ```
 
@@ -81,7 +81,7 @@ For smaller teams, cache SDK as encrypted artifact:
    ```powershell
    # Requires: Install-Module -Name 7Zip4Powershell
    $password = Read-Host -AsSecureString "Enter password"
-   Compress-7Zip -Path "nexoSDK_58.0.2.8985\Bin\InsERT.*.dll" `
+   Compress-7Zip -Path "docs/nexoSDK_60.1.1.9292\Bin\InsERT.*.dll" `
                  -ArchiveFileName "nexo-sdk.7z" `
                  -SecurePassword $password
    ```

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using NexoSferaApi.Filters;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
@@ -30,38 +31,6 @@ public class DocumentsController : ControllerBase
         _sferaService = sferaService;
         _logger = logger;
         _stockHelper = stockHelper;
-    }
-
-    /// <summary>
-    /// Gets the Nexo operator credentials from the current user's claims (set by API key authentication).
-    /// Returns null if no per-key credentials are configured.
-    /// </summary>
-    private (string? Login, string? Password) GetOperatorCredentialsFromClaims()
-    {
-        var nexoLogin = User.FindFirst("NexoLogin")?.Value;
-        var nexoPassword = User.FindFirst("NexoPassword")?.Value;
-        return (nexoLogin, nexoPassword);
-    }
-
-    /// <summary>
-    /// Switches to the operator specified in API key claims (if any).
-    /// Must be called inside ExecuteWithLockAsync on the SDK STA thread.
-    /// </summary>
-    private bool SwitchToRequestOperator((string? Login, string? Password) credentials)
-    {
-        if (string.IsNullOrEmpty(credentials.Login))
-        {
-            // No per-key credentials, use default operator
-            return true;
-        }
-
-        if (!_sferaService.SwitchOperatorIfNeeded(credentials.Login, credentials.Password))
-        {
-            _logger.LogError("Failed to switch to operator {Login} for this request", (object)credentials.Login);
-            return false;
-        }
-
-        return true;
     }
 
     /// <summary>
@@ -95,78 +64,92 @@ public class DocumentsController : ControllerBase
     /// Explore properties of a single Document entity (debug endpoint)
     /// </summary>
     [HttpGet("debug/properties/{id}")]
-    public ActionResult<object> GetDocumentProperties(int id)
+    [DevelopmentOnly]
+    public async Task<ActionResult<object>> GetDocumentProperties(int id)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                return StatusCode(500, new { Error = "Failed to get Dokumenty manager" });
-            }
-
-            dynamic? dokument = null;
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                if (DynamicPropertyHelper.GetId(d) == id)
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager == null)
                 {
-                    dokument = d;
-                    break;
+                    return (object)new { ManagerMissing = true, NotFound = false, Id = id };
                 }
-            }
 
-            if (dokument == null)
-            {
-                return NotFound(new { Error = $"Document {id} not found" });
-            }
-
-            Type dokumentType = dokument.GetType();
-            var properties = new Dictionary<string, object>();
-
-            foreach (var prop in dokumentType.GetProperties())
-            {
-                try
+                dynamic? dokument = null;
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
                 {
-                    var value = prop.GetValue(dokument);
-                    var valueType = value?.GetType().Name ?? "null";
-
-                    if (value != null && value.GetType().Name.Contains("Collection"))
+                    if (DynamicPropertyHelper.GetId(d) == id)
                     {
-                        try
+                        dokument = d;
+                        break;
+                    }
+                }
+
+                if (dokument == null)
+                {
+                    return (object)new { ManagerMissing = false, NotFound = true, Id = id };
+                }
+
+                Type dokumentType = dokument.GetType();
+                var properties = new Dictionary<string, object>();
+
+                foreach (var prop in dokumentType.GetProperties())
+                {
+                    try
+                    {
+                        var value = prop.GetValue(dokument);
+                        var valueType = value?.GetType().Name ?? "null";
+
+                        if (value != null && value.GetType().Name.Contains("Collection"))
                         {
-                            int count = 0;
-                            foreach (var _ in (dynamic)value) count++;
-                            properties[prop.Name] = new { Type = valueType, Count = count };
+                            try
+                            {
+                                int count = 0;
+                                foreach (var _ in (dynamic)value) count++;
+                                properties[prop.Name] = new { Type = valueType, Count = count };
+                            }
+                            catch
+                            {
+                                properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                            }
                         }
-                        catch
+                        else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string)
+                                 && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal)
+                                 && !prop.PropertyType.IsEnum && prop.PropertyType != typeof(Guid))
                         {
-                            properties[prop.Name] = new { Type = valueType, Value = "Collection (error reading)" };
+                            properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
+                        }
+                        else
+                        {
+                            properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
                         }
                     }
-                    else if (value != null && !prop.PropertyType.IsPrimitive && prop.PropertyType != typeof(string)
-                             && prop.PropertyType != typeof(DateTime) && prop.PropertyType != typeof(decimal)
-                             && !prop.PropertyType.IsEnum && prop.PropertyType != typeof(Guid))
+                    catch (Exception ex)
                     {
-                        properties[prop.Name] = new { Type = valueType, Value = "Complex object" };
-                    }
-                    else
-                    {
-                        properties[prop.Name] = new { Type = valueType, Value = value?.ToString() ?? "null" };
+                        properties[prop.Name] = new { Error = ex.Message };
                     }
                 }
-                catch (Exception ex)
-                {
-                    properties[prop.Name] = new { Error = ex.Message };
-                }
-            }
 
-            return Ok(new
-            {
-                Id = id,
-                EntityType = dokumentType.FullName,
-                PropertyCount = properties.Count,
-                Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                return (object)new
+                {
+                    ManagerMissing = false,
+                    NotFound = false,
+                    Id = id,
+                    EntityType = dokumentType.FullName,
+                    PropertyCount = properties.Count,
+                    Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
+                };
             });
+
+            dynamic r = result!;
+            if (r.ManagerMissing == true)
+                return StatusCode(500, new { Error = "Failed to get Dokumenty manager" });
+            if (r.NotFound == true)
+                return NotFound(new { Error = $"Document {id} not found" });
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -180,6 +163,7 @@ public class DocumentsController : ControllerBase
     /// Use this to find the correct property names for item mapping.
     /// </summary>
     [HttpGet("debug/item-properties/{id}")]
+    [DevelopmentOnly]
     public async Task<ActionResult<object>> GetDocumentItemProperties(int id, [FromQuery] string? manager = null)
     {
         try
@@ -348,59 +332,67 @@ public class DocumentsController : ControllerBase
     /// Get documents with filtering (lightweight list view)
     /// </summary>
     [HttpGet]
-    public ActionResult<PagedResponse<DocumentListItemDto>> GetDocuments([FromQuery] DocumentQueryRequest query)
+    public async Task<ActionResult<PagedResponse<DocumentListItemDto>>> GetDocuments([FromQuery] DocumentQueryRequest query)
     {
         try
         {
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager == null)
+                {
+                    return (PagedResponse<DocumentListItemDto>?)null;
+                }
+
+                var allDokumenty = new List<object>();
+                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                {
+                    allDokumenty.Add(d);
+                }
+
+                // Apply filters
+                allDokumenty = ApplyDocumentFilters(allDokumenty, query);
+
+                var totalCount = allDokumenty.Count;
+
+                // Sort and paginate
+                var sortedItems = ApplyDocumentSorting(allDokumenty, query.SortBy);
+                var items = sortedItems
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
+
+                var mappedItems = new List<DocumentListItemDto>();
+                foreach (var item in items)
+                {
+                    try
+                    {
+                        if (item != null)
+                        {
+                            mappedItems.Add(MapToListItemDto(item));
+                        }
+                    }
+                    catch (Exception mapEx)
+                    {
+                        _logger.LogWarning(mapEx, "Failed to map document, skipping");
+                    }
+                }
+
+                return (PagedResponse<DocumentListItemDto>?)new PagedResponse<DocumentListItemDto>
+                {
+                    Data = mappedItems,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            if (result == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Dokumenty manager"));
             }
 
-            var allDokumenty = new List<object>();
-            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-            {
-                allDokumenty.Add(d);
-            }
-
-            // Apply filters
-            allDokumenty = ApplyDocumentFilters(allDokumenty, query);
-
-            var totalCount = allDokumenty.Count;
-
-            // Sort and paginate
-            var sortedItems = ApplyDocumentSorting(allDokumenty, query.SortBy);
-            var items = sortedItems
-                .Skip((query.Page - 1) * query.PageSize)
-                .Take(query.PageSize)
-                .ToList();
-
-            var mappedItems = new List<DocumentListItemDto>();
-            foreach (var item in items)
-            {
-                try
-                {
-                    if (item != null)
-                    {
-                        mappedItems.Add(MapToListItemDto(item));
-                    }
-                }
-                catch (Exception mapEx)
-                {
-                    _logger.LogWarning(mapEx, "Failed to map document, skipping");
-                }
-            }
-
-            var response = new PagedResponse<DocumentListItemDto>
-            {
-                Data = mappedItems,
-                Page = query.Page,
-                PageSize = query.PageSize,
-                TotalCount = totalCount
-            };
-
-            return Ok(response);
+            return Ok(result);
         }
         catch (Exception ex)
         {
@@ -687,11 +679,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(bool ManagerMissing, DocumentDto? Dto)>(() =>
             {
                 var dokumentyManager = _sferaService.GetManager("Dokumenty");
                 if (dokumentyManager == null)
-                    return (DocumentDto?)null;
+                    return (true, null);
 
                 dynamic? dokument = null;
                 foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
@@ -704,15 +696,18 @@ public class DocumentsController : ControllerBase
                 }
 
                 if (dokument == null)
-                    return (DocumentDto?)null;
+                    return (false, null);
 
-                return (DocumentDto?)MapDocumentToDto(dokument);
+                return (false, (DocumentDto?)MapDocumentToDto(dokument));
             });
 
-            if (result == null)
+            if (result.ManagerMissing)
+                return StatusCode(500, ApiResponse<DocumentDto>.Error("Failed to get Dokumenty manager"));
+
+            if (result.Dto == null)
                 return NotFound(ApiResponse<DocumentDto>.Error($"Document with ID {id} not found"));
 
-            return Ok(ApiResponse<DocumentDto>.Ok(result));
+            return Ok(ApiResponse<DocumentDto>.Ok(result.Dto));
         }
         catch (Exception ex)
         {
@@ -1049,11 +1044,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var result = await _sferaService.ExecuteWithLockAsync<(bool ManagerMissing, DocumentDto? Dto)>(() =>
             {
                 var dokumentyManager = _sferaService.GetManager("Dokumenty");
                 if (dokumentyManager == null)
-                    return (DocumentDto?)null;
+                    return (true, null);
 
                 dynamic? dokument = null;
                 foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
@@ -1067,15 +1062,18 @@ public class DocumentsController : ControllerBase
                 }
 
                 if (dokument == null)
-                    return (DocumentDto?)null;
+                    return (false, null);
 
-                return (DocumentDto?)MapDocumentToDto(dokument);
+                return (false, (DocumentDto?)MapDocumentToDto(dokument));
             });
 
-            if (result == null)
+            if (result.ManagerMissing)
+                return StatusCode(500, ApiResponse<DocumentDto>.Error("Failed to get Dokumenty manager"));
+
+            if (result.Dto == null)
                 return NotFound(ApiResponse<DocumentDto>.Error($"Document with number {number} not found"));
 
-            return Ok(ApiResponse<DocumentDto>.Ok(result));
+            return Ok(ApiResponse<DocumentDto>.Ok(result.Dto));
         }
         catch (Exception ex)
         {
@@ -1119,15 +1117,8 @@ public class DocumentsController : ControllerBase
             }
 
             // Use thread-safe execution - EF6 is NOT thread-safe
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if configured)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
-                }
-
                 var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
                 if (dokumentySprzedazy == null)
                 {
@@ -2949,15 +2940,8 @@ public class DocumentsController : ControllerBase
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if configured)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
-                }
-
                 var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowieniaManager == null)
                 {
@@ -3083,15 +3067,8 @@ public class DocumentsController : ControllerBase
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if configured)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
-                }
-
                 var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
                 if (dokumentyZakupu == null)
                 {
@@ -3202,94 +3179,114 @@ public class DocumentsController : ControllerBase
     /// Create a sales invoice correction (Korekta faktury sprzedazy)
     /// </summary>
     [HttpPost("sales-invoice-correction")]
-    public ActionResult<ApiResponse<CorrectionDto>> CreateSalesInvoiceCorrection([FromBody] CreateCorrectionRequest request)
+    public async Task<ActionResult<ApiResponse<CorrectionDto>>> CreateSalesInvoiceCorrection([FromBody] CreateCorrectionRequest request)
     {
         try
         {
-            var korektyManager = _sferaService.GetManager("KorektyDokumentowSprzedazy");
-            if (korektyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get KorektyDokumentowSprzedazy manager"));
-            }
-
-            dynamic korekta;
-
-            // If we have original document, create correction for it
-            if (request.OriginalDocumentId.HasValue)
-            {
-                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
-                if (dokumentySprzedazy == null)
+                var korektyManager = _sferaService.GetManager("KorektyDokumentowSprzedazy");
+                if (korektyManager == null)
                 {
-                    return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
+                    return (false, false, null, "Failed to get KorektyDokumentowSprzedazy manager", new List<string>());
                 }
 
-                dynamic? oryginal = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
+                dynamic korekta;
+
+                // If we have original document, create correction for it
+                if (request.OriginalDocumentId.HasValue)
                 {
-                    if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
+                    var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                    if (dokumentySprzedazy == null)
                     {
-                        oryginal = d;
-                        break;
+                        return (false, false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
+                    }
+
+                    dynamic? oryginal = null;
+                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
+                    {
+                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
+                        {
+                            oryginal = d;
+                            break;
+                        }
+                    }
+
+                    if (oryginal == null)
+                    {
+                        return (false, true, null, $"Original document with ID {request.OriginalDocumentId} not found", new List<string>());
+                    }
+
+                    korekta = korektyManager.UtworzKorekteFakturySprzedazy(oryginal);
+                }
+                else
+                {
+                    // Correction without original document
+                    korekta = korektyManager.UtworzKorekteFakturySprzedazy();
+                    SetCustomerOnDocument(korekta.Dane, request.CustomerId, request.CustomerNIP);
+                }
+
+                dynamic dane = korekta.Dane;
+
+                // Set correction reason
+                if (!string.IsNullOrEmpty(request.CorrectionReason))
+                {
+                    dane.PrzyczynaKorekty = request.CorrectionReason;
+                }
+
+                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.SalesInvoiceCorrection))
+                {
+                    dane.Uwagi = request.Notes;
+                }
+                else if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    _logger.LogInformation("Skipping notes for SalesInvoiceCorrection");
+                }
+
+                if (request.IssueDate.HasValue)
+                {
+                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
                     }
                 }
 
-                if (oryginal == null)
+                // Add correction items
+                AddCorrectionItems(korekta, request.Items);
+
+                if ((bool)korekta.Zapisz())
                 {
-                    return NotFound(ApiResponse<CorrectionDto>.Error($"Original document with ID {request.OriginalDocumentId} not found"));
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created sales invoice correction {Number}", fullNumber);
+
+                    return (true, false, MapCorrectionToDto(dane), "Sales invoice correction created successfully", new List<string>());
                 }
-
-                korekta = korektyManager.UtworzKorekteFakturySprzedazy(oryginal);
-            }
-            else
-            {
-                // Correction without original document
-                korekta = korektyManager.UtworzKorekteFakturySprzedazy();
-                SetCustomerOnDocument(korekta.Dane, request.CustomerId, request.CustomerNIP);
-            }
-
-            dynamic dane = korekta.Dane;
-
-            // Set correction reason
-            if (!string.IsNullOrEmpty(request.CorrectionReason))
-            {
-                dane.PrzyczynaKorekty = request.CorrectionReason;
-            }
-
-            // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.SalesInvoiceCorrection))
-            {
-                dane.Uwagi = request.Notes;
-            }
-            else if (!string.IsNullOrEmpty(request.Notes))
-            {
-                _logger.LogInformation("Skipping notes for SalesInvoiceCorrection");
-            }
-
-            if (request.IssueDate.HasValue)
-            {
-                if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                else
                 {
-                    DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                    var errors = GetBusinessObjectErrors(korekta);
+                    return (false, false, null, "Failed to create sales invoice correction", errors);
                 }
-            }
+            });
 
-            // Add correction items
-            AddCorrectionItems(korekta, request.Items);
-
-            if ((bool)korekta.Zapisz())
+            if (result.NotFound)
             {
-                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                _logger.LogInformation("Created sales invoice correction {Number}", fullNumber);
-
+                return NotFound(ApiResponse<CorrectionDto>.Error(result.Message));
+            }
+            else if (result.Success)
+            {
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = DynamicPropertyHelper.GetId(dane) },
-                    ApiResponse<CorrectionDto>.Ok(MapCorrectionToDto(dane), "Sales invoice correction created successfully"));
+                    new { id = result.Data!.Id },
+                    ApiResponse<CorrectionDto>.Ok(result.Data, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<CorrectionDto>.Error(result.Message, result.Errors));
             }
             else
             {
-                var errors = GetBusinessObjectErrors(korekta);
-                return BadRequest(ApiResponse<CorrectionDto>.Error("Failed to create sales invoice correction", errors));
+                return StatusCode(500, ApiResponse<CorrectionDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -3303,91 +3300,111 @@ public class DocumentsController : ControllerBase
     /// Create a purchase invoice correction (Korekta faktury zakupu)
     /// </summary>
     [HttpPost("purchase-invoice-correction")]
-    public ActionResult<ApiResponse<CorrectionDto>> CreatePurchaseInvoiceCorrection([FromBody] CreateCorrectionRequest request)
+    public async Task<ActionResult<ApiResponse<CorrectionDto>>> CreatePurchaseInvoiceCorrection([FromBody] CreateCorrectionRequest request)
     {
         try
         {
-            var korektyManager = _sferaService.GetManager("KorektyDokumentowZakupu");
-            if (korektyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get KorektyDokumentowZakupu manager"));
-            }
-
-            dynamic korekta;
-
-            if (request.OriginalDocumentId.HasValue)
-            {
-                var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
-                if (dokumentyZakupu == null)
+                var korektyManager = _sferaService.GetManager("KorektyDokumentowZakupu");
+                if (korektyManager == null)
                 {
-                    return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentyZakupu manager"));
+                    return (false, false, null, "Failed to get KorektyDokumentowZakupu manager", new List<string>());
                 }
 
-                dynamic? oryginal = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyZakupu))
+                dynamic korekta;
+
+                if (request.OriginalDocumentId.HasValue)
                 {
-                    if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
+                    var dokumentyZakupu = _sferaService.GetManager("DokumentyZakupu");
+                    if (dokumentyZakupu == null)
                     {
-                        oryginal = d;
-                        break;
+                        return (false, false, null, "Failed to get DokumentyZakupu manager", new List<string>());
+                    }
+
+                    dynamic? oryginal = null;
+                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyZakupu))
+                    {
+                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
+                        {
+                            oryginal = d;
+                            break;
+                        }
+                    }
+
+                    if (oryginal == null)
+                    {
+                        return (false, true, null, $"Original document with ID {request.OriginalDocumentId} not found", new List<string>());
+                    }
+
+                    korekta = korektyManager.UtworzKorekteFakturyZakupu(oryginal);
+                }
+                else
+                {
+                    korekta = korektyManager.UtworzKorekteFakturyZakupu();
+                    SetCustomerOnDocument(korekta.Dane, request.CustomerId, request.CustomerNIP);
+                }
+
+                dynamic dane = korekta.Dane;
+
+                if (!string.IsNullOrEmpty(request.CorrectionReason))
+                {
+                    dane.PrzyczynaKorekty = request.CorrectionReason;
+                }
+
+                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.PurchaseInvoiceCorrection))
+                {
+                    dane.Uwagi = request.Notes;
+                }
+                else if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    _logger.LogInformation("Skipping notes for PurchaseInvoiceCorrection");
+                }
+
+                if (request.IssueDate.HasValue)
+                {
+                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
                     }
                 }
 
-                if (oryginal == null)
+                // Add correction items
+                AddCorrectionItems(korekta, request.Items, usePurchaseUnit: true);
+
+                if ((bool)korekta.Zapisz())
                 {
-                    return NotFound(ApiResponse<CorrectionDto>.Error($"Original document with ID {request.OriginalDocumentId} not found"));
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created purchase invoice correction {Number}", fullNumber);
+
+                    return (true, false, MapPurchaseCorrectionToDto(dane), "Purchase invoice correction created successfully", new List<string>());
                 }
-
-                korekta = korektyManager.UtworzKorekteFakturyZakupu(oryginal);
-            }
-            else
-            {
-                korekta = korektyManager.UtworzKorekteFakturyZakupu();
-                SetCustomerOnDocument(korekta.Dane, request.CustomerId, request.CustomerNIP);
-            }
-
-            dynamic dane = korekta.Dane;
-
-            if (!string.IsNullOrEmpty(request.CorrectionReason))
-            {
-                dane.PrzyczynaKorekty = request.CorrectionReason;
-            }
-
-            // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarks(DocumentType.PurchaseInvoiceCorrection))
-            {
-                dane.Uwagi = request.Notes;
-            }
-            else if (!string.IsNullOrEmpty(request.Notes))
-            {
-                _logger.LogInformation("Skipping notes for PurchaseInvoiceCorrection");
-            }
-
-            if (request.IssueDate.HasValue)
-            {
-                if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                else
                 {
-                    DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                    var errors = GetBusinessObjectErrors(korekta);
+                    return (false, false, null, "Failed to create purchase invoice correction", errors);
                 }
-            }
+            });
 
-            // Add correction items
-            AddCorrectionItems(korekta, request.Items, usePurchaseUnit: true);
-
-            if ((bool)korekta.Zapisz())
+            if (result.NotFound)
             {
-                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                _logger.LogInformation("Created purchase invoice correction {Number}", fullNumber);
-
+                return NotFound(ApiResponse<CorrectionDto>.Error(result.Message));
+            }
+            else if (result.Success)
+            {
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = DynamicPropertyHelper.GetId(dane) },
-                    ApiResponse<CorrectionDto>.Ok(MapPurchaseCorrectionToDto(dane), "Purchase invoice correction created successfully"));
+                    new { id = result.Data!.Id },
+                    ApiResponse<CorrectionDto>.Ok(result.Data, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<CorrectionDto>.Error(result.Message, result.Errors));
             }
             else
             {
-                var errors = GetBusinessObjectErrors(korekta);
-                return BadRequest(ApiResponse<CorrectionDto>.Error("Failed to create purchase invoice correction", errors));
+                return StatusCode(500, ApiResponse<CorrectionDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -3432,15 +3449,8 @@ public class DocumentsController : ControllerBase
             }
 
             // Use thread-safe execution - EF6 is NOT thread-safe
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if configured)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
-                }
-
                 var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
                 if (dokumentySprzedazy == null)
                 {
@@ -4087,82 +4097,102 @@ public class DocumentsController : ControllerBase
     /// Create receipt return (Zwrot do paragonu)
     /// </summary>
     [HttpPost("receipt-return")]
-    public ActionResult<ApiResponse<CorrectionDto>> CreateReceiptReturn([FromBody] CreateCorrectionRequest request)
+    public async Task<ActionResult<ApiResponse<CorrectionDto>>> CreateReceiptReturn([FromBody] CreateCorrectionRequest request)
     {
         try
         {
-            var korektyManager = _sferaService.GetManager("KorektyDokumentowSprzedazy");
-            if (korektyManager == null)
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get KorektyDokumentowSprzedazy manager"));
-            }
-
-            dynamic zwrot;
-
-            if (request.OriginalDocumentId.HasValue)
-            {
-                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
-                if (dokumentySprzedazy == null)
+                var korektyManager = _sferaService.GetManager("KorektyDokumentowSprzedazy");
+                if (korektyManager == null)
                 {
-                    return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
+                    return (false, false, null, "Failed to get KorektyDokumentowSprzedazy manager", new List<string>());
                 }
 
-                dynamic? paragon = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
+                dynamic zwrot;
+
+                if (request.OriginalDocumentId.HasValue)
                 {
-                    if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
+                    var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                    if (dokumentySprzedazy == null)
                     {
-                        paragon = d;
-                        break;
+                        return (false, false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
                     }
-                }
 
-                if (paragon == null)
+                    dynamic? paragon = null;
+                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
+                    {
+                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
+                        {
+                            paragon = d;
+                            break;
+                        }
+                    }
+
+                    if (paragon == null)
+                    {
+                        return (false, true, null, $"Original receipt with ID {request.OriginalDocumentId} not found", new List<string>());
+                    }
+
+                    zwrot = korektyManager.UtworzZwrotDoParagonu(paragon);
+                }
+                else
                 {
-                    return NotFound(ApiResponse<CorrectionDto>.Error($"Original receipt with ID {request.OriginalDocumentId} not found"));
+                    zwrot = korektyManager.UtworzZwrotDoParagonu();
                 }
 
-                zwrot = korektyManager.UtworzZwrotDoParagonu(paragon);
-            }
-            else
+                dynamic dane = zwrot.Dane;
+
+                if (!string.IsNullOrEmpty(request.CorrectionReason))
+                {
+                    dane.PrzyczynaKorekty = request.CorrectionReason;
+                }
+
+                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("ReceiptReturn"))
+                {
+                    dane.Uwagi = request.Notes;
+                }
+                else if (!string.IsNullOrEmpty(request.Notes))
+                {
+                    _logger.LogInformation("Skipping notes for ReceiptReturn");
+                }
+
+                // Add return items
+                AddReturnItems(zwrot, request.Items);
+
+                if ((bool)zwrot.Zapisz())
+                {
+                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                    _logger.LogInformation("Created receipt return {Number}", fullNumber);
+
+                    return (true, false, MapCorrectionToDto(dane), "Receipt return created successfully", new List<string>());
+                }
+                else
+                {
+                    var errors = GetBusinessObjectErrors(zwrot);
+                    return (false, false, null, "Failed to create receipt return", errors);
+                }
+            });
+
+            if (result.NotFound)
             {
-                zwrot = korektyManager.UtworzZwrotDoParagonu();
+                return NotFound(ApiResponse<CorrectionDto>.Error(result.Message));
             }
-
-            dynamic dane = zwrot.Dane;
-
-            if (!string.IsNullOrEmpty(request.CorrectionReason))
+            else if (result.Success)
             {
-                dane.PrzyczynaKorekty = request.CorrectionReason;
-            }
-
-            // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-            if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("ReceiptReturn"))
-            {
-                dane.Uwagi = request.Notes;
-            }
-            else if (!string.IsNullOrEmpty(request.Notes))
-            {
-                _logger.LogInformation("Skipping notes for ReceiptReturn");
-            }
-
-            // Add return items
-            AddReturnItems(zwrot, request.Items);
-
-            if ((bool)zwrot.Zapisz())
-            {
-                string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                _logger.LogInformation("Created receipt return {Number}", fullNumber);
-
                 return CreatedAtAction(
                     nameof(GetDocument),
-                    new { id = DynamicPropertyHelper.GetId(dane) },
-                    ApiResponse<CorrectionDto>.Ok(MapCorrectionToDto(dane), "Receipt return created successfully"));
+                    new { id = result.Data!.Id },
+                    ApiResponse<CorrectionDto>.Ok(result.Data, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<CorrectionDto>.Error(result.Message, result.Errors));
             }
             else
             {
-                var errors = GetBusinessObjectErrors(zwrot);
-                return BadRequest(ApiResponse<CorrectionDto>.Error("Failed to create receipt return", errors));
+                return StatusCode(500, ApiResponse<CorrectionDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -4176,87 +4206,103 @@ public class DocumentsController : ControllerBase
     /// Create an advance invoice (Faktura zaliczkowa)
     /// </summary>
     [HttpPost("advance-invoice")]
-    public ActionResult<ApiResponse<DocumentDto>> CreateAdvanceInvoice([FromBody] CreateAdvanceInvoiceRequest request)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateAdvanceInvoice([FromBody] CreateAdvanceInvoiceRequest request)
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
-            if (dokumentySprzedazy == null)
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
-            }
-
-            using (var faktura = dokumentySprzedazy.UtworzFaktureZaliczkowa())
-            {
-                dynamic dane = faktura.Dane;
-
-                SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
-
-                if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentySprzedazy == null)
                 {
-                    var magazyny = _sferaService.GetManager("Magazyny");
-                    if (magazyny != null)
+                    return (false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
+                }
+
+                using (var faktura = dokumentySprzedazy.UtworzFaktureZaliczkowa())
+                {
+                    dynamic dane = faktura.Dane;
+
+                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+
+                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
                         {
-                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            dynamic? magazyn = null;
+                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
                             {
-                                magazyn = m;
-                                break;
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                            }
+                            if (magazyn != null)
+                            {
+                                dane.Magazyn = magazyn;
                             }
                         }
-                        if (magazyn != null)
+                    }
+
+                    if (request.IssueDate.HasValue)
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
                         {
-                            dane.Magazyn = magazyn;
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
                         }
                     }
-                }
 
-                if (request.IssueDate.HasValue)
-                {
-                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    if (request.SaleDate.HasValue)
                     {
-                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        dane.DataSprzedazy = request.SaleDate.Value;
+                    }
+
+                    // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                    if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("AdvanceInvoice"))
+                    {
+                        dane.Uwagi = request.Notes;
+                    }
+                    else if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        _logger.LogInformation("Skipping notes for AdvanceInvoice");
+                    }
+
+                    // Add items
+                    if (request.Items != null)
+                    {
+                        AddItemsToDocument(faktura, request.Items);
+                    }
+
+                    if ((bool)faktura.Zapisz())
+                    {
+                        string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                        _logger.LogInformation("Created advance invoice {Number}", fullNumber);
+
+                        return (true, MapSalesDocumentToDto(dane), "Advance invoice created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(faktura);
+                        return (false, null, "Failed to create advance invoice", errors);
                     }
                 }
+            });
 
-                if (request.SaleDate.HasValue)
-                {
-                    dane.DataSprzedazy = request.SaleDate.Value;
-                }
-
-                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("AdvanceInvoice"))
-                {
-                    dane.Uwagi = request.Notes;
-                }
-                else if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    _logger.LogInformation("Skipping notes for AdvanceInvoice");
-                }
-
-                // Add items
-                if (request.Items != null)
-                {
-                    AddItemsToDocument(faktura, request.Items);
-                }
-
-                if ((bool)faktura.Zapisz())
-                {
-                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                    _logger.LogInformation("Created advance invoice {Number}", fullNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetDocument),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "Advance invoice created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(faktura);
-                    return BadRequest(ApiResponse<DocumentDto>.Error("Failed to create advance invoice", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(
+                    nameof(GetDocument),
+                    new { id = result.Data!.Id },
+                    ApiResponse<DocumentDto>.Ok(result.Data, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<DocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -4270,84 +4316,100 @@ public class DocumentsController : ControllerBase
     /// Create a VAT margin invoice (Faktura VAT marza)
     /// </summary>
     [HttpPost("vat-margin-invoice")]
-    public ActionResult<ApiResponse<DocumentDto>> CreateVatMarginInvoice([FromBody] CreateDocumentRequest request)
+    public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateVatMarginInvoice([FromBody] CreateDocumentRequest request)
     {
         try
         {
-            var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
-            if (dokumentySprzedazy == null)
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get DokumentySprzedazy manager"));
-            }
-
-            using (var faktura = dokumentySprzedazy.UtworzFaktureVATMarza())
-            {
-                dynamic dane = faktura.Dane;
-
-                SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
-
-                if (!string.IsNullOrEmpty(request.WarehouseSymbol))
+                var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");
+                if (dokumentySprzedazy == null)
                 {
-                    var magazyny = _sferaService.GetManager("Magazyny");
-                    if (magazyny != null)
+                    return (false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
+                }
+
+                using (var faktura = dokumentySprzedazy.UtworzFaktureVATMarza())
+                {
+                    dynamic dane = faktura.Dane;
+
+                    SetCustomerOnDocument(dane, request.CustomerId, request.CustomerNIP);
+
+                    if (!string.IsNullOrEmpty(request.WarehouseSymbol))
                     {
-                        dynamic? magazyn = null;
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
+                        var magazyny = _sferaService.GetManager("Magazyny");
+                        if (magazyny != null)
                         {
-                            if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                            dynamic? magazyn = null;
+                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
                             {
-                                magazyn = m;
-                                break;
+                                if (DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
+                                {
+                                    magazyn = m;
+                                    break;
+                                }
+                            }
+                            if (magazyn != null)
+                            {
+                                dane.Magazyn = magazyn;
                             }
                         }
-                        if (magazyn != null)
+                    }
+
+                    if (request.IssueDate.HasValue)
+                    {
+                        if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
                         {
-                            dane.Magazyn = magazyn;
+                            DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
                         }
                     }
-                }
 
-                if (request.IssueDate.HasValue)
-                {
-                    if (!DynamicPropertyHelper.TrySetProperty(dane, "DataWydaniaWystawienia", request.IssueDate.Value))
+                    if (request.SaleDate.HasValue)
                     {
-                        DynamicPropertyHelper.TrySetProperty(dane, "DataWystawienia", request.IssueDate.Value);
+                        dane.DataSprzedazy = request.SaleDate.Value;
+                    }
+
+                    // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
+                    if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("VatMarginInvoice"))
+                    {
+                        dane.Uwagi = request.Notes;
+                    }
+                    else if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        _logger.LogInformation("Skipping notes for VatMarginInvoice");
+                    }
+
+                    // Add items
+                    AddItemsToDocument(faktura, request.Items);
+
+                    if ((bool)faktura.Zapisz())
+                    {
+                        string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
+                        _logger.LogInformation("Created VAT margin invoice {Number}", fullNumber);
+
+                        return (true, MapSalesDocumentToDto(dane), "VAT margin invoice created successfully", new List<string>());
+                    }
+                    else
+                    {
+                        var errors = GetBusinessObjectErrors(faktura);
+                        return (false, null, "Failed to create VAT margin invoice", errors);
                     }
                 }
+            });
 
-                if (request.SaleDate.HasValue)
-                {
-                    dane.DataSprzedazy = request.SaleDate.Value;
-                }
-
-                // Set notes (skip for invoices and receipts to avoid "Import ILUO" remarks)
-                if (!string.IsNullOrEmpty(request.Notes) && !ShouldSkipImportRemarksForContext("VatMarginInvoice"))
-                {
-                    dane.Uwagi = request.Notes;
-                }
-                else if (!string.IsNullOrEmpty(request.Notes))
-                {
-                    _logger.LogInformation("Skipping notes for VatMarginInvoice");
-                }
-
-                // Add items
-                AddItemsToDocument(faktura, request.Items);
-
-                if ((bool)faktura.Zapisz())
-                {
-                    string? fullNumber = DynamicPropertyHelper.GetString(dane, "NumerWewnetrzny", "PelnaSygnatura");
-                    _logger.LogInformation("Created VAT margin invoice {Number}", fullNumber);
-
-                    return CreatedAtAction(
-                        nameof(GetDocument),
-                        new { id = DynamicPropertyHelper.GetId(dane) },
-                        ApiResponse<DocumentDto>.Ok(MapSalesDocumentToDto(dane), "VAT margin invoice created successfully"));
-                }
-                else
-                {
-                    var errors = GetBusinessObjectErrors(faktura);
-                    return BadRequest(ApiResponse<DocumentDto>.Error("Failed to create VAT margin invoice", errors));
-                }
+            if (result.Success)
+            {
+                return CreatedAtAction(
+                    nameof(GetDocument),
+                    new { id = result.Data!.Id },
+                    ApiResponse<DocumentDto>.Ok(result.Data, result.Message));
+            }
+            else if (result.Errors.Any())
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(result.Message, result.Errors));
+            }
+            else
+            {
+                return StatusCode(500, ApiResponse<DocumentDto>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -4389,15 +4451,8 @@ public class DocumentsController : ControllerBase
                 return BadRequest(ApiResponse<DocumentDto>.Error("At least one order ID is required"));
             }
 
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if configured)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, $"Failed to authenticate with operator {operatorCredentials.Login}", new List<string>());
-                }
-
                 // Get managers
                 var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowieniaManager == null)
@@ -6610,179 +6665,206 @@ public class DocumentsController : ControllerBase
     /// <param name="request">Association request with target document ID</param>
     /// <returns>Success status</returns>
     [HttpPost("{id}/associate")]
-    public ActionResult<ApiResponse<object>> AssociateDocument(int id, [FromBody] DocumentAssociationRequest request)
+    public async Task<ActionResult<ApiResponse<object>>> AssociateDocument(int id, [FromBody] DocumentAssociationRequest request)
     {
         try
         {
-            // Try to find the source document in various managers
-            dynamic? sourceDocument = null;
-            dynamic? sourceManager = null;
-            string? sourceManagerName = null;
+            // Capture for use inside lambda
+            int targetDocumentId = request.TargetDocumentId;
+            string? relationType = request.RelationType;
 
-            // Check different document managers
-            var managersToCheck = new[]
+            var result = await _sferaService.ExecuteWithLockAsync<(
+                bool Success,
+                bool SourceNotFound,
+                bool TargetNotFound,
+                bool NoPowiazane,
+                string Message,
+                object? Data)>(() =>
             {
-                "Dokumenty",
-                "DokumentySprzedazy",
-                "DokumentyZakupu",
-                "WydaniaZewnetrzne",
-                "PrzyjeciaZewnetrzne",
-                "WydaniaMiedzymagazynowe",
-                "PrzesunieciaMiedzymagazynowe",
-                "RozchodyWewnetrzne",
-                "PrzychodyWewnetrzne"
-            };
+                // Try to find the source document in various managers
+                dynamic? sourceDocument = null;
+                dynamic? sourceManager = null;
 
-            // First try the main Dokumenty manager by iterating (same as GetDocument)
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager != null)
-            {
-                try
+                // Check different document managers
+                var managersToCheck = new[]
                 {
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                    "Dokumenty",
+                    "DokumentySprzedazy",
+                    "DokumentyZakupu",
+                    "WydaniaZewnetrzne",
+                    "PrzyjeciaZewnetrzne",
+                    "WydaniaMiedzymagazynowe",
+                    "PrzesunieciaMiedzymagazynowe",
+                    "RozchodyWewnetrzne",
+                    "PrzychodyWewnetrzne"
+                };
+
+                // First try the main Dokumenty manager by iterating (same as GetDocument)
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager != null)
+                {
+                    try
                     {
-                        if (DynamicPropertyHelper.GetId(d) == id)
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
                         {
-                            sourceDocument = d;
-                            sourceManager = dokumentyManager;
-                            sourceManagerName = "Dokumenty";
-                            break;
+                            if (DynamicPropertyHelper.GetId(d) == id)
+                            {
+                                sourceDocument = d;
+                                sourceManager = dokumentyManager;
+                                break;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                // If not found, try other managers
+                if (sourceDocument == null)
+                {
+                    foreach (var managerName in managersToCheck.Skip(1)) // Skip "Dokumenty"
+                    {
+                        var manager = _sferaService.GetManager(managerName);
+                        if (manager == null) continue;
+
+                        try
+                        {
+                            foreach (var d in DynamicPropertyHelper.SafeGetAll((object)manager))
+                            {
+                                if (DynamicPropertyHelper.GetId(d) == id)
+                                {
+                                    sourceDocument = d;
+                                    sourceManager = manager;
+                                    break;
+                                }
+                            }
+                            if (sourceDocument != null) break;
+                        }
+                        catch
+                        {
+                            continue;
                         }
                     }
                 }
-                catch { }
-            }
 
-            // If not found, try other managers
-            if (sourceDocument == null)
-            {
-                foreach (var managerName in managersToCheck.Skip(1)) // Skip "Dokumenty"
+                if (sourceDocument == null)
+                {
+                    return (false, true, false, false, $"Source document with ID {id} not found", null);
+                }
+
+                // Find the target document
+                dynamic? targetDocument = null;
+
+                foreach (var managerName in managersToCheck)
                 {
                     var manager = _sferaService.GetManager(managerName);
                     if (manager == null) continue;
 
                     try
                     {
-                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)manager))
+                        var doc = manager.Dane.Znajdz(targetDocumentId);
+                        if (doc != null)
                         {
-                            if (DynamicPropertyHelper.GetId(d) == id)
-                            {
-                                sourceDocument = d;
-                                sourceManager = manager;
-                                sourceManagerName = managerName;
-                                break;
-                            }
+                            targetDocument = doc;
+                            break;
                         }
-                        if (sourceDocument != null) break;
                     }
                     catch
                     {
                         continue;
                     }
                 }
-            }
 
-            if (sourceDocument == null)
-            {
-                return NotFound(ApiResponse<object>.Error($"Source document with ID {id} not found"));
-            }
+                if (targetDocument == null)
+                {
+                    return (false, false, true, false, $"Target document with ID {targetDocumentId} not found", null);
+                }
 
-            // Find the target document
-            dynamic? targetDocument = null;
-
-            foreach (var managerName in managersToCheck)
-            {
-                var manager = _sferaService.GetManager(managerName);
-                if (manager == null) continue;
-
+                // Create association using DokumentyPowiazane
                 try
                 {
-                    var doc = manager.Dane.Znajdz(request.TargetDocumentId);
-                    if (doc != null)
+                    // Get DokumentyPowiazane collection
+                    var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(sourceDocument, "DokumentyPowiazane");
+                    if (dokumentyPowiazane == null)
                     {
-                        targetDocument = doc;
-                        break;
+                        return (false, false, false, true, "Source document does not support document associations (DokumentyPowiazane)", null);
                     }
-                }
-                catch
-                {
-                    continue;
-                }
-            }
 
-            if (targetDocument == null)
-            {
-                return NotFound(ApiResponse<object>.Error($"Target document with ID {request.TargetDocumentId} not found"));
-            }
+                    // Add the target document to the collection
+                    dokumentyPowiazane.Dodaj(targetDocument);
 
-            // Create association using DokumentyPowiazane
-            try
-            {
-                // Get DokumentyPowiazane collection
-                var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(sourceDocument, "DokumentyPowiazane");
-                if (dokumentyPowiazane == null)
-                {
-                    return BadRequest(ApiResponse<object>.Error("Source document does not support document associations (DokumentyPowiazane)"));
-                }
-
-                // Add the target document to the collection
-                dokumentyPowiazane.Dodaj(targetDocument);
-
-                // Save the source document
-                // For some document types, we need to use the business object wrapper
-                bool saved = false;
-                try
-                {
-                    // Try to save using Zapisz on the entity itself (if available)
-                    saved = (bool)sourceDocument.Zapisz();
-                }
-                catch
-                {
-                    // If that fails, try editing through the manager
+                    // Save the source document
+                    bool saved = false;
                     try
                     {
-                        using (var editor = sourceManager.Edytuj(sourceDocument))
+                        saved = (bool)sourceDocument.Zapisz();
+                    }
+                    catch
+                    {
+                        try
                         {
-                            saved = (bool)editor.Zapisz();
+                            using (var editor = sourceManager.Edytuj(sourceDocument))
+                            {
+                                saved = (bool)editor.Zapisz();
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Could not save using Edytuj pattern, trying alternative approach");
+                            saved = true; // Assume success if no exception during Dodaj
                         }
                     }
-                    catch (Exception ex)
+
+                    if (saved)
                     {
-                        _logger.LogWarning(ex, "Could not save using Edytuj pattern, trying alternative approach");
-                        // Some documents may auto-save when collection is modified
-                        saved = true; // Assume success if no exception during Dodaj
+                        string sourceNumber = DynamicPropertyHelper.GetString(sourceDocument, "NumerWewnetrzny", "PelnaSygnatura")
+                                        ?? DynamicPropertyHelper.GetString(sourceDocument, "Symbol")
+                                        ?? id.ToString();
+                        string targetNumber = DynamicPropertyHelper.GetString(targetDocument, "NumerWewnetrzny", "PelnaSygnatura")
+                                         ?? DynamicPropertyHelper.GetString(targetDocument, "Symbol")
+                                         ?? targetDocumentId.ToString();
+
+                        _logger.LogInformation("Associated document {SourceDoc} with {TargetDoc}", (object)sourceNumber, (object)targetNumber);
+
+                        return (true, false, false, false, "Documents associated successfully", (object)new
+                        {
+                            SourceDocumentId = id,
+                            TargetDocumentId = targetDocumentId,
+                            RelationType = relationType,
+                            SourceDocumentNumber = sourceNumber,
+                            TargetDocumentNumber = targetNumber
+                        });
+                    }
+                    else
+                    {
+                        return (false, false, false, false, "Failed to save document association", null);
                     }
                 }
-
-                if (saved)
+                catch (Exception ex)
                 {
-                    string sourceNumber = DynamicPropertyHelper.GetString(sourceDocument, "NumerWewnetrzny", "PelnaSygnatura")
-                                    ?? DynamicPropertyHelper.GetString(sourceDocument, "Symbol")
-                                    ?? id.ToString();
-                    string targetNumber = DynamicPropertyHelper.GetString(targetDocument, "NumerWewnetrzny", "PelnaSygnatura")
-                                     ?? DynamicPropertyHelper.GetString(targetDocument, "Symbol")
-                                     ?? request.TargetDocumentId.ToString();
-
-                    _logger.LogInformation("Associated document {SourceDoc} with {TargetDoc}", (object)sourceNumber, (object)targetNumber);
-
-                    return Ok(ApiResponse<object>.Ok(new
-                    {
-                        SourceDocumentId = id,
-                        TargetDocumentId = request.TargetDocumentId,
-                        RelationType = request.RelationType,
-                        SourceDocumentNumber = sourceNumber,
-                        TargetDocumentNumber = targetNumber
-                    }, $"Documents associated successfully"));
+                    _logger.LogError(ex, "Error creating document association");
+                    return (false, false, false, false, $"Error creating association: {ex.Message}", null);
                 }
-                else
-                {
-                    return BadRequest(ApiResponse<object>.Error("Failed to save document association"));
-                }
-            }
-            catch (Exception ex)
+            });
+
+            if (result.SourceNotFound)
             {
-                _logger.LogError(ex, "Error creating document association");
-                return StatusCode(500, ApiResponse<object>.Error($"Error creating association: {ex.Message}"));
+                return NotFound(ApiResponse<object>.Error(result.Message));
+            }
+            else if (result.TargetNotFound)
+            {
+                return NotFound(ApiResponse<object>.Error(result.Message));
+            }
+            else if (result.NoPowiazane)
+            {
+                return BadRequest(ApiResponse<object>.Error(result.Message));
+            }
+            else if (result.Success)
+            {
+                return Ok(ApiResponse<object>.Ok(result.Data!, result.Message));
+            }
+            else
+            {
+                return BadRequest(ApiResponse<object>.Error(result.Message));
             }
         }
         catch (Exception ex)
@@ -6798,73 +6880,83 @@ public class DocumentsController : ControllerBase
     /// <param name="id">Document ID</param>
     /// <returns>List of associated documents</returns>
     [HttpGet("{id}/associations")]
-    public ActionResult<ApiResponse<List<DocumentListItemDto>>> GetDocumentAssociations(int id)
+    public async Task<ActionResult<ApiResponse<List<DocumentListItemDto>>>> GetDocumentAssociations(int id)
     {
         try
         {
-            // Find the document using iteration (same pattern as GetDocument)
-            dynamic? document = null;
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager != null)
+            var result = await _sferaService.ExecuteWithLockAsync<(bool Found, List<DocumentListItemDto> Associations)>(() =>
             {
-                try
+                // Find the document using iteration (same pattern as GetDocument)
+                dynamic? document = null;
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager != null)
                 {
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                    try
                     {
-                        if (DynamicPropertyHelper.GetId(d) == id)
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
                         {
-                            document = d;
-                            break;
+                            if (DynamicPropertyHelper.GetId(d) == id)
+                            {
+                                document = d;
+                                break;
+                            }
+                        }
+                    }
+                    catch { }
+                }
+
+                if (document == null)
+                {
+                    return (false, new List<DocumentListItemDto>());
+                }
+
+                var associations = new List<DocumentListItemDto>();
+
+                // Get DokumentyPowiazane collection
+                var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(document, "DokumentyPowiazane");
+                if (dokumentyPowiazane != null)
+                {
+                    foreach (var powiazany in dokumentyPowiazane)
+                    {
+                        try
+                        {
+                            associations.Add(MapToListItemDto(powiazany));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Could not map associated document");
                         }
                     }
                 }
-                catch { }
-            }
 
-            if (document == null)
+                // Also check DokumentyRealizujace (documents that realize this one)
+                var dokumentyRealizujace = DynamicPropertyHelper.GetProperty(document, "DokumentyRealizujace");
+                if (dokumentyRealizujace != null)
+                {
+                    foreach (var realizujacy in dokumentyRealizujace)
+                    {
+                        try
+                        {
+                            var dto = MapToListItemDto(realizujacy);
+                            dto.RelationType = "realization";
+                            associations.Add(dto);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Could not map realizing document");
+                        }
+                    }
+                }
+
+                return (true, associations);
+            });
+
+            if (!result.Found)
             {
                 return NotFound(ApiResponse<List<DocumentListItemDto>>.Error($"Document with ID {id} not found"));
             }
 
-            var associations = new List<DocumentListItemDto>();
-
-            // Get DokumentyPowiazane collection
-            var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(document, "DokumentyPowiazane");
-            if (dokumentyPowiazane != null)
-            {
-                foreach (var powiazany in dokumentyPowiazane)
-                {
-                    try
-                    {
-                        associations.Add(MapToListItemDto(powiazany));
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Could not map associated document");
-                    }
-                }
-            }
-
-            // Also check DokumentyRealizujace (documents that realize this one)
-            var dokumentyRealizujace = DynamicPropertyHelper.GetProperty(document, "DokumentyRealizujace");
-            if (dokumentyRealizujace != null)
-            {
-                foreach (var realizujacy in dokumentyRealizujace)
-                {
-                    try
-                    {
-                        var dto = MapToListItemDto(realizujacy);
-                        dto.RelationType = "realization";
-                        associations.Add(dto);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Could not map realizing document");
-                    }
-                }
-            }
-
-            return Ok(ApiResponse<List<DocumentListItemDto>>.Ok(associations));
+            return Ok(ApiResponse<List<DocumentListItemDto>>.Ok(result.Associations));
         }
         catch (Exception ex)
         {
@@ -6879,91 +6971,120 @@ public class DocumentsController : ControllerBase
     /// <param name="id">Source document ID</param>
     /// <param name="targetId">Target document ID to disassociate</param>
     [HttpDelete("{id}/associations/{targetId}")]
-    public ActionResult<ApiResponse<object>> RemoveDocumentAssociation(int id, int targetId)
+    public async Task<ActionResult<ApiResponse<object>>> RemoveDocumentAssociation(int id, int targetId)
     {
         try
         {
-            // Find the source document using iteration
-            dynamic? sourceDocument = null;
-            dynamic? sourceManager = null;
-
-            var dokumentyManager = _sferaService.GetManager("Dokumenty");
-            if (dokumentyManager != null)
+            var result = await _sferaService.ExecuteWithLockAsync<(
+                bool Success,
+                bool SourceNotFound,
+                bool NoPowiazane,
+                bool AssocNotFound,
+                string Message)>(() =>
             {
-                try
+                // Find the source document using iteration
+                dynamic? sourceDocument = null;
+                dynamic? sourceManager = null;
+
+                var dokumentyManager = _sferaService.GetManager("Dokumenty");
+                if (dokumentyManager != null)
                 {
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
+                    try
                     {
-                        if (DynamicPropertyHelper.GetId(d) == id)
+                        foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
                         {
-                            sourceDocument = d;
-                            sourceManager = dokumentyManager;
-                            break;
+                            if (DynamicPropertyHelper.GetId(d) == id)
+                            {
+                                sourceDocument = d;
+                                sourceManager = dokumentyManager;
+                                break;
+                            }
                         }
                     }
+                    catch { }
                 }
-                catch { }
-            }
 
-            if (sourceDocument == null)
-            {
-                return NotFound(ApiResponse<object>.Error($"Source document with ID {id} not found"));
-            }
-
-            // Get DokumentyPowiazane and find the target to remove
-            var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(sourceDocument, "DokumentyPowiazane");
-            if (dokumentyPowiazane == null)
-            {
-                return BadRequest(ApiResponse<object>.Error("Document does not support associations"));
-            }
-
-            dynamic? targetToRemove = null;
-            foreach (var powiazany in dokumentyPowiazane)
-            {
-                if (DynamicPropertyHelper.GetId(powiazany) == targetId)
+                if (sourceDocument == null)
                 {
-                    targetToRemove = powiazany;
-                    break;
+                    return (false, true, false, false, $"Source document with ID {id} not found");
                 }
-            }
 
-            if (targetToRemove == null)
-            {
-                return NotFound(ApiResponse<object>.Error($"Association with document ID {targetId} not found"));
-            }
+                // Get DokumentyPowiazane and find the target to remove
+                var dokumentyPowiazane = DynamicPropertyHelper.GetProperty(sourceDocument, "DokumentyPowiazane");
+                if (dokumentyPowiazane == null)
+                {
+                    return (false, false, true, false, "Document does not support associations");
+                }
 
-            // Remove the association
-            dokumentyPowiazane.Usun(targetToRemove);
+                dynamic? targetToRemove = null;
+                foreach (var powiazany in dokumentyPowiazane)
+                {
+                    if (DynamicPropertyHelper.GetId(powiazany) == targetId)
+                    {
+                        targetToRemove = powiazany;
+                        break;
+                    }
+                }
 
-            // Save
-            bool saved = false;
-            try
-            {
-                saved = (bool)sourceDocument.Zapisz();
-            }
-            catch
-            {
+                if (targetToRemove == null)
+                {
+                    return (false, false, false, true, $"Association with document ID {targetId} not found");
+                }
+
+                // Remove the association
+                dokumentyPowiazane.Usun(targetToRemove);
+
+                // Save
+                bool saved = false;
                 try
                 {
-                    using (var editor = sourceManager.Edytuj(sourceDocument))
-                    {
-                        saved = (bool)editor.Zapisz();
-                    }
+                    saved = (bool)sourceDocument.Zapisz();
                 }
                 catch
                 {
-                    saved = true;
+                    try
+                    {
+                        using (var editor = sourceManager.Edytuj(sourceDocument))
+                        {
+                            saved = (bool)editor.Zapisz();
+                        }
+                    }
+                    catch
+                    {
+                        saved = true;
+                    }
                 }
-            }
 
-            if (saved)
+                if (saved)
+                {
+                    _logger.LogInformation("Removed association between documents {SourceId} and {TargetId}", id, targetId);
+                    return (true, false, false, false, "Association removed successfully");
+                }
+                else
+                {
+                    return (false, false, false, false, "Failed to remove association");
+                }
+            });
+
+            if (result.SourceNotFound)
             {
-                _logger.LogInformation("Removed association between documents {SourceId} and {TargetId}", id, targetId);
-                return Ok(ApiResponse<object>.Ok(new { RemovedAssociation = targetId }, "Association removed successfully"));
+                return NotFound(ApiResponse<object>.Error(result.Message));
+            }
+            else if (result.NoPowiazane)
+            {
+                return BadRequest(ApiResponse<object>.Error(result.Message));
+            }
+            else if (result.AssocNotFound)
+            {
+                return NotFound(ApiResponse<object>.Error(result.Message));
+            }
+            else if (result.Success)
+            {
+                return Ok(ApiResponse<object>.Ok(new { RemovedAssociation = targetId }, result.Message));
             }
             else
             {
-                return BadRequest(ApiResponse<object>.Error("Failed to remove association"));
+                return BadRequest(ApiResponse<object>.Error(result.Message));
             }
         }
         catch (Exception ex)

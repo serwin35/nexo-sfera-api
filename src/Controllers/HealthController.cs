@@ -91,14 +91,18 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Reconnect to Sfera
+    /// Reconnect to Sfera. Multi-company note: reconnects ONLY the connection of the
+    /// database associated with the calling API key (default database for keys without
+    /// a Database override) - other pooled company connections are unaffected.
     /// </summary>
     [HttpPost("reconnect")]
     public async Task<ActionResult<ApiResponse<bool>>> Reconnect()
     {
         try
         {
-            await _sferaService.InitializeAsync();
+            // ReinitializeAsync disposes the stale connection and connects again on the STA thread -
+            // InitializeAsync alone is a no-op while a (possibly dead) connection handle exists.
+            await _sferaService.ReinitializeAsync();
             return Ok(ApiResponse<bool>.Ok(true, "Successfully reconnected to Sfera"));
         }
         catch (Exception ex)

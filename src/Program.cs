@@ -208,8 +208,13 @@ builder.Services.AddAuthentication(ApiKeyAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
-// Register Sfera service as singleton (connection is expensive)
-builder.Services.AddSingleton<ISferaService, SferaService>();
+// Multi-company Sfera access:
+// - SferaConnectionPool keeps one SDK connection (own STA thread) per Nexo database
+// - SferaServiceRouter resolves the tenant (database/operator/context) from the API key
+//   claims per request and routes every ISferaService call to the right connection
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddSingleton<SferaConnectionPool>();
+builder.Services.AddSingleton<ISferaService, SferaServiceRouter>();
 
 // Register helpers
 builder.Services.AddSingleton<StockValidationHelper>();
@@ -262,8 +267,10 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// MCP server endpoints at /mcp for AI agent integration
-app.MapMcp("/mcp");
+// MCP server endpoints at /mcp for AI agent integration.
+// RequireAuthorization is essential: MCP tools include write operations (creating invoices,
+// receipts, customers) and must be protected by the same API key auth as the REST endpoints.
+app.MapMcp("/mcp").RequireAuthorization();
 
 // Initialize Sfera connection on startup
 try

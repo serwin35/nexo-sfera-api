@@ -200,4 +200,4 @@ W przypadku błędu:
 Oprócz MCP, API udostępnia tradycyjne endpointy REST na porcie 5000:
 - Swagger UI: `http://localhost:5000/swagger`
 - Health check: `http://localhost:5000/api/health`
-- 250+ endpointów REST w 32 kontrolerach
+- 354 endpointy REST w 61 kontrolerach

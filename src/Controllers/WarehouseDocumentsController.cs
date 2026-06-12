@@ -34,38 +34,6 @@ public class WarehouseDocumentsController : ControllerBase
     }
 
     /// <summary>
-    /// Gets the Nexo operator credentials from the current user's claims (set by API key authentication).
-    /// Returns null if no per-key credentials are configured.
-    /// </summary>
-    private (string? Login, string? Password) GetOperatorCredentialsFromClaims()
-    {
-        var nexoLogin = User.FindFirst("NexoLogin")?.Value;
-        var nexoPassword = User.FindFirst("NexoPassword")?.Value;
-        return (nexoLogin, nexoPassword);
-    }
-
-    /// <summary>
-    /// Switches to the operator specified in API key claims (if any).
-    /// Must be called inside ExecuteWithLockAsync on the SDK STA thread.
-    /// </summary>
-    private bool SwitchToRequestOperator((string? Login, string? Password) credentials)
-    {
-        if (string.IsNullOrEmpty(credentials.Login))
-        {
-            // No per-key credentials, use default operator
-            return true;
-        }
-
-        if (!_sferaService.SwitchOperatorIfNeeded(credentials.Login, credentials.Password))
-        {
-            _logger.LogError("Failed to switch to operator {Login} for this request", (object)credentials.Login);
-            return false;
-        }
-
-        return true;
-    }
-
-    /// <summary>
     /// Get warehouse documents with filtering
     /// </summary>
     [HttpGet]
@@ -199,15 +167,8 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
-
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
-                }
-
                 // Try to find the document in different managers
                 string[] managerNames = { "WydaniaZewnetrzne", "PrzyjeciaZewnetrzne", "RozchodyWewnetrzne", "PrzychodyWewnetrzne", "PrzesunieciaMiedzymagazynowe" };
 
@@ -407,9 +368,6 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            // Get operator credentials from API key claims BEFORE entering SDK thread
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
-
             // Validate stock availability for outgoing document
             if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
             {
@@ -431,12 +389,6 @@ public class WarehouseDocumentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if any)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
-                }
-
                 var wydania = _sferaService.GetManager("WydaniaZewnetrzne");
                 if (wydania == null)
                 {
@@ -568,18 +520,9 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            // Get operator credentials from API key claims BEFORE entering SDK thread
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
-
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if any)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
-                }
-
                 var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
                 if (przyjecia == null)
                 {
@@ -871,9 +814,6 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            // Get operator credentials from API key claims BEFORE entering SDK thread
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
-
             // Validate stock availability for outgoing document
             // NOTE: Stock validation only works for current-date documents.
             // For historical documents, the SDK validates during Zapisz() using historical stock levels.
@@ -903,12 +843,6 @@ public class WarehouseDocumentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if any)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
-                }
-
                 var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
                 if (rozchody == null)
                 {
@@ -1128,18 +1062,9 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            // Get operator credentials from API key claims BEFORE entering SDK thread
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
-
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if any)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
-                }
-
                 var przychody = _sferaService.GetManager("PrzychodyWewnetrzne");
                 if (przychody == null)
                 {
@@ -1318,9 +1243,6 @@ public class WarehouseDocumentsController : ControllerBase
     {
         try
         {
-            // Get operator credentials from API key claims BEFORE entering SDK thread
-            var operatorCredentials = GetOperatorCredentialsFromClaims();
-
             if (string.IsNullOrEmpty(request.TargetWarehouseSymbol))
             {
                 return BadRequest(ApiResponse<WarehouseDocumentDto>.Error("Target warehouse symbol is required for MM"));
@@ -1347,12 +1269,6 @@ public class WarehouseDocumentsController : ControllerBase
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
-                // Switch to the operator specified in API key (if any)
-                if (!SwitchToRequestOperator(operatorCredentials))
-                {
-                    return (false, null, "Failed to switch to the operator associated with this API key", new List<string>());
-                }
-
                 var wydania = _sferaService.GetManager("WydaniaMiedzymagazynowe");
                 var konfiguracje = _sferaService.GetManager("Konfiguracje");
                 if (wydania == null || konfiguracje == null)
