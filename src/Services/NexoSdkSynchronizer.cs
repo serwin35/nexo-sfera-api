@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using NexoSferaApi.Models;
@@ -391,7 +392,7 @@ public static class NexoSdkSynchronizer
                     response.Content.CopyToAsync(fileStream).GetAwaiter().GetResult();
                 }
 
-                using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+                using var archive = ZipFile.OpenRead(zipPath);
                 foreach (var entry in archive.Entries)
                 {
                     if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry

@@ -176,14 +176,8 @@
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Slowniki.dll</HintPath>
       <Private>true</Private>
     </Reference>
-    <Reference Include="InsERT.Moria.Dokumenty">
-      <HintPath>$(NexoSdkPath)\InsERT.Moria.Dokumenty.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
-    <Reference Include="InsERT.Moria.CennikiICeny">
-      <HintPath>$(NexoSdkPath)\InsERT.Moria.CennikiICeny.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
+    <!-- InsERT.Moria.Dokumenty and InsERT.Moria.CennikiICeny do NOT exist as standalone DLLs
+         in SDK 60.x - their namespaces are exposed through InsERT.Moria.API.dll -->
     <Reference Include="InsERT.Moria.Inwentaryzacja">
       <HintPath>$(NexoSdkPath)\InsERT.Moria.Inwentaryzacja.dll</HintPath>
       <Private>true</Private>
