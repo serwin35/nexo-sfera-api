@@ -78,16 +78,55 @@ Wszystkie parametry można nadpisać zmiennymi środowiskowymi `SFERA_*` (np. `S
 
 > ⚠️ **Nie commituj `appsettings.json` z realnymi danymi.** Używaj zmiennych środowiskowych w produkcji.
 
-## 🚀 Uruchomienie
+## 🚀 Build i uruchomienie
 
-```bash
-cd src
-dotnet run
+> Build wymaga **Windows** (target `net8.0-windows`, WinForms, DLL-e SDK InsERT).
+
+### Pierwsze uruchomienie (świeży klon)
+
+```powershell
+# 1. Wypełnij src\lib\nexo-sdk DLL-ami SDK (nie są śledzone w git)
+#    Domyślnie: docs\nexoSDK_*\Bin, fallback: zainstalowane nexo
+.\scripts\setup-sdk.ps1
+#    własne źródło: .\scripts\setup-sdk.ps1 -SdkSourcePath "C:\Program Files (x86)\InsERT\nexo"
+
+# 2. Konfiguracja
+copy src\appsettings.template.json src\appsettings.json   # i uzupełnij dane
 ```
 
-- API: `http://localhost:5000`
+### Build i start
+
+```powershell
+dotnet build src\NexoSferaApi.csproj          # sam build
+dotnet run --project src\NexoSferaApi.csproj  # build + start
+```
+
+- API: `http://localhost:5000` (port: env `API_PORT` albo `Kestrel:Endpoints:Http:Url`)
 - Swagger UI: `http://localhost:5000/swagger`
 - Specyfikacja OpenAPI: `http://localhost:5000/swagger/v1/swagger.json`
+
+### Release / publish
+
+```powershell
+dotnet publish src\NexoSferaApi.csproj -c Release -o publish
+.\publish\NexoSferaApi.exe
+# albo pełny pakiet release:
+.\scripts\build-release.ps1
+```
+
+### Przydatne warianty
+
+```powershell
+# DLL-e SDK z innej ścieżki (bez setup-sdk.ps1)
+dotnet build src\NexoSferaApi.csproj -p:NexoSdkPath="C:\Program Files (x86)\InsERT\nexo"
+
+# Tryb Development - aktywne endpointy debug/* i diagnostics
+$env:ASPNETCORE_ENVIRONMENT="Development"; dotnet run --project src\NexoSferaApi.csproj
+```
+
+### Build w CI (GitHub Actions)
+
+`appsettings.json` **nie jest potrzebny do builda** — konfiguracja jest wyłącznie runtime'owa (env vars `SFERA_*`, `API_KEY`, `ApiKeys__Keys__0__Key`… albo `appsettings.Production.json` obok exe). Gotowe workflow: `.github/workflows/build.yml` (windows-latest, SDK z prywatnego zipa przez secret `NEXO_SDK_URL`) oraz `build-selfhosted.yml` (runner z zainstalowanym nexo). Szczegóły: `docs/CI-CD-SETUP.md`.
 
 ## 🔐 Autentykacja
 

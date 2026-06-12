@@ -165,13 +165,36 @@ $rootDir   = Split-Path -Parent $scriptDir
 $sourcePath = if ([System.IO.Path]::IsPathRooted($SdkSourcePath)) { $SdkSourcePath } else { Join-Path $rootDir $SdkSourcePath }
 $targetPath = if ([System.IO.Path]::IsPathRooted($TargetPath))    { $TargetPath }    else { Join-Path $rootDir $TargetPath }
 
+# The default source (docs\nexoSDK_*\Bin) is gitignored - it exists only on machines where
+# the SDK documentation package was extracted. On a fresh clone, fall back to other SDK
+# locations: any docs\nexoSDK_* folder, then the installed nexo application.
+if (-not $PSBoundParameters.ContainsKey('SdkSourcePath') -and -not (Test-Path $sourcePath)) {
+    $fallbacks = @()
+
+    $docsSdk = Get-ChildItem -Path (Join-Path $rootDir "docs") -Directory -Filter "nexoSDK_*" -ErrorAction SilentlyContinue |
+        Sort-Object Name -Descending | Select-Object -First 1
+    if ($docsSdk) { $fallbacks += (Join-Path $docsSdk.FullName "Bin") }
+
+    $fallbacks += "${env:ProgramFiles(x86)}\InsERT\nexo"
+    $fallbacks += "$env:ProgramFiles\InsERT\nexo"
+
+    foreach ($candidate in $fallbacks) {
+        if ($candidate -and (Test-Path (Join-Path $candidate "InsERT.Moria.API.dll"))) {
+            Write-Host "Default SDK source not found - using fallback: $candidate" -ForegroundColor Yellow
+            $sourcePath = $candidate
+            break
+        }
+    }
+}
+
 Write-Host "Source: $sourcePath"
 
 if (-not (Test-Path $sourcePath)) {
     Write-Error "SDK source path not found: $sourcePath"
     Write-Host ""
-    Write-Host "Hint: extract the SDK to $SdkSourcePath, or pass -SdkSourcePath '<path-to-Bin>'." -ForegroundColor Yellow
-    Write-Host "Latest known SDK shipped with this repo: docs\nexoSDK_60.1.1.9292\Bin" -ForegroundColor Yellow
+    Write-Host "Hint: pass -SdkSourcePath '<path>' pointing at the SDK Bin folder or the nexo install dir," -ForegroundColor Yellow
+    Write-Host "e.g. -SdkSourcePath 'C:\Program Files (x86)\InsERT\nexo'" -ForegroundColor Yellow
+    Write-Host "or extract the SDK documentation package to docs\nexoSDK_60.1.1.9292\." -ForegroundColor Yellow
     exit 1
 }
 
