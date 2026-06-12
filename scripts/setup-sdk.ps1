@@ -67,7 +67,6 @@ $requiredDlls = @(
     "InsERT.Moria.ImportKsiegowy.dll",
     "InsERT.Moria.ProcesyKsiegowoKadrowe.dll",
     "InsERT.Moria.Deklaracje.dll",
-    "InsERT.Moria.Intrastat.dll",
     "InsERT.Moria.KontrolaSkarbowa.dll",
     "InsERT.Moria.SprawozdaniaFinansowe.dll",
     "InsERT.Moria.Raporty.dll",
@@ -104,10 +103,9 @@ $requiredDlls = @(
     "InsERT.Moria.Wydruki.dll"
 )
 
-# Note: csproj also declares <Reference Include="InsERT.Moria.Dokumenty"> and
-# <Reference Include="InsERT.Moria.CennikiICeny">, but those DLLs do not exist
-# as standalone assemblies in the SDK Bin folder (their namespaces are exposed
-# through InsERT.Moria.API.dll). They are intentionally NOT copied here.
+# Note: some namespaces do NOT exist as standalone assemblies in the SDK Bin folder -
+# they are exposed through InsERT.Moria.API.dll and must NOT be listed above:
+# InsERT.Moria.Dokumenty, InsERT.Moria.CennikiICeny, InsERT.Moria.Intrastat.
 
 function Sync-SdkFolder {
     param(
