@@ -72,6 +72,12 @@ public static class NexoSdkSynchronizer
             var sourceVersionInfo = FileVersionInfo.GetVersionInfo(sourceDllPath);
             result.InstalledVersion = sourceVersionInfo.ProductVersion ?? sourceVersionInfo.FileVersion;
 
+            // Hash match means SAME VERSION, not "nothing to do": the build copies only the
+            // ~60 referenced DLLs, while the SDK needs hundreds of dependencies at runtime
+            // (e.g. InsERT.Moria.Narzedzia). On a fresh machine the version matches but most
+            // dependencies are missing - the fill steps below must always run.
+            var versionsMatch = false;
+
             if (File.Exists(localDllPath))
             {
                 var localVersionInfo = FileVersionInfo.GetVersionInfo(localDllPath);
@@ -84,16 +90,11 @@ public static class NexoSdkSynchronizer
                 logger?.LogInformation("[SDK Sync] Local: {Version} (hash: {Hash}), Source: {SrcVersion} (hash: {SrcHash})",
                     result.LocalVersion, localHash[..8], result.InstalledVersion, sourceHash[..8]);
 
-                if (localHash == sourceHash)
-                {
-                    result.Status = SdkSyncStatus.AlreadyCurrent;
-                    result.Message = $"SDK is already up to date (hash match).";
-                    logger?.LogInformation("[SDK Sync] {Message}", result.Message);
-                    _lastSyncResult = result;
-                    return result;
-                }
-
-                logger?.LogInformation("[SDK Sync] DLL hash mismatch — syncing...");
+                versionsMatch = localHash == sourceHash;
+                if (versionsMatch)
+                    logger?.LogInformation("[SDK Sync] Versions match - filling missing dependency DLLs only.");
+                else
+                    logger?.LogInformation("[SDK Sync] DLL hash mismatch — syncing...");
             }
             else
             {
@@ -120,7 +121,15 @@ public static class NexoSdkSynchronizer
             // First try .zip-cache (official SDK packages, fully consistent versions)
             var zipCacheDir = FindMatchingZipCache(dllDir, logger);
 
-            if (preferDeploymentBinaries)
+            if (versionsMatch)
+            {
+                // Same version - just complete the dependency set, never overwrite.
+                if (zipCacheDir != null)
+                    FillMissingDlls(zipCacheDir, runtimeDir, result, logger);
+
+                FillMissingDlls(dllDir, runtimeDir, result, logger);
+            }
+            else if (preferDeploymentBinaries)
             {
                 // The client machine's deployment is the source of truth: its binaries always
                 // match the database version. Overwrite differing build-shipped DLLs so the
@@ -174,6 +183,11 @@ public static class NexoSdkSynchronizer
             {
                 result.Status = SdkSyncStatus.Failed;
                 result.Message = $"Sync failed: {result.FilesFailed} files could not be copied.";
+            }
+            else if (versionsMatch && result.FilesCopied == 0)
+            {
+                result.Status = SdkSyncStatus.AlreadyCurrent;
+                result.Message = "SDK is already up to date (hash match, no missing dependencies).";
             }
             else
             {
