@@ -71,8 +71,12 @@ Skopiuj `src/appsettings.template.json` do `src/appsettings.json` i uzupełnij:
 | `SqlLogin` / `SqlPassword` | Dane logowania SQL (gdy `UseWindowsAuth = false`) |
 | `NexoLogin` / `NexoPassword` | Operator Nexo (domyślny) |
 | `Product` | Subiekt, Rachmistrz, Rewizor, Gratyfikant |
-| `AutoSyncSdk` | Automatyczna synchronizacja DLL-i SDK z instalacji nexo przy starcie |
+| `AutoSyncSdk` | Automatyczna synchronizacja DLL-i SDK przy starcie (domyślnie `true`) |
 | `NexoInstallPath` | Ścieżka instalacji nexo (domyślnie wykrywana) |
+| `PreferDeploymentBinaries` | Binarki z deploymentu nexo klienta (`%LocalAppData%\InsERT\Deployments\Nexo\*\Binaries`) nadpisują DLL-e z builda przy różnicy wersji — spójność z wersją bazy (domyślnie `true`) |
+| `SdkFallbackUrl` / `SdkFallbackToken` | Zip z DLL-ami SDK pobierany przy starcie, gdy na maszynie nie ma nexo, a build nie zawierał DLL-i |
+
+Kolejność źródeł DLL-i SDK przy starcie: **deployment nexo na maszynie klienta** (zawsze zgodny z wersją bazy) → instalacja w Program Files → zip z `SdkFallbackUrl`.
 
 Wszystkie parametry można nadpisać zmiennymi środowiskowymi `SFERA_*` (np. `SFERA_SERVER`, `SFERA_NEXO_LOGIN`); klucz API — `API_KEY`, port — `API_PORT`.
 

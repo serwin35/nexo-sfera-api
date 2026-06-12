@@ -35,6 +35,9 @@ try
         var installPath = tempConfig["Sfera:NexoInstallPath"]
             ?? Environment.GetEnvironmentVariable("NEXO_INSTALL_PATH");
         var syncSource = tempConfig.GetValue("Sfera:SyncSdkSource", false);
+        var preferDeployment = tempConfig.GetValue("Sfera:PreferDeploymentBinaries", true);
+        var fallbackUrl = tempConfig["Sfera:SdkFallbackUrl"];
+        var fallbackToken = tempConfig["Sfera:SdkFallbackToken"];
 
         string? sourceLibDir = null;
         if (syncSource)
@@ -44,7 +47,8 @@ try
             sourceLibDir = Path.Combine(projectRoot, "lib", "nexo-sdk");
         }
 
-        NexoSdkSynchronizer.Synchronize(installPath, AppContext.BaseDirectory, syncLogger, syncSource, sourceLibDir);
+        NexoSdkSynchronizer.Synchronize(installPath, AppContext.BaseDirectory, syncLogger, syncSource, sourceLibDir,
+            preferDeployment, fallbackUrl, fallbackToken);
     }
 }
 catch (Exception ex)

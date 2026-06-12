@@ -22,8 +22,12 @@ public static class NexoSdkSynchronizer
 
     /// <summary>
     /// Synchronizes SDK DLLs if the nexo installation has a newer version.
+    /// Source priority: client machine first (Deployments\Nexo\*\Binaries - always matches
+    /// the client's database version - then Program Files), remote fallback zip last.
     /// </summary>
-    public static SdkSyncResult Synchronize(string? configuredInstallPath, string runtimeDir, ILogger? logger, bool alsoSyncSource = false, string? sourceLibDir = null)
+    public static SdkSyncResult Synchronize(string? configuredInstallPath, string runtimeDir, ILogger? logger,
+        bool alsoSyncSource = false, string? sourceLibDir = null,
+        bool preferDeploymentBinaries = true, string? fallbackUrl = null, string? fallbackToken = null)
     {
         var result = new SdkSyncResult();
 
@@ -35,6 +39,20 @@ public static class NexoSdkSynchronizer
             var dllDir = FindNewestSdkDirectory(configuredInstallPath, logger);
             if (dllDir == null)
             {
+                // No nexo on this machine - if the build didn't ship the DLLs either,
+                // try downloading the SDK package from the configured fallback URL.
+                if (!File.Exists(Path.Combine(runtimeDir, SferaDllName)) && !string.IsNullOrEmpty(fallbackUrl))
+                {
+                    if (TryDownloadSdkPackage(fallbackUrl, fallbackToken, runtimeDir, result, logger))
+                    {
+                        result.Status = SdkSyncStatus.Synchronized;
+                        result.Message = $"No local nexo found - downloaded SDK package from fallback URL ({result.FilesCopied} DLLs).";
+                        logger?.LogInformation("[SDK Sync] {Message}", result.Message);
+                        _lastSyncResult = result;
+                        return result;
+                    }
+                }
+
                 result.Status = SdkSyncStatus.Skipped;
                 result.Message = "Nexo SDK DLLs not found on this system. SDK sync skipped.";
                 logger?.LogWarning("[SDK Sync] {Message}", result.Message);
@@ -98,21 +116,37 @@ public static class NexoSdkSynchronizer
                 }
             }
 
-            // Only FILL MISSING DLLs — never overwrite what lib/nexo-sdk/ already provided via build.
-            // The build's CopySdkFiles target copies from lib/nexo-sdk/ (the source of truth in git).
-            // SDK Sync's role is to add any DLLs that lib/nexo-sdk/ doesn't have.
-            logger?.LogInformation("[SDK Sync] Filling missing DLLs from deployment (not overwriting existing)...");
-
             // First try .zip-cache (official SDK packages, fully consistent versions)
             var zipCacheDir = FindMatchingZipCache(dllDir, logger);
-            if (zipCacheDir != null)
-            {
-                logger?.LogInformation("[SDK Sync] Primary fill source: .zip-cache {Dir}", zipCacheDir);
-                FillMissingDlls(zipCacheDir, runtimeDir, result, logger);
-            }
 
-            // Then fill from deployment Binaries
-            FillMissingDlls(dllDir, runtimeDir, result, logger);
+            if (preferDeploymentBinaries)
+            {
+                // The client machine's deployment is the source of truth: its binaries always
+                // match the database version. Overwrite differing build-shipped DLLs so the
+                // whole set comes consistently from one deployment (mirrors how nexo itself runs).
+                logger?.LogInformation("[SDK Sync] Deployment binaries preferred - syncing full set from deployment...");
+
+                if (zipCacheDir != null)
+                {
+                    logger?.LogInformation("[SDK Sync] Primary source: .zip-cache {Dir}", zipCacheDir);
+                    CopyDlls(zipCacheDir, runtimeDir, result, logger);
+                }
+
+                CopyDlls(dllDir, runtimeDir, result, logger);
+            }
+            else
+            {
+                // Conservative mode: never overwrite what the build shipped - only add missing DLLs.
+                logger?.LogInformation("[SDK Sync] Filling missing DLLs from deployment (not overwriting existing)...");
+
+                if (zipCacheDir != null)
+                {
+                    logger?.LogInformation("[SDK Sync] Primary fill source: .zip-cache {Dir}", zipCacheDir);
+                    FillMissingDlls(zipCacheDir, runtimeDir, result, logger);
+                }
+
+                FillMissingDlls(dllDir, runtimeDir, result, logger);
+            }
 
             // Also fill from related directories
             CopyMissingFromRelatedDirs(dllDir, runtimeDir, result, logger);
@@ -327,6 +361,63 @@ public static class NexoSdkSynchronizer
         logger?.LogInformation("[SDK Sync] Selected deployment: {Dir} (modified {Time}, {Count} DLLs in dir)",
             best.dir, best.writeTime.ToString("yyyy-MM-dd HH:mm:ss"), best.dllCount);
         return best.dir;
+    }
+
+    /// <summary>
+    /// Downloads a zip archive with SDK DLLs (same package format as the CI NEXO_SDK_URL
+    /// secret) and extracts it into the runtime directory. Used as a last resort when the
+    /// machine has no nexo deployment/installation and the build did not ship the DLLs.
+    /// </summary>
+    private static bool TryDownloadSdkPackage(string url, string? bearerToken, string runtimeDir, SdkSyncResult result, ILogger? logger)
+    {
+        try
+        {
+            logger?.LogInformation("[SDK Sync] Downloading SDK package from fallback URL...");
+
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+            if (!string.IsNullOrEmpty(bearerToken))
+            {
+                http.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", bearerToken);
+            }
+
+            var zipPath = Path.Combine(Path.GetTempPath(), $"nexo-sdk-{Guid.NewGuid():N}.zip");
+            try
+            {
+                using (var response = http.GetAsync(url).GetAwaiter().GetResult())
+                {
+                    response.EnsureSuccessStatusCode();
+                    using var fileStream = File.Create(zipPath);
+                    response.Content.CopyToAsync(fileStream).GetAwaiter().GetResult();
+                }
+
+                using var archive = System.IO.Compression.ZipFile.OpenRead(zipPath);
+                foreach (var entry in archive.Entries)
+                {
+                    if (string.IsNullOrEmpty(entry.Name)) continue; // directory entry
+
+                    var destFile = Path.Combine(runtimeDir, entry.Name);
+                    if (File.Exists(destFile)) { result.FilesSkipped++; continue; }
+
+                    entry.ExtractToFile(destFile, overwrite: false);
+                    result.FilesCopied++;
+                }
+            }
+            finally
+            {
+                try { File.Delete(zipPath); } catch { /* best effort */ }
+            }
+
+            logger?.LogInformation("[SDK Sync] Fallback package extracted: {Copied} DLLs ({Skipped} already present).",
+                result.FilesCopied, result.FilesSkipped);
+            return File.Exists(Path.Combine(runtimeDir, SferaDllName));
+        }
+        catch (Exception ex)
+        {
+            result.Errors.Add($"Fallback download failed: {ex.Message}");
+            logger?.LogError(ex, "[SDK Sync] Failed to download SDK package from fallback URL");
+            return false;
+        }
     }
 
     private static string ComputeFileHash(string filePath)

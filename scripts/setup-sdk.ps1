@@ -175,6 +175,11 @@ if (-not $PSBoundParameters.ContainsKey('SdkSourcePath') -and -not (Test-Path $s
         Sort-Object Name -Descending | Select-Object -First 1
     if ($docsSdk) { $fallbacks += (Join-Path $docsSdk.FullName "Bin") }
 
+    # nexo deployment binaries (always match the version the client machine actually runs)
+    $deployments = Get-ChildItem -Path "$env:LOCALAPPDATA\InsERT\Deployments\Nexo" -Directory -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending
+    foreach ($d in $deployments) { $fallbacks += (Join-Path $d.FullName "Binaries") }
+
     $fallbacks += "${env:ProgramFiles(x86)}\InsERT\nexo"
     $fallbacks += "$env:ProgramFiles\InsERT\nexo"
 

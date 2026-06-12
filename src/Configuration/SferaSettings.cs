@@ -19,6 +19,25 @@ public class SferaSettings
     // SDK synchronization settings
     public string? NexoInstallPath { get; set; }     // Path to nexo installation directory
     public bool AutoSyncSdk { get; set; } = true;    // Auto-sync SDK DLLs on startup
+
+    /// <summary>
+    /// When the client machine has a nexo deployment with a DIFFERENT SDK version than the
+    /// build shipped with, overwrite the runtime DLLs with the deployment's binaries
+    /// (keeps the SDK consistent with the client's database version). When false, only
+    /// missing DLLs are filled in and the build's binaries always win.
+    /// </summary>
+    public bool PreferDeploymentBinaries { get; set; } = true;
+
+    /// <summary>
+    /// Optional URL of a zip archive with SDK DLLs, downloaded at startup when no nexo
+    /// deployment/installation is found on the machine and the build did not ship the DLLs.
+    /// Same package format as the CI NEXO_SDK_URL secret.
+    /// </summary>
+    public string? SdkFallbackUrl { get; set; }
+
+    /// <summary>Optional bearer token for SdkFallbackUrl.</summary>
+    public string? SdkFallbackToken { get; set; }
+
     public bool SyncSdkSource { get; set; } = false;  // Also update lib/nexo-sdk/ source dir
 
     /// <summary>
@@ -43,6 +62,9 @@ public class SferaSettings
             DefaultCashRegister = DefaultCashRegister,
             NexoInstallPath = NexoInstallPath,
             AutoSyncSdk = AutoSyncSdk,
+            PreferDeploymentBinaries = PreferDeploymentBinaries,
+            SdkFallbackUrl = SdkFallbackUrl,
+            SdkFallbackToken = SdkFallbackToken,
             SyncSdkSource = SyncSdkSource
         };
     }
