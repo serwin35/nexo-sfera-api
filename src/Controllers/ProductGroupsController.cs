@@ -68,7 +68,7 @@ public class ProductGroupsController : ControllerBase
                     if (!query.IncludeAllLevels)
                     {
                         var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                        var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+                        int? parentId = parent != null ? (int?)DynamicPropertyHelper.GetId(parent) : null;
 
                         if (query.ParentId.HasValue)
                         {
@@ -192,7 +192,7 @@ public class ProductGroupsController : ControllerBase
                 {
                     var id = DynamicPropertyHelper.GetId(g);
                     var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+                    int? parentId = parent != null ? (int?)DynamicPropertyHelper.GetId(parent) : null;
 
                     int count = 0;
                     if (includeProductCount && productCountCache != null)
@@ -354,7 +354,7 @@ public class ProductGroupsController : ControllerBase
                 foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
                 {
                     var parent = DynamicPropertyHelper.GetProperty(g, "Rodzic");
-                    var parentId = parent != null ? DynamicPropertyHelper.GetId(parent) : (int?)null;
+                    int? parentId = parent != null ? (int?)DynamicPropertyHelper.GetId(parent) : null;
 
                     if (parentId == id)
                     {
