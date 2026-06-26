@@ -18,7 +18,7 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 
 > 🚀 **Swagger UI (pełny katalog endpointów):** http://localhost:5000/swagger
 > 🔑 Autoryzacja kluczem API — patrz [Autentykacja](#-autentykacja)
-> 📦 Wersja SDK: **nexo 60.1.1.9292** (`docs/nexoSDK_60.1.1.9292/`)
+> 📦 Wersja SDK: **nexo 61.0.0.9362** (`docs/nexoSDK_61.0.0.9362/`)
 
 ---
 
