@@ -413,7 +413,7 @@ nexo-sfera-api/
 │   └── Program.cs
 ├── lib/nexo-sdk/            # DLL-e SDK Nexo
 ├── docs/
-│   ├── nexoSDK_60.1.1.9292/ # Oficjalna dokumentacja SDK (nieśledzona w git)
+│   ├── nexoSDK_61.0.0.9362/ # Oficjalna dokumentacja SDK (nieśledzona w git)
 │   └── AUDIT-2026-06-12.md  # Audyt jakości i mapa pokrycia SDK
 └── scripts/                 # Skrypty deploy/diagnostyka
 ```

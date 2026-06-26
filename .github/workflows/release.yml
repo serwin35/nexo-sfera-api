@@ -61,7 +61,7 @@ jobs:
             Expand-Archive -Path "nexo-sdk.zip" -DestinationPath "src\lib\nexo-sdk" -Force
             Remove-Item "nexo-sdk.zip"
             Write-Host "SDK pobrane OK"
-          } elseif (Test-Path "nexoSDK_58.0.2.8985\Bin") {
+          } elseif (Test-Path "docs\nexoSDK_61.0.0.9362\Bin") {
             Write-Host "Używam lokalnego SDK..."
             .\scripts\setup-sdk.ps1
           } else {
