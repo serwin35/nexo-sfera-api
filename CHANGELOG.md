@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-06-26)
+- **SDK 61.0.0 fields exposed in DTOs** (all dynamic, null-safe, backward-compatible with older SDKs):
+  - `AddressDto.GLN` (Global Location Number, `Adres.GLN`) - mapped in `CustomersController` from the address entity with fallback to `Szczegoly`
+  - `ElectronicDocumentDto`: `IsCostInvoice` (`DokumentElektroniczny.Kosztowa`), `PaymentStatus` (`StanOplacenia`), `PaymentDueDate` (`TerminPlatnosci`), `IsSynchronized` (`Zsynchronizowany`) - mapped in `KsefController.MapElectronicDocument`
+  - `ProductDto.ExternalStocks` + `ExternalWarehouseStockDto` (e-commerce external warehouse stock, `Asortyment.StanyMagazynoweZewnetrzne`) - mapped in the product detail mapper only (list view unaffected). The `StanMagazynowyZewnetrzny` field names (`Ilosc`, `MagazynZewnetrzny.Nazwa`/`IdZewnetrzny`) are best-effort and need confirmation against a live 61.0.0 instance via `debug/item-properties`
+- **`scripts/sync-sdk-version.ps1`** - single-source-of-truth SDK version bumper: derives the version from the newest `docs/nexoSDK_<ver>` folder and rewrites it across `README.md` (badge + path), `scripts/setup-sdk.ps1`, and both CI workflows. Supports `-DryRun`, `-Version`, `-Tag` (creates the `sdk-<ver>` bookmark tag)
+
+### Changed (2026-06-26)
+- **Upgraded to InsERT Nexo SDK 61.0.0.9362** (from 60.1.1.9292). Verified all 64 required DLLs are present; the API/model changes (186 added / 11 removed / 80 changed API types; 12/1/70 model types) are contained within `InsERT.Moria.API.dll` and `InsERT.Moria.ModelDanych.dll` - no new standalone assemblies, so the required-DLL list and `.csproj` references are unchanged
+  - Reviewed every removed / signature-changed / `[Obsolete]` SDK member against the codebase: zero usages - no breaking changes for our endpoints
+  - Bumped version paths in `scripts/setup-sdk.ps1`, `.github/workflows/build.yml` + `release.yml` (replaced the stale `nexoSDK_58.0.2.8985` local fallback), and the README SDK badge
+- Tagged the aligned commit as `sdk-61.0.0.9362` (bookmark tag for diffing across SDK versions; does not trigger the release pipeline)
+
 ### Added (2026-06-12)
 - **True multi-company support** - new `SferaConnectionPool` (one SDK connection with its own STA thread per Nexo database) and `SferaServiceRouter` (routes every `ISferaService` call to the tenant's connection based on API key claims). Per-key `Database`, `NexoLogin`/`NexoPassword`, `DefaultWarehouse`, `DefaultBranch` are now enforced on EVERY request across all 61 controllers - previously operator switching worked only in 2 controllers and `Database` was ignored. Keys without an operator override are forced back to the default operator (no tenant leakage). Requires verification on Windows: multiple `Uchwyt` connections in one process.
   - Behavior changes: reconnect endpoints (`/api/health/reconnect`, `/api/settings/connection/reconnect`) now reconnect only the calling key's database connection; failed per-key operator login now surfaces as HTTP 500 with a clear message (previously a 4xx-ish error shaped per endpoint); the duplicated operator-switching helpers were removed from DocumentsController and WarehouseDocumentsController (the router owns switching now)
