@@ -930,7 +930,12 @@ public class KsefController : ControllerBase
             HasUpo = status == StatusPobraneUpo,
             // SDK 60.0.0 new fields
             SellerNIP = DynamicPropertyHelper.GetString(d, "NIPSprzedawcy"),
-            Checksum = ConvertChecksum(DynamicPropertyHelper.GetProperty(d, "SumaKontrolna"))
+            Checksum = ConvertChecksum(DynamicPropertyHelper.GetProperty(d, "SumaKontrolna")),
+            // SDK 61.0.0 new fields
+            IsCostInvoice = DynamicPropertyHelper.GetBool(d, "Kosztowa"),
+            PaymentStatus = DynamicPropertyHelper.GetNullableInt(d, "StanOplacenia"),
+            PaymentDueDate = DynamicPropertyHelper.GetDateTime(d, "TerminPlatnosci"),
+            IsSynchronized = DynamicPropertyHelper.GetNullableBool(d, "Zsynchronizowany")
         };
     }
 

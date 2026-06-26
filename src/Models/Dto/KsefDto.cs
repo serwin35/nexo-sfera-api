@@ -35,6 +35,26 @@ public class ElectronicDocumentDto
     /// Document checksum (SDK 60.0.0: DokumentElektroniczny.SumaKontrolna)
     /// </summary>
     public string? Checksum { get; set; }
+
+    /// <summary>
+    /// Cost invoice flag (SDK 61.0.0: DokumentElektroniczny.Kosztowa).
+    /// </summary>
+    public bool IsCostInvoice { get; set; }
+
+    /// <summary>
+    /// Payment status (SDK 61.0.0: DokumentElektroniczny.StanOplacenia, raw byte value).
+    /// </summary>
+    public int? PaymentStatus { get; set; }
+
+    /// <summary>
+    /// Payment due date (SDK 61.0.0: DokumentElektroniczny.TerminPlatnosci).
+    /// </summary>
+    public DateTime? PaymentDueDate { get; set; }
+
+    /// <summary>
+    /// Synchronization flag (SDK 61.0.0: DokumentElektroniczny.Zsynchronizowany).
+    /// </summary>
+    public bool? IsSynchronized { get; set; }
 }
 
 /// <summary>

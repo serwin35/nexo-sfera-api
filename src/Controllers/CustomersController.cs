@@ -1602,6 +1602,13 @@ public class CustomersController : ControllerBase
                     Country = country
                 };
             }
+
+            // SDK 61.0.0: GLN on the address entity (Adres.GLN)
+            if (dto.Address != null)
+            {
+                dto.Address.GLN = DynamicPropertyHelper.GetString(adresPodmiotu, "GLN")
+                                  ?? DynamicPropertyHelper.GetString(szczegoly, "GLN");
+            }
         }
 
         // Map contacts from Kontakty collection

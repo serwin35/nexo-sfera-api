@@ -841,6 +841,26 @@ public class ProductsController : ControllerBase
             dto.SubstitutesGroup = grupaZamiennikow.ToString();
         }
 
+        // SDK 61.0.0: external (e-commerce) warehouse stock levels.
+        // The collection name (StanyMagazynoweZewnetrzne) is verified from the SDK 61.0.0
+        // model diff; the StanMagazynowyZewnetrzny field names below are best-effort and
+        // should be confirmed against a live instance via debug/item-properties.
+        // Null-safe: on older SDKs / products without external warehouses this stays empty.
+        foreach (var stan in DynamicPropertyHelper.GetCollection((object)asortyment, "StanyMagazynoweZewnetrzne"))
+        {
+            var magazynZewnetrzny = DynamicPropertyHelper.GetProperty(stan, "MagazynZewnetrzny");
+            dto.ExternalStocks.Add(new ExternalWarehouseStockDto
+            {
+                Quantity = DynamicPropertyHelper.GetNullableDecimal(stan, "Ilosc"),
+                ExternalWarehouseName = magazynZewnetrzny != null
+                    ? DynamicPropertyHelper.GetString(magazynZewnetrzny, "Nazwa")
+                    : null,
+                ExternalWarehouseId = magazynZewnetrzny != null
+                    ? DynamicPropertyHelper.GetString(magazynZewnetrzny, "IdZewnetrzny")
+                    : null
+            });
+        }
+
         return dto;
     }
 

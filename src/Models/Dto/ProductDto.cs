@@ -142,6 +142,12 @@ public class ProductDto
     // Stock info (populated separately)
     public StockInfoDto? Stock { get; set; }
 
+    /// <summary>
+    /// External (e-commerce) warehouse stock levels
+    /// (SDK 61.0.0: Asortyment.StanyMagazynoweZewnetrzne). Empty on older SDKs.
+    /// </summary>
+    public List<ExternalWarehouseStockDto> ExternalStocks { get; set; } = new();
+
     // Timestamps
     public DateTime? CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
@@ -153,6 +159,16 @@ public class StockInfoDto
     public decimal Reserved { get; set; }
     public decimal Available { get; set; }
     public string? WarehouseSymbol { get; set; }
+}
+
+/// <summary>
+/// Stock level on an external (e-commerce) warehouse (SDK 61.0.0: StanMagazynowyZewnetrzny).
+/// </summary>
+public class ExternalWarehouseStockDto
+{
+    public decimal? Quantity { get; set; }
+    public string? ExternalWarehouseName { get; set; }
+    public string? ExternalWarehouseId { get; set; }
 }
 
 public enum ProductType

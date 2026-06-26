@@ -153,6 +153,11 @@ public class AddressDto
     public string? Building { get => BuildingNumber; set => BuildingNumber = value; }
     public string? Apartment { get => ApartmentNumber; set => ApartmentNumber = value; }
     public string? CountryCode { get; set; }
+
+    /// <summary>
+    /// Global Location Number (SDK 61.0.0: Adres.GLN / AdresHistoria.GLN).
+    /// </summary>
+    public string? GLN { get; set; }
 }
 
 public enum CustomerType
