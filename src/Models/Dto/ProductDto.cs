@@ -46,6 +46,8 @@ public class ProductDto
     // Units
     public string? SaleUnit { get; set; }
     public string? PurchaseUnit { get; set; }
+    /// <summary>All units of measure of the product with conversions to the base unit (SDK: Asortyment.JednostkiMiar).</summary>
+    public List<ProductUnitDto> Units { get; set; } = new();
     public decimal? DefaultSalesQuantity { get; set; }
     public decimal? DefaultPurchaseQuantity { get; set; }
 
@@ -169,6 +171,40 @@ public class ExternalWarehouseStockDto
     public decimal? Quantity { get; set; }
     public string? ExternalWarehouseName { get; set; }
     public string? ExternalWarehouseId { get; set; }
+}
+
+/// <summary>
+/// Unit of measure assigned to a product (Asortyment.JednostkiMiar → JednostkaMiaryAsortymentu) with its
+/// conversion to the base unit. Example: thread spool "szt" = 5000 "m" → Symbol "szt", BaseUnitSymbol "m",
+/// ToBaseFactor 5000. Stock levels are kept in the base unit.
+/// </summary>
+public class ProductUnitDto
+{
+    public int Id { get; set; }
+    public string? Symbol { get; set; }
+    public string? Name { get; set; }
+    public bool IsBase { get; set; }
+    public bool IsSale { get; set; }
+    public bool IsPurchase { get; set; }
+    public bool IsWarehouse { get; set; }
+    public int? Precision { get; set; }
+    public string? Barcode { get; set; }
+    public decimal? Weight { get; set; }
+    public decimal? Volume { get; set; }
+    /// <summary>How many base units make one of this unit (1 for the base unit itself, null when unknown).</summary>
+    public decimal? ToBaseFactor { get; set; }
+    public string? BaseUnitSymbol { get; set; }
+    /// <summary>Raw converters as stored by nexo (parent/child quantities), for anything the factor above cannot express.</summary>
+    public List<ProductUnitConversionDto> Conversions { get; set; } = new();
+}
+
+/// <summary>PrzelicznikJednostekMiarAsortymentu: ParentQuantity × parent unit = ChildQuantity × child unit.</summary>
+public class ProductUnitConversionDto
+{
+    public string? ParentUnitSymbol { get; set; }
+    public decimal? ParentQuantity { get; set; }
+    public string? ChildUnitSymbol { get; set; }
+    public decimal? ChildQuantity { get; set; }
 }
 
 public enum ProductType
