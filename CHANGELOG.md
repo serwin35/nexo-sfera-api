@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-09-03)
+- **`ProductDto.Units`** (`ProductUnitDto[]`): all units of measure of a product from `Asortyment.JednostkiMiar`
+  with `IsBase/IsSale/IsPurchase/IsWarehouse`, precision, package barcode, weight/volume and the conversion to the
+  base unit (`ToBaseFactor`, `BaseUnitSymbol`, raw `Conversions` from `PrzelicznikJednostekMiarAsortymentu`).
+  Needed by WolfFireApp to interpret stock levels kept in the base unit (embroidery thread: "szt" = 5000 "m").
+
 ### Added (2026-06-26)
 - **SDK 61.0.0 fields exposed in DTOs** (all dynamic, null-safe, backward-compatible with older SDKs):
   - `AddressDto.GLN` (Global Location Number, `Adres.GLN`) - mapped in `CustomersController` from the address entity with fallback to `Szczegoly`

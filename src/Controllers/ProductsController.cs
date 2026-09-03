@@ -806,6 +806,9 @@ public class ProductsController : ControllerBase
         // Determine if this is a variant
         dto.IsVariant = dto.ModelId != null;
 
+        // Units of measure with conversions to the base unit (e.g. thread spool "szt" = 5000 "m").
+        dto.Units = MapUnits(asortyment);
+
         // Try to get VAT rate info from StawkaVatSprzedazy navigation property
         var stawkaVat = DynamicPropertyHelper.GetProperty(asortyment, "StawkaVatSprzedazy");
         if (stawkaVat != null)
@@ -931,5 +934,84 @@ public class ProductsController : ControllerBase
             errors.Add("Could not retrieve error details");
         }
         return errors;
+    }
+
+    /// <summary>
+    /// Maps Asortyment.JednostkiMiar (JednostkaMiaryAsortymentu) with PrzelicznikJednostekMiarAsortymentu
+    /// (LiczbaJednostkiNadrzednej × parent = LiczbaJednostkiPodrzednej × child) to DTOs. Null-safe: any SDK
+    /// shape difference yields an empty list instead of failing the whole product.
+    /// </summary>
+    private static List<ProductUnitDto> MapUnits(dynamic asortyment)
+    {
+        var result = new List<ProductUnitDto>();
+
+        try
+        {
+            var baseUnit = DynamicPropertyHelper.GetProperty(asortyment, "PodstawowaJednostkaMiaryAsortymentu");
+            var baseSymbol = baseUnit != null ? DynamicPropertyHelper.GetString(baseUnit, "JednostkaMiary", "Symbol") : null;
+            var baseId = baseUnit != null ? DynamicPropertyHelper.GetId(baseUnit) : 0;
+            var saleId = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy") is { } sale ? DynamicPropertyHelper.GetId(sale) : 0;
+            var purchaseId = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") is { } purchase ? DynamicPropertyHelper.GetId(purchase) : 0;
+            var warehouseId = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaMagazynowa") is { } warehouse ? DynamicPropertyHelper.GetId(warehouse) : 0;
+
+            foreach (var unit in DynamicPropertyHelper.GetCollection(asortyment, "JednostkiMiar"))
+            {
+                var id = DynamicPropertyHelper.GetId(unit);
+                var symbol = DynamicPropertyHelper.GetString(unit, "JednostkaMiary", "Symbol");
+                var dto = new ProductUnitDto
+                {
+                    Id = id,
+                    Symbol = symbol,
+                    Name = DynamicPropertyHelper.GetString(unit, "JednostkaMiary", "Nazwa"),
+                    IsBase = baseId != 0 && id == baseId,
+                    IsSale = saleId != 0 && id == saleId,
+                    IsPurchase = purchaseId != 0 && id == purchaseId,
+                    IsWarehouse = warehouseId != 0 && id == warehouseId,
+                    Precision = DynamicPropertyHelper.GetNullableInt(unit, "Precyzja"),
+                    Barcode = DynamicPropertyHelper.GetString(unit, "KodKreskowyOpakowania"),
+                    Weight = DynamicPropertyHelper.GetNullableDecimal(unit, "Masa"),
+                    Volume = DynamicPropertyHelper.GetNullableDecimal(unit, "Objetosc"),
+                    BaseUnitSymbol = baseSymbol,
+                    ToBaseFactor = (baseId != 0 && id == baseId) ? 1m : null,
+                };
+
+                foreach (var converterName in new[] { "PrzelicznikJednostkiNadrzednej", "PrzelicznikJednostkiPodrzednej" })
+                {
+                    var converter = DynamicPropertyHelper.GetProperty(unit, converterName);
+                    if (converter == null) continue;
+
+                    var parentSymbol = DynamicPropertyHelper.GetNestedString(converter, "JednostkaNadrzedna", "JednostkaMiary", "Symbol");
+                    var childSymbol = DynamicPropertyHelper.GetNestedString(converter, "JednostkaPodrzedna", "JednostkaMiary", "Symbol");
+                    var parentQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiNadrzednej");
+                    var childQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiPodrzednej");
+
+                    if (dto.Conversions.Any(c => c.ParentUnitSymbol == parentSymbol && c.ChildUnitSymbol == childSymbol && c.ParentQuantity == parentQty && c.ChildQuantity == childQty))
+                        continue;
+
+                    dto.Conversions.Add(new ProductUnitConversionDto
+                    {
+                        ParentUnitSymbol = parentSymbol,
+                        ParentQuantity = parentQty,
+                        ChildUnitSymbol = childSymbol,
+                        ChildQuantity = childQty,
+                    });
+
+                    // 1 szt (parent, qty 1) = 5000 m (child, qty 5000) → factor to base (m) for "szt" = 5000.
+                    if (dto.ToBaseFactor == null && parentQty is > 0 && childQty is > 0 && baseSymbol != null)
+                    {
+                        if (parentSymbol == symbol && childSymbol == baseSymbol) dto.ToBaseFactor = childQty / parentQty;
+                        else if (childSymbol == symbol && parentSymbol == baseSymbol) dto.ToBaseFactor = parentQty / childQty;
+                    }
+                }
+
+                result.Add(dto);
+            }
+        }
+        catch
+        {
+            // Units are auxiliary data — never fail the product for them.
+        }
+
+        return result;
     }
 }
