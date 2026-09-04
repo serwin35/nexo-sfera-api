@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-09-04)
+- **`ProductDto.Units` conversions were empty** (`toBaseFactor: null`, one all-null entry in `conversions`) on a live
+  instance: the EF lazy proxies behind `PrzelicznikJednostkiNadrzednej/Podrzednej` do not expose their members through
+  reflection. `MapUnits` now drops empty converter entries and, whenever a non-base unit has no factor, reads the rows of
+  `ModelDanychContainer.PrzelicznikiJednostekMiarAsortymentu` directly (read-only SQL, unit ids only) — thread spool
+  `szt` = 5000 `m` now yields `toBaseFactor: 5000`.
+- `GET /api/products/debug/properties/{id}?path=JednostkiMiar.1.PrzelicznikJednostkiNadrzednej` (development only)
+  walks properties / collection indexes before dumping — for diagnosing nested SDK objects without rebuilding.
+
 ### Changed (2026-09-04)
 - **Upgraded to InsERT Nexo SDK 61.1.0.9431** (from 61.0.0.9362). Version strings bumped in `README.md`, `scripts/setup-sdk.ps1`,
   `.github/workflows/build.yml` + `release.yml` (via the `sync-sdk-version.ps1` logic); `/docs/nexoSDK_*/` now ignored by git as a pattern.
