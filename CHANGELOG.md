@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DynamicPropertyHelper.TracksStock` uses the kind dictionary `Rodzaj.StanyMagazynowe` (false = service) with a fallback
   to existing stock rows. Warehouses are resolved from a dictionary built once per request instead of rescanning the
   manager for every stock row.
+- Root cause of the empty unit conversions: `PrzelicznikJednostkiNadrzednej/Podrzednej` are `WrappedEntityCollection`s, not
+  single references — `MapUnits` now iterates them (the SQL fallback stays as a safety net).
 - **`ProductDto.Units` conversions were empty** (`toBaseFactor: null`, one all-null entry in `conversions`) on a live
   instance: the EF lazy proxies behind `PrzelicznikJednostkiNadrzednej/Podrzednej` do not expose their members through
   reflection. `MapUnits` now drops empty converter entries and, whenever a non-base unit has no factor, reads the rows of
