@@ -18,7 +18,7 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 
 > 🚀 **Swagger UI (pełny katalog endpointów):** http://localhost:5000/swagger
 > 🔑 Autoryzacja kluczem API — patrz [Autentykacja](#-autentykacja)
-> 📦 Wersja SDK: **nexo 61.0.0.9362** (`docs/nexoSDK_61.0.0.9362/`)
+> 📦 Wersja SDK: **nexo 61.1.0.9431** (`docs/nexoSDK_61.1.0.9431/`)
 
 ---
 
@@ -250,11 +250,11 @@ Pełny, zawsze aktualny katalog **354 endpointów** znajdziesz w **Swagger UI** 
 | Domena | Moduły (route prefix) |
 |--------|----------------------|
 | **Sprzedaż i zakupy** | `documents` (FS/FZ/PA/korekty/zaliczki/marża), `customer-orders` (ZK), `orders` (ZD), `offers` (oferty Gestor), `promotions`, `discounts` |
-| **Magazyn** | `warehouse-documents` (WZ/PZ/RW/PW/MM), `warehouses`, `inventory` (stany, ruchy, wycena), `assembly` (kompletacja ZM), `remainders` (remanenty) |
+| **Magazyn** | `warehouse-documents` (WZ/PZ/RW/PW/MM), `warehouses`, `inventory` (stany, ruchy, wycena), `assembly` (zlecenia produkcyjne montowania/rozmontowania ZPM/ZPR), `remainders` (remanenty) |
 | **Kartoteki** | `customers` + `contractor-groups`, `products` + `product-groups/-attributes/-templates/-symbols`, `photo-gallery`, `custom-fields` |
 | **Finanse** | `payments` (KP/KW/BP/BW, rozrachunki), `finance-reports` (kasy, rachunki, wyciągi, wiekowanie), `vat-registry`, `accruals` (RMK) |
 | **Księgowość** | `booking-documents` (dekretacja), `accounting-import`, `internal-documents` (DW), `financial-statements`, `archives` |
-| **Podatki i deklaracje** | `jpk`, `ksef` (e-faktury), `declarations` (VAT/ZUS), `intrastat` |
+| **Podatki i deklaracje** | `jpk`, `ksef` (e-faktury: generowanie, wysyłka, UPO, **odbiór z KSeF do bufora i import jako FZ/KFZ**), `declarations` (VAT/ZUS), `intrastat` |
 | **Kadry i płace** | `employees`, `contracts`, `payroll` (listy płac), `absences`, `ppk` |
 | **Majątek** | `fixed-assets` (środki trwałe), `fleet` (pojazdy) |
 | **CRM i serwis** | `activities` (działania CRM), `service-orders` (zlecenia serwisowe), `comments`, `calendars`, `attachments` |
@@ -372,6 +372,84 @@ curl -X POST http://localhost:5000/api/warehouse-documents/pw \
 
 Dla MM dodaj `targetWarehouseSymbol`. Dla RW ceny mogą być ignorowane — system wycenia rozchód wg metody FIFO/LIFO/średniej ważonej skonfigurowanej w Nexo.
 
+### Jednostki miary na pozycjach
+
+Pole `unit` na pozycji jest opcjonalne — brak = domyślna jednostka sprzedaży/zakupu produktu. Gdy podane, ilość jest
+interpretowana **w tej jednostce** (SDK `Pozycje.Dodaj(asortyment, ilosc, JednostkaMiaryAsortymentu)`), a nieznana
+jednostka kończy się `400` z listą jednostek dostępnych na produkcie. W odpowiedzi każda pozycja ma `unit`,
+`quantityInBaseUnit` (ilość w jednostce magazynowej) i `baseUnit`. Jednostki produktu (z przelicznikami) są w
+`GET /api/products/{id}` (`units`) i zarządzane przez `POST/DELETE /api/products/{id}/units`.
+
+```json
+{ "productSymbol": "NIC-CZERWONA", "quantity": 250, "unit": "m", "priceNet": 0.12 }
+```
+
+### Zlecenia montowania (ZPM) — kompletacja
+
+```bash
+# ile kompletów da się zmontować z bieżących stanów składników
+curl "http://localhost:5000/api/assembly/max-quantity?productSymbol=ZESTAW-01&warehouseSymbol=MG" -H "Authorization: Bearer your-api-key"
+
+# zlecenie montowania 5 szt. (składniki z definicji kompletu w Nexo; PW/RW generuje SDK wg konfiguracji)
+curl -X POST http://localhost:5000/api/assembly/assemble -H "Content-Type: application/json" -H "Authorization: Bearer your-api-key" \
+  -d '{ "productSymbol": "ZESTAW-01", "quantity": 5, "warehouseSymbol": "MG", "componentsWarehouseSymbol": "MG" }'
+
+# braki składników dla istniejącego zlecenia / montaż z pozycji zamówienia od klienta
+curl http://localhost:5000/api/assembly/1234/shortages -H "Authorization: Bearer your-api-key"
+curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type: application/json" -H "Authorization: Bearer your-api-key" \
+  -d '{ "orderId": 5120, "lineId": 9001, "warehouseSymbol": "MG" }'
+```
+
+`POST /api/assembly/disassemble` tworzy ZPR (rozmontowanie). Jednostki i składniki kompletu produktu:
+`GET/POST/DELETE /api/products/{id}/units`, `PUT .../units/base`, `PUT .../units/defaults`, `GET/POST/DELETE /api/products/{id}/components`.
+
+### Stan opłacenia faktury i terminy płatności
+
+`GET /api/documents/{id}` zwraca `settlement` (rozrachunek dokumentu — źródło prawdy o zapłacie), `payments`
+(płatności z dokumentu: forma, rodzaj, termin) oraz `isPaid` / `isOverdue` / `dueDate`:
+
+```json
+{
+  "dueDate": "2026-09-18T00:00:00",
+  "paymentDays": 14,
+  "isPaid": false,
+  "isOverdue": false,
+  "settlement": { "type": "Receivable", "amount": 1230.00, "remainingAmount": 1230.00, "dueDate": "2026-09-18T00:00:00", "daysOverdue": 0, "isSettled": false },
+  "payments": [ { "kind": "Deferred", "paymentMethod": "Przelew", "amount": 1230.00, "dueDate": "2026-09-18T00:00:00", "dueDays": 14 } ]
+}
+```
+
+Lista rozrachunków: `GET /api/payments/receivables?type=Receivable&status=Unsettled&overdue=true`,
+per dokument: `GET /api/payments/receivables/by-document/{documentId}`.
+
+### Odbiór faktur z KSeF (bufor) i import do Subiekta
+
+```bash
+# 1. Pobierz nowe e-Faktury z KSeF do bufora (bez body = przyrostowo; można podać zakres dat)
+curl -X POST http://localhost:5000/api/ksef/receive -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" -d '{ "dateFrom": "2026-09-01", "dateTo": "2026-09-04" }'
+
+# 2. Co czeka na przetworzenie w Subiekcie
+curl "http://localhost:5000/api/ksef/inbox?pendingOnly=true" -H "Authorization: Bearer your-api-key"
+
+# 3. Import jednej e-Faktury jako FZ/KFZ (SDK wypełnia kontrahenta, pozycje i tabelę VAT z treści e-Faktury)
+curl -X POST http://localhost:5000/api/ksef/inbox/1234/import -H "Authorization: Bearer your-api-key" \
+  -H "Content-Type: application/json" -d '{ "warehouseSymbol": "MG" }'
+
+# 4. Automat: zaimportuj wszystkie oczekujące (do użycia w harmonogramie razem z krokiem 1)
+curl -X POST "http://localhost:5000/api/ksef/inbox/import-pending?maxCount=50" -H "Authorization: Bearer your-api-key"
+```
+
+`POST /api/ksef/receive/{numerKSeF}` pobiera pojedynczą fakturę po numerze KSeF.
+
+### RW realizujące zamówienie od klienta
+
+```bash
+curl -X POST http://localhost:5000/api/warehouse-documents/rw/from-order \
+  -H "Content-Type: application/json" -H "Authorization: Bearer your-api-key" \
+  -d '{ "orderId": 5120, "lineIds": [9001, 9002], "warehouseSymbol": "MG", "consolidationMethod": 0 }'
+```
+
 ### Powiązanie dokumentów (np. RW z PW)
 
 ```bash
@@ -413,7 +491,7 @@ nexo-sfera-api/
 │   └── Program.cs
 ├── lib/nexo-sdk/            # DLL-e SDK Nexo
 ├── docs/
-│   ├── nexoSDK_61.0.0.9362/ # Oficjalna dokumentacja SDK (nieśledzona w git)
+│   ├── nexoSDK_61.1.0.9431/ # Oficjalna dokumentacja SDK (nieśledzona w git)
 │   └── AUDIT-2026-06-12.md  # Audyt jakości i mapa pokrycia SDK
 └── scripts/                 # Skrypty deploy/diagnostyka
 ```

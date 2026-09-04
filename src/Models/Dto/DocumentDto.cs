@@ -162,6 +162,16 @@ public class DocumentDto
     public bool? IsSent { get; set; }
     public bool? IsConfirmed { get; set; }
     public bool? IsCanceled { get; set; }
+
+    // Payment state (verified against SDK 61.x: Dokument.PlatnosciDokumentow + Dokument.Rozrachunek)
+    /// <summary>True when the linked settlement is fully settled (or, without a settlement, when AmountToPay is 0).</summary>
+    public bool? IsPaid { get; set; }
+    /// <summary>True when something remains to pay and the due date has passed.</summary>
+    public bool? IsOverdue { get; set; }
+    /// <summary>Settlement (rozrachunek) created by the document - the authoritative paid/unpaid state. Null when the document creates no settlement.</summary>
+    public DocumentSettlementDto? Settlement { get; set; }
+    /// <summary>Payments declared on the document (SDK: PlatnosciDokumentow): form, kind, amount, due date.</summary>
+    public List<DocumentPaymentDto> Payments { get; set; } = new();
 }
 
 /// <summary>
@@ -228,10 +238,15 @@ public class DocumentItemDto
 
     // Quantity and unit
     public decimal Quantity { get; set; }
+    /// <summary>Unit the line is expressed in (SDK: PozycjaDokumentu.JednostkaMiaryAs.JednostkaMiary.Symbol).</summary>
     public string Unit { get; set; } = "szt.";
     public string? UnitSymbol { get; set; }
     public string? UnitName { get; set; }
     public int? UnitId { get; set; }
+    /// <summary>Quantity converted to the product's base (stock) unit (SDK: PozycjaDokumentu.IloscWJednostceBazowej).</summary>
+    public decimal? QuantityInBaseUnit { get; set; }
+    /// <summary>Symbol of the product's base (stock) unit.</summary>
+    public string? BaseUnit { get; set; }
 
     // Prices
     public decimal PriceNet { get; set; }
@@ -282,4 +297,50 @@ public enum DocumentType
     InternalRelease = 32,   // Rozchod wewnetrzny (RW)
     InternalReceipt = 33,   // Przychod wewnetrzny (PW)
     Transfer = 34           // Przesuniecie miedzymagazynowe (MM)
+}
+
+/// <summary>
+/// Settlement (rozrachunek) linked to a document. SDK: Dokument.Rozrachunek (InsERT.Moria.ModelDanych.Rozrachunek).
+/// </summary>
+public class DocumentSettlementDto
+{
+    public int Id { get; set; }
+    /// <summary>"Receivable" (należność) or "Payable" (zobowiązanie). SDK: Rozrachunek.Typ (1/2).</summary>
+    public string? Type { get; set; }
+    public decimal Amount { get; set; }
+    /// <summary>Amount still to be paid (SDK: KwotaPozostala).</summary>
+    public decimal RemainingAmount { get; set; }
+    /// <summary>Amount with no settlement at all, including preliminary ones (SDK: KwotaNierozliczona).</summary>
+    public decimal UnsettledAmount { get; set; }
+    public decimal SettledAmount { get; set; }
+    public string? Currency { get; set; }
+    public DateTime? DueDate { get; set; }
+    public DateTime? LastSettlementDate { get; set; }
+    public bool IsSettled { get; set; }
+    public bool IsOverdue { get; set; }
+    public int DaysOverdue { get; set; }
+}
+
+/// <summary>
+/// Payment declared on a document. SDK: PlatnoscDokumentu (Dokument.PlatnosciDokumentow).
+/// </summary>
+public class DocumentPaymentDto
+{
+    public int Id { get; set; }
+    /// <summary>"Prepayment" | "Immediate" | "Deferred". SDK: RodzajPlatnosci (1/2/3).</summary>
+    public string? Kind { get; set; }
+    public string? PaymentMethod { get; set; }
+    public int? PaymentMethodId { get; set; }
+    /// <summary>Amount in the document currency (SDK: KwotaDokumentu).</summary>
+    public decimal Amount { get; set; }
+    /// <summary>Amount in the payment currency (SDK: KwotaPlatnosci).</summary>
+    public decimal? AmountInPaymentCurrency { get; set; }
+    public decimal? Percent { get; set; }
+    /// <summary>Due date (SDK: Termin) and the term in days (SDK: TerminDni).</summary>
+    public DateTime? DueDate { get; set; }
+    public int? DueDays { get; set; }
+    /// <summary>Payment date when different from the document date (SDK: Data).</summary>
+    public DateTime? Date { get; set; }
+    /// <summary>"Cash" | "Transfer". SDK: RodzajZaplaty (0/1).</summary>
+    public string? SettlementKind { get; set; }
 }

@@ -49,7 +49,7 @@ jobs:
           Write-Host "SDK downloaded and extracted successfully"
         }
         # Option 2: Use cached SDK from artifacts
-        elseif (Test-Path "docs\nexoSDK_61.0.0.9362\Bin") {
+        elseif (Test-Path "docs\nexoSDK_61.1.0.9431\Bin") {
           Write-Host "Using local SDK..."
           .\scripts\setup-sdk.ps1
         }

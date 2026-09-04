@@ -39,3 +39,6 @@ scratchpad/
 src/appsettings.json
 /docs/nexoSDK_60.0.0.9195
 /docs/nexoSDK_60.1.1.9292
+
+# Nexo SDK documentation packages (any version) are never tracked
+/docs/nexoSDK_*/

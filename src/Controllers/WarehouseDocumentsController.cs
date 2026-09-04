@@ -459,6 +459,12 @@ public class WarehouseDocumentsController : ControllerBase
                             };
                             return (false, null, "Products not found - document not created", errorList);
                         }
+                        var unitErrors = ValidateRequestedUnits(request.Items);
+                        if (unitErrors.Any())
+                        {
+                            _logger.LogWarning("Document creation failed - unknown units: {Errors}", (object)string.Join("; ", unitErrors));
+                            return (false, null, "Unknown unit of measure - document not created", unitErrors);
+                        }
                     }
 
                     // Add items using SDK pattern (symbol first, then fallback)
@@ -753,6 +759,12 @@ public class WarehouseDocumentsController : ControllerBase
                             };
                             return (false, null, "Products not found - document not created", errorList);
                         }
+                        var unitErrors = ValidateRequestedUnits(request.Items);
+                        if (unitErrors.Any())
+                        {
+                            _logger.LogWarning("Document creation failed - unknown units: {Errors}", (object)string.Join("; ", unitErrors));
+                            return (false, null, "Unknown unit of measure - document not created", unitErrors);
+                        }
                     }
 
                     // Add items using SDK pattern (symbol first, then fallback)
@@ -963,6 +975,12 @@ public class WarehouseDocumentsController : ControllerBase
                             };
                             return (false, null, "Products not found - document not created", errorList);
                         }
+                        var unitErrors = ValidateRequestedUnits(request.Items);
+                        if (unitErrors.Any())
+                        {
+                            _logger.LogWarning("Document creation failed - unknown units: {Errors}", (object)string.Join("; ", unitErrors));
+                            return (false, null, "Unknown unit of measure - document not created", unitErrors);
+                        }
                     }
 
                     // Add items using product ID (all validated to exist)
@@ -1043,6 +1061,178 @@ public class WarehouseDocumentsController : ControllerBase
         {
             _logger.LogError(ex, "Error creating RW");
             return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Error creating RW", new List<string> { ex.Message }));
+        }
+    }
+
+
+    /// <summary>
+    /// Create an internal issue (RW) that realizes a customer order (ZK) - the SDK links the RW lines to the order lines
+    /// so the order's realization state is updated (IRozchodWewnetrzny.WypelnijNaPodstawieZK).
+    /// Pass LineIds to realize only selected order lines; omit to realize the whole order.
+    /// </summary>
+    [HttpPost("rw/from-order")]
+    [ProducesResponseType(typeof(ApiResponse<WarehouseDocumentDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<WarehouseDocumentDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<WarehouseDocumentDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<WarehouseDocumentDto>>> CreateRWFromOrder([FromBody] CreateRwFromOrderRequest request)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync<(string Status, WarehouseDocumentDto? Data, string Message, List<string> Errors)>(() =>
+            {
+                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
+                var rozchody = _sferaService.GetManager("RozchodyWewnetrzne");
+                if (zamowienia == null || rozchody == null)
+                {
+                    return ("error", null, "Failed to get ZamowieniaOdKlientow/RozchodyWewnetrzne manager", new List<string>());
+                }
+
+                dynamic? order = null;
+                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
+                {
+                    if (DynamicPropertyHelper.GetId(z) == request.OrderId)
+                    {
+                        order = z;
+                        break;
+                    }
+                }
+                if (order == null)
+                {
+                    return ("notFound", null, $"Customer order with ID {request.OrderId} not found", new List<string>());
+                }
+
+                // Selected order lines (typed PozycjaDokumentu[] so the SDK overload IEnumerable<PozycjaDokumentu> binds)
+                var selected = new List<object>();
+                foreach (var pozycja in order.Pozycje)
+                {
+                    if (request.LineIds == null || request.LineIds.Count == 0 || request.LineIds.Contains(DynamicPropertyHelper.GetId(pozycja)))
+                    {
+                        selected.Add(pozycja);
+                    }
+                }
+                if (selected.Count == 0)
+                {
+                    return ("badRequest", null, "None of the requested LineIds belong to the order", new List<string>());
+                }
+
+                Type? pozycjaType = null;
+                Type? parametryType = null;
+                Type? metodaType = null;
+                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                {
+                    if (asm.FullName?.Contains("InsERT.Moria") != true) continue;
+                    pozycjaType ??= asm.GetType("InsERT.Moria.ModelDanych.PozycjaDokumentu");
+                    parametryType ??= asm.GetType("InsERT.Moria.Dokumenty.Logistyka.ParametryGrupowaniaPodstawowe");
+                    metodaType ??= asm.GetType("InsERT.Moria.Dokumenty.Logistyka.MetodaGrupowaniaPozycji");
+                }
+                if (pozycjaType == null || parametryType == null || metodaType == null)
+                {
+                    return ("error", null, "SDK types for order realization not found (PozycjaDokumentu / ParametryGrupowaniaPodstawowe)", new List<string>());
+                }
+
+                var pozycjeArray = Array.CreateInstance(pozycjaType, selected.Count);
+                for (int i = 0; i < selected.Count; i++)
+                {
+                    pozycjeArray.SetValue(selected[i], i);
+                }
+
+                dynamic parametry = Activator.CreateInstance(parametryType)!;
+                string metodaName = request.ConsolidationMethod switch
+                {
+                    PositionConsolidationMethod.ConsolidateByUnit => "KonsolidacjaWJednostceMiary",
+                    PositionConsolidationMethod.ConsolidateIgnoreUnit => "KonsolidacjaBezWzgleduNaJednostkeMiary",
+                    PositionConsolidationMethod.ConsolidateByUnitAndPrice => "KonsolidacjaWJednostceMiaryICenie",
+                    _ => "BezKonsolidacji"
+                };
+                parametryType.GetProperty("MetodaGrupowaniaPozycji")?.SetValue(parametry, Enum.Parse(metodaType, metodaName));
+
+                var konfiguracje = _sferaService.GetManager("Konfiguracje");
+                dynamic? konfig = konfiguracje?.DaneDomyslne?.RozchodWewnetrzny;
+                using (var rw = konfig != null ? rozchody.Utworz(konfig) : rozchody.Utworz())
+                {
+                    // Warehouse: explicit request > order's warehouse
+                    string? warehouseSymbol = request.WarehouseSymbol ?? DynamicPropertyHelper.GetString(order, "Magazyn", "Symbol");
+                    if (!string.IsNullOrEmpty(warehouseSymbol))
+                    {
+                        var magazynyManager = _sferaService.GetManager("Magazyny");
+                        if (magazynyManager != null)
+                        {
+                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
+                            {
+                                if (string.Equals(DynamicPropertyHelper.GetString(m, "Symbol"), warehouseSymbol, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    rw.Dokument.Magazyn = m;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    if (request.IssueDate.HasValue)
+                    {
+                        DynamicPropertyHelper.TrySetProperty(rw.Dane, "DataWydaniaWystawienia", request.IssueDate.Value);
+                    }
+
+                    try
+                    {
+                        // (dynamic) cast: the binder would otherwise use the static type System.Array, which does not
+                        // convert to the SDK's IEnumerable<PozycjaDokumentu> parameter (RuntimeBinderException).
+                        rw.WypelnijNaPodstawieZK((dynamic)pozycjeArray, order, parametry);
+                    }
+                    catch (Exception fillEx)
+                    {
+                        _logger.LogError(fillEx, "RW from order {OrderId}: WypelnijNaPodstawieZK failed", request.OrderId);
+                        return ("badRequest", null, $"Cannot realize order into RW: {fillEx.Message}", new List<string> { fillEx.Message });
+                    }
+
+                    if (!string.IsNullOrEmpty(request.Notes))
+                    {
+                        DynamicPropertyHelper.TrySetProperty(rw.Dane, "Uwagi", request.Notes);
+                    }
+                    if (request.ReserveNumber)
+                    {
+                        rw.ZarezerwujNumer();
+                    }
+
+                    try
+                    {
+                        rw.Przelicz();
+                    }
+                    catch (Exception recalcEx)
+                    {
+                        _logger.LogDebug("RW from order: Przelicz() failed: {Msg}", (object)recalcEx.Message);
+                    }
+
+                    if ((bool)rw.Zapisz())
+                    {
+                        _logger.LogInformation("Created RW {Number} from customer order {OrderId} ({Lines} lines)",
+                            (string?)rw.PodajPodgladNumeru()?.ToString() ?? "", request.OrderId, selected.Count);
+                        return ("ok", MapRWToDto(rw), "RW created from customer order", new List<string>());
+                    }
+
+                    List<string> errors = GetBusinessObjectErrors(rw);
+                    return ("badRequest", null, "Failed to create RW from customer order", errors);
+                }
+            });
+
+            if (result.Status == "ok")
+            {
+                return CreatedAtAction(nameof(GetWarehouseDocuments), ApiResponse<WarehouseDocumentDto>.Ok(result.Data!, result.Message));
+            }
+            if (result.Status == "notFound")
+            {
+                return NotFound(ApiResponse<WarehouseDocumentDto>.Error(result.Message));
+            }
+            if (result.Status == "badRequest")
+            {
+                return BadRequest(ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+            }
+            return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(result.Message, result.Errors));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating RW from customer order {OrderId}", request.OrderId);
+            return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Error creating RW from customer order", new List<string> { ex.Message }));
         }
     }
 
@@ -1184,6 +1374,12 @@ public class WarehouseDocumentsController : ControllerBase
                                 $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
                             };
                             return (false, null, "Products not found - document not created", errorList);
+                        }
+                        var unitErrors = ValidateRequestedUnits(request.Items);
+                        if (unitErrors.Any())
+                        {
+                            _logger.LogWarning("Document creation failed - unknown units: {Errors}", (object)string.Join("; ", unitErrors));
+                            return (false, null, "Unknown unit of measure - document not created", unitErrors);
                         }
                     }
 
@@ -1351,6 +1547,12 @@ public class WarehouseDocumentsController : ControllerBase
                                 $"Cannot create document - the following products were not found: {string.Join(", ", missingProducts)}"
                             };
                             return (false, null, "Products not found - document not created", errorList);
+                        }
+                        var unitErrors = ValidateRequestedUnits(request.Items);
+                        if (unitErrors.Any())
+                        {
+                            _logger.LogWarning("Document creation failed - unknown units: {Errors}", (object)string.Join("; ", unitErrors));
+                            return (false, null, "Unknown unit of measure - document not created", unitErrors);
                         }
                     }
 
@@ -1842,6 +2044,46 @@ public class WarehouseDocumentsController : ControllerBase
     /// Validates that all products in the request exist before document creation.
     /// Returns a list of missing product identifiers.
     /// </summary>
+
+    /// <summary>
+    /// Checks that every requested line unit exists on its product (Asortyment.JednostkiMiar).
+    /// Returns human-readable errors; an empty list means all units are valid (or none were requested).
+    /// </summary>
+    private List<string> ValidateRequestedUnits(List<CreateWarehouseDocumentItemRequest>? items)
+    {
+        var errors = new List<string>();
+        if (items == null) return errors;
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        if (asortymentyManager == null) return errors;
+
+        foreach (var item in items)
+        {
+            if (string.IsNullOrWhiteSpace(item.Unit)) continue;
+            var asortyment = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+            if (asortyment == null) continue; // reported by ValidateProductsExist
+            if (DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit) != null) continue;
+
+            var available = new List<string>();
+            try
+            {
+                var units = DynamicPropertyHelper.GetProperty(asortyment, "JednostkiMiar");
+                if (units != null)
+                {
+                    foreach (var jma in units)
+                    {
+                        var symbol = DynamicPropertyHelper.GetString(jma, "JednostkaMiary", "Symbol");
+                        if (!string.IsNullOrEmpty(symbol)) available.Add(symbol);
+                    }
+                }
+            }
+            catch { /* best effort */ }
+
+            string productKey = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? item.ProductSymbol ?? item.ProductId?.ToString() ?? "?";
+            errors.Add($"Product {productKey} has no unit of measure '{item.Unit}' (available: {(available.Count > 0 ? string.Join(", ", available) : "none")})");
+        }
+        return errors;
+    }
+
     private List<string> ValidateProductsExist(List<CreateWarehouseDocumentItemRequest> items)
     {
         var missingProducts = new List<string>();
@@ -1893,9 +2135,30 @@ public class WarehouseDocumentsController : ControllerBase
                 (object)(item.ProductSymbol ?? "(null)"), (object)(item.ProductId?.ToString() ?? "(null)"), item.Quantity);
 
             dynamic? pozycja = null;
-
+            // Pattern U (unit requested): Dodaj(asortyment, ilosc, jednostkaMiaryAsortymentu) - the only overload that
+            // lets the line be expressed in a non-default unit (e.g. "m" for a product stocked in "szt")
+            if (!string.IsNullOrWhiteSpace(item.Unit))
+            {
+                var asortymentForUnit = FindAsortyment(asortymentyManager, item.ProductId, item.ProductSymbol, item.ProductEan);
+                var requestedUnit = DynamicPropertyHelper.FindProductUnit(asortymentForUnit, item.Unit);
+                if (asortymentForUnit == null || requestedUnit == null)
+                {
+                    // ValidateRequestedUnits() should have rejected this earlier - never silently fall back to the base unit
+                    throw new InvalidOperationException($"Product {searchKey} has no unit of measure '{item.Unit}'");
+                }
+                try
+                {
+                    pozycja = dokument.Pozycje.Dodaj(asortymentForUnit, item.Quantity, requestedUnit);
+                    _logger.LogDebug("[WH-SDK] Dodaj(asortyment, qty, unit={Unit}) succeeded for {Key}", (object)item.Unit, (object)searchKey);
+                }
+                catch (Exception exU)
+                {
+                    _logger.LogWarning("[WH-SDK] Dodaj(asortyment, qty, unit) failed for {Key}: {Msg}", (object)searchKey, (object)exU.Message);
+                    throw new InvalidOperationException($"Cannot add {searchKey} in unit '{item.Unit}': {exU.Message}", exU);
+                }
+            }
             // Pattern 0 (SDK Pattern): Dodaj(symbol) - simplest SDK pattern from examples
-            if (!string.IsNullOrEmpty(item.ProductSymbol))
+            if (pozycja == null && !string.IsNullOrEmpty(item.ProductSymbol))
             {
                 try
                 {
@@ -2103,10 +2366,12 @@ public class WarehouseDocumentsController : ControllerBase
         foreach (var poz in pozycje)
         {
             var dane = DynamicPropertyHelper.GetDane(poz);
-            var asortyment = DynamicPropertyHelper.GetProperty(dane, "Asortyment")
-                          ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-            var jednostka = DynamicPropertyHelper.GetProperty(dane, "Jednostka")
-                         ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+            var asortyment = DynamicPropertyHelper.GetProperty(dane, "AsortymentAktualny")
+                          ?? DynamicPropertyHelper.GetProperty(poz, "AsortymentAktualny")
+                          ?? DynamicPropertyHelper.GetProperty(dane, "AsortymentWybrany");
+            var jednostka = DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs") != null
+                         ? DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs"), "JednostkaMiary")
+                         : DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(poz, "JednostkaMiaryAs"), "JednostkaMiary");
 
             var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
             var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena", "CenaEwidencyjna");
@@ -2123,6 +2388,9 @@ public class WarehouseDocumentsController : ControllerBase
                 Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
                 Quantity = quantity,
                 Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                UnitId = DynamicPropertyHelper.GetNullableInt(dane, "JednostkaMiaryAsId"),
+                QuantityInBaseUnit = DynamicPropertyHelper.GetNullableDecimal(dane, "IloscWJednostceBazowej"),
+                BaseUnit = DynamicPropertyHelper.GetProductBaseUnitSymbol(asortyment),
                 PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
                 ValueNet = valueNet,
                 ValueGross = valueGross
@@ -2163,10 +2431,12 @@ public class WarehouseDocumentsController : ControllerBase
         foreach (var poz in pozycje)
         {
             var dane = DynamicPropertyHelper.GetDane(poz);
-            var asortyment = DynamicPropertyHelper.GetProperty(dane, "Asortyment")
-                          ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-            var jednostka = DynamicPropertyHelper.GetProperty(dane, "Jednostka")
-                         ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+            var asortyment = DynamicPropertyHelper.GetProperty(dane, "AsortymentAktualny")
+                          ?? DynamicPropertyHelper.GetProperty(poz, "AsortymentAktualny")
+                          ?? DynamicPropertyHelper.GetProperty(dane, "AsortymentWybrany");
+            var jednostka = DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs") != null
+                         ? DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs"), "JednostkaMiary")
+                         : DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(poz, "JednostkaMiaryAs"), "JednostkaMiary");
 
             var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
             var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(dane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena", "CenaEwidencyjna");
@@ -2183,6 +2453,9 @@ public class WarehouseDocumentsController : ControllerBase
                 Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
                 Quantity = quantity,
                 Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                UnitId = DynamicPropertyHelper.GetNullableInt(dane, "JednostkaMiaryAsId"),
+                QuantityInBaseUnit = DynamicPropertyHelper.GetNullableDecimal(dane, "IloscWJednostceBazowej"),
+                BaseUnit = DynamicPropertyHelper.GetProductBaseUnitSymbol(asortyment),
                 PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
                 ValueNet = valueNet,
                 ValueGross = valueGross
@@ -2219,10 +2492,12 @@ public class WarehouseDocumentsController : ControllerBase
         foreach (var poz in pozycje)
         {
             var dane = DynamicPropertyHelper.GetDane(poz);
-            var asortyment = DynamicPropertyHelper.GetProperty(dane, "Asortyment")
-                          ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-            var jednostka = DynamicPropertyHelper.GetProperty(dane, "Jednostka")
-                         ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+            var asortyment = DynamicPropertyHelper.GetProperty(dane, "AsortymentAktualny")
+                          ?? DynamicPropertyHelper.GetProperty(poz, "AsortymentAktualny")
+                          ?? DynamicPropertyHelper.GetProperty(dane, "AsortymentWybrany");
+            var jednostka = DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs") != null
+                         ? DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs"), "JednostkaMiary")
+                         : DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(poz, "JednostkaMiaryAs"), "JednostkaMiary");
 
             var quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek");
             dto.TotalQuantity += quantity;
@@ -2234,7 +2509,10 @@ public class WarehouseDocumentsController : ControllerBase
                 ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
                 Name = DynamicPropertyHelper.GetString(dane, "Nazwa") ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
                 Quantity = quantity,
-                Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt."
+                Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                UnitId = DynamicPropertyHelper.GetNullableInt(dane, "JednostkaMiaryAsId"),
+                QuantityInBaseUnit = DynamicPropertyHelper.GetNullableDecimal(dane, "IloscWJednostceBazowej"),
+                BaseUnit = DynamicPropertyHelper.GetProductBaseUnitSymbol(asortyment)
             });
         }
 
@@ -2283,10 +2561,12 @@ public class WarehouseDocumentsController : ControllerBase
             foreach (var poz in pozycje)
             {
                 var pozDane = DynamicPropertyHelper.GetDane(poz);
-                var asortyment = DynamicPropertyHelper.GetProperty(pozDane, "Asortyment")
-                              ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-                var jednostka = DynamicPropertyHelper.GetProperty(pozDane, "Jednostka")
-                             ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+                var asortyment = DynamicPropertyHelper.GetProperty(pozDane, "AsortymentAktualny")
+                              ?? DynamicPropertyHelper.GetProperty(poz, "AsortymentAktualny")
+                              ?? DynamicPropertyHelper.GetProperty(pozDane, "AsortymentWybrany");
+                var jednostka = DynamicPropertyHelper.GetProperty(pozDane, "JednostkaMiaryAs") != null
+                             ? DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(pozDane, "JednostkaMiaryAs"), "JednostkaMiary")
+                             : DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(poz, "JednostkaMiaryAs"), "JednostkaMiary");
 
                 var quantity = DynamicPropertyHelper.GetDecimalFirstOf(pozDane, "Ilosc", "IloscJednostek");
                 var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(pozDane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena", "CenaEwidencyjna");
@@ -2303,6 +2583,9 @@ public class WarehouseDocumentsController : ControllerBase
                         ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
                     Quantity = quantity,
                     Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                    UnitId = DynamicPropertyHelper.GetNullableInt(pozDane, "JednostkaMiaryAsId"),
+                    QuantityInBaseUnit = DynamicPropertyHelper.GetNullableDecimal(pozDane, "IloscWJednostceBazowej"),
+                    BaseUnit = DynamicPropertyHelper.GetProductBaseUnitSymbol(asortyment),
                     PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
                     ValueNet = valueNet,
                     ValueGross = DynamicPropertyHelper.GetDecimalFirstOf(pozDane, "WartoscBrutto")
@@ -2354,10 +2637,12 @@ public class WarehouseDocumentsController : ControllerBase
             foreach (var poz in pozycje)
             {
                 var pozDane = DynamicPropertyHelper.GetDane(poz);
-                var asortyment = DynamicPropertyHelper.GetProperty(pozDane, "Asortyment")
-                              ?? DynamicPropertyHelper.GetProperty(poz, "Asortyment");
-                var jednostka = DynamicPropertyHelper.GetProperty(pozDane, "Jednostka")
-                             ?? DynamicPropertyHelper.GetProperty(poz, "Jednostka");
+                var asortyment = DynamicPropertyHelper.GetProperty(pozDane, "AsortymentAktualny")
+                              ?? DynamicPropertyHelper.GetProperty(poz, "AsortymentAktualny")
+                              ?? DynamicPropertyHelper.GetProperty(pozDane, "AsortymentWybrany");
+                var jednostka = DynamicPropertyHelper.GetProperty(pozDane, "JednostkaMiaryAs") != null
+                             ? DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(pozDane, "JednostkaMiaryAs"), "JednostkaMiary")
+                             : DynamicPropertyHelper.GetProperty(DynamicPropertyHelper.GetProperty(poz, "JednostkaMiaryAs"), "JednostkaMiary");
 
                 var quantity = DynamicPropertyHelper.GetDecimalFirstOf(pozDane, "Ilosc", "IloscJednostek");
                 var priceNet = DynamicPropertyHelper.GetDecimalFirstOf(pozDane, "CenaNetto", "CenaJednostkowaNetto", "CenaJednostkowa", "Cena", "CenaEwidencyjna");
@@ -2374,6 +2659,9 @@ public class WarehouseDocumentsController : ControllerBase
                         ?? DynamicPropertyHelper.GetString(poz, "Nazwa"),
                     Quantity = quantity,
                     Unit = (jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null) ?? "szt.",
+                    UnitId = DynamicPropertyHelper.GetNullableInt(pozDane, "JednostkaMiaryAsId"),
+                    QuantityInBaseUnit = DynamicPropertyHelper.GetNullableDecimal(pozDane, "IloscWJednostceBazowej"),
+                    BaseUnit = DynamicPropertyHelper.GetProductBaseUnitSymbol(asortyment),
                     PriceNet = priceNet != 0 ? priceNet : (valueNet != 0 && quantity != 0 ? valueNet / quantity : 0),
                     ValueNet = valueNet,
                     ValueGross = DynamicPropertyHelper.GetDecimalFirstOf(pozDane, "WartoscBrutto")

@@ -677,13 +677,13 @@ public class PaymentsController : ControllerBase
                     if (status.Value == ReceivableStatus.Settled)
                     {
                         allRozrachunki = allRozrachunki.Where(r =>
-                            DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia") == 0).ToList();
+                            DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala") == 0).ToList();
                     }
                     else if (status.Value == ReceivableStatus.Unsettled)
                     {
                         allRozrachunki = allRozrachunki.Where(r =>
                         {
-                            var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                            var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala");
                             var kwota = DynamicPropertyHelper.GetDecimal(r, "Kwota");
                             return doRozl == kwota;
                         }).ToList();
@@ -692,7 +692,7 @@ public class PaymentsController : ControllerBase
                     {
                         allRozrachunki = allRozrachunki.Where(r =>
                         {
-                            var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                            var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala");
                             var kwota = DynamicPropertyHelper.GetDecimal(r, "Kwota");
                             return doRozl > 0 && doRozl < kwota;
                         }).ToList();
@@ -703,7 +703,7 @@ public class PaymentsController : ControllerBase
                 {
                     allRozrachunki = allRozrachunki.Where(r =>
                     {
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
+                        var data = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
                         return data.HasValue && data.Value >= dueDateFrom.Value;
                     }).ToList();
                 }
@@ -712,7 +712,7 @@ public class PaymentsController : ControllerBase
                 {
                     allRozrachunki = allRozrachunki.Where(r =>
                     {
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
+                        var data = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
                         return data.HasValue && data.Value <= dueDateTo.Value;
                     }).ToList();
                 }
@@ -722,8 +722,8 @@ public class PaymentsController : ControllerBase
                     var today = DateTime.Today;
                     allRozrachunki = allRozrachunki.Where(r =>
                     {
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
-                        var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                        var data = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                        var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala");
                         return data.HasValue && data.Value < today && doRozl > 0;
                     }).ToList();
                 }
@@ -732,7 +732,7 @@ public class PaymentsController : ControllerBase
 
                 // Sort and paginate
                 var items = allRozrachunki
-                    .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "DataWystawienia") ?? DateTime.MinValue)
+                    .OrderByDescending(r => DynamicPropertyHelper.GetDateTime(r, "DataDokumentuZrodlowego") ?? DynamicPropertyHelper.GetDateTime(r, "DataPowstania") ?? DateTime.MinValue)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
@@ -797,6 +797,42 @@ public class PaymentsController : ControllerBase
     /// <summary>
     /// Get contractor balance summary
     /// </summary>
+    /// <summary>
+    /// Get the settlements (rozrachunki) linked to a Subiekt document - tells whether an invoice is paid,
+    /// how much remains and when it is due. Returns an empty list for documents that do not create settlements
+    /// (e.g. cash-paid receipts, warehouse documents).
+    /// </summary>
+    [HttpGet("receivables/by-document/{documentId}")]
+    public async Task<ActionResult<ApiResponse<List<ReceivableDto>>>> GetReceivablesByDocument(int documentId)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var rozrachunkiManager = _sferaService.GetManager("Rozrachunki");
+                if (rozrachunkiManager == null) return (List<ReceivableDto>?)null;
+
+                var items = new List<ReceivableDto>();
+                foreach (var r in DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager))
+                {
+                    var dokument = DynamicPropertyHelper.GetProperty(r, "Dokument");
+                    if (dokument == null) continue;
+                    if (DynamicPropertyHelper.GetNullableInt(dokument, "Id") != documentId) continue;
+                    items.Add(MapReceivableToDto(r));
+                }
+                return items;
+            });
+
+            if (result == null) return StatusCode(500, ApiResponse<List<ReceivableDto>>.Error("Rozrachunki manager not available"));
+            return Ok(ApiResponse<List<ReceivableDto>>.Ok(result));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting settlements for document {DocumentId}", documentId);
+            return StatusCode(500, ApiResponse<List<ReceivableDto>>.Error("Error retrieving document settlements", new List<string> { ex.Message }));
+        }
+    }
+
     [HttpGet("balance/{contractorId}")]
     public async Task<ActionResult<ApiResponse<ContractorBalanceDto>>> GetContractorBalance(int contractorId)
     {
@@ -844,12 +880,12 @@ public class PaymentsController : ControllerBase
                 int openReceivablesCount = 0;
                 foreach (var r in receivables)
                 {
-                    var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                    var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala");
                     totalReceivables += doRozl;
                     if (doRozl > 0)
                     {
                         openReceivablesCount++;
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
+                        var data = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
                         if (data.HasValue && data.Value < today)
                         {
                             overdueReceivables += doRozl;
@@ -862,12 +898,12 @@ public class PaymentsController : ControllerBase
                 int openPayablesCount = 0;
                 foreach (var r in payables)
                 {
-                    var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                    var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala");
                     totalPayables += doRozl;
                     if (doRozl > 0)
                     {
                         openPayablesCount++;
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
+                        var data = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
                         if (data.HasValue && data.Value < today)
                         {
                             overduePayables += doRozl;
@@ -925,8 +961,8 @@ public class PaymentsController : ControllerBase
                 var allRozrachunki = DynamicPropertyHelper.SafeGetAll((object)rozrachunkiManager)
                     .Where(r =>
                     {
-                        var data = DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci");
-                        var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaDoRozliczenia");
+                        var data = DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci");
+                        var doRozl = DynamicPropertyHelper.GetDecimal(r, "KwotaPozostala");
                         return data.HasValue && data.Value < today && doRozl > 0;
                     })
                     .ToList();
@@ -944,7 +980,7 @@ public class PaymentsController : ControllerBase
 
                 // Sort by oldest first and paginate
                 var items = allRozrachunki
-                    .OrderBy(r => DynamicPropertyHelper.GetDateTime(r, "DataPlatnosci") ?? DateTime.MaxValue)
+                    .OrderBy(r => DynamicPropertyHelper.GetDateTime(r, "TerminPlatnosci") ?? DateTime.MaxValue)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
@@ -1047,8 +1083,8 @@ public class PaymentsController : ControllerBase
         try
         {
             var today = DateTime.Today;
-            var dataPlatnosci = DynamicPropertyHelper.GetDateTime(rozrachunek, "DataPlatnosci");
-            var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(rozrachunek, "KwotaDoRozliczenia");
+            var dataPlatnosci = DynamicPropertyHelper.GetDateTime(rozrachunek, "TerminPlatnosci");
+            var kwotaDoRozliczenia = DynamicPropertyHelper.GetDecimal(rozrachunek, "KwotaPozostala");
             var kwota = DynamicPropertyHelper.GetDecimal(rozrachunek, "Kwota");
 
             var daysOverdue = 0;
@@ -1068,24 +1104,39 @@ public class PaymentsController : ControllerBase
             }
 
             var typ = DynamicPropertyHelper.GetInt(rozrachunek, "Typ");
-
+            // Rozrachunek.Dokument = linked Subiekt document (entity); DokumentZrodlowy = source document number (string)
+            var dokument = DynamicPropertyHelper.GetProperty(rozrachunek, "Dokument");
             return new ReceivableDto
             {
                 Id = DynamicPropertyHelper.GetId(rozrachunek),
                 Type = typ == (int)TypRozrachunku.Naleznosc ? ReceivableType.Receivable : ReceivableType.Payable,
                 Status = status,
-                DocumentId = DynamicPropertyHelper.GetNullableInt(rozrachunek, "DokumentZrodlowy", "Id"),
-                DocumentNumber = DynamicPropertyHelper.GetString(rozrachunek, "NumerDokumentuZrodlowego"),
-                ContractorId = DynamicPropertyHelper.GetNullableInt(rozrachunek, "Podmiot", "Id"),
+                DocumentId = dokument != null ? DynamicPropertyHelper.GetNullableInt(dokument, "Id") : null,
+                DocumentNumber = DynamicPropertyHelper.GetString(rozrachunek, "DokumentZrodlowy")
+                              ?? (dokument != null ? DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura") : null),
+                DocumentType = dokument != null ? DynamicPropertyHelper.GetString(dokument, "Symbol") : null,
+                DocumentDate = DynamicPropertyHelper.GetDateTime(rozrachunek, "DataDokumentuZrodlowego"),
+                ContractorId = DynamicPropertyHelper.GetNullableInt(rozrachunek, "Podmiot", "Id")
+                            ?? DynamicPropertyHelper.GetNullableInt(rozrachunek, "Podmiot_Id"),
                 ContractorName = DynamicPropertyHelper.GetString(rozrachunek, "Podmiot", "NazwaSkrocona"),
                 ContractorNIP = DynamicPropertyHelper.GetString(rozrachunek, "Podmiot", "NIP"),
                 OriginalAmount = kwota,
                 SettledAmount = kwota - kwotaDoRozliczenia,
                 RemainingAmount = kwotaDoRozliczenia,
+                UnsettledAmount = DynamicPropertyHelper.GetDecimal(rozrachunek, "KwotaNierozliczona"),
+                VatAmount = DynamicPropertyHelper.GetNullableDecimal(rozrachunek, "KwotaVAT"),
                 Currency = DynamicPropertyHelper.GetString(rozrachunek, "Waluta", "Symbol") ?? "PLN",
-                IssueDate = DynamicPropertyHelper.GetDateTime(rozrachunek, "DataWystawienia"),
+                IssueDate = DynamicPropertyHelper.GetDateTime(rozrachunek, "DataPowstania")
+                         ?? DynamicPropertyHelper.GetDateTime(rozrachunek, "DataDokumentuZrodlowego"),
                 DueDate = dataPlatnosci,
-                DaysOverdue = daysOverdue
+                LastSettlementDate = DynamicPropertyHelper.GetDateTime(rozrachunek, "DataOstatniegoRozliczenia"),
+                DaysOverdue = daysOverdue,
+                IsOverdue = daysOverdue > 0,
+                IsSettled = status == ReceivableStatus.Settled,
+                Title = DynamicPropertyHelper.GetString(rozrachunek, "Tytul"),
+                Subtype = DynamicPropertyHelper.GetString(rozrachunek, "Podtyp", "Nazwa"),
+                IsCollectible = DynamicPropertyHelper.GetNullableBool(rozrachunek, "Sciagalny"),
+                SplitPayment = DynamicPropertyHelper.GetNullableBool(rozrachunek, "PodzielonaPlatnosc")
             };
         }
         catch

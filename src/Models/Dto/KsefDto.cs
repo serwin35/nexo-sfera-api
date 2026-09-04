@@ -55,6 +55,100 @@ public class ElectronicDocumentDto
     /// Synchronization flag (SDK 61.0.0: DokumentElektroniczny.Zsynchronizowany).
     /// </summary>
     public bool? IsSynchronized { get; set; }
+
+    /// <summary>
+    /// Direction of the e-invoice: "Created" (issued by my company) or "Imported" (received from KSeF).
+    /// SDK: DokumentElektroniczny.Rodzaj (RodzajDokumentuElektronicznego: Utworzony=0, Importowany=1).
+    /// </summary>
+    public string? Direction { get; set; }
+
+    /// <summary>
+    /// Processing status of a received e-invoice (SDK: StatusPrzetworzenia / StatusPrzetworzeniaEFaktury):
+    /// ToProcessInAccounting=1, ToProcessInSubiekt=2, Processed=3, ProcessedManually=4, Undefined=5, Rejected=6.
+    /// </summary>
+    public string? ProcessingStatus { get; set; }
+    public int? ProcessingStatusCode { get; set; }
+
+    /// <summary>
+    /// Invoice kind from the e-invoice content (SDK: RodzajFaktury / RodzajEFaktury):
+    /// VAT=0, KOR=1, ZAL=2, ROZ=3, UPR=4, KOR_ZAL=5, KOR_ROZ=6.
+    /// </summary>
+    public string? InvoiceKind { get; set; }
+    public bool IsCorrection { get; set; }
+
+    /// <summary>
+    /// Role of my company on the e-invoice (SDK: RolaPodmiotu / RolaMojejFirmyDlaEFaktury): Seller=1, Buyer=2, Other=3, Authorized=4.
+    /// </summary>
+    public string? MyCompanyRole { get; set; }
+
+    /// <summary>Nexo customer matched to the e-invoice (SDK: PodmiotId) and the match status (SDK: StatusDopasowaniaKlienta).</summary>
+    public int? CustomerId { get; set; }
+    public int? CustomerMatchStatus { get; set; }
+
+    /// <summary>Warehouse assigned to the received e-invoice (SDK: MagazynId / Magazyn.Symbol).</summary>
+    public int? WarehouseId { get; set; }
+    public string? WarehouseSymbol { get; set; }
+
+    /// <summary>Numbers of Subiekt documents manually linked to the e-invoice (SDK: DokumentyPowiazaneRecznie).</summary>
+    public List<string> ManuallyLinkedDocumentNumbers { get; set; } = new();
+}
+
+/// <summary>
+/// Request for pulling e-invoices from KSeF into the Nexo buffer (DokumentyElektroniczne).
+/// Both dates empty = incremental download of everything new since the last pull.
+/// </summary>
+public class KsefReceiveRequest
+{
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
+}
+
+/// <summary>
+/// Result of one e-invoice pulled from KSeF (SDK: IWynikSynchronizacjiDokumentu).
+/// </summary>
+public class KsefReceivedDocumentDto
+{
+    public bool Success { get; set; }
+    public string? KsefNumber { get; set; }
+    public string? DocumentNumber { get; set; }
+    public string? AdditionalInfo { get; set; }
+    public bool UnexpectedProblem { get; set; }
+    public List<string> Errors { get; set; } = new();
+}
+
+/// <summary>
+/// Summary of a KSeF pull operation.
+/// </summary>
+public class KsefReceiveResultDto
+{
+    public int Downloaded { get; set; }
+    public int Failed { get; set; }
+    public DateTime? DateFrom { get; set; }
+    public DateTime? DateTo { get; set; }
+    public List<KsefReceivedDocumentDto> Documents { get; set; } = new();
+}
+
+/// <summary>
+/// Request for importing a received e-invoice from the buffer into a Subiekt purchase document.
+/// </summary>
+public class KsefImportRequest
+{
+    /// <summary>Optional warehouse symbol for the created purchase document (defaults to the configuration default).</summary>
+    public string? WarehouseSymbol { get; set; }
+}
+
+/// <summary>
+/// Result of importing a received e-invoice into a Subiekt purchase invoice (FZ) or purchase correction (KFZ).
+/// </summary>
+public class KsefImportResultDto
+{
+    public int ElectronicDocumentId { get; set; }
+    public string? KsefNumber { get; set; }
+    public bool Success { get; set; }
+    public bool IsCorrection { get; set; }
+    public int? DocumentId { get; set; }
+    public string? DocumentNumber { get; set; }
+    public List<string> Errors { get; set; } = new();
 }
 
 /// <summary>

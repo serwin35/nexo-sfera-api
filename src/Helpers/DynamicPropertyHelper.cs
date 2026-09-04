@@ -608,4 +608,70 @@ public static class DynamicPropertyHelper
         }
         return null;
     }
+
+    #region Units of measure (verified against SDK 61.1.0.9431 metadata)
+
+    /// <summary>
+    /// Finds the product's unit of measure (JednostkaMiaryAsortymentu) whose dictionary unit symbol or name
+    /// matches <paramref name="unitSymbol"/> (case-insensitive). Searches Asortyment.JednostkiMiar.
+    /// Returns null when the product has no such unit or the symbol is empty.
+    /// </summary>
+    public static dynamic? FindProductUnit(dynamic? asortyment, string? unitSymbol)
+    {
+        if (asortyment == null || string.IsNullOrWhiteSpace(unitSymbol)) return null;
+        var wanted = unitSymbol.Trim();
+        try
+        {
+            var units = GetProperty(asortyment, "JednostkiMiar");
+            if (units == null) return null;
+            foreach (var jma in units)
+            {
+                var symbol = GetString(jma, "JednostkaMiary", "Symbol");
+                var name = GetString(jma, "JednostkaMiary", "Nazwa");
+                if (string.Equals(symbol, wanted, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(name, wanted, StringComparison.OrdinalIgnoreCase))
+                {
+                    return jma;
+                }
+                // dictionary aliases (JednostkaMiary.WszystkieAliasy is a ';'-separated string, Aliasy a collection)
+                var aliases = GetString(jma, "JednostkaMiary", "WszystkieAliasy");
+                if (!string.IsNullOrEmpty(aliases))
+                {
+                    foreach (var alias in aliases.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (string.Equals(alias.Trim(), wanted, StringComparison.OrdinalIgnoreCase)) return jma;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // collection not loaded / unexpected shape
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Symbol of the unit a document line is expressed in (PozycjaDokumentu.JednostkaMiaryAs.JednostkaMiary.Symbol).
+    /// </summary>
+    public static string? GetLineUnitSymbol(dynamic? pozycja)
+    {
+        if (pozycja == null) return null;
+        var dane = GetDane(pozycja);
+        return GetString(GetProperty(dane, "JednostkaMiaryAs"), "JednostkaMiary", "Symbol")
+            ?? GetString(GetProperty(pozycja, "JednostkaMiaryAs"), "JednostkaMiary", "Symbol");
+    }
+
+    /// <summary>
+    /// Symbol of the product's base (stock) unit: Asortyment.PodstawowaJednostkaMiaryAsortymentu.JednostkaMiary.Symbol
+    /// (fallback JednostkaMagazynowa).
+    /// </summary>
+    public static string? GetProductBaseUnitSymbol(dynamic? asortyment)
+    {
+        if (asortyment == null) return null;
+        return GetString(GetProperty(asortyment, "PodstawowaJednostkaMiaryAsortymentu"), "JednostkaMiary", "Symbol")
+            ?? GetString(GetProperty(asortyment, "JednostkaMagazynowa"), "JednostkaMiary", "Symbol");
+    }
+
+    #endregion
 }

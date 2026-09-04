@@ -623,6 +623,257 @@ public class EcommerceController : ControllerBase
 
     #endregion
 
+    #region Shipping Orders
+
+    /// <summary>
+    /// Get e-commerce shipping orders (zamówienia wysyłkowe) - paged, with optional filters
+    /// </summary>
+    [HttpGet("shipping-orders")]
+    [ProducesResponseType(typeof(PagedResponse<ShippingOrderDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResponse<ShippingOrderDto>>> GetShippingOrders(
+        [FromQuery] int? integrationId,
+        [FromQuery] string? status,
+        [FromQuery] string? externalId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 50)
+    {
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = GetShippingOrdersManager();
+                if (manager == null)
+                    return (null, 0);
+
+                var allOrders = DynamicPropertyHelper.SafeGetAll((object)manager);
+
+                // Filter by integration account
+                if (integrationId.HasValue)
+                {
+                    allOrders = allOrders.Where(o =>
+                    {
+                        var konto = DynamicPropertyHelper.GetProperty(o, "KontoIntegracji");
+                        return konto != null && DynamicPropertyHelper.GetId(konto) == integrationId.Value;
+                    }).ToList();
+                }
+
+                // Filter by status name (StatusZamowieniaWysylkowego.Nazwa)
+                if (!string.IsNullOrEmpty(status))
+                {
+                    allOrders = allOrders.Where(o =>
+                    {
+                        var statusName = DynamicPropertyHelper.GetString(o, "Status", "Nazwa");
+                        return statusName != null && statusName.Equals(status, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                // Filter by external (marketplace) order id
+                if (!string.IsNullOrEmpty(externalId))
+                {
+                    allOrders = allOrders.Where(o =>
+                    {
+                        var ext = DynamicPropertyHelper.GetString(o, "IdZewnetrzny");
+                        return ext != null && ext.Equals(externalId, StringComparison.OrdinalIgnoreCase);
+                    }).ToList();
+                }
+
+                var totalCount = allOrders.Count;
+                var pagedOrders = allOrders
+                    .OrderByDescending(o => DynamicPropertyHelper.GetDateTime(o, "DataZakupu") ?? DateTime.MinValue)
+                    .Skip((page - 1) * pageSize)
+                    .Take(pageSize)
+                    .ToList();
+
+                var items = new List<ShippingOrderDto>();
+                foreach (var o in pagedOrders)
+                {
+                    items.Add(MapShippingOrder(o, includeItems: false));
+                }
+
+                return (items, totalCount);
+            });
+
+            if (result.Item1 == null)
+                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaWysylkowe manager"));
+
+            return Ok(new PagedResponse<ShippingOrderDto>
+            {
+                Data = result.Item1,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = result.Item2
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting shipping orders");
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving shipping orders", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get shipping order by ID (with line items)
+    /// </summary>
+    [HttpGet("shipping-orders/{id}")]
+    [ProducesResponseType(typeof(ApiResponse<ShippingOrderDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<ShippingOrderDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<ShippingOrderDto>>> GetShippingOrder(int id)
+    {
+        try
+        {
+            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var manager = GetShippingOrdersManager();
+                if (manager == null)
+                    return (true, (ShippingOrderDto?)null);
+
+                var order = DynamicPropertyHelper.FindById((object)manager, id);
+                if (order == null)
+                    return (false, (ShippingOrderDto?)null);
+
+                return (false, MapShippingOrder((object)order, includeItems: true));
+            });
+
+            if (managerNull)
+                return StatusCode(500, ApiResponse<ShippingOrderDto>.Error("Failed to get ZamowieniaWysylkowe manager"));
+
+            if (dto == null)
+                return NotFound(ApiResponse<ShippingOrderDto>.Error($"Shipping order with ID {id} not found"));
+
+            return Ok(ApiResponse<ShippingOrderDto>.Ok(dto));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting shipping order {Id}", id);
+            return StatusCode(500, ApiResponse<ShippingOrderDto>.Error("Error retrieving shipping order", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Resolves InsERT.Moria.HandelElektroniczny.IZamowieniaWysylkowe via PodajObiektTypu
+    /// (SferaService.GetManager has no alias for it yet). Returns null when unavailable.
+    /// </summary>
+    private dynamic? GetShippingOrdersManager()
+    {
+        try
+        {
+            return _sferaService.GetManagerByType("InsERT.Moria.API", "InsERT.Moria.HandelElektroniczny.IZamowieniaWysylkowe");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "ZamowieniaWysylkowe manager not available");
+            return null;
+        }
+    }
+
+    private static ShippingOrderDto MapShippingOrder(object o, bool includeItems)
+    {
+        object? konto = DynamicPropertyHelper.GetProperty(o, "KontoIntegracji");
+        object? nabywca = DynamicPropertyHelper.GetProperty(o, "Nabywca");
+        object? statusObj = DynamicPropertyHelper.GetProperty(o, "Status");
+
+        string? firstName = DynamicPropertyHelper.GetString(o, "ImieOdbiorcy");
+        string? lastName = DynamicPropertyHelper.GetString(o, "NazwiskoOdbiorcy");
+        var recipientName = string.Join(" ", new[] { firstName, lastName }.Where(part => !string.IsNullOrWhiteSpace(part)));
+
+        string? houseNumber = DynamicPropertyHelper.GetString(o, "NumerDomuOdbiorcy");
+        string? flatNumber = DynamicPropertyHelper.GetString(o, "NumerLokaluOdbiorcy");
+        var buildingNumber = string.IsNullOrWhiteSpace(flatNumber) ? houseNumber : $"{houseNumber}/{flatNumber}";
+
+        var dto = new ShippingOrderDto
+        {
+            Id = DynamicPropertyHelper.GetId(o),
+            ExternalId = DynamicPropertyHelper.GetString(o, "IdZewnetrzny"),
+            Number = DynamicPropertyHelper.GetString(o, "Numeracja", "NumerPelny")
+                  ?? DynamicPropertyHelper.GetString(o, "Numeracja", "Numer"),
+            Signature = DynamicPropertyHelper.GetString(o, "Sygnatura"),
+            Title = DynamicPropertyHelper.GetString(o, "Tytul"),
+            Kind = DynamicPropertyHelper.GetEnumString(o, "Rodzaj"),
+            PurchaseDate = DynamicPropertyHelper.GetDateTime(o, "DataZakupu"),
+            StatusId = statusObj != null ? DynamicPropertyHelper.GetId(statusObj) : null,
+            Status = statusObj != null ? DynamicPropertyHelper.GetString(statusObj, "Nazwa") : null,
+            ServiceStatus = DynamicPropertyHelper.GetString(o, "StatusZamowieniaWSerwisie"),
+            ServicePaymentStatus = DynamicPropertyHelper.GetEnumString(o, "StatusPlatnosciZSerwisu"),
+            IntegrationAccountId = konto != null ? DynamicPropertyHelper.GetId(konto) : null,
+            IntegrationAccountName = konto != null ? DynamicPropertyHelper.GetString(konto, "Nazwa") : null,
+            BuyerId = nabywca != null ? DynamicPropertyHelper.GetId(nabywca) : null,
+            BuyerName = nabywca != null
+                ? (DynamicPropertyHelper.GetString(nabywca, "NazwaSkrocona") ?? DynamicPropertyHelper.GetString(nabywca, "Nazwa"))
+                : null,
+            BuyerLogin = DynamicPropertyHelper.GetString(o, "NazwaUzytkownikaWSerwisie"),
+            Email = DynamicPropertyHelper.GetString(o, "Email"),
+            Phone = DynamicPropertyHelper.GetString(o, "Telefon"),
+            Currency = DynamicPropertyHelper.GetString(o, "Waluta", "Symbol"),
+            Value = DynamicPropertyHelper.GetDecimal(o, "Wartosc"),
+            ShippingValue = DynamicPropertyHelper.GetDecimal(o, "WartoscTransportu"),
+            RemainingToPay = DynamicPropertyHelper.GetNullableDecimal(o, "PozostaloDoZaplaty"),
+            IsCashOnDelivery = DynamicPropertyHelper.GetBool(o, "Pobranie"),
+            BuyerWantsInvoice = DynamicPropertyHelper.GetBool(o, "KupujacyChceFakture"),
+            BuyerRemarks = DynamicPropertyHelper.GetString(o, "UwagiKupujacego"),
+            Weight = DynamicPropertyHelper.GetNullableDecimal(o, "Masa"),
+            DeliveryMethodName = DynamicPropertyHelper.GetString(o, "NazwaSposobuDostawyZSerwisu"),
+            RecipientName = string.IsNullOrWhiteSpace(recipientName) ? null : recipientName,
+            RecipientCompany = DynamicPropertyHelper.GetString(o, "FirmaOdbiorcy"),
+            RecipientStreet = DynamicPropertyHelper.GetString(o, "UlicaOdbiorcy"),
+            RecipientBuildingNumber = string.IsNullOrWhiteSpace(buildingNumber) ? null : buildingNumber,
+            RecipientPostalCode = DynamicPropertyHelper.GetString(o, "KodPocztowyOdbiorcy"),
+            RecipientCity = DynamicPropertyHelper.GetString(o, "MiejscowoscOdbiorcy"),
+            RecipientCountry = DynamicPropertyHelper.GetString(o, "PanstwoOdbiorcy"),
+            PackageCount = DynamicPropertyHelper.GetCount(o, "Paczki"),
+            LineCount = DynamicPropertyHelper.GetCount(o, "Pozycje"),
+            Items = new List<ShippingOrderItemDto>()
+        };
+
+        if (!includeItems)
+            return dto;
+
+        var lineNumber = 1;
+        foreach (var poz in DynamicPropertyHelper.GetCollection(o, "Pozycje"))
+        {
+            dto.Items.Add(MapShippingOrderItem(poz, lineNumber++));
+        }
+
+        return dto;
+    }
+
+    private static ShippingOrderItemDto MapShippingOrderItem(object poz, int fallbackLineNumber)
+    {
+        object? asortyment = DynamicPropertyHelper.GetProperty(poz, "Asortyment");
+        object? jednostka = DynamicPropertyHelper.GetProperty(poz, "JednostkaMiary");
+        object? stawkaVat = DynamicPropertyHelper.GetProperty(poz, "StawkaVat");
+
+        return new ShippingOrderItemDto
+        {
+            Id = DynamicPropertyHelper.GetId(poz),
+            LineNumber = DynamicPropertyHelper.GetNullableInt(poz, "Lp") ?? fallbackLineNumber,
+            ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : null,
+            ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
+            ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
+            Name = DynamicPropertyHelper.GetString(poz, "Nazwa") ?? "",
+            ExternalId = DynamicPropertyHelper.GetString(poz, "IdZewnetrzny"),
+            ExternalOfferId = DynamicPropertyHelper.GetString(poz, "IdZewnetrznyOferty"),
+            Sku = DynamicPropertyHelper.GetString(poz, "SKU"),
+            Gtin = DynamicPropertyHelper.GetString(poz, "GTIN"),
+            Quantity = DynamicPropertyHelper.GetDecimal(poz, "Ilosc"),
+            Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") : null,
+            Price = DynamicPropertyHelper.GetDecimal(poz, "Cena"),
+            PriceNet = DynamicPropertyHelper.GetNullableDecimal(poz, "CenaNetto"),
+            Value = DynamicPropertyHelper.GetDecimal(poz, "Wartosc"),
+            ValueNet = DynamicPropertyHelper.GetNullableDecimal(poz, "WartoscNetto"),
+            VatRate = stawkaVat != null ? DynamicPropertyHelper.GetString(stawkaVat, "Symbol") : null,
+            VatRateId = DynamicPropertyHelper.GetNullableInt(poz, "StawkaVatId"),
+            UnitWeight = DynamicPropertyHelper.GetNullableDecimal(poz, "MasaJednostkowa"),
+            Weight = DynamicPropertyHelper.GetNullableDecimal(poz, "Masa"),
+            // SDK 60.0.0: PozycjaZamowieniaWysylkowego.WartoscKaucji/WalutaKaucji
+            DepositValue = DynamicPropertyHelper.GetNullableDecimal(poz, "WartoscKaucji"),
+            DepositCurrency = DynamicPropertyHelper.GetString(poz, "WalutaKaucji", "Symbol"),
+            // SDK 61.1.0: PozycjaZamowieniaWysylkowego.KodTaryfyCelnej (null on older SDKs)
+            CustomsTariffCode = DynamicPropertyHelper.GetString(poz, "KodTaryfyCelnej")
+        };
+    }
+
+    #endregion
+
     #region Package Dimensions
 
     /// <summary>
@@ -788,6 +1039,96 @@ public class ShippingPackageDto
     public DateTime? CreatedDate { get; set; }
     public DateTime? ShippedDate { get; set; }
     public DateTime? DeliveredDate { get; set; }
+}
+
+/// <summary>
+/// E-commerce shipping order (ZamowienieWysylkowe) DTO
+/// </summary>
+public class ShippingOrderDto
+{
+    public int Id { get; set; }
+
+    /// <summary>External (marketplace/shop) order identifier</summary>
+    public string? ExternalId { get; set; }
+    public string? Number { get; set; }
+    public string? Signature { get; set; }
+    public string? Title { get; set; }
+
+    /// <summary>RodzajZamowieniaWysylkowego: Normalne / TylkoWysylki / TylkoDokumenty</summary>
+    public string? Kind { get; set; }
+    public DateTime? PurchaseDate { get; set; }
+    public int? StatusId { get; set; }
+    public string? Status { get; set; }
+    public string? ServiceStatus { get; set; }
+    public string? ServicePaymentStatus { get; set; }
+    public int? IntegrationAccountId { get; set; }
+    public string? IntegrationAccountName { get; set; }
+    public int? BuyerId { get; set; }
+    public string? BuyerName { get; set; }
+    public string? BuyerLogin { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Currency { get; set; }
+    public decimal Value { get; set; }
+    public decimal ShippingValue { get; set; }
+    public decimal? RemainingToPay { get; set; }
+    public bool IsCashOnDelivery { get; set; }
+    public bool BuyerWantsInvoice { get; set; }
+    public string? BuyerRemarks { get; set; }
+    public decimal? Weight { get; set; }
+    public string? DeliveryMethodName { get; set; }
+    public string? RecipientName { get; set; }
+    public string? RecipientCompany { get; set; }
+    public string? RecipientStreet { get; set; }
+    public string? RecipientBuildingNumber { get; set; }
+    public string? RecipientPostalCode { get; set; }
+    public string? RecipientCity { get; set; }
+    public string? RecipientCountry { get; set; }
+    public int PackageCount { get; set; }
+    public int LineCount { get; set; }
+
+    /// <summary>Line items (populated only by GET shipping-orders/{id})</summary>
+    public List<ShippingOrderItemDto> Items { get; set; } = new();
+}
+
+/// <summary>
+/// E-commerce shipping order line (PozycjaZamowieniaWysylkowego) DTO
+/// </summary>
+public class ShippingOrderItemDto
+{
+    public int Id { get; set; }
+    public int LineNumber { get; set; }
+    public int? ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+    public string? ProductName { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? ExternalId { get; set; }
+    public string? ExternalOfferId { get; set; }
+    public string? Sku { get; set; }
+    public string? Gtin { get; set; }
+    public decimal Quantity { get; set; }
+    public string? Unit { get; set; }
+
+    /// <summary>Unit price as sent by the service (PozycjaZamowieniaWysylkowego.Cena)</summary>
+    public decimal Price { get; set; }
+    public decimal? PriceNet { get; set; }
+
+    /// <summary>Line value as sent by the service (PozycjaZamowieniaWysylkowego.Wartosc)</summary>
+    public decimal Value { get; set; }
+    public decimal? ValueNet { get; set; }
+    public string? VatRate { get; set; }
+    public int? VatRateId { get; set; }
+    public decimal? UnitWeight { get; set; }
+    public decimal? Weight { get; set; }
+
+    /// <summary>Deposit (kaucja) value (SDK 60.0.0: PozycjaZamowieniaWysylkowego.WartoscKaucji)</summary>
+    public decimal? DepositValue { get; set; }
+
+    /// <summary>Deposit currency symbol (SDK 60.0.0: PozycjaZamowieniaWysylkowego.WalutaKaucji)</summary>
+    public string? DepositCurrency { get; set; }
+
+    /// <summary>Customs tariff (CN/HS) code (SDK 61.1.0: PozycjaZamowieniaWysylkowego.KodTaryfyCelnej); null on older SDKs</summary>
+    public string? CustomsTariffCode { get; set; }
 }
 
 /// <summary>

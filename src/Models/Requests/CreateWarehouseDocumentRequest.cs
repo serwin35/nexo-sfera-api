@@ -363,3 +363,30 @@ public class WarehouseDocumentQueryRequest
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 50;
 }
+
+/// <summary>
+/// Request for creating an internal issue (RW) that realizes a customer order (ZK).
+/// </summary>
+public class CreateRwFromOrderRequest
+{
+    /// <summary>Customer order (ZK) id.</summary>
+    [Required]
+    public int OrderId { get; set; }
+
+    /// <summary>Order line ids to realize; empty = whole order.</summary>
+    public List<int>? LineIds { get; set; }
+
+    /// <summary>Warehouse symbol; defaults to the order's warehouse.</summary>
+    [MaxLength(20)]
+    public string? WarehouseSymbol { get; set; }
+
+    public DateTime? IssueDate { get; set; }
+
+    [MaxLength(2000)]
+    public string? Notes { get; set; }
+
+    /// <summary>How to group order lines on the RW (SDK: MetodaGrupowaniaPozycji).</summary>
+    public PositionConsolidationMethod ConsolidationMethod { get; set; } = PositionConsolidationMethod.NoConsolidation;
+
+    public bool ReserveNumber { get; set; } = false;
+}
