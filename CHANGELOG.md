@@ -72,6 +72,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - SferaService manager name `ZamowieniaWysylkowe`
 
 ### Fixed (2026-09-04)
+- **`NexoSdkSynchronizer` picked a stale deployment**: candidates were ranked by DLL size/write time, so on a machine with several nexo
+  deployments it selected a 61.0.0.9362 `Binaries` folder while the database was already 61.1.0.9431 (`Podana baza danych jest w innej wersji
+  niż użyte biblioteki sferyczne`). Candidates are now ranked by the file version of `InsERT.Moria.Sfera.dll`, then DLL count, then write time
 - `PhotoGalleryController` GET endpoints enumerated the gallery manager via `Dane.Wszystkie()` which `IGaleriaZdjec` does not have (always empty) -
   now `WszystkieZdjecia()`; photo fields mapped from the real `IZdjecie` members (`Nazwa`, `RozmiarBajty`, `CzyGlowneZdjecie`) with legacy fallbacks
 - `AssemblyController`: `PozycjeSkladniki.Dodaj(asortyment)` (non-existent overload), `PozycjaKomplet.Asortyment` writes, forced
