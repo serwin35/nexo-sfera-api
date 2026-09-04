@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
 using NexoSferaApi.Filters;
 using NexoSferaApi.Models.Dto;
 using NexoSferaApi.Models.Requests;
@@ -19,11 +20,17 @@ namespace NexoSferaApi.Controllers;
 public class ProductsController : ControllerBase
 {
     private readonly ISferaService _sferaService;
+
+    /// <summary>
+    /// Connection string for the SQL fallback of unit conversions (MapUnits is static and used by static mappers).
+    /// </summary>
+    private static Func<string?>? _unitConversionConnectionString;
     private readonly ILogger<ProductsController> _logger;
 
     public ProductsController(ISferaService sferaService, ILogger<ProductsController> logger)
     {
         _sferaService = sferaService;
+        _unitConversionConnectionString = () => sferaService.GetConnectionString();
         _logger = logger;
     }
 
@@ -32,7 +39,7 @@ public class ProductsController : ControllerBase
     /// </summary>
     [HttpGet("debug/properties/{id}")]
     [DevelopmentOnly]
-    public async Task<ActionResult<object>> GetProductProperties(int id)
+    public async Task<ActionResult<object>> GetProductProperties(int id, [FromQuery] string? path = null)
     {
         try
         {
@@ -59,14 +66,41 @@ public class ProductsController : ControllerBase
                     return (object?)new { NotFound = true, Id = id };
                 }
 
-                Type asortymentType = asortyment.GetType();
+                // ?path=JednostkiMiar.1.PrzelicznikJednostkiNadrzednej — walk properties / collection indexes before dumping.
+                object? target = (object)asortyment;
+                if (!string.IsNullOrWhiteSpace(path))
+                {
+                    foreach (var segment in path.Split('.', StringSplitOptions.RemoveEmptyEntries))
+                    {
+                        if (target == null) break;
+                        if (int.TryParse(segment, out var index))
+                        {
+                            object? picked = null;
+                            var i = 0;
+                            foreach (var item in (System.Collections.IEnumerable)target)
+                            {
+                                if (i++ == index) { picked = item; break; }
+                            }
+                            target = picked;
+                        }
+                        else
+                        {
+                            target = DynamicPropertyHelper.GetProperty(target, segment);
+                        }
+                    }
+                    if (target == null)
+                    {
+                        return (object?)new { NotFound = true, Id = id, Path = path };
+                    }
+                }
+                Type asortymentType = target!.GetType();
                 var properties = new Dictionary<string, object>();
 
                 foreach (var prop in asortymentType.GetProperties())
                 {
                     try
                     {
-                        var value = prop.GetValue(asortyment);
+                        var value = prop.GetValue(target);
                         var valueType = value?.GetType().Name ?? "null";
 
                         // For collections, get count
@@ -103,6 +137,7 @@ public class ProductsController : ControllerBase
                 return (object?)new
                 {
                     Id = id,
+                    Path = path,
                     EntityType = asortymentType.FullName,
                     PropertyCount = properties.Count,
                     Properties = properties.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value)
@@ -1855,6 +1890,9 @@ public class ProductsController : ControllerBase
                     var parentQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiNadrzednej");
                     var childQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiPodrzednej");
 
+                    // Reflection on lazy proxies may yield an empty converter — never emit a conversion with no data.
+                    if (parentSymbol == null && childSymbol == null && parentQty == null && childQty == null)
+                        continue;
                     if (dto.Conversions.Any(c => c.ParentUnitSymbol == parentSymbol && c.ChildUnitSymbol == childSymbol && c.ParentQuantity == parentQty && c.ChildQuantity == childQty))
                         continue;
 
@@ -1882,7 +1920,80 @@ public class ProductsController : ControllerBase
             // Units are auxiliary data — never fail the product for them.
         }
 
+        FillMissingFactorsFromSql(result);
+
         return result;
+    }
+
+    /// <summary>
+    /// Deterministic fallback for conversions: the EF lazy proxies behind `PrzelicznikJednostkiNadrzednej/Podrzednej`
+    /// do not always expose their members through reflection (observed: converter non-null, all fields null), so when
+    /// any non-base unit still has no <c>ToBaseFactor</c> we read the converter rows straight from
+    /// <c>ModelDanychContainer.PrzelicznikiJednostekMiarAsortymentu</c> (unit ids = JednostkiMiarAsortymentow.Id).
+    /// Read-only, ids are integers (no user input in the SQL text).
+    /// </summary>
+    private static void FillMissingFactorsFromSql(List<ProductUnitDto> units)
+    {
+        if (units.Count < 2 || units.All(u => u.ToBaseFactor != null)) return;
+
+        var connectionString = _unitConversionConnectionString?.Invoke();
+        if (string.IsNullOrEmpty(connectionString)) return;
+
+        try
+        {
+            var byId = units.Where(u => u.Id > 0).GroupBy(u => u.Id).ToDictionary(g => g.Key, g => g.First());
+            if (byId.Count == 0) return;
+
+            var inList = string.Join(",", byId.Keys);
+            using var connection = new SqlConnection(connectionString);
+            connection.Open();
+            using var command = new SqlCommand(
+                "SELECT LiczbaJednostkiNadrzednej, LiczbaJednostkiPodrzednej, JednostkaNadrzedna_Id, JednostkaPodrzedna_Id " +
+                "FROM ModelDanychContainer.PrzelicznikiJednostekMiarAsortymentu " +
+                $"WHERE JednostkaNadrzedna_Id IN ({inList}) OR JednostkaPodrzedna_Id IN ({inList})",
+                connection);
+            using var reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                decimal? parentQty = reader.IsDBNull(0) ? null : reader.GetDecimal(0);
+                decimal? childQty = reader.IsDBNull(1) ? null : reader.GetDecimal(1);
+                var parentId = reader.IsDBNull(2) ? 0 : reader.GetInt32(2);
+                var childId = reader.IsDBNull(3) ? 0 : reader.GetInt32(3);
+                byId.TryGetValue(parentId, out var parent);
+                byId.TryGetValue(childId, out var child);
+                if (parent == null && child == null) continue;
+
+                var conversion = new ProductUnitConversionDto
+                {
+                    ParentUnitSymbol = parent?.Symbol,
+                    ParentQuantity = parentQty,
+                    ChildUnitSymbol = child?.Symbol,
+                    ChildQuantity = childQty,
+                };
+
+                foreach (var unit in new[] { parent, child })
+                {
+                    if (unit == null) continue;
+                    if (!unit.Conversions.Any(c => c.ParentUnitSymbol == conversion.ParentUnitSymbol && c.ChildUnitSymbol == conversion.ChildUnitSymbol
+                                                   && c.ParentQuantity == conversion.ParentQuantity && c.ChildQuantity == conversion.ChildQuantity))
+                        unit.Conversions.Add(conversion);
+                }
+
+                // 1 szt (parent, 1) = 5000 m (child, 5000): factor to base for "szt" = 5000 / 1.
+                if (parentQty is > 0 && childQty is > 0 && parent != null && child != null)
+                {
+                    if (child.IsBase && parent.ToBaseFactor == null)
+                        parent.ToBaseFactor = childQty / parentQty;
+                    else if (parent.IsBase && child.ToBaseFactor == null)
+                        child.ToBaseFactor = parentQty / childQty;
+                }
+            }
+        }
+        catch
+        {
+            // Fallback only — the reflection result stays as is.
+        }
     }
 
     /// <summary>
