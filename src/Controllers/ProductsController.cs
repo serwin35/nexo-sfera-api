@@ -1880,35 +1880,50 @@ public class ProductsController : ControllerBase
                     ToBaseFactor = (baseId != 0 && id == baseId) ? 1m : null,
                 };
 
+                // Both navigations are WrappedEntityCollection<PrzelicznikJednostekMiarAsortymentu> (seen live via
+                // debug/properties?path=JednostkiMiar.1) — iterate them; a single entity is still accepted.
                 foreach (var converterName in new[] { "PrzelicznikJednostkiNadrzednej", "PrzelicznikJednostkiPodrzednej" })
                 {
-                    var converter = DynamicPropertyHelper.GetProperty(unit, converterName);
-                    if (converter == null) continue;
+                    var converterHolder = DynamicPropertyHelper.GetProperty(unit, converterName);
+                    if (converterHolder == null) continue;
 
-                    var parentSymbol = DynamicPropertyHelper.GetNestedString(converter, "JednostkaNadrzedna", "JednostkaMiary", "Symbol");
-                    var childSymbol = DynamicPropertyHelper.GetNestedString(converter, "JednostkaPodrzedna", "JednostkaMiary", "Symbol");
-                    var parentQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiNadrzednej");
-                    var childQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiPodrzednej");
-
-                    // Reflection on lazy proxies may yield an empty converter — never emit a conversion with no data.
-                    if (parentSymbol == null && childSymbol == null && parentQty == null && childQty == null)
-                        continue;
-                    if (dto.Conversions.Any(c => c.ParentUnitSymbol == parentSymbol && c.ChildUnitSymbol == childSymbol && c.ParentQuantity == parentQty && c.ChildQuantity == childQty))
-                        continue;
-
-                    dto.Conversions.Add(new ProductUnitConversionDto
+                    var converters = new List<object>();
+                    if (converterHolder is System.Collections.IEnumerable enumerable && converterHolder is not string)
                     {
-                        ParentUnitSymbol = parentSymbol,
-                        ParentQuantity = parentQty,
-                        ChildUnitSymbol = childSymbol,
-                        ChildQuantity = childQty,
-                    });
-
-                    // 1 szt (parent, qty 1) = 5000 m (child, qty 5000) → factor to base (m) for "szt" = 5000.
-                    if (dto.ToBaseFactor == null && parentQty is > 0 && childQty is > 0 && baseSymbol != null)
+                        foreach (var item in enumerable) if (item != null) converters.Add(item);
+                    }
+                    else
                     {
-                        if (parentSymbol == symbol && childSymbol == baseSymbol) dto.ToBaseFactor = childQty / parentQty;
-                        else if (childSymbol == symbol && parentSymbol == baseSymbol) dto.ToBaseFactor = parentQty / childQty;
+                        converters.Add((object)converterHolder);
+                    }
+
+                    foreach (var converter in converters)
+                    {
+                        var parentSymbol = DynamicPropertyHelper.GetNestedString(converter, "JednostkaNadrzedna", "JednostkaMiary", "Symbol");
+                        var childSymbol = DynamicPropertyHelper.GetNestedString(converter, "JednostkaPodrzedna", "JednostkaMiary", "Symbol");
+                        var parentQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiNadrzednej");
+                        var childQty = DynamicPropertyHelper.GetNullableDecimal(converter, "LiczbaJednostkiPodrzednej");
+
+                        // Reflection on lazy proxies may yield an empty converter — never emit a conversion with no data.
+                        if (parentSymbol == null && childSymbol == null && parentQty == null && childQty == null)
+                            continue;
+                        if (dto.Conversions.Any(c => c.ParentUnitSymbol == parentSymbol && c.ChildUnitSymbol == childSymbol && c.ParentQuantity == parentQty && c.ChildQuantity == childQty))
+                            continue;
+
+                        dto.Conversions.Add(new ProductUnitConversionDto
+                        {
+                            ParentUnitSymbol = parentSymbol,
+                            ParentQuantity = parentQty,
+                            ChildUnitSymbol = childSymbol,
+                            ChildQuantity = childQty,
+                        });
+
+                        // 1 szt (parent, qty 1) = 5000 m (child, qty 5000) → factor to base (m) for "szt" = 5000.
+                        if (dto.ToBaseFactor == null && parentQty is > 0 && childQty is > 0 && baseSymbol != null)
+                        {
+                            if (parentSymbol == symbol && childSymbol == baseSymbol) dto.ToBaseFactor = childQty / parentQty;
+                            else if (childSymbol == symbol && parentSymbol == baseSymbol) dto.ToBaseFactor = parentQty / childQty;
+                        }
                     }
                 }
 
