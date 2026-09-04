@@ -139,7 +139,7 @@ public class InventoryController : ControllerBase
                             StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
                             ReservedQuantity = iloscZarezerwowanaIlosciowo + iloscZadysponowana,
                             AvailableQuantity = iloscDostepna,
-                            Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
+                            Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
                             MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
                             MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
                         };
@@ -189,7 +189,7 @@ public class InventoryController : ControllerBase
                                 StockQuantity = 0,
                                 ReservedQuantity = 0,
                                 AvailableQuantity = 0,
-                                Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
+                                Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
                                 MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
                                 MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
                             });
@@ -318,7 +318,7 @@ public class InventoryController : ControllerBase
                         StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
                         ReservedQuantity = iloscZarezerwowanaIlosciowo + iloscZadysponowana,
                         AvailableQuantity = iloscDostepna,
-                        Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
+                        Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
                         MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
                         MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
                     });
@@ -561,7 +561,7 @@ public class InventoryController : ControllerBase
                             ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
                             WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
                             Quantity = DynamicPropertyHelper.GetDecimal(partia, "Ilosc"),
-                            Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt.",
+                            Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
                             ExpirationDate = partiaTermin,
                             DaysUntilExpiration = daysUntilExpiration,
                             Notes = DynamicPropertyHelper.GetString(partia, "Komentarz")
@@ -765,7 +765,7 @@ public class InventoryController : ControllerBase
                             ProductName = DynamicPropertyHelper.GetString(pozycja, "Nazwa"),
                             WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
                             ReservedQuantity = rezerwowana,
-                            Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                            Unit = DynamicPropertyHelper.UnitSymbol(jednostka) ?? "szt.",
                             SourceDocumentId = DynamicPropertyHelper.GetId(zamowienie),
                             SourceDocumentNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
                             CustomerId = podmiot != null ? DynamicPropertyHelper.GetId(podmiot) : null,
@@ -1107,7 +1107,7 @@ public class InventoryController : ControllerBase
                         WarehouseSymbol = docMagazyn != null ? DynamicPropertyHelper.GetString(docMagazyn, "Symbol") : null,
                         WarehouseName = docMagazyn != null ? DynamicPropertyHelper.GetString(docMagazyn, "Nazwa") : null,
                         Quantity = ilosc,
-                        Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+                        Unit = DynamicPropertyHelper.UnitSymbol(jednostka) ?? "szt.",
                         MovementType = isIncoming ? "In" : "Out",
                         UnitPrice = DynamicPropertyHelper.GetNullableDecimal(poz, "CenaNetto"),
                         TotalValue = DynamicPropertyHelper.GetNullableDecimal(poz, "WartoscNetto")
@@ -1512,7 +1512,7 @@ public class InventoryController : ControllerBase
             ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
             ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
             ProductName = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Nazwa") : null,
-            Unit = jednostka != null ? DynamicPropertyHelper.GetString(jednostka, "Symbol") ?? "szt." : "szt.",
+            Unit = DynamicPropertyHelper.UnitSymbol(jednostka) ?? "szt.",
             BookQuantity = iloscEwidencyjna,
             ActualQuantity = iloscRzeczywista,
             Difference = iloscRzeczywista - iloscEwidencyjna,
@@ -1630,7 +1630,7 @@ public class InventoryController : ControllerBase
                     ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
                     WarehouseSymbol = warehouseSymbol,
                     FreeQuantity = freeQuantity,
-                    Unit = DynamicPropertyHelper.GetString(produkt, "JednostkaMagazynowa", "Symbol") ?? "szt."
+                    Unit = DynamicPropertyHelper.StockUnitSymbol(produkt)
                 };
 
                 return (statusCode: 200, dto: (FreeQuantityDto?)dto, error: (string?)"");

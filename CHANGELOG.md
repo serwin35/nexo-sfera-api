@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed (2026-09-04)
+- Inventory `unit` was always "szt.": `JednostkaMagazynowa` is a `JednostkaMiaryAsortymentu` whose symbol lives in
+  `JednostkaMiary.Symbol`. New `DynamicPropertyHelper.StockUnitSymbol/UnitSymbol` (warehouse unit → base unit →
+  "szt.") used for stock rows and document positions in the inventory endpoints — threads now report `m`.
 - **`GET /api/inventory/stock` (and `stock/low`, `stock/product/{id}`, MCP inventory tools) returned no rows**: products were
   filtered on `JestHandlowy`/`JestMagazynowy`, which do not exist on `Asortyment` (always false). New
   `DynamicPropertyHelper.TracksStock` uses the kind dictionary `Rodzaj.StanyMagazynowe` (false = service) with a fallback
