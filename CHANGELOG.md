@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Fixed (2026-09-04)
+- **`GET /api/inventory/stock` (and `stock/low`, `stock/product/{id}`, MCP inventory tools) returned no rows**: products were
+  filtered on `JestHandlowy`/`JestMagazynowy`, which do not exist on `Asortyment` (always false). New
+  `DynamicPropertyHelper.TracksStock` uses the kind dictionary `Rodzaj.StanyMagazynowe` (false = service) with a fallback
+  to existing stock rows. Warehouses are resolved from a dictionary built once per request instead of rescanning the
+  manager for every stock row.
 - **`ProductDto.Units` conversions were empty** (`toBaseFactor: null`, one all-null entry in `conversions`) on a live
   instance: the EF lazy proxies behind `PrzelicznikJednostkiNadrzednej/Podrzednej` do not expose their members through
   reflection. `MapUnits` now drops empty converter entries and, whenever a non-base unit has no factor, reads the rows of

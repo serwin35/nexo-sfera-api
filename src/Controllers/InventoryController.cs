@@ -55,9 +55,8 @@ public class InventoryController : ControllerBase
                 var produktyQuery = new List<object>();
                 foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                 {
-                    bool isHandlowy = DynamicPropertyHelper.GetBool(a, "JestHandlowy");
-                    bool isMagazynowy = DynamicPropertyHelper.GetBool(a, "JestMagazynowy");
-                    if (!isHandlowy && !isMagazynowy)
+                    if (!DynamicPropertyHelper.TracksStock(a))
+
                         continue;
 
                     if (productId.HasValue && DynamicPropertyHelper.GetId(a) != productId.Value)
@@ -499,9 +498,8 @@ public class InventoryController : ControllerBase
                 var produktyQuery = new List<object>();
                 foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                 {
-                    bool isHandlowy = DynamicPropertyHelper.GetBool(a, "JestHandlowy");
-                    bool isMagazynowy = DynamicPropertyHelper.GetBool(a, "JestMagazynowy");
-                    if (!isHandlowy && !isMagazynowy)
+                    if (!DynamicPropertyHelper.TracksStock(a))
+
                         continue;
 
                     if (productId.HasValue && DynamicPropertyHelper.GetId(a) != productId.Value)
@@ -889,9 +887,8 @@ public class InventoryController : ControllerBase
 
                 foreach (var produkt in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                 {
-                    bool isHandlowy = DynamicPropertyHelper.GetBool(produkt, "JestHandlowy");
-                    bool isMagazynowy = DynamicPropertyHelper.GetBool(produkt, "JestMagazynowy");
-                    if (!isHandlowy && !isMagazynowy)
+                    if (!DynamicPropertyHelper.TracksStock(produkt))
+
                         continue;
 
                     var stany = DynamicPropertyHelper.GetCollection((object)produkt, "StanyMagazynowe");
@@ -1167,9 +1164,9 @@ public class InventoryController : ControllerBase
 
                 foreach (var produkt in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                 {
-                    bool isHandlowy = DynamicPropertyHelper.GetBool(produkt, "JestHandlowy");
-                    bool isMagazynowy = DynamicPropertyHelper.GetBool(produkt, "JestMagazynowy");
-                    if (!isHandlowy && !isMagazynowy) continue;
+                    if (!DynamicPropertyHelper.TracksStock(produkt))
+
+                        continue;
 
                     var stany = DynamicPropertyHelper.GetCollection((object)produkt, "StanyMagazynowe");
 

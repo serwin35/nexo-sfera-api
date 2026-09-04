@@ -27,7 +27,7 @@ public class InventoryTools(ISferaService sferaService, ILogger<InventoryTools> 
 
                 foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
                 {
-                    if (!DynamicPropertyHelper.GetBool(a, "JestMagazynowy"))
+                    if (!DynamicPropertyHelper.TracksStock(a))
                         continue;
 
                     if (!string.IsNullOrEmpty(productSymbol))

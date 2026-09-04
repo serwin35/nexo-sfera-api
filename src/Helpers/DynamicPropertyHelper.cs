@@ -144,6 +144,34 @@ public static class DynamicPropertyHelper
     /// <summary>
     /// Gets a nullable bool property value, optionally navigating through a nested property.
     /// </summary>
+    /// <summary>
+    /// Whether an Asortyment keeps warehouse stock. There are no <c>JestHandlowy</c>/<c>JestMagazynowy</c> members on
+    /// the entity (they always read as false and used to hide every product from the inventory endpoints) — the kind
+    /// dictionary <c>Rodzaj.StanyMagazynowe</c> is the source of truth (false = service); with no kind, a product that
+    /// has stock rows is treated as tracked.
+    /// </summary>
+    public static bool TracksStock(dynamic asortyment)
+    {
+        try
+        {
+            var rodzaj = GetProperty(asortyment, "Rodzaj");
+            if (rodzaj != null)
+            {
+                bool? stanyMagazynowe = GetNullableBool(rodzaj, "StanyMagazynowe");
+                if (stanyMagazynowe.HasValue) return stanyMagazynowe.Value;
+            }
+
+            foreach (var item in GetCollection((object)asortyment, "StanyMagazynowe")) return true;
+
+            // Unknown kind and no stock rows: assume tracked (the stock endpoints yield nothing for it anyway).
+            return rodzaj == null;
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
     public static bool? GetNullableBool(dynamic obj, string prop1, string? prop2 = null)
     {
         try

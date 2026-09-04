@@ -138,8 +138,8 @@ public class ProductTools(ISferaService sferaService, ILogger<ProductTools> logg
                     priceGross = DynamicPropertyHelper.GetDecimal(produkt, "CenaBazowaOdSprzedazy"),
                     vatRate = DynamicPropertyHelper.GetString(produkt, "StawkaVatSprzedazy", "Wartosc"),
                     isActive = !DynamicPropertyHelper.GetBool(produkt, "CzyZablokowany"),
-                    isService = DynamicPropertyHelper.GetBool(produkt, "JestUsluga"),
-                    isTracked = DynamicPropertyHelper.GetBool(produkt, "JestMagazynowy"),
+                    isService = !DynamicPropertyHelper.TracksStock(produkt),
+                    isTracked = DynamicPropertyHelper.TracksStock(produkt),
                     weight = DynamicPropertyHelper.GetNullableDecimal(produkt, "Waga"),
                     stockLevels,
                 };
