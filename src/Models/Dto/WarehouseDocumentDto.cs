@@ -51,6 +51,11 @@ public class WarehouseDocumentItemDto
 
     public decimal Quantity { get; set; }
     public string? Unit { get; set; }
+    public int? UnitId { get; set; }
+    /// <summary>Quantity converted to the product's base (stock) unit (SDK: PozycjaDokumentu.IloscWJednostceBazowej).</summary>
+    public decimal? QuantityInBaseUnit { get; set; }
+    /// <summary>Symbol of the product's base (stock) unit.</summary>
+    public string? BaseUnit { get; set; }
 
     public decimal? PriceNet { get; set; }
     public decimal? ValueNet { get; set; }

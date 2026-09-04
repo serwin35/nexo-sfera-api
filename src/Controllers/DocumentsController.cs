@@ -475,7 +475,7 @@ public class DocumentsController : ControllerBase
         {
             documents = documents.Where(d =>
             {
-                var data = DynamicPropertyHelper.GetDateTime(d, "TerminPlatnosci");
+                var data = GetDocumentDueDate(d);
                 return data.HasValue && data.Value >= query.DueDateFrom.Value;
             }).ToList();
         }
@@ -484,7 +484,7 @@ public class DocumentsController : ControllerBase
         {
             documents = documents.Where(d =>
             {
-                var data = DynamicPropertyHelper.GetDateTime(d, "TerminPlatnosci");
+                var data = GetDocumentDueDate(d);
                 return data.HasValue && data.Value <= query.DueDateTo.Value;
             }).ToList();
         }
@@ -602,7 +602,7 @@ public class DocumentsController : ControllerBase
             documents = documents.Where(d =>
             {
                 var amountToPay = DynamicPropertyHelper.GetDecimal(d, "KwotaDoZaplaty");
-                var dueDate = DynamicPropertyHelper.GetDateTime(d, "TerminPlatnosci");
+                var dueDate = GetDocumentDueDate(d);
                 return amountToPay > 0 && dueDate.HasValue && dueDate.Value < DateTime.Today;
             }).ToList();
         }
@@ -5041,10 +5041,12 @@ public class DocumentsController : ControllerBase
 
             if (asortyment != null)
             {
-                var jednostka = usePurchaseUnit
-                    ? (DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") ??
-                       DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"))
-                    : DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                // Requested unit (item.Unit) wins; otherwise the product's default purchase/sale unit
+                var jednostka = DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit)
+                    ?? (usePurchaseUnit
+                        ? (DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") ??
+                           DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"))
+                        : DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"));
 
                 var pozycja = dokument.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
 
@@ -5101,7 +5103,8 @@ public class DocumentsController : ControllerBase
 
             if (asortyment != null)
             {
-                var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                var jednostka = DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit)
+                             ?? DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
                 var pozycja = paragon.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
 
                 if (item.PriceNet.HasValue && pozycja != null)
@@ -5182,7 +5185,10 @@ public class DocumentsController : ControllerBase
             {
                 int towarId = DynamicPropertyHelper.GetId(asortyment);
                 // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
-                var pozycja = dokument.Pozycje.Dodaj(towarId);
+                var requestedUnit = DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit);
+                var pozycja = requestedUnit != null
+                    ? dokument.Pozycje.Dodaj(asortyment, item.Quantity, requestedUnit)
+                    : dokument.Pozycje.Dodaj(towarId);
 
                 if (pozycja != null)
                 {
@@ -5386,7 +5392,8 @@ public class DocumentsController : ControllerBase
                     // Get product info for logging and other patterns
                     towarId = DynamicPropertyHelper.GetId(asortyment);
                     towarSymbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? towarId.ToString();
-                    jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                    jednostka = DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit)
+                             ?? DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
 
                     _logger.LogDebug("[FS-v2] Found product: Id={Id}, Symbol={Symbol}, Unit={Unit}",
                         towarId, (object)towarSymbol, (object)(jednostka?.ToString() ?? "(null)"));
@@ -5692,7 +5699,10 @@ public class DocumentsController : ControllerBase
                 _logger.LogDebug("[PA] Adding product {Symbol} (ID: {Id}) to receipt", symbol ?? "(unknown)", towarId);
                 
                 // CRITICAL: Use Pozycje.Dodaj(towarId) pattern for EF6 compatibility
-                var pozycja = paragon.Pozycje.Dodaj(towarId);
+                var requestedUnit = DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit);
+                var pozycja = requestedUnit != null
+                    ? paragon.Pozycje.Dodaj(asortyment, item.Quantity, requestedUnit)
+                    : paragon.Pozycje.Dodaj(towarId);
 
                 if (pozycja != null)
                 {
@@ -5832,10 +5842,12 @@ public class DocumentsController : ControllerBase
 
                 if (asortyment != null)
                 {
-                    var jednostka = usePurchaseUnit
-                        ? (DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") ??
-                           DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"))
-                        : DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
+                    // Requested unit (item.Unit) wins; otherwise the product's default purchase/sale unit
+                    var jednostka = DynamicPropertyHelper.FindProductUnit(asortyment, item.Unit)
+                        ?? (usePurchaseUnit
+                            ? (DynamicPropertyHelper.GetProperty(asortyment, "JednostkaZakupu") ??
+                               DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"))
+                            : DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy"));
 
                     var pozycja = korekta.Pozycje.Dodaj(asortyment, item.QuantityCorrection, jednostka);
                     if (pozycja != null && item.PriceNetCorrection.HasValue)
@@ -5909,19 +5921,21 @@ public class DocumentsController : ControllerBase
         string? externalNumber = DynamicPropertyHelper.GetString(dokument, "NumerZewnetrzny");
         string? referenceNumber = DynamicPropertyHelper.GetString(dokument, "NumerReferencyjny");
         string? title = DynamicPropertyHelper.GetString(dokument, "Tytul");
-        DateTime? issueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia") ??
-                              DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia");
-        DateTime? saleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy");
-        DateTime? dueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci");
+        DateTime? issueDate = GetDocumentIssueDate(dokument);
+        DateTime? saleDate = GetDocumentSaleDate(dokument);
+        DateTime? dueDate = GetDocumentDueDate(dokument);
         int? customerId = DynamicPropertyHelper.GetNullableInt(dokument, "PodmiotId") ??
                           DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id");
         string? customerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona");
         string? customerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP");
         string? warehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol");
-        decimal totalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto");
-        decimal totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+        decimal totalNet = GetHeaderTotalNet(dokument);
+        decimal totalGross = GetHeaderTotalGross(dokument);
         decimal amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
-        decimal paidAmount = totalGross - amountToPay;
+        // Settlement (rozrachunek) is the source of truth for paid/unpaid - KwotaDoZaplaty is the amount due at issue time
+        decimal? remaining = GetSettlementRemainingAmount(dokument);
+        decimal outstanding = remaining ?? amountToPay;
+        decimal paidAmount = totalGross - outstanding;
         string currency = DynamicPropertyHelper.GetString(dokument, "Waluta", "Symbol") ?? "PLN";
         int? statusId = DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentuId") ??
                         DynamicPropertyHelper.GetNullableInt(dokument, "Status", "Id");
@@ -5949,8 +5963,8 @@ public class DocumentsController : ControllerBase
             Currency = currency,
             StatusId = statusId,
             StatusSymbol = statusSymbol,
-            IsPaid = amountToPay <= 0,
-            IsOverdue = dueDate.HasValue && dueDate.Value < DateTime.Today && amountToPay > 0
+            IsPaid = outstanding <= 0,
+            IsOverdue = dueDate.HasValue && dueDate.Value < DateTime.Today && outstanding > 0
         };
     }
 
@@ -5964,15 +5978,15 @@ public class DocumentsController : ControllerBase
                 Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
                 FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
                 Type = CorrectionType.SalesInvoiceCorrection,
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                IssueDate = GetDocumentIssueDate(dokument),
                 OriginalDocumentId = DynamicPropertyHelper.GetNullableInt(dokument, "DokumentKorygowany", "Id"),
                 OriginalDocumentNumber = DynamicPropertyHelper.GetNestedString(dokument, "DokumentKorygowany", "NumerWewnetrzny", "PelnaSygnatura"),
                 CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
                 CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
                 WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
-                CorrectionNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
-                CorrectionVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
-                CorrectionGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                CorrectionNet = GetHeaderTotalNet(dokument),
+                CorrectionVat = GetHeaderTotalVat(dokument),
+                CorrectionGross = GetHeaderTotalGross(dokument),
                 CorrectionReason = DynamicPropertyHelper.GetString(dokument, "PrzyczynaKorekty"),
                 Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
                 CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia")
@@ -5994,15 +6008,15 @@ public class DocumentsController : ControllerBase
                 Number = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "Numer") ?? "",
                 FullNumber = DynamicPropertyHelper.GetString(dokument, "NumerWewnetrzny", "PelnaSygnatura"),
                 Type = CorrectionType.PurchaseInvoiceCorrection,
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                IssueDate = GetDocumentIssueDate(dokument),
                 OriginalDocumentId = DynamicPropertyHelper.GetNullableInt(dokument, "DokumentKorygowany", "Id"),
                 OriginalDocumentNumber = DynamicPropertyHelper.GetNestedString(dokument, "DokumentKorygowany", "NumerWewnetrzny", "PelnaSygnatura"),
                 CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
                 CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
                 WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
-                CorrectionNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
-                CorrectionVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
-                CorrectionGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto"),
+                CorrectionNet = GetHeaderTotalNet(dokument),
+                CorrectionVat = GetHeaderTotalVat(dokument),
+                CorrectionGross = GetHeaderTotalGross(dokument),
                 CorrectionReason = DynamicPropertyHelper.GetString(dokument, "PrzyczynaKorekty"),
                 Notes = DynamicPropertyHelper.GetString(dokument, "Uwagi"),
                 CreatedAt = DynamicPropertyHelper.GetDateTime(dokument, "DataUtworzenia")
@@ -6018,7 +6032,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+            var totalGross = GetHeaderTotalGross(dokument);
             var amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
             var paidAmount = totalGross - amountToPay;
 
@@ -6044,10 +6058,9 @@ public class DocumentsController : ControllerBase
 
                 // Dates
                 EntryDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWprowadzenia"),
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia") ??
-                            DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
-                SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
-                DueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci"),
+                IssueDate = GetDocumentIssueDate(dokument),
+                SaleDate = GetDocumentSaleDate(dokument),
+                DueDate = GetDocumentDueDate(dokument),
                 Deadline = DynamicPropertyHelper.GetDateTime(dokument, "TerminRealizacji"),
                 DeliveryDate = DynamicPropertyHelper.GetDateTime(dokument, "DataDostawy"),
                 ReceiptDate = DynamicPropertyHelper.GetDateTime(dokument, "DataPrzyjecia"),
@@ -6078,8 +6091,8 @@ public class DocumentsController : ControllerBase
                 ServicesAmountGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscUslugBrutto"),
 
                 // Amounts - Total
-                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
-                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalNet = GetHeaderTotalNet(dokument),
+                TotalVat = GetHeaderTotalVat(dokument),
                 TotalGross = totalGross,
                 AmountToPay = amountToPay,
 
@@ -6099,8 +6112,8 @@ public class DocumentsController : ControllerBase
                 // Payment
                 PaymentMethod = DynamicPropertyHelper.GetString(dokument, "FormaPlatnosci", "Nazwa"),
                 PaymentMethodId = DynamicPropertyHelper.GetNullableInt(dokument, "FormaPlatnosci", "Id"),
-                PaymentDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci"),
-                PaymentDays = DynamicPropertyHelper.GetNullableInt(dokument, "OdroczonaPlatnoscDni"),
+                PaymentDate = GetDocumentDueDate(dokument),
+                PaymentDays = GetDocumentDueDays(dokument),
                 PaidAmount = paidAmount > 0 ? paidAmount : null,
                 RemainingAmount = amountToPay > 0 ? amountToPay : null,
 
@@ -6161,6 +6174,7 @@ public class DocumentsController : ControllerBase
                 }
             }
 
+            ApplyPaymentInfo(dto, dokument);
             return dto;
         }
         catch
@@ -6284,7 +6298,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+            var totalGross = GetHeaderTotalGross(dokument);
             var amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
 
             var dto = new DocumentDto
@@ -6299,16 +6313,16 @@ public class DocumentsController : ControllerBase
                            DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
-                SaleDate = DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy"),
-                DueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci"),
+                IssueDate = GetDocumentIssueDate(dokument),
+                SaleDate = GetDocumentSaleDate(dokument),
+                DueDate = GetDocumentDueDate(dokument),
                 CustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id"),
                 CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
                 CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
                 WarehouseId = DynamicPropertyHelper.GetNullableInt(dokument, "Magazyn", "Id"),
                 WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
-                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
-                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalNet = GetHeaderTotalNet(dokument),
+                TotalVat = GetHeaderTotalVat(dokument),
                 TotalGross = totalGross,
                 AmountToPay = amountToPay,
                 PaidAmount = totalGross - amountToPay > 0 ? totalGross - amountToPay : null,
@@ -6332,6 +6346,7 @@ public class DocumentsController : ControllerBase
                 }
             }
 
+            ApplyPaymentInfo(dto, dokument);
             return dto;
         }
         catch
@@ -6344,7 +6359,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+            var totalGross = GetHeaderTotalGross(dokument);
             var amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
 
             var dto = new DocumentDto
@@ -6360,16 +6375,16 @@ public class DocumentsController : ControllerBase
                            DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                IssueDate = GetDocumentIssueDate(dokument),
                 ReceiptDate = DynamicPropertyHelper.GetDateTime(dokument, "DataPrzyjecia"),
-                DueDate = DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci"),
+                DueDate = GetDocumentDueDate(dokument),
                 CustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id"),
                 CustomerName = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NazwaSkrocona"),
                 CustomerNIP = DynamicPropertyHelper.GetString(dokument, "Podmiot", "NIP"),
                 WarehouseId = DynamicPropertyHelper.GetNullableInt(dokument, "Magazyn", "Id"),
                 WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
-                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
-                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalNet = GetHeaderTotalNet(dokument),
+                TotalVat = GetHeaderTotalVat(dokument),
                 TotalGross = totalGross,
                 AmountToPay = amountToPay,
                 PaidAmount = totalGross - amountToPay > 0 ? totalGross - amountToPay : null,
@@ -6392,6 +6407,7 @@ public class DocumentsController : ControllerBase
                 }
             }
 
+            ApplyPaymentInfo(dto, dokument);
             return dto;
         }
         catch
@@ -6404,7 +6420,7 @@ public class DocumentsController : ControllerBase
     {
         try
         {
-            var totalGross = DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+            var totalGross = GetHeaderTotalGross(dokument);
             var amountToPay = DynamicPropertyHelper.GetDecimal(dokument, "KwotaDoZaplaty");
 
             var dto = new DocumentDto
@@ -6421,7 +6437,7 @@ public class DocumentsController : ControllerBase
                            DynamicPropertyHelper.GetNullableInt(dokument, "StatusDokumentu", "Id"),
                 Status = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Nazwa"),
                 StatusSymbol = DynamicPropertyHelper.GetString(dokument, "StatusDokumentu", "Symbol"),
-                IssueDate = DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia"),
+                IssueDate = GetDocumentIssueDate(dokument),
                 Deadline = DynamicPropertyHelper.GetDateTime(dokument, "TerminRealizacji"),
                 DeliveryDate = DynamicPropertyHelper.GetDateTime(dokument, "DataDostawy"),
                 CustomerId = DynamicPropertyHelper.GetNullableInt(dokument, "Podmiot", "Id"),
@@ -6431,8 +6447,8 @@ public class DocumentsController : ControllerBase
                 RecipientName = DynamicPropertyHelper.GetString(dokument, "Odbiorca", "NazwaSkrocona"),
                 WarehouseId = DynamicPropertyHelper.GetNullableInt(dokument, "Magazyn", "Id"),
                 WarehouseSymbol = DynamicPropertyHelper.GetString(dokument, "Magazyn", "Symbol"),
-                TotalNet = DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto"),
-                TotalVat = DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat"),
+                TotalNet = GetHeaderTotalNet(dokument),
+                TotalVat = GetHeaderTotalVat(dokument),
                 TotalGross = totalGross,
                 AmountToPay = amountToPay,
                 Currency = DynamicPropertyHelper.GetString(dokument, "Waluta", "Symbol") ?? "PLN",
@@ -6454,6 +6470,7 @@ public class DocumentsController : ControllerBase
                 }
             }
 
+            ApplyPaymentInfo(dto, dokument);
             return dto;
         }
         catch
@@ -6489,14 +6506,13 @@ public class DocumentsController : ControllerBase
 
             // Quantity and unit
             Quantity = DynamicPropertyHelper.GetDecimalFirstOf(dane, "Ilosc", "IloscJednostek"),
-            Unit = DynamicPropertyHelper.GetString(dane, "Jednostka", "Symbol")
-                ?? DynamicPropertyHelper.GetString(poz, "Jednostka", "Symbol")
-                ?? DynamicPropertyHelper.GetString(dane, "JednostkaMiary", "Symbol") ?? "szt.",
-            UnitSymbol = DynamicPropertyHelper.GetString(dane, "JednostkaMiary", "Symbol")
-                      ?? DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Symbol"),
-            UnitName = DynamicPropertyHelper.GetString(dane, "JednostkaMiary", "Nazwa")
-                    ?? DynamicPropertyHelper.GetString(poz, "JednostkaMiary", "Nazwa"),
+            // SDK: PozycjaDokumentu.JednostkaMiaryAs (JednostkaMiaryAsortymentu) -> JednostkaMiary (dictionary unit)
+            Unit = DynamicPropertyHelper.GetLineUnitSymbol(poz) ?? "szt.",
+            UnitSymbol = DynamicPropertyHelper.GetLineUnitSymbol(poz),
+            UnitName = DynamicPropertyHelper.GetString(DynamicPropertyHelper.GetProperty(dane, "JednostkaMiaryAs"), "JednostkaMiary", "Nazwa"),
             UnitId = DynamicPropertyHelper.GetNullableInt(dane, "JednostkaMiaryAsId"),
+            QuantityInBaseUnit = DynamicPropertyHelper.GetNullableDecimal(dane, "IloscWJednostceBazowej"),
+            BaseUnit = DynamicPropertyHelper.GetProductBaseUnitSymbol(DynamicPropertyHelper.GetProperty(dane, "AsortymentAktualny")),
 
             // Prices - Cena sub-object has NettoPoRabacie/BruttoPoRabacie
             PriceNet = DynamicPropertyHelper.GetDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "NettoPoRabacie") > 0
@@ -6509,9 +6525,10 @@ public class DocumentsController : ControllerBase
                             ?? DynamicPropertyHelper.GetNullableDecimal(dane, "CenaNettoOryginalna"),
 
             // Discount
-            DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(dane, "RabatProcent")
-                           ?? DynamicPropertyHelper.GetNullableDecimal(poz, "RabatProcent"),
-            DiscountValue = DynamicPropertyHelper.GetNullableDecimal(dane, "RabatKwota")
+            // SDK: discount lives in the Cena sub-object (Cena.RabatProcent / Cena.RabatWartosc)
+            DiscountPercent = DynamicPropertyHelper.GetNullableDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "RabatProcent")
+                           ?? DynamicPropertyHelper.GetNullableDecimal(dane, "RabatProcent"),
+            DiscountValue = DynamicPropertyHelper.GetNullableDecimal(DynamicPropertyHelper.GetProperty(dane, "Cena"), "RabatWartosc")
                          ?? DynamicPropertyHelper.GetNullableDecimal(dane, "RabatWartosc"),
 
             // VAT
@@ -6564,6 +6581,218 @@ public class DocumentsController : ControllerBase
 
         return dto;
     }
+
+    #region Header helpers (property names verified against SDK 61.1.0.9431 metadata)
+
+    // Dokument.Wartosc is a sub-object (Wartosc: NettoPoRabacie/BruttoPoRabacie/VatPoRabacie); flat WartoscNetto/WartoscBrutto/WartoscVat
+    // do NOT exist on Dokument - kept only as last-resort fallbacks for exotic document classes.
+    private static decimal GetHeaderTotalNet(dynamic dokument)
+    {
+        var wartosc = DynamicPropertyHelper.GetProperty(dokument, "Wartosc");
+        if (wartosc != null)
+        {
+            decimal? v = DynamicPropertyHelper.GetNullableDecimal(wartosc, "NettoPoRabacie");
+            if (v.HasValue) return v.Value;
+        }
+        return DynamicPropertyHelper.GetDecimal(dokument, "WartoscNetto");
+    }
+
+    private static decimal GetHeaderTotalVat(dynamic dokument)
+    {
+        var wartosc = DynamicPropertyHelper.GetProperty(dokument, "Wartosc");
+        if (wartosc != null)
+        {
+            decimal? v = DynamicPropertyHelper.GetNullableDecimal(wartosc, "VatPoRabacie");
+            if (v.HasValue) return v.Value;
+        }
+        return DynamicPropertyHelper.GetDecimal(dokument, "WartoscVat");
+    }
+
+    private static decimal GetHeaderTotalGross(dynamic dokument)
+    {
+        var wartosc = DynamicPropertyHelper.GetProperty(dokument, "Wartosc");
+        if (wartosc != null)
+        {
+            decimal? v = DynamicPropertyHelper.GetNullableDecimal(wartosc, "BruttoPoRabacie");
+            if (v.HasValue) return v.Value;
+        }
+        return DynamicPropertyHelper.GetDecimal(dokument, "WartoscBrutto");
+    }
+
+    // Dates: Dokument.DataWydaniaWystawienia = issue / goods-issue date shown as "Data wystawienia" in Subiekt,
+    // Dokument.DataWprowadzenia = entry date, DokumentHandlowy.DataSprzedazy = sale date (FS/FZ/PA only).
+    private static DateTime? GetDocumentIssueDate(dynamic dokument) =>
+        DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia")
+        ?? DynamicPropertyHelper.GetDateTime(dokument, "DataWprowadzenia")
+        ?? DynamicPropertyHelper.GetDateTime(dokument, "DataWystawienia");
+
+    private static DateTime? GetDocumentSaleDate(dynamic dokument) =>
+        DynamicPropertyHelper.GetDateTime(dokument, "DataSprzedazy")
+        ?? DynamicPropertyHelper.GetDateTime(dokument, "DataMagazynowa")
+        ?? DynamicPropertyHelper.GetDateTime(dokument, "DataWydaniaWystawienia");
+
+    /// <summary>
+    /// Due date of a document: the latest term among its payments (PlatnosciDokumentow[].Termin),
+    /// else the settlement term (Rozrachunek.TerminPlatnosci). There is no TerminPlatnosci on Dokument itself.
+    /// </summary>
+    private static DateTime? GetDocumentDueDate(dynamic dokument)
+    {
+        DateTime? result = null;
+        try
+        {
+            var platnosci = DynamicPropertyHelper.GetProperty(dokument, "PlatnosciDokumentow");
+            if (platnosci != null)
+            {
+                foreach (var platnosc in platnosci)
+                {
+                    DateTime? termin = DynamicPropertyHelper.GetDateTime(platnosc, "Termin");
+                    if (termin.HasValue && (!result.HasValue || termin.Value > result.Value)) result = termin;
+                }
+            }
+        }
+        catch { /* payments not loaded */ }
+
+        if (!result.HasValue)
+        {
+            var rozrachunek = DynamicPropertyHelper.GetProperty(dokument, "Rozrachunek");
+            if (rozrachunek != null) result = DynamicPropertyHelper.GetDateTime(rozrachunek, "TerminPlatnosci");
+        }
+        return result ?? DynamicPropertyHelper.GetDateTime(dokument, "TerminPlatnosci");
+    }
+
+    /// <summary>Term in days of the (first) deferred payment on the document (PlatnoscDokumentu.TerminDni).</summary>
+    private static int? GetDocumentDueDays(dynamic dokument)
+    {
+        try
+        {
+            var platnosci = DynamicPropertyHelper.GetProperty(dokument, "PlatnosciDokumentow");
+            if (platnosci == null) return null;
+            int? fallback = null;
+            foreach (var platnosc in platnosci)
+            {
+                int? dni = DynamicPropertyHelper.GetNullableInt(platnosc, "TerminDni");
+                if (!dni.HasValue) continue;
+                if (DynamicPropertyHelper.GetNullableInt(platnosc, "RodzajPlatnosci") == 3) return dni; // Odroczona
+                fallback ??= dni;
+            }
+            return fallback;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Remaining amount of the document's settlement (Rozrachunek.KwotaPozostala) or null when there is no settlement.</summary>
+    private static decimal? GetSettlementRemainingAmount(dynamic dokument)
+    {
+        var rozrachunek = DynamicPropertyHelper.GetProperty(dokument, "Rozrachunek");
+        if (rozrachunek == null) return null;
+        return DynamicPropertyHelper.GetNullableDecimal(rozrachunek, "KwotaPozostala");
+    }
+
+    private static DocumentSettlementDto? MapDocumentSettlement(dynamic dokument)
+    {
+        var rozrachunek = DynamicPropertyHelper.GetProperty(dokument, "Rozrachunek");
+        if (rozrachunek == null) return null;
+        try
+        {
+            decimal amount = DynamicPropertyHelper.GetDecimal(rozrachunek, "Kwota");
+            decimal remaining = DynamicPropertyHelper.GetDecimal(rozrachunek, "KwotaPozostala");
+            DateTime? dueDate = DynamicPropertyHelper.GetDateTime(rozrachunek, "TerminPlatnosci");
+            int daysOverdue = dueDate.HasValue && dueDate.Value.Date < DateTime.Today && remaining > 0
+                ? (int)(DateTime.Today - dueDate.Value.Date).TotalDays
+                : 0;
+            int typ = DynamicPropertyHelper.GetInt(rozrachunek, "Typ");
+            return new DocumentSettlementDto
+            {
+                Id = DynamicPropertyHelper.GetId(rozrachunek),
+                Type = typ == 1 ? "Receivable" : typ == 2 ? "Payable" : null,
+                Amount = amount,
+                RemainingAmount = remaining,
+                UnsettledAmount = DynamicPropertyHelper.GetDecimal(rozrachunek, "KwotaNierozliczona"),
+                SettledAmount = amount - remaining,
+                Currency = DynamicPropertyHelper.GetString(rozrachunek, "Waluta", "Symbol"),
+                DueDate = dueDate,
+                LastSettlementDate = DynamicPropertyHelper.GetDateTime(rozrachunek, "DataOstatniegoRozliczenia"),
+                IsSettled = remaining <= 0,
+                IsOverdue = daysOverdue > 0,
+                DaysOverdue = daysOverdue
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static List<DocumentPaymentDto> MapDocumentPayments(dynamic dokument)
+    {
+        var result = new List<DocumentPaymentDto>();
+        try
+        {
+            var platnosci = DynamicPropertyHelper.GetProperty(dokument, "PlatnosciDokumentow");
+            if (platnosci == null) return result;
+            foreach (var platnosc in platnosci)
+            {
+                int? rodzaj = DynamicPropertyHelper.GetNullableInt(platnosc, "RodzajPlatnosci");
+                int? zaplata = DynamicPropertyHelper.GetNullableInt(platnosc, "RodzajZaplaty");
+                result.Add(new DocumentPaymentDto
+                {
+                    Id = DynamicPropertyHelper.GetId(platnosc),
+                    Kind = rodzaj switch { 1 => "Prepayment", 2 => "Immediate", 3 => "Deferred", _ => null },
+                    PaymentMethod = DynamicPropertyHelper.GetString(platnosc, "FormaPlatnosci", "Nazwa"),
+                    PaymentMethodId = DynamicPropertyHelper.GetNullableInt(platnosc, "FormaPlatnosci", "Id"),
+                    Amount = DynamicPropertyHelper.GetDecimal(platnosc, "KwotaDokumentu"),
+                    AmountInPaymentCurrency = DynamicPropertyHelper.GetNullableDecimal(platnosc, "KwotaPlatnosci"),
+                    Percent = DynamicPropertyHelper.GetNullableDecimal(platnosc, "Procent"),
+                    DueDate = DynamicPropertyHelper.GetDateTime(platnosc, "Termin"),
+                    DueDays = DynamicPropertyHelper.GetNullableInt(platnosc, "TerminDni"),
+                    Date = DynamicPropertyHelper.GetDateTime(platnosc, "Data"),
+                    SettlementKind = zaplata switch { 0 => "Cash", 1 => "Transfer", _ => null }
+                });
+            }
+        }
+        catch { /* payments not loaded */ }
+        return result.OrderBy(p => p.DueDate ?? DateTime.MinValue).ToList();
+    }
+
+    /// <summary>
+    /// Fills the payment-state part of a DocumentDto from the document's payments and settlement.
+    /// </summary>
+    private static void ApplyPaymentInfo(DocumentDto dto, dynamic dokument)
+    {
+        try
+        {
+            dto.Payments = MapDocumentPayments(dokument);
+            dto.Settlement = MapDocumentSettlement(dokument);
+
+            DateTime? dueDate = dto.DueDate ?? dto.Payments.Where(p => p.DueDate.HasValue).Select(p => p.DueDate).Max() ?? dto.Settlement?.DueDate;
+            dto.DueDate ??= dueDate;
+            dto.PaymentDate ??= dueDate;
+            dto.PaymentDays ??= dto.Payments.FirstOrDefault(p => p.Kind == "Deferred" && p.DueDays.HasValue)?.DueDays
+                              ?? dto.Payments.FirstOrDefault(p => p.DueDays.HasValue)?.DueDays;
+
+            if (dto.Settlement != null)
+            {
+                dto.RemainingAmount = dto.Settlement.RemainingAmount > 0 ? dto.Settlement.RemainingAmount : null;
+                dto.PaidAmount = dto.TotalGross - dto.Settlement.RemainingAmount > 0 ? dto.TotalGross - dto.Settlement.RemainingAmount : null;
+                dto.IsPaid = dto.Settlement.IsSettled;
+                dto.IsOverdue = dto.Settlement.IsOverdue;
+            }
+            else
+            {
+                dto.IsPaid = dto.AmountToPay <= 0;
+                dto.IsOverdue = dueDate.HasValue && dueDate.Value.Date < DateTime.Today && dto.AmountToPay > 0;
+            }
+        }
+        catch
+        {
+            // payment info is best-effort; never break the main mapping
+        }
+    }
+
+    #endregion
 
     private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {

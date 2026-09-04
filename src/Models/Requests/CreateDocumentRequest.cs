@@ -98,7 +98,11 @@ public class CreateDocumentItemRequest
     public decimal Quantity { get; set; }
 
     [MaxLength(10)]
-    public string Unit { get; set; } = "szt.";
+    /// <summary>
+    /// Unit of measure symbol of the line (must be one of the product's units, e.g. "szt", "m", "opak").
+    /// Null/empty = the product's default sale (or purchase) unit. Quantity is interpreted in this unit.
+    /// </summary>
+    public string? Unit { get; set; }
 
     [Range(0, double.MaxValue)]
     public decimal? PriceNet { get; set; }

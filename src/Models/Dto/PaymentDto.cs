@@ -97,6 +97,23 @@ public class ReceivableDto
     /// Days overdue (0 if not overdue)
     /// </summary>
     public int DaysOverdue { get; set; }
+    public bool IsOverdue { get; set; }
+    public bool IsSettled { get; set; }
+
+    /// <summary>Amount not yet settled at all (SDK: Rozrachunek.KwotaNierozliczona) - differs from RemainingAmount when a settlement is only preliminary.</summary>
+    public decimal UnsettledAmount { get; set; }
+    public decimal? VatAmount { get; set; }
+
+    /// <summary>Date of the source document (SDK: DataDokumentuZrodlowego).</summary>
+    public DateTime? DocumentDate { get; set; }
+    /// <summary>Date of the most recent settlement operation (SDK: DataOstatniegoRozliczenia).</summary>
+    public DateTime? LastSettlementDate { get; set; }
+
+    /// <summary>Settlement title (SDK: Tytul) and subtype name (SDK: Podtyp.Nazwa).</summary>
+    public string? Title { get; set; }
+    public string? Subtype { get; set; }
+    public bool? IsCollectible { get; set; }
+    public bool? SplitPayment { get; set; }
 
     public string? Notes { get; set; }
 }

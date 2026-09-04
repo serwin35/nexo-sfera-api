@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-09-04)
+- **Upgraded to InsERT Nexo SDK 61.1.0.9431** (from 61.0.0.9362). Version strings bumped in `README.md`, `scripts/setup-sdk.ps1`,
+  `.github/workflows/build.yml` + `release.yml` (via the `sync-sdk-version.ps1` logic); `/docs/nexoSDK_*/` now ignored by git as a pattern.
+  61.1.0 adds no assemblies and removes no types; changes are e-commerce extension DTOs (pagination, photos, serial numbers,
+  customs tariff code), `IZdjecie.WygenerowanePrzezAI`, `DokumentDane.WygenerowanePrzezAI`, 3 new `RodzajFakturyZaliczkowej` values
+- **Verified SDK property names** (new `docs/SDK-ENTITY-REFERENCE.md`, extracted from the SDK assembly metadata) and fixed the mappers that
+  read properties which do not exist on the SDK entities and therefore silently returned `0`/`null`:
+  - Documents (list + detail + FS/FZ/ZK mappers): totals now from `Dokument.Wartosc.NettoPoRabacie/BruttoPoRabacie/VatPoRabacie`
+    (previously `WartoscNetto`/`WartoscBrutto`/`WartoscVat` -> always 0); `SaleDate` from `DokumentHandlowy.DataSprzedazy` with fallback;
+    `IssueDate` unified; **`DueDate`/`PaymentDate` now come from `PlatnosciDokumentow[].Termin` (else `Rozrachunek.TerminPlatnosci`)** -
+    `Dokument.TerminPlatnosci` never existed, so due dates were always null; `PaymentDays` from `PlatnoscDokumentu.TerminDni`
+  - Document lines: unit from `PozycjaDokumentu.JednostkaMiaryAs.JednostkaMiary.Symbol` (previously `Jednostka`/`JednostkaMiary` -> always "szt.");
+    discounts from `Cena.RabatProcent/RabatWartosc`; new `QuantityInBaseUnit` (`IloscWJednostceBazowej`) and `BaseUnit`
+  - Warehouse document lines (WZ/PZ/RW/PW/MM): product from `AsortymentAktualny` (previously `Asortyment` -> `ProductId`/`ProductSymbol` were null),
+    unit from `JednostkaMiaryAs`, new `UnitId`, `QuantityInBaseUnit`, `BaseUnit`
+  - Settlements (`PaymentsController` receivables/overdue/balance): `KwotaPozostala` instead of non-existent `KwotaDoRozliczenia`,
+    `TerminPlatnosci` instead of `DataPlatnosci`, `DataPowstania`/`DataDokumentuZrodlowego` instead of `DataWystawienia`,
+    `DocumentId` from `Rozrachunek.Dokument.Id` - status/overdue filters and `DaysOverdue` were computed from missing fields before
+- **Units of measure honoured on document creation**: `CreateDocumentItemRequest.Unit` is now optional (`null` = product default unit;
+  previously the hard-coded default `"szt."` was ignored anyway) and, when given, the line is added with
+  `Pozycje.Dodaj(asortyment, qty, JednostkaMiaryAsortymentu)` for sales invoices, receipts, purchase docs, corrections and all
+  warehouse documents (WZ/PZ/RW/PW/MM). Unknown units are rejected with HTTP 400 listing the product's available units
+  (`ValidateRequestedUnits`) instead of silently posting the quantity in the base unit
+
+### Added (2026-09-04)
+- **Paid / unpaid state of invoices** - `DocumentDto` gains `Settlement` (`DocumentSettlementDto`: amount, remaining, unsettled, due date,
+  last settlement date, days overdue, `IsSettled`/`IsOverdue`, from `Dokument.Rozrachunek`), `Payments` (`DocumentPaymentDto[]`: kind
+  prepayment/immediate/deferred, form, amount, due date/days, cash/transfer, from `PlatnosciDokumentow`), `IsPaid`, `IsOverdue`;
+  `DocumentListItemDto.IsPaid/IsOverdue/PaidAmount` now use the settlement's `KwotaPozostala` when present
+- `GET /api/payments/receivables/by-document/{documentId}` - settlements linked to a document; `ReceivableDto` gains
+  `IsOverdue`, `IsSettled`, `UnsettledAmount`, `VatAmount`, `DocumentDate`, `LastSettlementDate`, `Title`, `Subtype`, `IsCollectible`, `SplitPayment`
+- **KSeF inbound (receiving purchase e-invoices)** in `KsefController`:
+  - `POST /api/ksef/receive` (`{dateFrom?, dateTo?}`; empty body = incremental pull of everything new) and `POST /api/ksef/receive/{ksefNumber}` -
+    pull e-invoices from KSeF into the Nexo buffer via `IKoordynatorOdbioruEFaktur.Pobierz(...)`
+  - `GET /api/ksef/inbox` (`processingStatus`, `pendingOnly`, `dateFrom/To`, `sellerTaxId`, paging) - received e-invoices with processing status
+  - `POST /api/ksef/inbox/{id}/import` (`{warehouseSymbol?}`) - import one received e-invoice as a purchase invoice (FZ) or purchase
+    correction (KFZ) via `ObslugaImportuEFaktur.WypelnijNaPodstawieDokumentuElektronicznego`; `POST /api/ksef/inbox/import-pending`
+    (`maxCount`, `warehouseSymbol`) - import every e-invoice waiting "do przetworzenia w Subiekcie" (for scheduled automation together with `receive`)
+  - `ElectronicDocumentDto` gains `Direction`, `ProcessingStatus(+Code)`, `InvoiceKind`, `IsCorrection`, `MyCompanyRole`, `CustomerId`,
+    `CustomerMatchStatus`, `WarehouseId/Symbol`, `CurrencySymbol`, `ManuallyLinkedDocumentNumbers`
+- `POST /api/warehouse-documents/rw/from-order` - RW realizing a customer order (whole order or selected `LineIds`, consolidation method,
+  warehouse override) via `IRozchodWewnetrzny.WypelnijNaPodstawieZK` so the ZK realization state is updated
+- `DynamicPropertyHelper.FindProductUnit / GetLineUnitSymbol / GetProductBaseUnitSymbol` helpers (unit lookup by symbol, name or alias)
+- SferaService manager names: `KoordynatorOdbioruEFaktur`, `MenedzerImportuEFaktur`, `ZleceniaProdukcyjneMontowania`,
+  `ZleceniaProdukcyjneRozkompletowania`, `OperacjeRozrachunkowe`
+- `docs/SDK-ENTITY-REFERENCE.md` - verified entity/enum reference for SDK 61.1 (what exists, what does not, numeric enum values)
+- **Product units of measure & kit composition** (`ProductsController`): `GET/POST /api/products/{id}/units`, `DELETE .../units/{unitSymbol}`,
+  `PUT .../units/base`, `PUT .../units/defaults` (SDK `IAsortyment.JednostkiMiary.DodajJednostkeMiary/UsunJednostkeMiary/UstawPodstawowaJednostkeMiary`,
+  conversion factors `newUnitCount`/`baseUnitCount`, optional set-as-sale/purchase unit); `GET/POST /api/products/{id}/components`,
+  `DELETE .../components/{componentProductId}` (SDK `IAsortyment.Skladniki`); `ProductDto.IsKit` (SDK `RodzajeAsortymentowExtensions.CzyKomplet`)
+  and `ProductDto.Components` (`ProductComponentDto`); requests in `ProductUnitRequest.cs`
+- **Production orders (ZPM/ZPR) reworked** (`AssemblyController`): English aliases `POST /api/assembly/assemble` / `disassemble`
+  (Polish `montaz`/`demontaz` kept), shared creation path (`Utworz(konfiguracja)`, `Montuj`/`Rozkompletuj` called directly, kit qty via
+  `PozycjaKomplet.Ilosc` + `Przelicz()`, components warehouse `Dane.MagazynSkladnikow`, optional unit on kit and component lines, `IssueDate`,
+  `ReserveNumber`); new `GET /api/assembly/max-quantity` (transient ZPM + `PodajMaksymalnaIloscKompletu()` + per-component available stock),
+  `GET /api/assembly/{id}/shortages` (`Braki.Lista` with stock-comparison fallback), `POST /api/assembly/from-order-line` (`WypelnijnaPodstawieZK`),
+  `DELETE /api/assembly/{id}`; list filters fixed (`dateFrom/To` used non-existent `DataDokumentu`, `warehouseSymbol` was ignored), `type` accepts
+  `assemble|disassemble|all`; DTO exposes units, `QuantityInBaseUnit`, costs, auto PW/RW document refs, component cost share
+- **E-commerce shipping orders** (read-only): `GET /api/ecommerce/shipping-orders` (filters `integrationId`, `status`, `externalId`, paging) and
+  `GET /api/ecommerce/shipping-orders/{id}` with lines incl. `CustomsTariffCode` (SDK 61.1 `PozycjaZamowieniaWysylkowego.KodTaryfyCelnej`)
+- **Photo gallery**: `PhotoDto.IsAiGenerated` (SDK 61.1 `IZdjecie.WygenerowanePrzezAI`), `FileType`, `SortOrder`; `PUT /api/photo-gallery/{id}/ai-generated`
+  (`IGaleriaZdjec.UstawWygenerowanePrzezAI`, 501 on older SDK)
+- SferaService manager name `ZamowieniaWysylkowe`
+
+### Fixed (2026-09-04)
+- `PhotoGalleryController` GET endpoints enumerated the gallery manager via `Dane.Wszystkie()` which `IGaleriaZdjec` does not have (always empty) -
+  now `WszystkieZdjecia()`; photo fields mapped from the real `IZdjecie` members (`Nazwa`, `RozmiarBajty`, `CzyGlowneZdjecie`) with legacy fallbacks
+- `AssemblyController`: `PozycjeSkladniki.Dodaj(asortyment)` (non-existent overload), `PozycjaKomplet.Asortyment` writes, forced
+  `ZlecenieProdukcyjne_DoRealizacji` status and the reflection-based `Rozkompletuj` call removed; manager resolved via `GetManager` with
+  `PodajObiektTypu` fallback (calling the extension method on a `dynamic` handle never bound)
+- `CreateDocumentItemRequest.Unit` default `"szt."` removed (was ignored; now null = product default)
+- **17 `GetManager` keys pointed at extension methods that do not exist in the SDK** (verified by scanning every SDK assembly), so
+  Archives, AuditTrail, CustomFields, AccountingImport, Contracts, Payroll, Devices, VatRegistry, exchange rates and the employee lookup in
+  Documents/WarehouseDocuments always failed with 500. Remapped via new `GetFirstExtensionManager(...)` fallback chains
+  (`Archiwa`, `ZdarzeniaSladuRewizyjnego`, `KonfiguracjePolWlasnych`, `SchematyImportu`, `UmowyPracowniczeGr/MGr`, `ListyPlacGr/MGr`,
+  `RachunkiDoUmowPracowniczychGr/MGr`, `UrzadzeniaZewnetrzne`, `ZapisyWEwidencjiVAT`, `TabeleKursowWalut`, `Podmioty`, ...). `Absencje`,
+  `Kurierzy`, `GaleriaZdjec`, `CentraKosztow` have no SDK accessor at all and still resolve to null - documented in `docs/AUDIT-2026-09-04.md`
+- `docs/AUDIT-2026-09-04.md` - root-cause audit, SDK coverage (83 of 587 accessors used), full list of unused managers by domain, open items
+
+
 ### Added (2026-09-03)
 - **`ProductDto.Units`** (`ProductUnitDto[]`): all units of measure of a product from `Asortyment.JednostkiMiar`
   with `IsBase/IsSale/IsPurchase/IsWarehouse`, precision, package barcode, weight/volume and the conversion to the

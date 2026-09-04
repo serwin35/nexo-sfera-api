@@ -390,7 +390,7 @@ public class SferaService : ISferaService, IDisposable
                 "Jednostki" => _sfera.JednostkiMiar(), // Alias
                 "Waluty" => _sfera.Waluty(),
                 // KursyWalut does not have an extension method - access via Waluty.Kursy or alternative
-                "KursyWalut" => throw new NotSupportedException("KursyWalut extension not available. Access exchange rates via Waluty manager."),
+                "KursyWalut" => GetFirstExtensionManager("TabeleKursowWalut", "LinieKursowWalut"), // exchange rate tables (SDK: ITabeleKursowWalut)
                 // FormyPlatnosci - try extension method, fallback to PodajObiektTypu
                 "FormyPlatnosci" => GetFormyPlatnosciManager(),
                 "SposobyPlatnosci" => GetFormyPlatnosciManager(), // Alias
@@ -451,43 +451,53 @@ public class SferaService : ISferaService, IDisposable
                 // E-invoice (KSeF) - use reflection to call extension methods
                 "FabrykaGeneratorowEFaktury" => GetEInvoiceManager("FabrykaGeneratorowEFaktury"),
                 "KoordynatorWysylaniaEFaktur" => GetEInvoiceManager("KoordynatorWysylaniaEFaktur"),
+                // KSeF inbound: pulls e-invoices issued to my company into the DokumentyElektroniczne buffer
+                "KoordynatorOdbioruEFaktur" => GetEInvoiceManager("KoordynatorOdbioruEFaktur"),
+                "MenedzerImportuEFaktur" => GetEInvoiceManager("MenedzerImportuEFaktur"),
+                // Production orders (kompletacja): ZPM = assembly, ZPR = disassembly
+                "ZleceniaProdukcyjneMontowania" => GetExtensionManager("ZleceniaProdukcyjneMontowania"),
+                "ZleceniaProdukcyjneRozkompletowania" => GetExtensionManager("ZleceniaProdukcyjneRozkompletowania"),
+                // Settlement operations: no accessor - use Rozrachunki.Operacje (IOperacjeRozrachunkowe) on the Rozrachunki manager
+                "OperacjeRozrachunkowe" => _sfera.Rozrachunki()?.Operacje,
+                // E-commerce shipping orders (ZamowieniaWysylkowe) - InsERT.Moria.HandelElektroniczny
+                "ZamowieniaWysylkowe" => GetExtensionManager("ZamowieniaWysylkowe"),
                 // InsERT.Moria.Promocje - Promotions
                 "Promocje" => _sfera.Promocje(),
                 // InsERT.Moria.Kurierzy - Courier integrations
-                "Kurierzy" => GetExtensionManager("Kurierzy"),
+                "Kurierzy" => GetExtensionManager("Kurierzy"), // NOTE: no UchwytRozszerzenia accessor in SDK 61.1 (couriers are plugin integrations) - resolves to null
                 // InsERT.Moria.SladRewizyjny - Audit trail
-                "SladRewizyjny" => GetExtensionManager("SladRewizyjny"),
+                "SladRewizyjny" => GetFirstExtensionManager("SladRewizyjny", "ZdarzeniaSladuRewizyjnego"), // SDK accessor: ZdarzeniaSladuRewizyjnego
                 // InsERT.Moria.Komentarze - Comments
                 "Komentarze" => _sfera.Komentarze(),
                 // InsERT.Moria.BibliotekaZalacznikow - Attachments
                 "BibliotekaZalacznikow" => _sfera.BibliotekaZalacznikow(),
                 // InsERT.Moria.EwidencjaVAT - VAT records
-                "ZapisyWEwidencjiVATSprzedazy" => GetExtensionManager("ZapisyWEwidencjiVATSprzedazy"),
-                "ZapisyWEwidencjiVATZakupu" => GetExtensionManager("ZapisyWEwidencjiVATZakupu"),
+                "ZapisyWEwidencjiVATSprzedazy" => GetFirstExtensionManager("ZapisyWEwidencjiVATSprzedazy", "ZapisyWEwidencjiVAT"), // SDK has one manager for both registers - filter by register type
+                "ZapisyWEwidencjiVATZakupu" => GetFirstExtensionManager("ZapisyWEwidencjiVATZakupu", "ZapisyWEwidencjiVAT"),
                 // InsERT.Moria.DokumentyDoKsiegowania - Documents for booking
                 "DokumentyDoKsiegowania" => _sfera.DokumentyDoKsiegowania(),
                 // InsERT.Moria.ImportKsiegowy - Accounting import
-                "ImportKsiegowy" => GetExtensionManager("ImportKsiegowy"),
+                "ImportKsiegowy" => GetFirstExtensionManager("ImportKsiegowy", "SchematyImportu"), // SDK accessor: SchematyImportu
                 // InsERT.Moria.Kadry - Full HR
-                "Pracownicy" => GetExtensionManager("Pracownicy"),
-                "Umowy" => GetExtensionManager("Umowy"),
-                "Absencje" => GetExtensionManager("Absencje"),
+                "Pracownicy" => GetFirstExtensionManager("Pracownicy") ?? _sfera.Podmioty(), // employees are Podmioty in nexo (no Pracownicy accessor)
+                "Umowy" => GetFirstExtensionManager("Umowy", "UmowyPracowniczeGr", "UmowyPracowniczeMGr"), // Gratyfikant (Gr) then micro (MGr)
+                "Absencje" => GetExtensionManager("Absencje"), // NOTE: no employee-absence accessor in SDK 61.1 (only AbsencjeWlascicielskie = owner absences) - resolves to null
                 // InsERT.Moria.Place - Payroll
-                "ListyPlac" => GetExtensionManager("ListyPlac"),
-                "RachunkiDoUmow" => GetExtensionManager("RachunkiDoUmow"),
+                "ListyPlac" => GetFirstExtensionManager("ListyPlac", "ListyPlacGr", "ListyPlacMGr"),
+                "RachunkiDoUmow" => GetFirstExtensionManager("RachunkiDoUmow", "RachunkiDoUmowPracowniczychGr", "RachunkiDoUmowPracowniczychMGr"),
                 // InsERT.Moria.PolaWlasne2 - Custom fields v2
-                "PolaWlasne" => GetExtensionManager("PolaWlasne"),
+                "PolaWlasne" => GetFirstExtensionManager("PolaWlasne", "KonfiguracjePolWlasnych"), // SDK accessor: KonfiguracjePolWlasnych (PolaWlasne2)
                 // InsERT.Moria.GaleriaZdjec - Photo gallery
-                "GaleriaZdjec" => GetExtensionManager("GaleriaZdjec"),
+                "GaleriaZdjec" => GetExtensionManager("GaleriaZdjec"), // NOTE: no global accessor in SDK 61.1 - galleries are per product: IAsortyment.PobierzGalerieZdjec()
                 // InsERT.Moria.Kalendarze - Calendars
                 "Kalendarze" => _sfera.Kalendarze(),
                 // InsERT.Moria.ModelOrganizacyjny - Org structure
                 "Oddzialy" => _sfera.Oddzialy(),
-                "CentraKosztow" => GetExtensionManager("CentraKosztow"),
+                "CentraKosztow" => GetExtensionManager("CentraKosztow"), // NOTE: no UchwytRozszerzenia accessor in SDK 61.1 - resolves to null
                 // InsERT.Moria.Dzialania - Activities/CRM
                 "Dzialania" => _sfera.Dzialania(),
                 // InsERT.Moria.Procesy - Business processes
-                "Procesy" => GetExtensionManager("Procesy"),
+                "Procesy" => GetFirstExtensionManager("Procesy", "ProcesyOfertowe"), // SDK: ProcesyOfertowe (offer processes)
                 // InsERT.Moria.Serwis - Service orders
                 "ZleceniaSerwisowe" => _sfera.ZleceniaSerwisowe(),
                 // InsERT.Moria.SrodkiTrwale - Fixed assets
@@ -495,7 +505,7 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Pojazdy - Fleet management
                 "Pojazdy" => _sfera.Pojazdy(),
                 // InsERT.Moria.Archiwa - Archives
-                "DaneArchiwalne" => GetExtensionManager("DaneArchiwalne"),
+                "DaneArchiwalne" => GetFirstExtensionManager("DaneArchiwalne", "Archiwa"), // SDK accessor: Archiwa
                 // InsERT.Moria.DowodyWewnetrzne - Internal documents
                 "DowodyWewnetrzne" => _sfera.DowodyWewnetrzne(),
                 // InsERT.Moria.SprawozdaniaFinansowe - Financial statements
@@ -505,17 +515,17 @@ public class SferaService : ISferaService, IDisposable
                 // InsERT.Moria.Remanenty - Remainders
                 "Remanenty" => _sfera.Remanenty(),
                 // InsERT.Moria.PPK - Employee Capital Plans
-                "PPK" => GetExtensionManager("PPK"),
+                "PPK" => GetFirstExtensionManager("PPK", "RaportyPPK", "ParametryPPK"), // ASSUMED: SDK exposes only RaportyPPK / ParametryPPK
                 // InsERT.Moria.KlienciBiura - Office clients
-                "KlienciBiura" => GetExtensionManager("KlienciBiura"),
+                "KlienciBiura" => GetFirstExtensionManager("KlienciBiura", "WzorceKlientow"), // ASSUMED: SDK exposes WzorceKlientow / CennikiUslug, office clients themselves are Podmioty
                 // InsERT.Moria.Komunikacja - Communication/notifications
-                "Komunikacja" => GetExtensionManager("Komunikacja"),
+                "Komunikacja" => GetFirstExtensionManager("Komunikacja", "WiadomosciSMS"),
                 // InsERT.Moria.Parametry - System parameters
                 "Parametry" => _sfera.Parametry(),
                 // InsERT.Moria.OperacjeZewnetrzne - External operations
-                "OperacjeZewnetrzne" => GetExtensionManager("OperacjeZewnetrzne"),
+                "OperacjeZewnetrzne" => GetFirstExtensionManager("OperacjeZewnetrzne", "OperacjeZewnetrzneHistoria"),
                 // InsERT.Moria.Urzadzenia - Devices (fiscal printers, readers)
-                "Urzadzenia" => GetExtensionManager("Urzadzenia"),
+                "Urzadzenia" => GetFirstExtensionManager("Urzadzenia", "UrzadzeniaZewnetrzne"), // SDK accessor: UrzadzeniaZewnetrzne
                 // Aliases - map to the actual SDK manager methods
                 "DokumentyHandlowe" => _sfera.DokumentySprzedazy(), // alias - same manager used for e-invoice generation
                 "OfertyDlaKlientow" => _sfera.Oferty(), // alias - same manager
@@ -625,6 +635,31 @@ public class SferaService : ISferaService, IDisposable
     /// Alias for GetExtensionManager - kept for backward compatibility with e-invoice code.
     /// </summary>
     private dynamic? GetEInvoiceManager(string methodName) => GetExtensionManager(methodName);
+
+    /// <summary>
+    /// Tries several UchwytRozszerzenia accessor names in order and returns the first that resolves.
+    /// Used where the historical GetManager key does not match the real SDK accessor name
+    /// (see docs/AUDIT-2026-09-04.md - "Broken manager keys").
+    /// </summary>
+    private dynamic? GetFirstExtensionManager(params string[] methodNames)
+    {
+        foreach (var name in methodNames)
+        {
+            try
+            {
+                var manager = GetExtensionManager(name);
+                if (manager != null)
+                {
+                    return manager;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Extension manager {Name} not available", name);
+            }
+        }
+        return null;
+    }
 
     /// <summary>
     /// Gets a typed manager using reflection-based PodajObiektTypu&lt;T&gt;() call

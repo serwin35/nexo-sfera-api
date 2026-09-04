@@ -141,6 +141,12 @@ public class ProductDto
     public int? IntegrationAccountId { get; set; }
     public string? SubstitutesGroup { get; set; }
 
+    // Kit (komplet) composition
+    /// <summary>True when the product kind (Asortyment.Rodzaj) is a kit (komplet).</summary>
+    public bool IsKit { get; set; }
+    /// <summary>Kit components (SDK: Asortyment.SkladnikiKompletu). Empty when the product is not a kit.</summary>
+    public List<ProductComponentDto> Components { get; set; } = new();
+
     // Stock info (populated separately)
     public StockInfoDto? Stock { get; set; }
 
@@ -205,6 +211,27 @@ public class ProductUnitConversionDto
     public decimal? ParentQuantity { get; set; }
     public string? ChildUnitSymbol { get; set; }
     public decimal? ChildQuantity { get; set; }
+}
+
+/// <summary>
+/// Component of a kit (komplet) product (SDK: SkladnikKompletu). Quantity is expressed in the component's
+/// unit of measure (<see cref="UnitSymbol"/>), which is one of the component product's own units.
+/// </summary>
+public class ProductComponentDto
+{
+    /// <summary>ID of the component product (SkladnikKompletu.Skladnik.Id) — use it for DELETE.</summary>
+    public int ComponentProductId { get; set; }
+    public string? ComponentSymbol { get; set; }
+    public string? ComponentName { get; set; }
+    public decimal Quantity { get; set; }
+    public string? UnitSymbol { get; set; }
+    /// <summary>ID of the JednostkaMiaryAsortymentu (product-unit binding) used for the quantity.</summary>
+    public int? UnitId { get; set; }
+    public decimal? Price { get; set; }
+    public decimal? Value { get; set; }
+    public int? LineNumber { get; set; }
+    /// <summary>SkladnikKompletu.BlokujIlosc — quantity cannot be changed on documents.</summary>
+    public bool LockQuantity { get; set; }
 }
 
 public enum ProductType
