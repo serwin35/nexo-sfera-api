@@ -145,6 +145,26 @@ public static class DynamicPropertyHelper
     /// Gets a nullable bool property value, optionally navigating through a nested property.
     /// </summary>
     /// <summary>
+    /// Symbol of the unit stock quantities are expressed in. <c>JednostkaMagazynowa</c> / the base unit are
+    /// <c>JednostkaMiaryAsortymentu</c> entities — the symbol lives one level deeper in <c>JednostkaMiary.Symbol</c>
+    /// (reading <c>Symbol</c> directly always fell back to "szt.", e.g. for threads kept in metres).
+    /// </summary>
+    public static string StockUnitSymbol(dynamic asortyment)
+    {
+        return UnitSymbol(GetProperty(asortyment, "JednostkaMagazynowa"))
+            ?? UnitSymbol(GetProperty(asortyment, "PodstawowaJednostkaMiaryAsortymentu"))
+            ?? "szt.";
+    }
+
+    /// <summary>Symbol of a unit object: <c>JednostkaMiaryAsortymentu</c> (via <c>JednostkaMiary</c>) or a bare <c>JednostkaMiary</c>.</summary>
+    public static string? UnitSymbol(dynamic? unit)
+    {
+        if (unit == null) return null;
+        var symbol = GetNestedString(unit, "JednostkaMiary", "Symbol") ?? GetString(unit, "Symbol");
+        return string.IsNullOrWhiteSpace(symbol) ? null : symbol;
+    }
+
+    /// <summary>
     /// Whether an Asortyment keeps warehouse stock. There are no <c>JestHandlowy</c>/<c>JestMagazynowy</c> members on
     /// the entity (they always read as false and used to hide every product from the inventory endpoints) — the kind
     /// dictionary <c>Rodzaj.StanyMagazynowe</c> is the source of truth (false = service); with no kind, a product that
