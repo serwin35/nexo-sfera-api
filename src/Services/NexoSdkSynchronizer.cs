@@ -341,8 +341,9 @@ public static class NexoSdkSynchronizer
 
         logger?.LogDebug("[SDK Sync] Found {Count} copies, selecting best by version and completeness...", dllPaths.Count);
 
-        // Collect info about each candidate
-        var candidates = new List<(string dllPath, string dir, long size, DateTime writeTime, int dllCount)>();
+        // Collect info about each candidate. The real SDK version comes from the DLL's file version -
+        // size/write-time heuristics picked a stale 61.0.0 deployment over a 61.1.0 one (both had 625 DLLs).
+        var candidates = new List<(string dllPath, string dir, Version version, long size, DateTime writeTime, int dllCount)>();
         foreach (var dllPath in dllPaths)
         {
             try
@@ -352,11 +353,12 @@ public static class NexoSdkSynchronizer
                 var dirName = Path.GetFileName(dir);
                 var parentName = Path.GetFileName(Path.GetDirectoryName(dir) ?? "");
                 var dllCount = Directory.GetFiles(dir, "*.dll").Length;
+                var version = ReadDllVersion(dllPath);
 
-                logger?.LogDebug("[SDK Sync]   {Parent}/{Dir}: size={Size}, modified={Time}, dllCount={Count}",
-                    parentName, dirName, info.Length, info.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"), dllCount);
+                logger?.LogDebug("[SDK Sync]   {Parent}/{Dir}: version={Version}, size={Size}, modified={Time}, dllCount={Count}",
+                    parentName, dirName, version, info.Length, info.LastWriteTime.ToString("yyyy-MM-dd HH:mm:ss"), dllCount);
 
-                candidates.Add((dllPath, dir, info.Length, info.LastWriteTimeUtc, dllCount));
+                candidates.Add((dllPath, dir, version, info.Length, info.LastWriteTimeUtc, dllCount));
             }
             catch { /* skip unreadable */ }
         }
@@ -364,18 +366,35 @@ public static class NexoSdkSynchronizer
         if (candidates.Count == 0)
             return Path.GetDirectoryName(dllPaths[0])!;
 
-        // Find the newest version (by size — same version = same size due to obfuscation)
-        var newestSize = candidates.OrderByDescending(c => c.writeTime).First().size;
+        // Highest SDK version wins (must match the Nexo database version, which is always upgraded to the newest
+        // deployment); among equal versions prefer the most complete directory, then the most recently written one.
+        var best = candidates
+            .OrderByDescending(c => c.version)
+            .ThenByDescending(c => c.dllCount)
+            .ThenByDescending(c => c.writeTime)
+            .First();
 
-        // Among candidates with the same version (size), prefer the one with most DLLs
-        var bestCandidates = candidates.Where(c => c.size == newestSize).ToList();
-        var best = bestCandidates.Count > 0
-            ? bestCandidates.OrderByDescending(c => c.dllCount).First()
-            : candidates.OrderByDescending(c => c.writeTime).First();
-
-        logger?.LogInformation("[SDK Sync] Selected deployment: {Dir} (modified {Time}, {Count} DLLs in dir)",
-            best.dir, best.writeTime.ToString("yyyy-MM-dd HH:mm:ss"), best.dllCount);
+        logger?.LogInformation("[SDK Sync] Selected deployment: {Dir} (version {Version}, modified {Time}, {Count} DLLs in dir)",
+            best.dir, best.version, best.writeTime.ToString("yyyy-MM-dd HH:mm:ss"), best.dllCount);
         return best.dir;
+    }
+
+    /// <summary>
+    /// Reads the numeric file version of a DLL (e.g. 61.1.0.9431); returns 0.0.0.0 when unavailable.
+    /// </summary>
+    private static Version ReadDllVersion(string dllPath)
+    {
+        try
+        {
+            var info = FileVersionInfo.GetVersionInfo(dllPath);
+            var raw = info.FileVersion ?? info.ProductVersion ?? "";
+            var numeric = new string(raw.TakeWhile(ch => char.IsDigit(ch) || ch == '.').ToArray());
+            return Version.TryParse(numeric, out var v) ? v : new Version(0, 0, 0, 0);
+        }
+        catch
+        {
+            return new Version(0, 0, 0, 0);
+        }
     }
 
     /// <summary>

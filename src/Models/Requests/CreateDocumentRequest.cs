@@ -97,11 +97,11 @@ public class CreateDocumentItemRequest
     [Range(0.0001, double.MaxValue)]
     public decimal Quantity { get; set; }
 
-    [MaxLength(10)]
     /// <summary>
     /// Unit of measure symbol of the line (must be one of the product's units, e.g. "szt", "m", "opak").
     /// Null/empty = the product's default sale (or purchase) unit. Quantity is interpreted in this unit.
     /// </summary>
+    [MaxLength(10)]
     public string? Unit { get; set; }
 
     [Range(0, double.MaxValue)]
