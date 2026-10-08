@@ -116,6 +116,37 @@ Create with `mgr.Utworz(konfiguracja)` where `konfiguracja = Konfiguracje.Dane.W
   `Zsynchronizowany`, `DataWystawienia`, `DataUtworzenia`, `DataWysylki`, `DataDostarczeniaDoKsef`, `DataNadaniaKsefId`,
   `DokumentPowiazany`, `DokumentyPowiazaneRecznie`, `Xml`, `Hash`, `UPO`, `LinkDoUpo`.
 
+## Price lists (Cennik, PoziomCen, ICennikPozycje)
+Managers: `sfera.Cenniki()` (`ICenniki`: `Dane.Wszystkie()`, `Znajdz(Cennik)`, `Znajdz(string numer)`, `UtworzDodatkowy(Cennik glowny)`),
+`sfera.PoziomyCen()` (`IPoziomyCen`). Read in `Helpers/PriceListReader.cs`.
+
+- `Cennik`: `Id`, `Tytul`, `Podtytul`, `Opis`, `Status` (`StatusCennika`: 0 Definiowany, 1 Zatwierdzony, 2 Zamkniety; only
+  approved lists price documents), `Bazowy` (one base list per level), `PoziomCen`, `Waluta` (`Symbol`, `PrecyzjaCeny`),
+  `RodzajKalkulowanejCeny` (`RodzajCeny`: 0 Netto, 1 Brutto), `DynamicznaKalkulacjaCen`, `CenaZerowa` (`KontrolaCenyZerowej`:
+  0 Ostrzegaj, 1 Zezwalaj), `CenaPonizejMarzy` (`KontrolaCenyPonizejMarzy`: 0 Ostrzegaj, 1 ZezwalajDlaCenyZRabatem, 2 ZezwalajZawsze),
+  `DataUtworzenia/Zatwierdzenia/Zamkniecia/OstatniejAktualizacji/OstatniejEdycji`, `HarmonogramWaznosci` (`Harmonogram`:
+  `RodzajHarmonogramu` 0 Codzienny / 1 Cotygodniowy / 2 Comiesięczny, `DataPoczatkowa`, `DataKoncowa`, `DniTygodnia`,
+  `DniMiesiaca`, `Miesiace`), `ParametryPozycji[]` (`ParametrGrupyPozycjiCennika`, the one with `Domyslne = true` holds the
+  defaults: `WyliczajPozycjeWedlug` (`MetodaWyliczaniaPozycjiCennika`: 0 WedlugMarzy, 1 WedlugNarzutu, 2 WedlugZysku),
+  `Marza`, `Narzut`, `Zysk`, `FunkcjaWyliczaniaCenyBazowej`, `CennikCenyBazowej`, `FunkcjaWyrownywaniaCen`),
+  `PodmiotyDlaKtorychDodatkowy`, `MiejscaSprzedazyDlaKtorychDodatkowy`, `TimeStamp`, `Sygnatura` ("for future use").
+  **Do not exist:** `Symbol`, `Nazwa`, `DataOd`, `DataDo`, `Aktywny`, `Pozycje`. `PozycjeCennika` exists but is discouraged
+  and lacks the VAT rate and supplier ids.
+- Main vs additional: an additional list linked to a main one (`ICennik.UstawJakoDodatkowy(glowny)`) shares the level and has
+  `Bazowy = false`; an unlinked additional list has no `PoziomCen`. There is no explicit "main price list" member.
+- `PoziomCen`: `Id`, `Symbol`, `Nazwa`, `Opis`, `Waluta`, `CennikCenyBazowejId`/`CennikCenyBazowej`,
+  `FunkcjaWyliczaniaCenyBazowej`, `FunkcjaWyboruCennika`, `MinimalnaMarza`, `Cenniki[]`. **Do not exist:** `Domyslny`,
+  `Aktywny`, `Priorytet`.
+- Positions: `ICennik.Pozycje` (`ICennikPozycje`: `Wszystkie`, `WszystkieAktywne`, `ZnajdzPozycjeCennika(Asortyment)`,
+  `Edytuj`, `AktualizujPozycjeCennika`). Item `IUproszczonaPozycjaCennika`: `Id`, `IdAsortymentu`, `SymbolAsortymentu`,
+  `NazwaAsortymentu`, `Glowna`, `IloscMinAsortymentu` (0 for the main position), `CenaNetto`, `CenaBrutto`, `SymbolWaluty`,
+  `PrecyzjaWaluty`, `StawkaVATSprzedaz` (symbol), `StawkaVATSprzedaz_Stawka` (value; `StawkaVat.Stawka` is 0-1), `CenaBazowa`,
+  `CenaKalkulacyjna`, `ParametrKalkulacyjny`, `DomyslneWyliczajPozycjeWedlug`, `FunkcjaWyliczaniaCenyBazowej`,
+  `IdCennikaCenyBazowej`, `FunkcjaWyrownywaniaCeny`, `ZnakKorektyCeny`, `KorektaCeny`, `CenaPoWyliczeniu`,
+  `CenaPoZaokragleniu`, `SzacowanyKoszt`, `MinimalnaMarza`, `Marza`, `Narzut`, `Zysk`, `DataAktualizacji`,
+  `IdDostawcowAsortymentu`, `IdPodstawowegoDostawcyAsortymentu`, `IdProducentaAsortymentu`, `CenaSztywnaNaDokumencie`.
+- Function ids: `FunkcjeWyliczaniaCenyBazowej.*_ID` and `FunkcjeWyrownywaniaCeny.*_Id` (`public static readonly Guid`).
+
 ## Other enums (numeric)
 `MetodaGrupowaniaPozycji`: 1 BezKonsolidacji, 2 KonsolidacjaWJednostceMiary, 3 KonsolidacjaBezWzgleduNaJednostkeMiary, 4 KonsolidacjaWJednostceMiaryICenie.
 `TypDokumentu` (flags): ZK 1, ZD 2, WZ 4, PZ 8, KPZ 16, KWZ 32, FS 64, PW 128, RW 256, KFS 512, FZ 1024, KFZ 2048, MMW 4096, MMP 8192, ZPM 16384, ZPR 32768.

@@ -424,9 +424,10 @@ public class DictionaryController : ControllerBase
                 }
 
                 var dtos = new List<PriceLevelDto>();
+                var withEntities = new List<(PriceLevelDto Dto, object Entity)>();
                 foreach (var p in allPoziomy)
                 {
-                    dtos.Add(new PriceLevelDto
+                    var dto = new PriceLevelDto
                     {
                         Id = DynamicPropertyHelper.GetId(p),
                         Symbol = DynamicPropertyHelper.GetString(p, "Symbol") ?? string.Empty,
@@ -435,8 +436,11 @@ public class DictionaryController : ControllerBase
                         IsDefault = DynamicPropertyHelper.GetBool(p, "Domyslny"),
                         IsActive = DynamicPropertyHelper.GetBool(p, "Aktywny"),
                         Priority = DynamicPropertyHelper.GetNullableInt(p, "Priorytet") ?? 0
-                    });
+                    };
+                    dtos.Add(dto);
+                    withEntities.Add((dto, (object)p));
                 }
+                EnrichPriceLevelsSafely(withEntities);
                 return (List<PriceLevelDto>?)dtos.OrderBy(p => p.Priority).ToList();
             });
 
@@ -482,6 +486,7 @@ public class DictionaryController : ControllerBase
                     IsActive = DynamicPropertyHelper.GetBool(poziom, "Aktywny"),
                     Priority = DynamicPropertyHelper.GetNullableInt(poziom, "Priorytet") ?? 0
                 };
+                EnrichPriceLevelsSafely(new List<(PriceLevelDto Dto, object Entity)> { (dto, (object)poziom) });
 
                 return (found: true, managerNull: false, dto: (PriceLevelDto?)dto);
             });
@@ -529,13 +534,14 @@ public class DictionaryController : ControllerBase
                     allCenniki = filteredCenniki;
                 }
 
+                var baseIndex = BuildBaseIndexSafely();
                 var dtos = new List<PriceListDto>();
                 foreach (var c in allCenniki)
                 {
                     var waluta = DynamicPropertyHelper.GetProperty(c, "Waluta");
                     var pozycje = DynamicPropertyHelper.GetCollection((object)c, "Pozycje");
 
-                    dtos.Add(new PriceListDto
+                    var dto = new PriceListDto
                     {
                         Id = DynamicPropertyHelper.GetId(c),
                         Symbol = DynamicPropertyHelper.GetString(c, "Symbol") ?? string.Empty,
@@ -546,7 +552,9 @@ public class DictionaryController : ControllerBase
                         IsActive = DynamicPropertyHelper.GetBool(c, "Aktywny"),
                         CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
                         ItemCount = pozycje.Count
-                    });
+                    };
+                    EnrichPriceListSafely(dto, c, baseIndex);
+                    dtos.Add(dto);
                 }
                 return (List<PriceListDto>?)dtos.OrderBy(c => c.Symbol).ToList();
             });
@@ -598,6 +606,7 @@ public class DictionaryController : ControllerBase
                     CurrencySymbol = waluta != null ? DynamicPropertyHelper.GetString(waluta, "Symbol") : null,
                     ItemCount = pozycje.Count
                 };
+                EnrichPriceListSafely(dto, (object)cennik, BuildBaseIndexSafely());
 
                 return (found: true, managerNull: false, dto: (PriceListDto?)dto);
             });
@@ -716,6 +725,174 @@ public class DictionaryController : ControllerBase
         {
             _logger.LogError(ex, "Error getting price list items for {Symbol}", symbol);
             return StatusCode(500, ApiResponse<object>.Error("Error retrieving price list items", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get a price list header by id.
+    /// </summary>
+    /// <remarks>
+    /// Price lists have no symbol in Nexo, so the id is their only stable key. The header carries the real
+    /// <c>Cennik</c> members: <c>title</c>, <c>status</c>, <c>isBase</c>, <c>priceLevelId</c>, <c>mainPriceListId</c>,
+    /// currency, calculation defaults (<c>dynamicPricing</c>, <c>defaultCalculationMethod</c>,
+    /// <c>defaultBasePriceFunction</c>, <c>defaultBasePriceSourcePriceListId</c>, rounding) and the validity schedule.
+    /// The route has its own template (<c>by-id</c>) so it never captures a numeric symbol of the legacy routes.
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    [HttpGet("price-lists/by-id/{id:int}")]
+    [ProducesResponseType(typeof(ApiResponse<PriceListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<PriceListDto>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPriceListById(int id)
+    {
+        try
+        {
+            var dto = await _sferaService.ExecuteWithLockAsync(() => PriceListReader.GetPriceList(_sferaService.GetSfera(), id));
+
+            if (dto == null) return NotFound(ApiResponse<PriceListDto>.Error($"Price list {id} not found"));
+
+            return Ok(ApiResponse<PriceListDto>.Ok(dto));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<PriceListDto>.Error("Error retrieving price list", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Get price list positions by price list id (read through <c>ICennik.Pozycje</c>).
+    /// </summary>
+    /// <remarks>
+    /// Each product has one main position (<c>isMain</c>) and optional quantity tiers (<c>isMain = false</c>,
+    /// <c>minQuantity</c> &gt; 0); a main position reports its tier count in <c>quantityTierCount</c>.
+    /// Positions carry the sales VAT rate (<c>vatRateSymbol</c>, <c>vatRatePercent</c>), base price, calculation
+    /// parameter/method, rounding, <c>updatedAt</c> and supplier/manufacturer ids.
+    ///
+    /// With <c>productIds</c> (comma-separated Nexo product ids, at most 200) only those products are looked up and
+    /// <c>missingProductIds</c> lists the ids without a position. Without it the whole price list is returned in pages
+    /// ordered by product id, then minimum quantity. The response also carries the price list header (<c>priceList</c>)
+    /// read in the same SDK call.
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    /// <param name="productIds">Optional comma-separated Nexo product ids (max 200)</param>
+    /// <param name="mainOnly">Return main positions only (quantity tiers are still counted)</param>
+    /// <param name="activeProductsOnly">Without <c>productIds</c>: skip deactivated products (<c>WszystkieAktywne</c>)</param>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Page size (1-1000, default 100)</param>
+    [HttpGet("price-lists/by-id/{id:int}/items")]
+    [ProducesResponseType(typeof(PriceListPositionsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPriceListPositionsById(
+        int id,
+        [FromQuery] string? productIds,
+        [FromQuery] bool mainOnly = false,
+        [FromQuery] bool activeProductsOnly = false,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 100)
+    {
+        if (page < 1)
+            return BadRequest(ApiResponse<object>.Error("page must be >= 1"));
+
+        if (pageSize < 1 || pageSize > PriceListReader.MaxPageSize)
+            return BadRequest(ApiResponse<object>.Error($"pageSize must be between 1 and {PriceListReader.MaxPageSize}"));
+
+        if (!TryParseProductIds(productIds, out var ids, out var error))
+            return BadRequest(ApiResponse<object>.Error(error!));
+
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync(() => PriceListReader.GetPositions(
+                _sferaService.GetSfera(), id, ids, mainOnly, activeProductsOnly, page, pageSize));
+
+            if (result == null)
+                return NotFound(ApiResponse<object>.Error($"Price list {id} not found"));
+
+            return Ok(new PriceListPositionsResponse
+            {
+                Data = result.Items,
+                Page = page,
+                PageSize = pageSize,
+                TotalCount = result.TotalCount,
+                PriceList = result.PriceList,
+                MissingProductIds = result.MissingProductIds,
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting positions of price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving price list positions", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>Parses "1,2,3" (commas, semicolons or spaces) into distinct positive ids, at most <see cref="PriceListReader.MaxProductIds"/>.</summary>
+    private static bool TryParseProductIds(string? raw, out List<int>? ids, out string? error)
+    {
+        ids = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(raw)) return true;
+
+        var parsed = new List<int>();
+        foreach (var token in raw.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (!int.TryParse(token, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var value) || value <= 0)
+            {
+                error = $"productIds contains an invalid id: '{token}'";
+                return false;
+            }
+
+            parsed.Add(value);
+        }
+
+        parsed = parsed.Distinct().ToList();
+        if (parsed.Count > PriceListReader.MaxProductIds)
+        {
+            error = $"productIds accepts at most {PriceListReader.MaxProductIds} ids, got {parsed.Count}";
+            return false;
+        }
+
+        ids = parsed.Count > 0 ? parsed : null;
+        return true;
+    }
+
+    /// <summary>
+    /// The legacy endpoints must keep answering even if a new header field fails to load, so enrichment never throws.
+    /// </summary>
+    private void EnrichPriceListSafely(PriceListDto dto, object entity, IReadOnlyDictionary<int, List<int>> baseIndex)
+    {
+        try
+        {
+            PriceListReader.EnrichPriceList(dto, entity, baseIndex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not enrich price list {PriceListId}", dto.Id);
+        }
+    }
+
+    private IReadOnlyDictionary<int, List<int>> BuildBaseIndexSafely()
+    {
+        try
+        {
+            return PriceListReader.BuildBaseIndex(_sferaService.GetSfera());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not build the base price list index");
+            return new Dictionary<int, List<int>>();
+        }
+    }
+
+    private void EnrichPriceLevelsSafely(List<(PriceLevelDto Dto, object Entity)> levels)
+    {
+        try
+        {
+            PriceListReader.EnrichPriceLevels(_sferaService.GetSfera(), levels);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not enrich price levels");
         }
     }
 
