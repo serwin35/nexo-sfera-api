@@ -259,7 +259,7 @@ Pełny, zawsze aktualny katalog **354 endpointów** znajdziesz w **Swagger UI** 
 | **Majątek** | `fixed-assets` (środki trwałe), `fleet` (pojazdy) |
 | **CRM i serwis** | `activities` (działania CRM), `service-orders` (zlecenia serwisowe), `comments`, `calendars`, `attachments` |
 | **E-commerce i logistyka** | `ecommerce` (integracje, oferty internetowe, paczki), `couriers` |
-| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
+| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje, poziomy cen, cenniki — pozycje cennika po id: `price-lists/by-id/{id}/items`), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
 | **System** | `health`, `system` (firma, operator, licencja), `audit-trail`, `reports`, `office-clients`, `diagnostics` (tylko do debugowania) |
 
 ## 🐘 Integracja z Laravel

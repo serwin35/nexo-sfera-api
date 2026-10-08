@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-08) - price lists by id (COD-995 F4a-R, read only)
+- `GET /api/dictionary/price-lists/by-id/{id}` - price list header by `Cennik.Id` (price lists have no symbol in Nexo).
+- `GET /api/dictionary/price-lists/by-id/{id}/items` - positions read through the price list business object
+  (`ICenniki.Znajdz(Cennik)` -> `ICennik.Pozycje` = `ICennikPozycje`, items `IUproszczonaPozycjaCennika`) instead of the
+  entity collection the SDK discourages. Query: `productIds` (comma-separated, max 200, looked up with
+  `ZnajdzPozycjeCennika(Asortyment)`, unknown ids in `missingProductIds`), `mainOnly`, `activeProductsOnly`
+  (`WszystkieAktywne`), `page`, `pageSize` (max 1000). Response = `PagedResponse` + `priceList` (header read in the same
+  SDK call) + `missingProductIds`. Position fields: main flag and quantity tiers (`isMain`, `minQuantity`,
+  `quantityTierCount`), net/gross price, currency, sales VAT (`vatRateSymbol`, `vatRate`, `vatRatePercent` from
+  `StawkaVATSprzedaz`/`StawkaVATSprzedaz_Stawka`), base price, calculation price/parameter/method, base price function and
+  source price list, rounding function and correction, price after calculation/rounding, estimated cost, minimum margin,
+  `updatedAt` (`DataAktualizacji`), supplier/primary supplier/manufacturer ids.
+- `PriceListDto` (also on `GET /api/dictionary/price-lists` and `.../price-lists/{symbol}`) gains `title`, `subtitle`,
+  `status`/`statusCode`/`isApproved`, `isBase`, `priceLevelId/Symbol/Name`, `mainPriceListId` (base list of the same level
+  for an additional list linked with `UstawJakoDodatkowy`), `currencyPricePrecision`, `calculatedPriceKind`,
+  `dynamicPricing`, default calculation method/margin/markup/profit, default base price function + source price list,
+  default rounding function, zero/below-margin policies, dates and the validity `schedule` (`HarmonogramWaznosci`).
+- `PriceLevelDto` gains `currencySymbol`, `basePriceListId` + `basePriceListCount`, `priceListIds`,
+  `basePriceSourcePriceListId` (`CennikCenyBazowejId`) and `basePriceFunctionId/basePriceFunction`.
+- New `Helpers/PriceListReader` - typed (non-`dynamic`) reader, so every SDK member name is checked at compile time.
+
+### Unchanged on purpose
+- Legacy symbol routes (`price-lists/{symbol}`, `price-lists/{symbol}/items`) and the legacy fields of `PriceListDto`
+  (`symbol`, `name`, `validFrom`, `validTo`, `isActive`, `itemCount`) and `PriceLevelDto` (`isDefault`, `isActive`,
+  `priority`) keep their previous values. `PoziomCen` has no `Domyslny` member; `isDefault` stays `false` so consumers
+  that derive a company default price level from it do not switch document pricing.
+
+
 ### Fixed (2026-09-04)
 - Inventory `unit` was always "szt.": `JednostkaMagazynowa` is a `JednostkaMiaryAsortymentu` whose symbol lives in
   `JednostkaMiary.Symbol`. New `DynamicPropertyHelper.StockUnitSymbol/UnitSymbol` (warehouse unit → base unit →
