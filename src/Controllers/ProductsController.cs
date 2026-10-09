@@ -363,7 +363,9 @@ public class ProductsController : ControllerBase
                     _logger.LogWarning("Barcode {Ean} belongs to {Count} products ({Ids}); returning the lowest id", ean, matches.Count, string.Join(",", matches));
                 }
 
-                var asortyment = sfera.Asortymenty().Dane.Wszystkie().FirstOrDefault(a => a.Id == matches[0]);
+                // Local copy: LINQ to Entities cannot translate a list indexer.
+                var productId = matches[0];
+                var asortyment = sfera.Asortymenty().Dane.Wszystkie().FirstOrDefault(a => a.Id == productId);
                 return asortyment == null ? (ProductDto?)null : (ProductDto?)MapToDto(asortyment);
             });
 
