@@ -241,6 +241,25 @@ public class ProductUnitDto
     public List<ProductUnitConversionDto> Conversions { get; set; } = new();
 }
 
+/// <summary>Result of PUT /api/products/{id}: the saved product plus the outcome of every field sent.</summary>
+public class UpdateProductResultDto : ProductDto
+{
+    public List<ProductFieldResultDto> FieldResults { get; set; } = new();
+}
+
+/// <summary>Outcome of one field of a product update.</summary>
+public class ProductFieldResultDto
+{
+    /// <summary>JSON name of the request field (name, description, ean, pkWiU, weight, volume).</summary>
+    public string Field { get; set; } = string.Empty;
+    /// <summary>"updated" or "unchanged" (the value already matched).</summary>
+    public string Status { get; set; } = string.Empty;
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+    /// <summary>Unit of the value: the barcode's unit symbol for ean, "kg" for weight, the volume unit for volume.</summary>
+    public string? Unit { get; set; }
+}
+
 /// <summary>A barcode of one product unit (SDK: KodKreskowy).</summary>
 public class ProductBarcodeDto
 {

@@ -517,117 +517,77 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Update an existing product
+    /// Update an existing product (partial, all-or-nothing)
     /// </summary>
+    /// <remarks>
+    /// Writable: name, description (empty clears), ean (+ optional eanUnitSymbol), pkWiU (empty clears), weight (kg, base
+    /// unit) and volume (base unit's volume unit). priceNet, vatRate and isActive are rejected with 400 and nothing is
+    /// saved: Nexo keeps sales prices in price lists, and has no activity flag on products. Every field sent is reported in
+    /// data.fieldResults ("updated" or "unchanged"); rejected fields are listed in errors[] as "field: reason".
+    ///
+    /// Example: { "ean": "5901234123457", "weight": 1.25 }
+    /// </remarks>
+    /// <param name="id">Product ID</param>
+    /// <param name="request">Fields to change</param>
     [HttpPut("{id}")]
-    public async Task<ActionResult<ApiResponse<ProductDto>>> UpdateProduct(int id, [FromBody] UpdateProductRequest request)
+    [ProducesResponseType(typeof(ApiResponse<UpdateProductResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<UpdateProductResultDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<UpdateProductResultDto>), StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<ApiResponse<UpdateProductResultDto>>> UpdateProduct(int id, [FromBody] UpdateProductRequest request)
     {
+        var validationErrors = ProductWriter.Validate(request);
+        if (validationErrors.Count > 0)
+        {
+            return BadRequest(ApiResponse<UpdateProductResultDto>.Error("Invalid product update; nothing was saved", validationErrors));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
+                var sfera = _sferaService.GetSfera();
+                var asortymenty = sfera.Asortymenty();
+                var entity = asortymenty.Dane.Wszystkie().FirstOrDefault(a => a.Id == id);
+                if (entity == null)
                 {
-                    return (statusCode: 500, dto: (ProductDto?)null, error: "Failed to get Asortymenty manager", errors: (List<string>?)null);
+                    return (statusCode: 404, dto: (UpdateProductResultDto?)null, error: $"Product with ID {id} not found", errors: (List<string>?)null);
                 }
 
-                dynamic? asortyment = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+                using var product = asortymenty.Znajdz(entity);
+                if (product == null)
                 {
-                    if (DynamicPropertyHelper.GetId(a) == id)
-                    {
-                        asortyment = a;
-                        break;
-                    }
+                    return (statusCode: 404, dto: (UpdateProductResultDto?)null, error: $"Product with ID {id} not found", errors: (List<string>?)null);
                 }
 
-                if (asortyment == null)
+                var outcome = ProductWriter.Apply(sfera, product, request);
+                if (outcome.Errors.Count > 0)
                 {
-                    return (statusCode: 404, dto: (ProductDto?)null, error: $"Product with ID {id} not found", errors: (List<string>?)null);
+                    // Not saved: disposing the business object discards the changes applied so far.
+                    return (statusCode: 400, dto: (UpdateProductResultDto?)null, error: "Invalid product update; nothing was saved", errors: (List<string>?)outcome.Errors);
                 }
 
-                using (var edytowanyAsortyment = asortymentyManager.Znajdz(asortyment))
+                if (outcome.HasChanges && !product.Zapisz())
                 {
-                    if (edytowanyAsortyment == null)
-                    {
-                        return (statusCode: 404, dto: (ProductDto?)null, error: $"Product with ID {id} not found", errors: (List<string>?)null);
-                    }
-
-                    dynamic dane = edytowanyAsortyment.Dane;
-
-                    if (!string.IsNullOrEmpty(request.Name))
-                    {
-                        dane.Nazwa = request.Name;
-                    }
-
-                    if (!string.IsNullOrEmpty(request.Description))
-                    {
-                        dane.Opis = request.Description;
-                    }
-
-                    if (!string.IsNullOrEmpty(request.EAN))
-                    {
-                        dane.EAN = request.EAN;
-                    }
-
-                    if (!string.IsNullOrEmpty(request.PKWiU))
-                    {
-                        dane.PKWIU = request.PKWiU;
-                    }
-
-                    if (request.PriceNet.HasValue)
-                    {
-                        dane.CenaNetto = request.PriceNet.Value;
-                    }
-
-                    if (request.Weight.HasValue)
-                    {
-                        dane.Masa = request.Weight.Value;
-                    }
-
-                    if (request.Volume.HasValue)
-                    {
-                        dane.Objetosc = request.Volume.Value;
-                    }
-
-                    if (request.IsActive.HasValue)
-                    {
-                        dane.Aktywny = request.IsActive.Value;
-                    }
-
-                    if ((bool)edytowanyAsortyment.Zapisz())
-                    {
-                        return (statusCode: 200, dto: (ProductDto?)MapToDto(dane), error: (string?)null, errors: (List<string>?)null);
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(edytowanyAsortyment);
-                        return (statusCode: 400, dto: (ProductDto?)null, error: "Failed to update product", errors: (List<string>?)errors);
-                    }
+                    var errors = GetBusinessObjectErrors(product);
+                    return (statusCode: 400, dto: (UpdateProductResultDto?)null, error: "Failed to update product", errors: (List<string>?)errors);
                 }
+
+                var dto = MapToDtoAs<UpdateProductResultDto>(product.Dane);
+                dto.FieldResults = outcome.Fields;
+                return (statusCode: 200, dto: (UpdateProductResultDto?)dto, error: (string?)null, errors: (List<string>?)null);
             });
 
-            if (result.statusCode == 500)
-            {
-                return StatusCode(500, ApiResponse<object>.Error(result.error ?? "Internal error"));
-            }
-            if (result.statusCode == 404)
-            {
-                return NotFound(ApiResponse<ProductDto>.Error(result.error ?? "Not found"));
-            }
-            if (result.statusCode == 400)
-            {
-                return BadRequest(ApiResponse<ProductDto>.Error(result.error ?? "Bad request", result.errors ?? new List<string>()));
-            }
+            var failure = MapFailure<UpdateProductResultDto>(result.statusCode, result.error, result.errors);
+            if (failure != null) return failure;
 
-            _logger.LogInformation("Updated product {Id}", id);
-            return Ok(ApiResponse<ProductDto>.Ok(result.dto!, "Product updated successfully"));
+            _logger.LogInformation("Updated product {Id}: {Fields}", id,
+                string.Join(", ", result.dto!.FieldResults.Select(f => $"{f.Field}={f.Status}")));
+            return Ok(ApiResponse<UpdateProductResultDto>.Ok(result.dto!, "Product updated successfully"));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating product {Id}", id);
-            return StatusCode(500, ApiResponse<ProductDto>.Error("Error updating product", new List<string> { ex.Message }));
+            return StatusCode(500, ApiResponse<UpdateProductResultDto>.Error("Error updating product", new List<string> { ex.Message }));
         }
     }
 
@@ -1583,9 +1543,12 @@ public class ProductsController : ControllerBase
         return null;
     }
 
-    private static ProductDto MapToDto(dynamic asortyment)
+    private static ProductDto MapToDto(dynamic asortyment) => MapToDtoAs<ProductDto>((object)asortyment);
+
+    private static T MapToDtoAs<T>(object entity) where T : ProductDto, new()
     {
-        var dto = new ProductDto
+        dynamic asortyment = entity;
+        var dto = new T
         {
             // Basic info
             Id = DynamicPropertyHelper.GetId(asortyment),
