@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using InsERT.Moria.Klienci;
 using InsERT.Moria.ModelDanych;
 using InsERT.Moria.Sfera;
@@ -18,8 +17,6 @@ public static class CustomerReader
     /// <summary>Largest page of <c>GET /api/customers?full=true</c> (each card costs several lazy loads on the SDK thread).</summary>
     public const int MaxFullPageSize = 200;
 
-    private static readonly ConditionalWeakTable<Uchwyt, ContactKinds> ContactKindsCache = new();
-
     /// <summary>Ids of the default contact kinds (RodzajeKontaktu.DaneDomyslne) of the connected database.</summary>
     public sealed class ContactKinds
     {
@@ -28,20 +25,21 @@ public static class CustomerReader
         public int? WebsiteId { get; init; }
     }
 
-    public static ContactKinds ContactKindsOf(Uchwyt sfera)
+    /// <summary>
+    /// Reads the default contact kinds. Callers cache the result per tenant through
+    /// <c>ISferaService.GetTenantState</c> (never in a static field).
+    /// </summary>
+    public static ContactKinds LoadContactKinds(Uchwyt sfera)
     {
-        return ContactKindsCache.GetValue(sfera, s =>
-        {
-            var defaults = SdkMember.Read(() => s.RodzajeKontaktu().DaneDomyslne, null);
-            if (defaults == null) return new ContactKinds();
+        var defaults = SdkMember.Read(() => sfera.RodzajeKontaktu().DaneDomyslne, null);
+        if (defaults == null) return new ContactKinds();
 
-            return new ContactKinds
-            {
-                EmailId = SdkMember.Read<int?>(() => defaults.Email?.Id, null),
-                PhoneId = SdkMember.Read<int?>(() => defaults.Telefon?.Id, null),
-                WebsiteId = SdkMember.Read<int?>(() => defaults.StronaInternetowa?.Id, null),
-            };
-        });
+        return new ContactKinds
+        {
+            EmailId = SdkMember.Read<int?>(() => defaults.Email?.Id, null),
+            PhoneId = SdkMember.Read<int?>(() => defaults.Telefon?.Id, null),
+            WebsiteId = SdkMember.Read<int?>(() => defaults.StronaInternetowa?.Id, null),
+        };
     }
 
     /// <summary>

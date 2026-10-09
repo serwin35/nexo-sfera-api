@@ -28,6 +28,10 @@ public class SferaServiceRouter : ISferaService
     [ThreadStatic]
     private static SferaService? t_ambientConnection;
 
+    // Tenant of the operation running on this connection's STA thread (set together with t_ambientConnection).
+    [ThreadStatic]
+    private static SferaTenantContext? t_ambientTenant;
+
     public SferaServiceRouter(
         SferaConnectionPool pool,
         IHttpContextAccessor httpContextAccessor,
@@ -61,6 +65,23 @@ public class SferaServiceRouter : ISferaService
 
     public string? GetCurrentOperatorLogin() => ResolveConnection().GetCurrentOperatorLogin();
 
+    /// <summary>
+    /// Tenant-scoped state: the store belongs to the connection the operation runs on, and the partition is the tenant
+    /// captured by ExecuteWithLockAsync for this operation. Outside an operation there is no trustworthy tenant on the
+    /// STA thread, so the call is refused rather than guessed.
+    /// </summary>
+    public T GetTenantState<T>(string name, Func<T> factory) where T : class
+    {
+        var connection = t_ambientConnection;
+        var tenant = t_ambientTenant;
+        if (connection == null || tenant == null)
+        {
+            throw new InvalidOperationException("GetTenantState must be called inside ExecuteWithLockAsync.");
+        }
+
+        return connection.TenantState.GetOrAdd(TenantCacheKey.For(connection.Database, tenant), name, factory);
+    }
+
     public async Task<T> ExecuteWithLockAsync<T>(Func<T> operation)
     {
         var tenant = CurrentTenant();
@@ -72,7 +93,9 @@ public class SferaServiceRouter : ISferaService
         return await connection.ExecuteWithLockAsync(() =>
         {
             var previous = t_ambientConnection;
+            var previousTenant = t_ambientTenant;
             t_ambientConnection = connection;
+            t_ambientTenant = tenant;
             try
             {
                 ApplyTenant(connection, tenant);
@@ -81,6 +104,7 @@ public class SferaServiceRouter : ISferaService
             finally
             {
                 t_ambientConnection = previous;
+                t_ambientTenant = previousTenant;
             }
         });
     }
@@ -95,7 +119,9 @@ public class SferaServiceRouter : ISferaService
         return await connection.ExecuteWithLockAsync(async () =>
         {
             var previous = t_ambientConnection;
+            var previousTenant = t_ambientTenant;
             t_ambientConnection = connection;
+            t_ambientTenant = tenant;
             try
             {
                 ApplyTenant(connection, tenant);
@@ -104,6 +130,7 @@ public class SferaServiceRouter : ISferaService
             finally
             {
                 t_ambientConnection = previous;
+                t_ambientTenant = previousTenant;
             }
         });
     }

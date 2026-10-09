@@ -1708,7 +1708,9 @@ public class CustomersController : ControllerBase
 
         // Symbol, full name, REGON, e-mail/website contacts, bank account, credit limits and addresses from the real
         // SDK members (Symbol/NazwaPelna/REGON/Kontakt.Typ/Rachunki.NumerRachunku do not exist on Podmiot).
-        CustomerReader.Enrich(dto, entity, CustomerReader.ContactKindsOf(_sferaService.GetSfera()));
+        var contactKinds = _sferaService.GetTenantState("customers.contact-kinds",
+            () => CustomerReader.LoadContactKinds(_sferaService.GetSfera()));
+        CustomerReader.Enrich(dto, entity, contactKinds);
 
         return dto;
     }

@@ -59,4 +59,12 @@ public interface ISferaService
     /// Gets the currently logged-in operator login.
     /// </summary>
     string? GetCurrentOperatorLogin();
+
+    /// <summary>
+    /// State object kept between requests and scoped to the current tenant: the connection (database) plus the API key's
+    /// operator, warehouse and branch (<see cref="TenantCacheKey"/>). Use it for every cache of SDK data instead of
+    /// static fields: a value created for one tenant can never be returned to another. Must be called inside
+    /// <see cref="ExecuteWithLockAsync{T}(Func{T})"/> (throws otherwise). The state is dropped on reconnect.
+    /// </summary>
+    T GetTenantState<T>(string name, Func<T> factory) where T : class;
 }

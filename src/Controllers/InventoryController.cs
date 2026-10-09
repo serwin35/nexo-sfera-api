@@ -53,18 +53,46 @@ public class InventoryController : ControllerBase
 
     private static readonly TimeSpan StockSnapshotTtl = TimeSpan.FromMinutes(5);
     private const int MaxStockSnapshots = 20;
-    private static readonly Dictionary<string, StockSnapshot> StockSnapshots = new();
-    private static readonly object StockSnapshotsLock = new();
 
     private sealed record StockSnapshot(DateTimeOffset BuiltAt, List<InventoryItemDto> Items);
+
+    /// <summary>
+    /// Stock snapshots of ONE tenant, keyed by the filter set. Instances come only from
+    /// <see cref="ISferaService.GetTenantState{T}"/>, i.e. one store per connection (database) and per API key operator,
+    /// warehouse and branch, so a snapshot cannot be served to another tenant (a process-wide dictionary keyed by the
+    /// filters alone did exactly that).
+    /// </summary>
+    private sealed class StockSnapshotStore
+    {
+        private readonly Dictionary<string, StockSnapshot> _snapshots = new();
+        private readonly object _lock = new();
+
+        public StockSnapshot? Get(string filterKey)
+        {
+            lock (_lock) return _snapshots.TryGetValue(filterKey, out var snapshot) ? snapshot : null;
+        }
+
+        public void Put(string filterKey, StockSnapshot snapshot)
+        {
+            lock (_lock)
+            {
+                if (_snapshots.Count >= MaxStockSnapshots && !_snapshots.ContainsKey(filterKey))
+                {
+                    _snapshots.Remove(_snapshots.OrderBy(e => e.Value.BuiltAt).First().Key);
+                }
+
+                _snapshots[filterKey] = snapshot;
+            }
+        }
+    }
 
     /// <summary>
     /// Get inventory stock levels
     /// </summary>
     /// <remarks>
     /// Building the stock list scans every product on the single SDK thread, so the sorted result is kept as a snapshot
-    /// per filter combination: page=1 (or refresh=true, or a snapshot older than 5 minutes) rebuilds it, later pages are
-    /// served from it. A paging run therefore costs one scan instead of one per page, and all its pages come from the
+    /// per tenant (database, API key operator, warehouse, branch) and filter combination: page=1 (or refresh=true, or a
+    /// snapshot older than 5 minutes) rebuilds it, later pages are served from it. A paging run therefore costs one scan instead of one per page, and all its pages come from the
     /// same point in time. The snapshot time is returned in the X-Stock-Snapshot-At header.
     /// </remarks>
     [HttpGet("stock")]
@@ -87,12 +115,10 @@ public class InventoryController : ControllerBase
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
+                // Tenant-scoped store (connection + operator + warehouse + branch); the key below only selects the filters.
+                var store = _sferaService.GetTenantState("inventory.stock-snapshots", () => new StockSnapshotStore());
                 var key = $"{warehouseSymbol}|{productId}|{productSymbol}|{lowStock}";
-                StockSnapshot? snapshot;
-                lock (StockSnapshotsLock)
-                {
-                    StockSnapshots.TryGetValue(key, out snapshot);
-                }
+                var snapshot = store.Get(key);
 
                 if (page == 1 || refresh || snapshot == null || DateTimeOffset.Now - snapshot.BuiltAt > StockSnapshotTtl)
                 {
@@ -106,14 +132,7 @@ public class InventoryController : ControllerBase
                         DateTimeOffset.Now,
                         scanned.OrderBy(i => i.ProductSymbol).ThenBy(i => i.WarehouseSymbol).ToList());
 
-                    lock (StockSnapshotsLock)
-                    {
-                        if (StockSnapshots.Count >= MaxStockSnapshots && !StockSnapshots.ContainsKey(key))
-                        {
-                            StockSnapshots.Remove(StockSnapshots.OrderBy(e => e.Value.BuiltAt).First().Key);
-                        }
-                        StockSnapshots[key] = snapshot;
-                    }
+                    store.Put(key, snapshot);
                 }
 
                 var pagedItems = snapshot.Items
