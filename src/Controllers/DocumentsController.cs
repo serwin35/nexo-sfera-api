@@ -350,13 +350,32 @@ public class DocumentsController : ControllerBase
                     allDokumenty.Add(d);
                 }
 
+                var sfera = _sferaService.GetSfera();
+
+                // Delta sync and cancellation: one SQL query each over the header/status columns (the dynamic members
+                // DataModyfikacji/Anulowany do not exist).
+                if (query.ModifiedSince.HasValue)
+                {
+                    var changed = DocumentReader.ModifiedSince(sfera, query.ModifiedSince.Value);
+                    allDokumenty = allDokumenty.Where(d => changed.Contains(DynamicPropertyHelper.GetId(d))).ToList();
+                }
+
+                if (query.IsCanceled.HasValue)
+                {
+                    var canceled = DocumentReader.CanceledIds(sfera);
+                    allDokumenty = allDokumenty.Where(d => canceled.Contains(DynamicPropertyHelper.GetId(d)) == query.IsCanceled.Value).ToList();
+                }
+
                 // Apply filters
                 allDokumenty = ApplyDocumentFilters(allDokumenty, query);
 
                 var totalCount = allDokumenty.Count;
 
                 // Sort and paginate
-                var sortedItems = ApplyDocumentSorting(allDokumenty, query.SortBy);
+                var sortBy = query.SortBy?.ToLowerInvariant();
+                var sortedItems = sortBy is "modified_asc" or "modified_desc"
+                    ? SortByModification(allDokumenty, DocumentReader.AllStamps(sfera), sortBy == "modified_desc")
+                    : ApplyDocumentSorting(allDokumenty, query.SortBy);
                 var items = sortedItems
                     .Skip((query.Page - 1) * query.PageSize)
                     .Take(query.PageSize)
@@ -376,6 +395,16 @@ public class DocumentsController : ControllerBase
                     {
                         _logger.LogWarning(mapEx, "Failed to map document, skipping");
                     }
+                }
+
+                try
+                {
+                    DocumentReader.ApplyStamps(mappedItems, DocumentReader.Stamps(sfera, mappedItems.Select(i => i.Id).ToList()));
+                }
+                catch (Exception stampEx)
+                {
+                    // Stamps are additive; leave them null rather than failing the list.
+                    _logger.LogWarning(stampEx, "Could not read document header stamps");
                 }
 
                 return (PagedResponse<DocumentListItemDto>?)new PagedResponse<DocumentListItemDto>
@@ -607,15 +636,7 @@ public class DocumentsController : ControllerBase
             }).ToList();
         }
 
-        // Canceled filter
-        if (query.IsCanceled.HasValue)
-        {
-            documents = documents.Where(d =>
-            {
-                var anulowany = DynamicPropertyHelper.GetBool(d, "Anulowany");
-                return anulowany == query.IsCanceled.Value;
-            }).ToList();
-        }
+        // Canceled filter: applied in GetDocuments from StatusDokumentu.Uniewazniony (one SQL query).
 
         // KSeF status filter
         if (!string.IsNullOrEmpty(query.KsefStatus))
@@ -637,6 +658,22 @@ public class DocumentsController : ControllerBase
         }
 
         return documents;
+    }
+
+    /// <summary>Orders by the latest of the document and settlement change times (documents without stamps last).</summary>
+    private static IEnumerable<object> SortByModification(List<object> documents, IReadOnlyDictionary<int, DocumentReader.Stamp> stamps, bool descending)
+    {
+        DateTimeOffset Key(object d)
+        {
+            if (!stamps.TryGetValue(DynamicPropertyHelper.GetId(d), out var s)) return DateTimeOffset.MinValue;
+            var document = s.ModifiedAt ?? DateTimeOffset.MinValue;
+            var settlement = s.SettlementModifiedAt ?? DateTimeOffset.MinValue;
+            return document > settlement ? document : settlement;
+        }
+
+        return descending
+            ? documents.OrderByDescending(Key).ThenByDescending(d => (int)DynamicPropertyHelper.GetId(d))
+            : documents.OrderBy(Key).ThenBy(d => (int)DynamicPropertyHelper.GetId(d));
     }
 
     private static IEnumerable<object> ApplyDocumentSorting(List<object> documents, string sortBy)
@@ -6175,6 +6212,10 @@ public class DocumentsController : ControllerBase
             }
 
             ApplyPaymentInfo(dto, dokument);
+
+            // isCanceled and timestamps from StatusDokumentu.Uniewazniony / Naglowek (Anulowany, DataUtworzenia and
+            // DataModyfikacji do not exist on Dokument).
+            DocumentReader.EnrichDetail(dto, (object)dokument);
             return dto;
         }
         catch

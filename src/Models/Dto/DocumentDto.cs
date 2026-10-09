@@ -29,6 +29,21 @@ public class DocumentListItemDto
     public bool? IsPaid { get; set; }
     public bool? IsOverdue { get; set; }
 
+    /// <summary>True when the document status is an invalidation status (StatusDokumentu.Uniewazniony); null if unknown.</summary>
+    public bool? IsCanceled { get; set; }
+
+    /// <summary>Creation time of the document (Naglowek.Utworzono, with offset).</summary>
+    public DateTimeOffset? CreatedAt { get; set; }
+
+    /// <summary>Last change of the document itself (Naglowek.Zmieniono, with offset). Use with modifiedSince for delta sync.</summary>
+    public DateTimeOffset? ModifiedAt { get; set; }
+
+    /// <summary>
+    /// Last change of the document's settlement (Rozrachunek.Naglowek.Zmieniono): payments change the settlement, not the
+    /// document, so this moves when an invoice is (partly) paid. Null for documents without a settlement.
+    /// </summary>
+    public DateTimeOffset? SettlementModifiedAt { get; set; }
+
     /// <summary>
     /// Relation type when returned in associations context (related, realization, correction)
     /// </summary>
@@ -154,13 +169,18 @@ public class DocumentDto
     public List<RelatedDocumentDto>? RelatedDocuments { get; set; }
 
     // Timestamps
+    /// <summary>Naglowek.Utworzono (local time).</summary>
     public DateTime? CreatedAt { get; set; }
+    /// <summary>Naglowek.Zmieniono (local time): last change of the document itself.</summary>
     public DateTime? ModifiedAt { get; set; }
+    /// <summary>Rozrachunek.Naglowek.Zmieniono (with offset): last change of the settlement, e.g. a payment.</summary>
+    public DateTimeOffset? SettlementModifiedAt { get; set; }
 
     // Flags
     public bool? IsPrinted { get; set; }
     public bool? IsSent { get; set; }
     public bool? IsConfirmed { get; set; }
+    /// <summary>True when the document status is an invalidation status (StatusDokumentu.Uniewazniony).</summary>
     public bool? IsCanceled { get; set; }
 
     // Payment state (verified against SDK 61.x: Dokument.PlatnosciDokumentow + Dokument.Rozrachunek)
