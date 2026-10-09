@@ -328,8 +328,11 @@ public class PriceListPositionDto
     /// <summary>Last update of the position price (<c>DataAktualizacji</c>).</summary>
     public DateTime? UpdatedAt { get; set; }
 
-    /// <summary>Supplier (contractor) ids of the product (<c>IdDostawcowAsortymentu</c>).</summary>
-    public List<int> SupplierIds { get; set; } = new();
+    /// <summary>
+    /// Supplier (contractor) ids of the product (<c>IdDostawcowAsortymentu</c>); empty when the product
+    /// has no suppliers, <c>null</c> when the SDK failed to read the list.
+    /// </summary>
+    public List<int>? SupplierIds { get; set; } = new();
 
     /// <summary>Primary supplier id (<c>IdPodstawowegoDostawcyAsortymentu</c>).</summary>
     public int? PrimarySupplierId { get; set; }

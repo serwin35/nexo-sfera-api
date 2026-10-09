@@ -34,6 +34,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `priority`) keep their previous values. `PoziomCen` has no `Domyslny` member; `isDefault` stays `false` so consumers
   that derive a company default price level from it do not switch document pricing.
 
+### Fixed (2026-10-09) - supplier ids of a price list position (COD-1146)
+- `supplierIds` on price list positions is `null` when the SDK fails to read `IdDostawcowAsortymentu`, instead of `[]`.
+  WolfFire reads `[]` as "the product has no suppliers" and removes its supplier links after a complete sync; `null`
+  means "unknown" and leaves them. A product without suppliers still returns `[]`.
+
 
 ### Fixed (2026-09-04)
 - Inventory `unit` was always "szt.": `JednostkaMagazynowa` is a `JednostkaMiaryAsortymentu` whose symbol lives in

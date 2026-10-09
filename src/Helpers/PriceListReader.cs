@@ -411,7 +411,9 @@ public static class PriceListReader
             MaxDiscount = Read(() => p.RabatDopuszczalny, 0m),
             IsPriceLocked = Read(() => p.CenaSztywnaNaDokumencie, false),
             UpdatedAt = Read(() => p.DataAktualizacji, null),
-            SupplierIds = Read(() => p.IdDostawcowAsortymentu?.ToList(), null) ?? new List<int>(),
+            // null = the SDK could not read the supplier list; the client must not read that as
+            // "no suppliers" and drop existing links (COD-1146). A product without suppliers is [].
+            SupplierIds = Read<List<int>?>(() => p.IdDostawcowAsortymentu?.ToList() ?? new List<int>(), null),
             PrimarySupplierId = Read(() => p.IdPodstawowegoDostawcyAsortymentu, null),
             ManufacturerId = Read(() => p.IdProducentaAsortymentu, null),
         };
