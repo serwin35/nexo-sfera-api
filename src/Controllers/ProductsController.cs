@@ -1,3 +1,4 @@
+using InsERT.Moria.Sfera;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Data.SqlClient;
@@ -199,14 +200,15 @@ public class ProductsController : ControllerBase
 
                 if (!string.IsNullOrEmpty(search))
                 {
+                    // Barcodes live on the product units (KodyKreskowe); one SQL query instead of lazy loads per product.
+                    var barcodeMatches = ProductReader.FindProductIdsByBarcodeFragment(_sferaService.GetSfera(), search);
                     allAsortymenty = allAsortymenty.Where(a =>
                     {
                         var symbol = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
                         var nazwa = DynamicPropertyHelper.GetString(a, "Nazwa") ?? "";
-                        var ean = DynamicPropertyHelper.GetString(a, "EAN") ?? "";
                         return symbol.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                                nazwa.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                               ean.Contains(search, StringComparison.OrdinalIgnoreCase);
+                               barcodeMatches.Contains(DynamicPropertyHelper.GetId(a));
                     }).ToList();
                 }
 
@@ -348,22 +350,21 @@ public class ProductsController : ControllerBase
                     return (ProductDto?)null;
                 }
 
-                dynamic? asortyment = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-                {
-                    if (DynamicPropertyHelper.GetString(a, "EAN") == ean)
-                    {
-                        asortyment = a;
-                        break;
-                    }
-                }
-
-                if (asortyment == null)
+                // Barcodes live on the product units (JednostkiMiar[].KodyKreskowe / PodstawowyKodKreskowy).
+                var sfera = _sferaService.GetSfera();
+                var matches = ProductReader.FindProductIdsByBarcode(sfera, ean);
+                if (matches.Count == 0)
                 {
                     return (ProductDto?)null;
                 }
 
-                return (ProductDto?)MapToDto(asortyment);
+                if (matches.Count > 1)
+                {
+                    _logger.LogWarning("Barcode {Ean} belongs to {Count} products ({Ids}); returning the lowest id", ean, matches.Count, string.Join(",", matches));
+                }
+
+                var asortyment = sfera.Asortymenty().Dane.Wszystkie().FirstOrDefault(a => a.Id == matches[0]);
+                return asortyment == null ? (ProductDto?)null : (ProductDto?)MapToDto(asortyment);
             });
 
             if (result == null)
@@ -1769,6 +1770,10 @@ public class ProductsController : ControllerBase
             });
         }
 
+        // EAN/barcodes, active flag, PKWiU, base unit weight/volume, unit symbols and sales VAT from the real SDK members
+        // (the dynamic names above for these fields do not exist on Asortyment).
+        ProductReader.Enrich(dto, (object)asortyment);
+
         return dto;
     }
 
@@ -1784,7 +1789,7 @@ public class ProductsController : ControllerBase
             Name = DynamicPropertyHelper.GetString(asortyment, "Nazwa") ?? "",
             Price = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaEwidencyjna"),
             GroupId = DynamicPropertyHelper.GetNullableInt(asortyment, "Grupa_Id"),
-            IsActive = DynamicPropertyHelper.GetBool(asortyment, "Aktywny")
+            IsActive = ProductReader.IsActive((object)asortyment)
         };
 
         // Try to get group name from Grupa navigation property
@@ -1936,6 +1941,9 @@ public class ProductsController : ControllerBase
         }
 
         FillMissingFactorsFromSql(result);
+
+        // Unit barcodes (primary + all) and mass/volume unit symbols, typed.
+        ProductReader.EnrichUnits(result, (object)asortyment);
 
         return result;
     }

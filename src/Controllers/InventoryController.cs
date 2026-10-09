@@ -29,6 +29,29 @@ public class InventoryController : ControllerBase
     #region Stock Levels
 
     /// <summary>
+    /// Product EAN from the unit barcodes (same precedence as ProductDto.ean), one SQL query for the given rows.
+    /// Asortyment has no KodEan/EAN member. Must run on the SDK thread.
+    /// </summary>
+    private void FillProductEans(List<InventoryItemDto> items)
+    {
+        if (items.Count == 0) return;
+
+        try
+        {
+            var eans = ProductReader.ProductEans(_sferaService.GetSfera(), items.Select(i => i.ProductId).Distinct().ToList());
+            foreach (var item in items)
+            {
+                item.ProductEan = eans.TryGetValue(item.ProductId, out var ean) ? ean : null;
+            }
+        }
+        catch (Exception ex)
+        {
+            // EAN is auxiliary on stock rows — never fail the stock response for it.
+            _logger.LogWarning(ex, "Could not read product barcodes for stock rows");
+        }
+    }
+
+    /// <summary>
     /// Get inventory stock levels
     /// </summary>
     [HttpGet("stock")]
@@ -133,7 +156,6 @@ public class InventoryController : ControllerBase
                             ProductId = DynamicPropertyHelper.GetId(produkt),
                             ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
                             ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
-                            ProductEan = DynamicPropertyHelper.GetString(produkt, "KodEan"),
                             WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
                             WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
                             StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
@@ -183,7 +205,6 @@ public class InventoryController : ControllerBase
                                 ProductId = DynamicPropertyHelper.GetId(produkt),
                                 ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
                                 ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
-                                ProductEan = DynamicPropertyHelper.GetString(produkt, "KodEan"),
                                 WarehouseSymbol = DynamicPropertyHelper.GetString(magazyn, "Symbol"),
                                 WarehouseName = DynamicPropertyHelper.GetString(magazyn, "Nazwa"),
                                 StockQuantity = 0,
@@ -204,6 +225,8 @@ public class InventoryController : ControllerBase
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
+
+                FillProductEans(pagedItems);
 
                 return new PagedResponse<InventoryItemDto>
                 {
@@ -312,7 +335,6 @@ public class InventoryController : ControllerBase
                         ProductId = DynamicPropertyHelper.GetId(produkt),
                         ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
                         ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
-                        ProductEan = DynamicPropertyHelper.GetString(produkt, "KodEan"),
                         WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
                         WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
                         StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
@@ -323,6 +345,8 @@ public class InventoryController : ControllerBase
                         MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
                     });
                 }
+
+                FillProductEans(items);
 
                 return (found: true, managerMissing: false, items: (List<InventoryItemDto>?)items);
             });

@@ -43,21 +43,28 @@ public class ProductTools(ISferaService sferaService, ILogger<ProductTools> logg
                     source = DynamicPropertyHelper.SafeGetAll((object)manager);
                 }
 
-                var results = source
+                // Barcodes live on the product units (KodyKreskowe): one SQL query instead of a member that does not exist.
+                var sfera = sferaService.GetSfera();
+                var barcodeMatches = ProductReader.FindProductIdsByBarcodeFragment(sfera, query);
+
+                var matched = source
                     .Where(p =>
                     {
                         var symbol = (DynamicPropertyHelper.GetString(p, "Symbol") ?? "").ToLowerInvariant();
                         var nazwa = (DynamicPropertyHelper.GetString(p, "Nazwa") ?? "").ToLowerInvariant();
-                        var ean = (DynamicPropertyHelper.GetString(p, "EAN") ?? "").ToLowerInvariant();
-                        return symbol.Contains(queryLower) || nazwa.Contains(queryLower) || ean.Contains(queryLower);
+                        return symbol.Contains(queryLower) || nazwa.Contains(queryLower) || barcodeMatches.Contains(DynamicPropertyHelper.GetId(p));
                     })
                     .Take(limit)
+                    .ToList();
+                var eans = ProductReader.ProductEans(sfera, matched.Select(p => (int)DynamicPropertyHelper.GetId(p)).ToList());
+
+                var results = matched
                     .Select(p => new
                     {
                         id = DynamicPropertyHelper.GetId(p),
                         symbol = DynamicPropertyHelper.GetString(p, "Symbol"),
                         name = DynamicPropertyHelper.GetString(p, "Nazwa"),
-                        ean = DynamicPropertyHelper.GetString(p, "EAN"),
+                        ean = eans.TryGetValue((int)DynamicPropertyHelper.GetId(p), out var code) ? code : null,
                         type = DynamicPropertyHelper.GetEnumString(p, "Rodzaj"),
                         unit = DynamicPropertyHelper.GetString(p, "JednostkaPodstawowa", "Symbol"),
                         priceNet = DynamicPropertyHelper.GetDecimal(p, "CenaBazowaNetto"),
@@ -131,7 +138,7 @@ public class ProductTools(ISferaService sferaService, ILogger<ProductTools> logg
                     symbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
                     name = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
                     fullName = DynamicPropertyHelper.GetString(produkt, "NazwaPelna"),
-                    ean = DynamicPropertyHelper.GetString(produkt, "EAN"),
+                    ean = produkt is InsERT.Moria.ModelDanych.Asortyment typed ? ProductReader.ResolveEan(typed)?.Code : null,
                     type = DynamicPropertyHelper.GetEnumString(produkt, "Rodzaj"),
                     unit = DynamicPropertyHelper.GetString(produkt, "JednostkaPodstawowa", "Symbol"),
                     priceNet = DynamicPropertyHelper.GetDecimal(produkt, "CenaBazowaNetto"),
