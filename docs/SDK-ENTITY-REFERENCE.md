@@ -7,7 +7,9 @@ explicitly because the codebase used them for a long time (and silently returned
 
 How to re-verify (macOS, no dotnet needed): `python3 -m venv .venv && .venv/bin/pip install dnfile`,
 then dump `TypeDef -> Property` from the DLL (see `scripts/` history / session notes), or extract the
-CHM with `7zz x InsERT.nexo.Sfera.chm` and grep the `<title>` index.
+CHM with `7zz x InsERT.nexo.Sfera.chm` and grep the `<title>` index. With the .NET SDK, a 30-line console app on
+`System.Reflection.MetadataLoadContext` over `docs/nexoSDK_*/Bin` lists members with their types. Best of all, read new
+fields through a typed helper (`Helpers/*Reader.cs`): a wrong member name is then a build error.
 
 ## Dokument (InsERT.Moria.ModelDanych.Dokument) - all commercial/warehouse documents
 
@@ -35,8 +37,13 @@ CHM with `7zz x InsERT.nexo.Sfera.chm` and grep the `<title>` index.
 | Split payment | `WymagaPodzielonejPlatnosci`, `NettoPodlegajacePodzielonejPlatnosci` | |
 | KSeF | `NumerKSeFDokumentu`, `DataWystawieniaNadanaPrzezKSEF`; DokumentHandlowy: `RodzajFakturyKsef`, `TerminPrzeslaniaDoKsef`, `AwariaKSeF` | |
 
+| Header / audit | `Naglowek` (`NaglowekEncji`): `Utworzono`, `Zmieniono`, `Usunieto`, `Wydrukowano` (`DateTimeOffset`), `*OperatorNazwa` | the only creation / modification time; `Rozrachunek.Naglowek.Zmieniono` moves on payments |
+| Cancelled | `StatusDokumentu.Uniewazniony` (bool) | also `Zamkniety`/`Zaakceptowany` (`bool?`), `Mnemonik`, `Nazwa` |
+| Order realization (ZK) | `StanRealizacjiZamowienia` (header and line), `ZezwalajNaNiepelnaRealizacje`, `BlokujRealizacje` | see PozycjaDokumentu |
+
 **Do not exist on Dokument:** `WartoscNetto`, `WartoscBrutto`, `WartoscVat`, `TerminPlatnosci`, `DataWystawienia`,
-`OdroczonaPlatnoscDni`, `Potwierdzony`, `DataUtworzenia`, `Kurs`, `DataKursu`.
+`OdroczonaPlatnoscDni`, `Potwierdzony`, `DataUtworzenia`, `DataModyfikacji`, `Anulowany`, `Zamkniety`, `Status`,
+`Kurs`, `DataKursu`. Read in `Helpers/DocumentReader.cs` / `OrderReader.cs`.
 
 ### PlatnoscDokumentu (Dokument.PlatnosciDokumentow)
 `Id`, `RodzajPlatnosci` (1 Przedplata, 2 Natychmiastowa, 3 Odroczona), `RodzajZaplaty` (0 Gotowka, 1 Przelew),
@@ -63,26 +70,90 @@ CHM with `7zz x InsERT.nexo.Sfera.chm` and grep the `<title>` index.
 | VAT | `StawkaVat` (`.Symbol`, `.Wartosc`), `StawkaVatId` |
 | Cost | `KosztMagazynowy`, `KosztEwidencyjny`, `JednostkowyKosztMagazynowy`, `KosztDlaMarzy` |
 | Warehouse | `Magazyn`, `MagazynId` |
-| Order state | `StanRealizacjiZamowienia.ProcentowyStanRealizacji`, `PozycjeRealizowane`, `PozycjeRealizujace` |
-| Misc | `LP`, `Opis`, `Termin`, `Rezerwacja`, `Przyjecie`, `Wydanie`, `CenaRecznieEdytowana`, `RabatRecznieEdytowany` |
+| Order state | `StanRealizacjiZamowienia` (ZK lines): `ZrealizowanaIlosc` (**base unit**; SDK sample: open = `IloscWJednostceBazowej - ZrealizowanaIlosc`), `ZrealizowanaIloscZeSkutkiem`, `ProcentowyStanRealizacji` (**fraction**, samples test `< 1m`), `DataOstatniejRealizacji`, `NumeryDokumentowRealizujacych` (text), `SkompletowanaIlosc`, `StanGotowosci`; `IloscDoRealizacji` (entity): `PozostalaIlosc` (left to realize), `BlokujRealizacje`, `TypDokumentuRealizowanego`; `PozycjeRealizowane`, `PozycjeRealizujace` |
+| Reservation | `Rezerwacja` (entity): `Ilosc` and `IloscZrealizowana` (both in the **stock unit**; open = difference), `Ilosciowa` (true = stock, false = deliveries), `Termin` (expiry), `Asortyment`; `RezerwacjaIlosciowa` (bool), `RezerwacjaDopelniajaca` |
+| Misc | `LP`, `Opis`, `Termin`, `Przyjecie`, `Wydanie`, `CenaRecznieEdytowana`, `RabatRecznieEdytowany`, `Dokument` (owner) |
 
-**Do not exist:** `Jednostka`, `JednostkaMiary`, `Asortyment`, `RabatProcent`, `RabatKwota`, `CenaNetto`, `CenaJednostkowa`, `Marza`.
+**Do not exist:** `Jednostka`, `JednostkaMiary`, `Asortyment`, `RabatProcent`, `RabatKwota`, `CenaNetto`, `CenaJednostkowa`, `Marza`,
+`Nazwa` (name = `AsortymentWybrany.Nazwa`), `IloscZrealizowana`, `Zarezerwowana`, `IloscZarezerwowana`.
 
 ## Asortyment (product) - units & kits
 `JednostkiMiar[]` (JednostkaMiaryAsortymentu), `PodstawowaJednostkaMiaryAsortymentu`, `JednostkaSprzedazy`, `JednostkaZakupu`,
 `JednostkaMagazynowa`, `JednostkaPorownawcza`, `SkladnikiKompletu[]` (SkladnikKompletu: `Skladnik`, `Ilosc`,
 `JednostkaMiaryAsortymentu`, `Cena`, `Wartosc`, `LiczbaPorzadkowa`, `BlokujIlosc`), `SkladnikiWKompletach`, `Rodzaj`.
+Other verified members: `Symbol`, `Nazwa`, `Opis`, `PKWiU`, `KodCN`, `CenaEwidencyjna`, `StawkaVatSprzedaz`/`StawkaVatKupno`
+(`StawkaVat`: `Id` Guid, `Symbol`, `Stawka` 0-1), `PoziomCen`, `Grupa`, `IsInRecycleBin`, `Naglowek`, `StanyMagazynowe[]`
+(`StanMagazynowy`: `Magazyn_Id`, `IloscDostepna`, `IloscZarezerwowanaIlosciowo`, `IloscZarezerwowanaDostawowo`,
+`IloscZadysponowana`), `RezerwacjeIlosciowe[]`, `IlosciDoRealizacji[]`, `OkresObowiazywania` ("for future use").
 
-JednostkaMiaryAsortymentu: `JednostkaMiary` (`Symbol`, `Nazwa`, `Precyzja`, `Aliasy`, `WszystkieAliasy`), `Precyzja`, `Masa`,
-`MasaNetto`, `Objetosc`, `KodKreskowyOpakowania`, `PodstawowyKodKreskowy`, `KodyKreskowe`, `KodPLU`,
+**Do not exist on Asortyment:** `EAN`, `KodEan`, `Aktywny`, `CzyZablokowany`, `CenaNetto`, `CenaBrutto`, `Masa`, `Waga`,
+`Objetosc` (both on the unit), `PKWIU` (it is `PKWiU`), `StawkaVatSprzedazy` (it is `StawkaVatSprzedaz`), `NazwaPelna`,
+`JestHandlowy`, `JestMagazynowy`, `StanMinimalny`/`StanMaksymalny` (business object methods
+`IAsortyment.StanMinimalny(Magazyn)` / `StanOptymalny(Magazyn)`). Read in `Helpers/ProductReader.cs`.
+
+**Activity:** there is no active flag. `IDane.Nieaktywne()` returns recycled ("skasowane") objects, `Wszystkie()` never
+does; a product is inactive only when `IsInRecycleBin`. Sales prices are not on the product: see price lists below.
+
+JednostkaMiaryAsortymentu: `JednostkaMiary` (`Symbol`, `Nazwa`, `Precyzja`, `Aliasy`, `WszystkieAliasy`), `Precyzja`, `Masa`
+(gross, in `JednostkaMiaryMasy`), `MasaNetto`, `Objetosc` (in `JednostkaMiaryObjetosci`), `KodKreskowyOpakowania`
+(collective package code, **not** the EAN), `PodstawowyKodKreskowy`, `KodyKreskowe`, `KodPLU`,
 `PrzelicznikJednostkiNadrzednej`, `PrzelicznikJednostkiPodrzednej` (PrzelicznikJednostekMiarAsortymentu:
 `JednostkaNadrzedna`, `JednostkaPodrzedna`, `LiczbaJednostkiNadrzednej`, `LiczbaJednostkiPodrzednej`).
+Mass/volume units: `sfera.JednostkiMiar().DaneDomyslne.Kilogram/Gram/Tona/Litr/MetrSzescieny`.
+
+KodKreskowy: `Id`, `Kod` (max 128), `JednostkaMiaryAsortymentu` (owner, read only), `JednostkaMiaryAsortymentuZKodemPodstawowym`.
+`KodyKreskowe` holds every code of the unit, the primary one included. There is no barcode business API; the SDK FAQ
+("ustawić podstawowy kod kreskowy") adds one like this, which `ProductWriter` follows:
+
+```csharp
+var kod = new KodKreskowy();
+towarBO.Dane.PodstawowaJednostkaMiaryAsortymentu.KodyKreskowe.Add(kod);
+kod.Kod = "5901234123457";
+towarBO.Dane.PodstawowaJednostkaMiaryAsortymentu.PodstawowyKodKreskowy = kod;
+```
+
+Duplicates are reported by Nexo as `KodKreskowyZduplikowanyBlad` or only `...Ostrzezenie`, so the bridge refuses a code
+of another product itself.
 
 Business object `IAsortyment`: `JednostkiMiary` (IJednostkiMiarAsortymentu: `DodajJednostkeMiary(nowa, bazowa[, liczbaNowej, liczbaBazowej])`,
 `UstawPodstawowaJednostkeMiary`, `UsunJednostkeMiary`, `ZnajdzJednostkeMiary`), `Skladniki` (ISkladnikiKompletu: `Dodaj(...)`, `Usun(...)`).
 
 Adding a line in a chosen unit: `IPozycjeDokumentu.Dodaj(Asortyment, decimal ilosc, JednostkaMiaryAsortymentu)`;
 changing later: `ZmienJednostkePozycji(PozycjaDokumentu, JednostkaMiaryAsortymentu, bool zaokraglijIlosc, OperacjaPrzeliczeniaCenyPoZmianieJednostki?)`.
+
+## Podmiot (contractor)
+Read in `Helpers/CustomerReader.cs`.
+- Identity: `Id`, `Sygnatura.PelnaSygnatura` (the symbol), `NazwaSkrocona`, `NIP`, `NIPSformatowany`, `NIPUE`, `SUN`,
+  `Typ` (`TypObiektu`: **Firma = 2, Osoba = 1**), `Podtyp`, `Kontrahent`, `RodzajKontrahenta`, `Aktywny`, `Jednorazowy`,
+  `StatusKlienta`, `Naglowek`.
+- Company / person: `Firma` (`Nazwa` = full name, `REGON`, `KRS`, `BDO`, `EORI`), `Osoba` (`Imie`, `Nazwisko`, `PESEL`).
+- Contacts: `Telefon` (copy of the primary phone), `Domena` (e-mail domain used to bind incoming mail, not a website),
+  `Kontakty[]` (`Kontakt`: `Rodzaj` → `RodzajKontaktu.Id`, `Wartosc`, `Podstawowy`); kinds:
+  `sfera.RodzajeKontaktu().DaneDomyslne.Email/Telefon/StronaInternetowa/Fax/EDoreczenia`.
+- Addresses: `AdresPodstawowy`, `DomyslnyAdresDostaw`, `DomyslnyAdresKorespondencyjny`, `Adresy[]` (`AdresPodmiotu` :
+  `Adres`: `Szczegoly` (`Ulica`, `NrDomu`, `NrLokalu`, `Miejscowosc`, `KodPocztowy`, `Poczta`), `Linia1..3`, `Panstwo`
+  (`Nazwa`, `KodPanstwaUE` ISO 3166 for the EU), `GLN`).
+- Money: `LimitKredytuKupieckiego` (`decimal?`), `LimitKredytuNaSprzedazy/NaWydaniu/NaZamowieniu` (`Wartosc`,
+  `LimitPonizejWartosci`, `LimitPowyzejWartosci`) + `...Aktywny`, `WalutaLimitow`, `ZezwalajNaKredytKupiecki`,
+  `MaksymalnyTerminPlatnosciKredytu`, `MaksymalnaLiczbaNiesplaconychDok`, `MaksymalnyLiczbaDniSpoznien`,
+  `TerminPlatnosciSprzedaz/Zakup`, `DzienTerminuPlatnosciSprzedaz/Zakup`, `RachunekPodstawowy`/`Rachunki[]`
+  (`RachunekBankowy`: `Numer`, `PodmiotBankowy` = the bank, `Aktywny`).
+- Consents and blocks: `PrzetwarzanieDanychOsobowych`, `PrzetwarzanieWCelachMarketingowych`,
+  `PrzetwarzanieDrogaElektroniczna`, `Zgody[]`, `BlokadaWystawianiaDokumentow`, `WyswietlajKomunikat`, `TekstKomunikatu`.
+
+**Do not exist on Podmiot:** `Symbol`, `NazwaPelna`, `REGON` (on `Firma`), `AdresGlowny`; on `Kontakt`: `Typ`, `Glowny`;
+on `RachunekBankowy`: `NumerRachunku`, `NazwaBanku`, `Glowny`.
+
+## Finance documents (KP/KW/BP/BW) and settling
+`PrzeplywFinansowy` (base of `OperacjaKasowa`/`OperacjaBankowa`): `Kwota`, `Wplyw` (direction), `Tytul`, `Data`.
+`OperacjaKasowa`: `Stanowisko`, `Podmiot` (`PodmiotHistoria`; set with `IOperacjaKasowa.UstawPodmiot(Podmiot)`), `Opis`,
+`Rodzaj`, `Osoba`. `OperacjaBankowa`: `Rachunek`, `Kontrahent`, `RodzajOperacji`, `DataEfektywna`.
+Settling (SDK sample "Dodawanie dokumentów finansowych"): `bp.Rozrachunek.Rozlicz(naleznosc, kwota)` before `Zapisz()`;
+`IOperacjaKasowa/IOperacjaBankowa.Rozrachunek` is `IRozrachunek : IRozliczenie` (`Rozlicz(Rozrachunek, decimal)`,
+`Rozlicz(PozycjaHarmonogramuRozrachunku, decimal)`), `Rozrachunkowa` (whether the operation creates a settlement).
+**Do not exist:** `OperacjaKasowa.DataUtworzenia`, `OperacjaBankowa.Podmiot`, `OperacjaBankowa.Opis`. The bridge's
+`POST /api/payments/cash/*` never sets `Kwota`/`Wplyw` and `bank/*` sets the missing members above: these write paths
+need a fix and a test on a database copy before use; `documentIdsToSettle` is rejected until then.
 
 ## Production orders (kompletacja)
 Managers: `sfera.ZleceniaProdukcyjneMontowania()` (ZPM, `TypDokumentu.ZlecenieProdukcyjneMontowania = 16384`) and

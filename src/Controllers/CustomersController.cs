@@ -6,6 +6,9 @@ using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 using NexoSferaApi.Helpers;
+using InsERT.Moria.ModelDanych;
+using InsERT.Moria.Sfera;
+using System.Diagnostics;
 
 namespace NexoSferaApi.Controllers;
 
@@ -858,11 +861,26 @@ public class CustomersController : ControllerBase
     }
 
     /// <summary>
-    /// Get all customers with optional filtering (returns lightweight DTO for performance)
+    /// Get all customers with optional filtering
     /// </summary>
+    /// <remarks>
+    /// full=false (default): light items (id, name, taxId, phone, isActive, contractorType), unchanged.
+    ///
+    /// full=true: the full contractor card per item (CustomerFullListItemDto = CustomerDto + name): symbol, shortName,
+    /// fullName, email/emails, phone, website, nip/taxId, regon, address, deliveryAddress, credit limits, payment terms,
+    /// bank account, consents, documentBlock/messageText, ... Filters, sorting (by id) and paging run in SQL; pageSize
+    /// must be 1..200 (each card costs several lazy loads on the single SDK thread).
+    /// </remarks>
     [HttpGet]
+    [ProducesResponseType(typeof(PagedResponse<CustomerFullListItemDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<PagedResponse<CustomerListItemDto>>> GetCustomers([FromQuery] CustomerQueryRequest query)
     {
+        if (query.Full)
+        {
+            return await GetCustomersFullAsync(query);
+        }
+
         try
         {
             var response = await _sferaService.ExecuteWithLockAsync(() =>
@@ -918,7 +936,8 @@ public class CustomersController : ControllerBase
                     if (query.Type.HasValue)
                     {
                         var podType = DynamicPropertyHelper.GetNullableInt(p, "Typ");
-                        var expectedType = query.Type.Value == CustomerType.Company ? 0 : 1;
+                        // Podmiot.Typ holds TypObiektu: Firma = 2, Osoba = 1 (comparing with 0 never matched a company).
+                        var expectedType = query.Type.Value == CustomerType.Company ? 2 : 1;
                         if (podType != expectedType) continue;
                     }
 
@@ -977,6 +996,82 @@ public class CustomersController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting customers");
+            return StatusCode(500, ApiResponse<object>.Error("Error retrieving customers", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// GET /api/customers?full=true: filters, count, order and page in SQL, then the full card of the page rows only.
+    /// </summary>
+    private async Task<ActionResult> GetCustomersFullAsync(CustomerQueryRequest query)
+    {
+        if (query.Page < 1)
+        {
+            return BadRequest(ApiResponse<object>.Error("page must be >= 1"));
+        }
+
+        if (query.PageSize < 1 || query.PageSize > CustomerReader.MaxFullPageSize)
+        {
+            return BadRequest(ApiResponse<object>.Error($"pageSize must be between 1 and {CustomerReader.MaxFullPageSize} when full=true"));
+        }
+
+        try
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var sfera = _sferaService.GetSfera();
+                var filtered = CustomerReader.Query(sfera, query);
+                var totalCount = filtered.Count();
+                var pageRows = filtered
+                    .OrderBy(p => p.Id)
+                    .Skip((query.Page - 1) * query.PageSize)
+                    .Take(query.PageSize)
+                    .ToList();
+
+                var items = new List<CustomerFullListItemDto>(pageRows.Count);
+                foreach (var podmiot in pageRows)
+                {
+                    try
+                    {
+                        var item = MapToDtoAs<CustomerFullListItemDto>(podmiot);
+                        item.Name = item.ShortName;
+                        items.Add(item);
+                    }
+                    catch (Exception ex)
+                    {
+                        // Never drop a contractor from a sync page: fall back to the light fields.
+                        _logger.LogWarning(ex, "Full card of customer {Id} could not be mapped; returning the light fields", podmiot.Id);
+                        items.Add(new CustomerFullListItemDto
+                        {
+                            Id = podmiot.Id,
+                            Name = podmiot.NazwaSkrocona ?? string.Empty,
+                            ShortName = podmiot.NazwaSkrocona ?? string.Empty,
+                            NIP = podmiot.NIP,
+                            Phone = podmiot.Telefon,
+                            IsActive = podmiot.Aktywny,
+                            ContractorType = (ContractorType)podmiot.RodzajKontrahenta,
+                        });
+                    }
+                }
+
+                return new PagedResponse<CustomerFullListItemDto>
+                {
+                    Data = items,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount,
+                };
+            });
+
+            _logger.LogInformation("GET customers full=true page {Page} size {PageSize}: {Count}/{Total} cards in {ElapsedMs} ms",
+                query.Page, query.PageSize, response.Data.Count, response.TotalCount, stopwatch.ElapsedMilliseconds);
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting customers (full)");
             return StatusCode(500, ApiResponse<object>.Error("Error retrieving customers", new List<string> { ex.Message }));
         }
     }
@@ -1249,9 +1344,25 @@ public class CustomersController : ControllerBase
     /// <summary>
     /// Update an existing customer
     /// </summary>
+    /// <remarks>
+    /// Writable: shortName, fullName (companies: Firma.Nazwa), nip, regon (companies: Firma.REGON). Every other field of
+    /// the request is rejected with 400 and nothing is saved (it used to be accepted and ignored). fullName/regon on a
+    /// person are rejected with 400.
+    /// </remarks>
     [HttpPut("{id}")]
+    [ProducesResponseType(typeof(ApiResponse<CustomerDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<CustomerDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<CustomerDto>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<CustomerDto>>> UpdateCustomer(int id, [FromBody] UpdateCustomerRequest request)
     {
+        var unsupported = UnsupportedCustomerUpdateFields(request);
+        if (unsupported.Count > 0)
+        {
+            return BadRequest(ApiResponse<CustomerDto>.Error(
+                "Invalid customer update; nothing was saved",
+                unsupported.Select(f => $"{f}: not supported by PUT /api/customers/{{id}} (writable: shortName, fullName, nip, regon)").ToList()));
+        }
+
         try
         {
             // Execute all SDK operations on the dedicated STA thread for EF6 thread-safety
@@ -1292,9 +1403,15 @@ public class CustomersController : ControllerBase
                         dane.NazwaSkrocona = request.ShortName;
                     }
 
+                    // Full name and REGON live on Firma (Podmiot has no NazwaPelna/REGON: assigning them threw
+                    // RuntimeBinderException → 500).
+                    var firma = ((Podmiot)edytowanyPodmiot.Dane).Firma;
+                    var fieldErrors = new List<string>();
+
                     if (!string.IsNullOrEmpty(request.FullName))
                     {
-                        dane.NazwaPelna = request.FullName;
+                        if (firma != null) firma.Nazwa = request.FullName;
+                        else fieldErrors.Add("fullName: only companies have a full name in Nexo; for a person change the first/last name in Subiekt");
                     }
 
                     if (!string.IsNullOrEmpty(request.NIP))
@@ -1304,7 +1421,14 @@ public class CustomersController : ControllerBase
 
                     if (!string.IsNullOrEmpty(request.REGON))
                     {
-                        dane.REGON = request.REGON;
+                        if (firma != null) firma.REGON = request.REGON;
+                        else fieldErrors.Add("regon: only companies have a REGON in Nexo");
+                    }
+
+                    if (fieldErrors.Count > 0)
+                    {
+                        // Not saved: disposing the business object discards the changes.
+                        return (false, null, "Invalid customer update; nothing was saved", fieldErrors, 400);
                     }
 
                     if ((bool)edytowanyPodmiot.Zapisz())
@@ -1420,6 +1544,40 @@ public class CustomersController : ControllerBase
         }
     }
 
+    /// <summary>Fields of <see cref="UpdateCustomerRequest"/> that PUT does not write (JSON names).</summary>
+    private static List<string> UnsupportedCustomerUpdateFields(UpdateCustomerRequest r)
+    {
+        var fields = new List<string>();
+        void Check(bool present, string name) { if (present) fields.Add(name); }
+
+        Check(r.EuTaxId != null, "euTaxId");
+        Check(r.SUN != null, "sun");
+        Check(r.Email != null, "email");
+        Check(r.Phone != null, "phone");
+        Check(r.Website != null, "website");
+        Check(r.ContractorType.HasValue, "contractorType");
+        Check(r.IsActive.HasValue, "isActive");
+        Check(r.IsOneTime.HasValue, "isOneTime");
+        Check(r.Address != null, "address");
+        Check(r.BankAccount != null, "bankAccount");
+        Check(r.BankName != null, "bankName");
+        Check(r.PaymentTermSales.HasValue, "paymentTermSales");
+        Check(r.PaymentTermPurchase.HasValue, "paymentTermPurchase");
+        Check(r.TradeCreditLimit.HasValue, "tradeCreditLimit");
+        Check(r.AllowTradeCredit.HasValue, "allowTradeCredit");
+        Check(r.IsEuTaxpayer.HasValue, "isEuTaxpayer");
+        Check(r.AlwaysUseEuVat.HasValue, "alwaysUseEuVat");
+        Check(r.VatDeductible.HasValue, "vatDeductible");
+        Check(r.AgriculturalProducer.HasValue, "agriculturalProducer");
+        Check(r.DocumentBlock.HasValue, "documentBlock");
+        Check(r.DisplayMessage.HasValue, "displayMessage");
+        Check(r.MessageText != null, "messageText");
+        Check(r.Notes != null, "notes");
+        Check(r.LoyaltyProgramParticipant.HasValue, "loyaltyProgramParticipant");
+
+        return fields;
+    }
+
     private static CustomerListItemDto MapToListItemDto(dynamic podmiot)
     {
         return new CustomerListItemDto
@@ -1433,9 +1591,13 @@ public class CustomersController : ControllerBase
         };
     }
 
-    private static CustomerDto MapToDto(dynamic podmiot)
+    private CustomerDto MapToDto(dynamic podmiot) => MapToDtoAs<CustomerDto>((object)podmiot);
+
+    /// <summary>Maps a Podmiot to the full card. Must run on the SDK thread.</summary>
+    private T MapToDtoAs<T>(object entity) where T : CustomerDto, new()
     {
-        var dto = new CustomerDto
+        dynamic podmiot = entity;
+        var dto = new T
         {
             // Basic info
             Id = DynamicPropertyHelper.GetId(podmiot),
@@ -1544,110 +1706,11 @@ public class CustomersController : ControllerBase
             CountedDocument = DynamicPropertyHelper.GetGuid(podmiot, "DokumentLiczony")?.ToString()
         };
 
-        // Map address - AdresPodstawowy is directly available on entity
-        dynamic? adresPodmiotu = DynamicPropertyHelper.GetProperty(podmiot, "AdresPodstawowy");
-
-        // Fallback: try first from Adresy collection
-        if (adresPodmiotu == null)
-        {
-            var adresy = DynamicPropertyHelper.GetCollection((object)podmiot, "Adresy");
-            foreach (var adr in adresy)
-            {
-                adresPodmiotu = adr;
-                break;
-            }
-        }
-
-        if (adresPodmiotu != null)
-        {
-            // SDK uses AdresPodmiotu with Szczegoly (AdresSzczegoly) for detailed address
-            // or Linia1/Linia2/LiniaCalosc for formatted lines
-            var szczegoly = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Szczegoly");
-
-            if (szczegoly != null)
-            {
-                // Get detailed address from Szczegoly (AdresSzczegoly)
-                // Property names: Ulica, NrDomu, NrLokalu, Miejscowosc, KodPocztowy, Poczta
-                dto.Address = new AddressDto
-                {
-                    Street = DynamicPropertyHelper.GetString(szczegoly, "Ulica"),
-                    BuildingNumber = DynamicPropertyHelper.GetString(szczegoly, "NrDomu"),
-                    ApartmentNumber = DynamicPropertyHelper.GetString(szczegoly, "NrLokalu"),
-                    City = DynamicPropertyHelper.GetString(szczegoly, "Miejscowosc"),
-                    PostalCode = DynamicPropertyHelper.GetString(szczegoly, "KodPocztowy")
-                };
-
-                // Try to get country from Panstwo relation on AdresPodmiotu
-                var panstwo = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Panstwo");
-                if (panstwo != null)
-                {
-                    dto.Address.Country = DynamicPropertyHelper.GetString(panstwo, "Nazwa");
-                }
-            }
-
-            // If Szczegoly didn't provide data, use Linia fields
-            if (dto.Address == null || string.IsNullOrEmpty(dto.Address.Street))
-            {
-                var linia1 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia1"); // Usually street + number
-                var linia2 = DynamicPropertyHelper.GetString(adresPodmiotu, "Linia2"); // Usually postal + city
-
-                // Try to get country from Panstwo relation
-                var panstwo = DynamicPropertyHelper.GetProperty(adresPodmiotu, "Panstwo");
-                var country = panstwo != null ? DynamicPropertyHelper.GetString(panstwo, "Nazwa") : null;
-
-                dto.Address = new AddressDto
-                {
-                    Street = linia1,
-                    City = linia2,
-                    Country = country
-                };
-            }
-
-            // SDK 61.0.0: GLN on the address entity (Adres.GLN)
-            if (dto.Address != null)
-            {
-                dto.Address.GLN = DynamicPropertyHelper.GetString(adresPodmiotu, "GLN")
-                                  ?? DynamicPropertyHelper.GetString(szczegoly, "GLN");
-            }
-        }
-
-        // Map contacts from Kontakty collection
-        var kontakty = DynamicPropertyHelper.GetCollection((object)podmiot, "Kontakty");
-        foreach (var kontakt in kontakty)
-        {
-            var typ = DynamicPropertyHelper.GetNullableInt(kontakt, "Typ");
-            var wartosc = DynamicPropertyHelper.GetString(kontakt, "Wartosc");
-            if (!string.IsNullOrEmpty(wartosc))
-            {
-                if (typ == 1) // Email
-                    dto.Email ??= wartosc;
-                else if (typ == 2) // Telefon - override direct Telefon if exists in Kontakty
-                    dto.Phone ??= wartosc;
-                else if (typ == 3) // WWW
-                    dto.Website ??= wartosc;
-            }
-        }
-
-        // Map bank account from Rachunki collection
-        var rachunki = DynamicPropertyHelper.GetCollection((object)podmiot, "Rachunki");
-        dynamic? glownyRachunek = null;
-        foreach (var r in rachunki)
-        {
-            if (glownyRachunek == null)
-            {
-                glownyRachunek = r;
-            }
-            if (DynamicPropertyHelper.GetBool(r, "Glowny"))
-            {
-                glownyRachunek = r;
-                break;
-            }
-        }
-        if (glownyRachunek != null)
-        {
-            dto.BankAccount = DynamicPropertyHelper.GetString(glownyRachunek, "NumerRachunku");
-            dto.BankName = DynamicPropertyHelper.GetString(glownyRachunek, "NazwaBanku");
-        }
+        // Symbol, full name, REGON, e-mail/website contacts, bank account, credit limits and addresses from the real
+        // SDK members (Symbol/NazwaPelna/REGON/Kontakt.Typ/Rachunki.NumerRachunku do not exist on Podmiot).
+        var contactKinds = _sferaService.GetTenantState("customers.contact-kinds",
+            () => CustomerReader.LoadContactKinds(_sferaService.GetSfera()));
+        CustomerReader.Enrich(dto, entity, contactKinds);
 
         return dto;
     }

@@ -280,7 +280,8 @@ public class CustomerQueryRequest
     public bool? IsEuTaxpayer { get; set; }
 
     /// <summary>
-    /// Load all fields (default: false for better performance)
+    /// Return the full contractor card per item (CustomerFullListItemDto) instead of the light item. With full=true the
+    /// filters and paging run in SQL and pageSize must be 1..200. Default: false.
     /// </summary>
     public bool Full { get; set; } = false;
 

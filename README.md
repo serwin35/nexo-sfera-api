@@ -403,6 +403,21 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
 `POST /api/assembly/disassemble` tworzy ZPR (rozmontowanie). Jednostki i składniki kompletu produktu:
 `GET/POST/DELETE /api/products/{id}/units`, `PUT .../units/base`, `PUT .../units/defaults`, `GET/POST/DELETE /api/products/{id}/components`.
 
+### EAN, kontrahenci `full=true`, realizacja ZK, delta dokumentów
+
+- `GET /api/products/{id}`: `ean` = podstawowy kod kreskowy jednostki podstawowej (z fallbackiem), `eanUnitSymbol`,
+  `barcodes[]`; `units[].barcode` to nadal kod opakowania zbiorczego, kody jednostki są w `units[].primaryBarcode` /
+  `units[].barcodes`. `isActive` = towar nie jest w koszu.
+- `PUT /api/products/{id}` zapisuje `name`, `description`, `ean` (+ `eanUnitSymbol`), `pkWiU`, `weight` (kg), `volume`;
+  `priceNet`, `vatRate`, `isActive` → `400` (nic nie jest zapisywane). Odpowiedź ma `data.fieldResults[]`.
+- `GET /api/customers?full=true&pageSize=100` zwraca pełną kartotekę na każdej pozycji (max `pageSize` 200).
+- `GET /api/customer-orders/{id}`: `quantityRealized` / `quantityRemaining` / `reservedQuantity` z SDK
+  (`StanRealizacjiZamowienia`, `IloscDoRealizacji`, `Rezerwacja`) + wartości w jednostce bazowej.
+- `GET /api/documents?modifiedSince=2026-10-09T00:00:00%2B02:00&sortBy=modified_asc`: tylko dokumenty zmienione (nagłówek
+  lub rozrachunek) od podanego czasu; lista ma `isCanceled`, `createdAt`, `modifiedAt`, `settlementModifiedAt`.
+- `POST /api/payments/*` z niepustym `documentIdsToSettle` → `400` (rozliczanie nie jest obsługiwane).
+- Cache danych SDK między żądaniami tylko przez `ISferaService.GetTenantState` (per baza + operator + magazyn + oddział).
+
 ### Stan opłacenia faktury i terminy płatności
 
 `GET /api/documents/{id}` zwraca `settlement` (rozrachunek dokumentu — źródło prawdy o zapłacie), `payments`

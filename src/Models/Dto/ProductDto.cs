@@ -11,6 +11,7 @@ public class ProductListItemDto
     public decimal? Price { get; set; }
     public int? GroupId { get; set; }
     public string? GroupName { get; set; }
+    /// <summary>False only for products in the recycle bin (the SDK has no other activity flag on Asortyment).</summary>
     public bool IsActive { get; set; }
 }
 
@@ -25,7 +26,15 @@ public class ProductDto
     public string Name { get; set; } = string.Empty;
     public string? Description { get; set; }
     public string? FullCharacteristics { get; set; }
+    /// <summary>
+    /// Product EAN: primary barcode (<c>PodstawowyKodKreskowy</c>) of the base unit, falling back to any barcode of the
+    /// base unit, then of the sale unit, then of the first unit that has one. See <see cref="EanUnitSymbol"/>.
+    /// </summary>
     public string? EAN { get; set; }
+    /// <summary>Symbol of the unit <see cref="EAN"/> was taken from (null when the product has no barcode).</summary>
+    public string? EanUnitSymbol { get; set; }
+    /// <summary>All barcodes of all units (SDK: JednostkiMiar[].PodstawowyKodKreskowy / KodyKreskowe).</summary>
+    public List<ProductBarcodeDto> Barcodes { get; set; } = new();
     public string? PKWiU { get; set; }
     public string? CnCode { get; set; }
     public string? SWW { get; set; }
@@ -44,6 +53,8 @@ public class ProductDto
     public string? GroupName { get; set; }
 
     // Units
+    /// <summary>Symbol of the base (stock) unit (PodstawowaJednostkaMiaryAsortymentu.JednostkaMiary.Symbol).</summary>
+    public string? BaseUnit { get; set; }
     public string? SaleUnit { get; set; }
     public string? PurchaseUnit { get; set; }
     /// <summary>All units of measure of the product with conversions to the base unit (SDK: Asortyment.JednostkiMiar).</summary>
@@ -52,7 +63,12 @@ public class ProductDto
     public decimal? DefaultPurchaseQuantity { get; set; }
 
     // Pricing
+    /// <summary>
+    /// Always null: Asortyment has no net/gross sales price (prices live in price lists, see
+    /// GET /api/dictionary/price-lists/by-id/{id}/items).
+    /// </summary>
     public decimal? PriceNet { get; set; }
+    /// <summary>Always null, see <see cref="PriceNet"/>.</summary>
     public decimal? PriceGross { get; set; }
     public decimal? RecordPrice { get; set; }
     public decimal? LaborCost { get; set; }
@@ -70,10 +86,20 @@ public class ProductDto
     public bool FeeSubjectToVat { get; set; }
 
     // Physical properties
+    /// <summary>
+    /// Gross weight of one base unit in kilograms (base unit Masa converted from <see cref="WeightUnitSymbol"/>);
+    /// null when not set or the mass unit is not a known mass unit.
+    /// </summary>
     public decimal? Weight { get; set; }
+    /// <summary>Mass unit of the base unit weight as stored in Nexo (JednostkaMiaryMasy.Symbol).</summary>
+    public string? WeightUnitSymbol { get; set; }
+    /// <summary>Volume of one base unit, in <see cref="VolumeUnitSymbol"/> (not converted).</summary>
     public decimal? Volume { get; set; }
+    /// <summary>Volume unit of the base unit as stored in Nexo (JednostkaMiaryObjetosci.Symbol).</summary>
+    public string? VolumeUnitSymbol { get; set; }
 
     // Status and flags
+    /// <summary>False only for products in the recycle bin (same as !IsDeleted; the SDK has no other activity flag).</summary>
     public bool IsActive { get; set; }
     public bool IsDeleted { get; set; }
     public bool IsDiscounted { get; set; }
@@ -194,14 +220,54 @@ public class ProductUnitDto
     public bool IsPurchase { get; set; }
     public bool IsWarehouse { get; set; }
     public int? Precision { get; set; }
+    /// <summary>
+    /// Barcode of the collective package bound to the unit (KodKreskowyOpakowania). This is NOT the unit's EAN; see
+    /// <see cref="PrimaryBarcode"/> and <see cref="Barcodes"/>.
+    /// </summary>
     public string? Barcode { get; set; }
+    /// <summary>Primary barcode of the unit (PodstawowyKodKreskowy.Kod).</summary>
+    public string? PrimaryBarcode { get; set; }
+    /// <summary>All barcodes of the unit, primary first (KodyKreskowe[].Kod).</summary>
+    public List<string> Barcodes { get; set; } = new();
+    /// <summary>Gross weight of one unit in <see cref="WeightUnitSymbol"/> (not converted).</summary>
     public decimal? Weight { get; set; }
+    public string? WeightUnitSymbol { get; set; }
     public decimal? Volume { get; set; }
+    public string? VolumeUnitSymbol { get; set; }
     /// <summary>How many base units make one of this unit (1 for the base unit itself, null when unknown).</summary>
     public decimal? ToBaseFactor { get; set; }
     public string? BaseUnitSymbol { get; set; }
     /// <summary>Raw converters as stored by nexo (parent/child quantities), for anything the factor above cannot express.</summary>
     public List<ProductUnitConversionDto> Conversions { get; set; } = new();
+}
+
+/// <summary>Result of PUT /api/products/{id}: the saved product plus the outcome of every field sent.</summary>
+public class UpdateProductResultDto : ProductDto
+{
+    public List<ProductFieldResultDto> FieldResults { get; set; } = new();
+}
+
+/// <summary>Outcome of one field of a product update.</summary>
+public class ProductFieldResultDto
+{
+    /// <summary>JSON name of the request field (name, description, ean, pkWiU, weight, volume).</summary>
+    public string Field { get; set; } = string.Empty;
+    /// <summary>"updated" or "unchanged" (the value already matched).</summary>
+    public string Status { get; set; } = string.Empty;
+    public string? OldValue { get; set; }
+    public string? NewValue { get; set; }
+    /// <summary>Unit of the value: the barcode's unit symbol for ean, "kg" for weight, the volume unit for volume.</summary>
+    public string? Unit { get; set; }
+}
+
+/// <summary>A barcode of one product unit (SDK: KodKreskowy).</summary>
+public class ProductBarcodeDto
+{
+    public string Code { get; set; } = string.Empty;
+    /// <summary>Symbol of the unit the barcode belongs to.</summary>
+    public string? UnitSymbol { get; set; }
+    /// <summary>True for the unit's primary barcode (PodstawowyKodKreskowy).</summary>
+    public bool IsPrimary { get; set; }
 }
 
 /// <summary>PrzelicznikJednostekMiarAsortymentu: ParentQuantity × parent unit = ChildQuantity × child unit.</summary>

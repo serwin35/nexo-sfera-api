@@ -177,7 +177,10 @@ public class PaymentsController : ControllerBase
     /// <summary>
     /// Create KP (cash receipt - wpłata gotówkowa)
     /// </summary>
+    /// <remarks>documentIdsToSettle is not supported and is rejected with 400 (nothing is created).</remarks>
     [HttpPost("cash/kp")]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateKP([FromBody] CreatePaymentRequest request)
     {
         return await CreateCashOperationAsync(request, TypOperacjiKasowejEnum.Wplyw);
@@ -186,7 +189,10 @@ public class PaymentsController : ControllerBase
     /// <summary>
     /// Create KW (cash disbursement - wypłata gotówkowa)
     /// </summary>
+    /// <remarks>documentIdsToSettle is not supported and is rejected with 400 (nothing is created).</remarks>
     [HttpPost("cash/kw")]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateKW([FromBody] CreatePaymentRequest request)
     {
         return await CreateCashOperationAsync(request, TypOperacjiKasowejEnum.Wyplyw);
@@ -197,6 +203,8 @@ public class PaymentsController : ControllerBase
     /// </remarks>
     private async Task<ActionResult<ApiResponse<PaymentDto>>> CreateCashOperationAsync(CreatePaymentRequest request, TypOperacjiKasowejEnum typ)
     {
+        if (RejectSettlement(request) is { } rejected) return rejected;
+
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe
@@ -325,6 +333,24 @@ public class PaymentsController : ControllerBase
     }
 
     #endregion
+
+    /// <summary>
+    /// documentIdsToSettle used to be accepted and ignored, so KP/KW/BP/BW never settled the invoices the caller named.
+    /// Settling is not implemented (SDK: operacja.Rozrachunek.Rozlicz(rozrachunek, kwota)); refuse it before anything is
+    /// created instead of creating an unsettled payment.
+    /// </summary>
+    private ActionResult<ApiResponse<PaymentDto>>? RejectSettlement(CreatePaymentRequest request)
+    {
+        if (request.DocumentIdsToSettle is not { Count: > 0 }) return null;
+
+        return BadRequest(ApiResponse<PaymentDto>.Error(
+            "Invalid payment; nothing was created",
+            new List<string>
+            {
+                "documentIdsToSettle: settling documents is not supported by this endpoint. Create the payment without " +
+                "documentIdsToSettle and settle it in Subiekt.",
+            }));
+    }
 
     #region Bank Operations (BP, BW)
 
@@ -469,7 +495,10 @@ public class PaymentsController : ControllerBase
     /// <summary>
     /// Create BP (bank receipt - wpływ bankowy)
     /// </summary>
+    /// <remarks>documentIdsToSettle is not supported and is rejected with 400 (nothing is created).</remarks>
     [HttpPost("bank/bp")]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateBP([FromBody] CreatePaymentRequest request)
     {
         return await CreateBankOperationAsync(request, true);
@@ -478,7 +507,10 @@ public class PaymentsController : ControllerBase
     /// <summary>
     /// Create BW (bank disbursement - wypłata bankowa)
     /// </summary>
+    /// <remarks>documentIdsToSettle is not supported and is rejected with 400 (nothing is created).</remarks>
     [HttpPost("bank/bw")]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<PaymentDto>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<PaymentDto>>> CreateBW([FromBody] CreatePaymentRequest request)
     {
         return await CreateBankOperationAsync(request, false);
@@ -489,6 +521,8 @@ public class PaymentsController : ControllerBase
     /// </remarks>
     private async Task<ActionResult<ApiResponse<PaymentDto>>> CreateBankOperationAsync(CreatePaymentRequest request, bool isIncome)
     {
+        if (RejectSettlement(request) is { } rejected) return rejected;
+
         try
         {
             // Use thread-safe execution - EF6 is NOT thread-safe

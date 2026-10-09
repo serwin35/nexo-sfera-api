@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-09) - SDK field mapping audit (members that do not exist in SDK 61.1)
+All fixes use typed, compile-checked readers/writers (`Helpers/ProductReader`, `ProductWriter`, `CustomerReader`,
+`OrderReader`, `DocumentReader`); old JSON fields keep their names, new fields are additive.
+- **Products, EAN (H2).** `ean` was read from `Asortyment.EAN` (missing). It is now the primary barcode of the base unit
+  (`JednostkiMiar[].PodstawowyKodKreskowy`), falling back to any base unit barcode, the sale unit, then the first unit
+  with one. New `eanUnitSymbol`, `barcodes[]` (`code`, `unitSymbol`, `isPrimary`), `units[].primaryBarcode`,
+  `units[].barcodes`. `units[].barcode` keeps its meaning: the collective package code (`KodKreskowyOpakowania`), not
+  the EAN. `GET /products/by-ean/{ean}`, the list `search` and the MCP product tools match unit barcodes in one SQL
+  query; inventory `productEan` (read `KodEan`, missing) is filled the same way.
+- **Products, `isActive`** was false for every product (`Aktywny` is missing). The SDK has no activity flag on
+  `Asortyment`; `isActive` is now `!IsInRecycleBin` (inactive = recycle bin, which `Dane.Wszystkie()` never returns).
+- **Products, other reads:** `pkWiU` (member is `PKWiU`), `weight` in kg from the base unit `Masa` (+ `weightUnitSymbol`),
+  `volume` + `volumeUnitSymbol` from the base unit, `saleUnit`/`purchaseUnit` symbols (`.JednostkaMiary.Symbol`), new
+  `baseUnit`, `vatRate`/`vatRateSalesId` (`StawkaVatSprzedaz`). `priceNet`/`priceGross` stay null (prices live in price
+  lists).
+- **`PUT /api/products/{id}`** assigned missing members (`EAN`, `CenaNetto`, `Aktywny`, `PKWIU`, `Masa`, `Objetosc`) on a
+  `dynamic`, so any update with those fields returned 500, name change included. Now typed and all-or-nothing:
+  `name`, `description`, `ean` (+ optional `eanUnitSymbol`; a code of another product is refused), `pkWiU`, `weight`
+  (kg), `volume`. `priceNet`, `vatRate` and `isActive` are rejected with 400 (`errors[]`: "field: reason"). The response
+  `data` is the product plus `fieldResults[]` (`field`, `status` updated/unchanged, `oldValue`, `newValue`, `unit`).
+- **Customers, `full=true` (C4)** was declared but ignored. It now returns the full card per item
+  (`CustomerFullListItemDto` = `CustomerDto` + `name`), filters/order (by id)/paging in SQL, `pageSize` 1..200, duration
+  logged. The card itself read missing members: `symbol` (now `Sygnatura.PelnaSygnatura`), `fullName` (`Firma.Nazwa`, or
+  first + last name for persons), `regon` (`Firma.REGON`), `email` (contacts by `RodzajeKontaktu.DaneDomyslne.Email`;
+  matched `Kontakt.Typ`, missing), `bankAccount`/`bankName` (`RachunekPodstawowy.Numer` / `PodmiotBankowy`), `type`
+  (`Podmiot.Typ` is `TypObiektu`, Firma = 2: every company was reported as a person; the legacy list `type` filter is
+  fixed too). New: `firstName`, `lastName`, `krs`, `emails[]`, `emailDomain` (`Domena`, the previous `website` value,
+  kept as its fallback), `creditLimitCurrency`, `salesCreditLimit`, `deliveryCreditLimit`, `orderCreditLimit`,
+  `deliveryAddress` (`DomyslnyAdresDostaw`), `address.countryEuCode`.
+- **`PUT /api/customers/{id}`**: `fullName`/`regon` are written to `Firma` (they threw → 500); on a person they are
+  rejected with 400. Every other request field PUT never wrote is now rejected with 400 instead of being ignored.
+- **Customer orders**: lines read `IloscZrealizowana`/`Zarezerwowana`/`IloscZarezerwowana` (missing). Realization now
+  comes from `StanRealizacjiZamowienia` (`ZrealizowanaIlosc` in the base unit, `ProcentowyStanRealizacji` as a fraction)
+  and `IloscDoRealizacji.PozostalaIlosc`; reservations from `Rezerwacja` (`Ilosc - IloscZrealizowana`, stock unit).
+  `quantityRealized`/`quantityRemaining`/`reservedQuantity` are in the line unit; new `*InBaseUnit`, `realizationPercent`,
+  `lastRealizationDate`, `realizingDocumentNumbers`, `isRealizationBlocked`, `reservationKind`, `reservationExpiresAt`,
+  `baseUnit`, `quantityInBaseUnit`. Lines also get the real product id, unit, prices, values and VAT; the header gets
+  totals, currency, issue date, status, created/modified and `realizationPercent`. `GET .../{id}/realization` adds
+  `lines[]`.
+- **`GET /api/inventory/reservations`** scanned every order with the same missing members and returned nothing; it is
+  now one SQL query over open `Rezerwacja` of ZK lines (new `reservationKind`, `totalReservedQuantity`,
+  `consumedQuantity`).
+- **Documents**: the list gains `isCanceled` (`StatusDokumentu.Uniewazniony`), `createdAt`/`modifiedAt`
+  (`Naglowek.Utworzono/Zmieniono`) and `settlementModifiedAt` (`Rozrachunek.Naglowek.Zmieniono`); new `modifiedSince`
+  filter (document or settlement changed) and `sortBy=modified_asc|modified_desc`; `isCanceled` filters on the real
+  status. The detail's `isCanceled`/`createdAt`/`modifiedAt` read `Anulowany`/`DataUtworzenia`/`DataModyfikacji`
+  (missing) and are now filled.
+- **Payments (C6)**: `documentIdsToSettle` on KP/KW/BP/BW was accepted and ignored; a non-empty list now returns 400 and
+  nothing is created.
+- **`GET /api/inventory/stock`** scanned all products for every page: the sorted result is a snapshot per tenant and
+  filter set, rebuilt on `page=1`, `refresh=true` or after 5 minutes (`X-Stock-Snapshot-At` header); warehouses are read
+  once per scan instead of once per stock row.
+
+### Security (2026-10-09)
+- New `ISferaService.GetTenantState<T>`: cross-request state owned by the pooled connection and partitioned by
+  `TenantCacheKey` (database, API key operator, warehouse, branch; never the password). Every cache of SDK data must use
+  it instead of a static field. The first version of the stock snapshots (commit `e3ec236`) used a process-wide
+  dictionary and could serve one company's stock to another; fixed in `e8f1a5a` before release. **Never install a build
+  between those two commits.**
+
 ### Added (2026-10-08) - price lists by id (COD-995 F4a-R, read only)
 - `GET /api/dictionary/price-lists/by-id/{id}` - price list header by `Cennik.Id` (price lists have no symbol in Nexo).
 - `GET /api/dictionary/price-lists/by-id/{id}/items` - positions read through the price list business object

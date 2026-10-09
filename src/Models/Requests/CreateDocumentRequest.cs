@@ -260,9 +260,17 @@ public class DocumentQueryRequest
     public string? KsefStatus { get; set; }
 
     /// <summary>
-    /// Show only canceled documents
+    /// true: only cancelled (invalidated) documents; false: only documents that are not cancelled
+    /// (StatusDokumentu.Uniewazniony).
     /// </summary>
     public bool? IsCanceled { get; set; }
+
+    /// <summary>
+    /// Delta sync: only documents whose header (Naglowek.Zmieniono) or settlement (Rozrachunek.Naglowek.Zmieniono, e.g. a
+    /// payment) changed at or after this time. ISO 8601; without an offset the bridge host's local time is assumed.
+    /// Combine with sortBy=modified_asc and an overlap of a few minutes.
+    /// </summary>
+    public DateTimeOffset? ModifiedSince { get; set; }
 
     /// <summary>
     /// Filter by minimum total gross amount
@@ -275,7 +283,8 @@ public class DocumentQueryRequest
     public decimal? MaxAmount { get; set; }
 
     /// <summary>
-    /// Sort order: date_desc (default), date_asc, amount_desc, amount_asc, number_desc, number_asc
+    /// Sort order: date_desc (default), date_asc, amount_desc, amount_asc, number_desc, number_asc, customer_asc,
+    /// customer_desc, modified_asc, modified_desc (latest of the document and settlement change times).
     /// </summary>
     public string SortBy { get; set; } = "date_desc";
 

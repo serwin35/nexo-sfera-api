@@ -29,203 +29,297 @@ public class InventoryController : ControllerBase
     #region Stock Levels
 
     /// <summary>
+    /// Product EAN from the unit barcodes (same precedence as ProductDto.ean), one SQL query for the given rows.
+    /// Asortyment has no KodEan/EAN member. Must run on the SDK thread.
+    /// </summary>
+    private void FillProductEans(List<InventoryItemDto> items)
+    {
+        if (items.Count == 0) return;
+
+        try
+        {
+            var eans = ProductReader.ProductEans(_sferaService.GetSfera(), items.Select(i => i.ProductId).Distinct().ToList());
+            foreach (var item in items)
+            {
+                item.ProductEan = eans.TryGetValue(item.ProductId, out var ean) ? ean : null;
+            }
+        }
+        catch (Exception ex)
+        {
+            // EAN is auxiliary on stock rows — never fail the stock response for it.
+            _logger.LogWarning(ex, "Could not read product barcodes for stock rows");
+        }
+    }
+
+    private static readonly TimeSpan StockSnapshotTtl = TimeSpan.FromMinutes(5);
+    private const int MaxStockSnapshots = 20;
+
+    private sealed record StockSnapshot(DateTimeOffset BuiltAt, List<InventoryItemDto> Items);
+
+    /// <summary>
+    /// Stock snapshots of ONE tenant, keyed by the filter set. Instances come only from
+    /// <see cref="ISferaService.GetTenantState{T}"/>, i.e. one store per connection (database) and per API key operator,
+    /// warehouse and branch, so a snapshot cannot be served to another tenant (a process-wide dictionary keyed by the
+    /// filters alone did exactly that).
+    /// </summary>
+    private sealed class StockSnapshotStore
+    {
+        private readonly Dictionary<string, StockSnapshot> _snapshots = new();
+        private readonly object _lock = new();
+
+        public StockSnapshot? Get(string filterKey)
+        {
+            lock (_lock) return _snapshots.TryGetValue(filterKey, out var snapshot) ? snapshot : null;
+        }
+
+        public void Put(string filterKey, StockSnapshot snapshot)
+        {
+            lock (_lock)
+            {
+                if (_snapshots.Count >= MaxStockSnapshots && !_snapshots.ContainsKey(filterKey))
+                {
+                    _snapshots.Remove(_snapshots.OrderBy(e => e.Value.BuiltAt).First().Key);
+                }
+
+                _snapshots[filterKey] = snapshot;
+            }
+        }
+    }
+
+    /// <summary>
     /// Get inventory stock levels
     /// </summary>
+    /// <remarks>
+    /// Building the stock list scans every product on the single SDK thread, so the sorted result is kept as a snapshot
+    /// per tenant (database, API key operator, warehouse, branch) and filter combination: page=1 (or refresh=true, or a
+    /// snapshot older than 5 minutes) rebuilds it, later pages are served from it. A paging run therefore costs one scan instead of one per page, and all its pages come from the
+    /// same point in time. The snapshot time is returned in the X-Stock-Snapshot-At header.
+    /// </remarks>
     [HttpGet("stock")]
+    [ProducesResponseType(typeof(PagedResponse<InventoryItemDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResponse<InventoryItemDto>>> GetStockLevels(
         [FromQuery] string? warehouseSymbol,
         [FromQuery] int? productId,
         [FromQuery] string? productSymbol,
         [FromQuery] bool? lowStock,
         [FromQuery] int page = 1,
-        [FromQuery] int pageSize = 50)
+        [FromQuery] int pageSize = 50,
+        [FromQuery] bool refresh = false)
     {
+        if (page < 1 || pageSize < 1)
+        {
+            return BadRequest(ApiResponse<object>.Error("page and pageSize must be >= 1"));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                var magazynyManager = _sferaService.GetManager("Magazyny");
-                if (asortymentyManager == null)
+                // Tenant-scoped store (connection + operator + warehouse + branch); the key below only selects the filters.
+                var store = _sferaService.GetTenantState("inventory.stock-snapshots", () => new StockSnapshotStore());
+                var key = $"{warehouseSymbol}|{productId}|{productSymbol}|{lowStock}";
+                var snapshot = store.Get(key);
+
+                if (page == 1 || refresh || snapshot == null || DateTimeOffset.Now - snapshot.BuiltAt > StockSnapshotTtl)
                 {
-                    return (PagedResponse<InventoryItemDto>?)null;
+                    var scanned = ScanStock(warehouseSymbol, productId, productSymbol, lowStock);
+                    if (scanned == null)
+                    {
+                        return ((PagedResponse<InventoryItemDto>?)null, (DateTimeOffset?)null);
+                    }
+
+                    snapshot = new StockSnapshot(
+                        DateTimeOffset.Now,
+                        scanned.OrderBy(i => i.ProductSymbol).ThenBy(i => i.WarehouseSymbol).ToList());
+
+                    store.Put(key, snapshot);
                 }
 
-                // Get all products with their stock levels
-                var produktyQuery = new List<object>();
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-                {
-                    if (!DynamicPropertyHelper.TracksStock(a))
-
-                        continue;
-
-                    if (productId.HasValue && DynamicPropertyHelper.GetId(a) != productId.Value)
-                        continue;
-
-                    if (!string.IsNullOrEmpty(productSymbol))
-                    {
-                        var s = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
-                        if (s != productSymbol && !s.Contains(productSymbol))
-                            continue;
-                    }
-
-                    produktyQuery.Add(a);
-                }
-
-                // Get warehouse filter
-                dynamic? magazynFilter = null;
-                int? magazynFilterId = null;
-                if (!string.IsNullOrEmpty(warehouseSymbol) && magazynyManager != null)
-                {
-                    foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
-                    {
-                        if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
-                        {
-                            magazynFilter = m;
-                            magazynFilterId = DynamicPropertyHelper.GetId(m);
-                            break;
-                        }
-                    }
-                }
-
-                var inventoryItems = new List<InventoryItemDto>();
-
-                foreach (var produkt in produktyQuery)
-                {
-                    // Get stock levels for this product
-                    var stany = DynamicPropertyHelper.GetCollection((object)produkt, "StanyMagazynowe");
-
-                    if (magazynFilterId.HasValue)
-                    {
-                        var filteredStany = new List<object>();
-                        foreach (var s in stany)
-                        {
-                            if (DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value)
-                            {
-                                filteredStany.Add(s);
-                            }
-                        }
-                        stany = filteredStany;
-                    }
-
-                    foreach (var stan in stany)
-                    {
-                        var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
-                        dynamic? magazyn = null;
-                        if (magazynId.HasValue && magazynyManager != null)
-                        {
-                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
-                            {
-                                if (DynamicPropertyHelper.GetId(m) == magazynId.Value)
-                                {
-                                    magazyn = m;
-                                    break;
-                                }
-                            }
-                        }
-
-                        var iloscDostepna = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
-                        var iloscZarezerwowanaIlosciowo = DynamicPropertyHelper.GetDecimal(stan, "IloscZarezerwowanaIlosciowo");
-                        var iloscZadysponowana = DynamicPropertyHelper.GetDecimal(stan, "IloscZadysponowana");
-
-                        var item = new InventoryItemDto
-                        {
-                            ProductId = DynamicPropertyHelper.GetId(produkt),
-                            ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
-                            ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
-                            ProductEan = DynamicPropertyHelper.GetString(produkt, "KodEan"),
-                            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
-                            WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
-                            StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
-                            ReservedQuantity = iloscZarezerwowanaIlosciowo + iloscZadysponowana,
-                            AvailableQuantity = iloscDostepna,
-                            Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
-                            MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
-                            MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
-                        };
-
-                        // Check for low stock
-                        if (lowStock.HasValue && lowStock.Value)
-                        {
-                            if (item.MinStockLevel.HasValue && item.AvailableQuantity >= item.MinStockLevel.Value)
-                            {
-                                continue; // Skip if not low stock
-                            }
-                            else if (!item.MinStockLevel.HasValue)
-                            {
-                                continue; // Skip if no min level defined
-                            }
-                        }
-
-                        inventoryItems.Add(item);
-                    }
-
-                    // If no stock exists for this product but it's requested specifically
-                    if (stany.Count == 0 && (productId.HasValue || !string.IsNullOrEmpty(productSymbol)))
-                    {
-                        var allWarehouses = new List<object>();
-                        if (magazynFilter != null)
-                        {
-                            allWarehouses.Add(magazynFilter);
-                        }
-                        else if (magazynyManager != null)
-                        {
-                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
-                            {
-                                allWarehouses.Add(m);
-                            }
-                        }
-
-                        foreach (var magazyn in allWarehouses)
-                        {
-                            inventoryItems.Add(new InventoryItemDto
-                            {
-                                ProductId = DynamicPropertyHelper.GetId(produkt),
-                                ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
-                                ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
-                                ProductEan = DynamicPropertyHelper.GetString(produkt, "KodEan"),
-                                WarehouseSymbol = DynamicPropertyHelper.GetString(magazyn, "Symbol"),
-                                WarehouseName = DynamicPropertyHelper.GetString(magazyn, "Nazwa"),
-                                StockQuantity = 0,
-                                ReservedQuantity = 0,
-                                AvailableQuantity = 0,
-                                Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
-                                MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
-                                MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
-                            });
-                        }
-                    }
-                }
-
-                var totalCount = inventoryItems.Count;
-                var pagedItems = inventoryItems
-                    .OrderBy(i => i.ProductSymbol)
-                    .ThenBy(i => i.WarehouseSymbol)
+                var pagedItems = snapshot.Items
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
 
-                return new PagedResponse<InventoryItemDto>
+                FillProductEans(pagedItems);
+
+                return ((PagedResponse<InventoryItemDto>?)new PagedResponse<InventoryItemDto>
                 {
                     Data = pagedItems,
                     Page = page,
                     PageSize = pageSize,
-                    TotalCount = totalCount
-                };
+                    TotalCount = snapshot.Items.Count
+                }, (DateTimeOffset?)snapshot.BuiltAt);
             });
 
-            if (result == null)
+            if (result.Item1 == null)
             {
                 return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
             }
 
-            return Ok(result);
+            Response.Headers["X-Stock-Snapshot-At"] = result.Item2!.Value.ToString("O");
+            return Ok(result.Item1);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting stock levels");
             return StatusCode(500, ApiResponse<object>.Error("Error retrieving stock levels", new List<string> { ex.Message }));
         }
+    }
+
+    /// <summary>Full stock scan (all products × their warehouse stock rows), unsorted. Must run on the SDK thread.</summary>
+    private List<InventoryItemDto>? ScanStock(string? warehouseSymbol, int? productId, string? productSymbol, bool? lowStock)
+    {
+        var asortymentyManager = _sferaService.GetManager("Asortymenty");
+        var magazynyManager = _sferaService.GetManager("Magazyny");
+        if (asortymentyManager == null)
+        {
+            return null;
+        }
+
+        // Warehouses once per scan (each SafeGetAll is a query; it used to run once per stock row).
+        var warehousesById = new Dictionary<int, object>();
+        if (magazynyManager != null)
+        {
+            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
+            {
+                warehousesById.TryAdd((int)DynamicPropertyHelper.GetId(m), m);
+            }
+        }
+
+        // Get all products with their stock levels
+        var produktyQuery = new List<object>();
+        foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
+        {
+            if (!DynamicPropertyHelper.TracksStock(a))
+
+                continue;
+
+            if (productId.HasValue && DynamicPropertyHelper.GetId(a) != productId.Value)
+                continue;
+
+            if (!string.IsNullOrEmpty(productSymbol))
+            {
+                var s = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
+                if (s != productSymbol && !s.Contains(productSymbol))
+                    continue;
+            }
+
+            produktyQuery.Add(a);
+        }
+
+        // Get warehouse filter
+        dynamic? magazynFilter = null;
+        int? magazynFilterId = null;
+        if (!string.IsNullOrEmpty(warehouseSymbol) && magazynyManager != null)
+        {
+            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
+            {
+                if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
+                {
+                    magazynFilter = m;
+                    magazynFilterId = DynamicPropertyHelper.GetId(m);
+                    break;
+                }
+            }
+        }
+
+        var inventoryItems = new List<InventoryItemDto>();
+
+        foreach (var produkt in produktyQuery)
+        {
+            // Get stock levels for this product
+            var stany = DynamicPropertyHelper.GetCollection((object)produkt, "StanyMagazynowe");
+
+            if (magazynFilterId.HasValue)
+            {
+                var filteredStany = new List<object>();
+                foreach (var s in stany)
+                {
+                    if (DynamicPropertyHelper.GetNullableInt(s, "Magazyn_Id") == magazynFilterId.Value)
+                    {
+                        filteredStany.Add(s);
+                    }
+                }
+                stany = filteredStany;
+            }
+
+            foreach (var stan in stany)
+            {
+                var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
+                dynamic? magazyn = magazynId.HasValue && warehousesById.TryGetValue((int)magazynId.Value, out var found) ? found : null;
+
+                var iloscDostepna = DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
+                var iloscZarezerwowanaIlosciowo = DynamicPropertyHelper.GetDecimal(stan, "IloscZarezerwowanaIlosciowo");
+                var iloscZadysponowana = DynamicPropertyHelper.GetDecimal(stan, "IloscZadysponowana");
+
+                var item = new InventoryItemDto
+                {
+                    ProductId = DynamicPropertyHelper.GetId(produkt),
+                    ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
+                    ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
+                    WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
+                    WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
+                    StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
+                    ReservedQuantity = iloscZarezerwowanaIlosciowo + iloscZadysponowana,
+                    AvailableQuantity = iloscDostepna,
+                    Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
+                    MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
+                    MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
+                };
+
+                // Check for low stock
+                if (lowStock.HasValue && lowStock.Value)
+                {
+                    if (item.MinStockLevel.HasValue && item.AvailableQuantity >= item.MinStockLevel.Value)
+                    {
+                        continue; // Skip if not low stock
+                    }
+                    else if (!item.MinStockLevel.HasValue)
+                    {
+                        continue; // Skip if no min level defined
+                    }
+                }
+
+                inventoryItems.Add(item);
+            }
+
+            // If no stock exists for this product but it's requested specifically
+            if (stany.Count == 0 && (productId.HasValue || !string.IsNullOrEmpty(productSymbol)))
+            {
+                var allWarehouses = new List<object>();
+                if (magazynFilter != null)
+                {
+                    allWarehouses.Add(magazynFilter);
+                }
+                else if (magazynyManager != null)
+                {
+                    foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
+                    {
+                        allWarehouses.Add(m);
+                    }
+                }
+
+                foreach (var magazyn in allWarehouses)
+                {
+                    inventoryItems.Add(new InventoryItemDto
+                    {
+                        ProductId = DynamicPropertyHelper.GetId(produkt),
+                        ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
+                        ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
+                        WarehouseSymbol = DynamicPropertyHelper.GetString(magazyn, "Symbol"),
+                        WarehouseName = DynamicPropertyHelper.GetString(magazyn, "Nazwa"),
+                        StockQuantity = 0,
+                        ReservedQuantity = 0,
+                        AvailableQuantity = 0,
+                        Unit = DynamicPropertyHelper.StockUnitSymbol(produkt),
+                        MinStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMinimalny"),
+                        MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
+                    });
+                }
+            }
+        }
+
+        return inventoryItems;
     }
 
     /// <summary>
@@ -312,7 +406,6 @@ public class InventoryController : ControllerBase
                         ProductId = DynamicPropertyHelper.GetId(produkt),
                         ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
                         ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
-                        ProductEan = DynamicPropertyHelper.GetString(produkt, "KodEan"),
                         WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
                         WarehouseName = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Nazwa") : null,
                         StockQuantity = iloscDostepna + iloscZarezerwowanaIlosciowo + iloscZadysponowana,
@@ -323,6 +416,8 @@ public class InventoryController : ControllerBase
                         MaxStockLevel = DynamicPropertyHelper.GetNullableDecimal(produkt, "StanMaksymalny")
                     });
                 }
+
+                FillProductEans(items);
 
                 return (found: true, managerMissing: false, items: (List<InventoryItemDto>?)items);
             });
@@ -684,9 +779,16 @@ public class InventoryController : ControllerBase
     #region Reservations
 
     /// <summary>
-    /// Get reservations
+    /// Get open reservations of customer orders (ZK)
     /// </summary>
+    /// <remarks>
+    /// One row per ZK line with an open reservation (Rezerwacja.Ilosc - Rezerwacja.IloscZrealizowana &gt; 0), invalidated
+    /// orders skipped. reservedQuantity and unit are in the stock unit. Filtering, count and paging run in SQL (the
+    /// previous implementation scanned every order and read members that do not exist, so it always returned nothing).
+    /// status is the Nexo status name of the order; reservationKind is "stock" or "delivery".
+    /// </remarks>
     [HttpGet("reservations")]
+    [ProducesResponseType(typeof(PagedResponse<ReservationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResponse<ReservationDto>>> GetReservations(
         [FromQuery] int? productId,
         [FromQuery] int? customerId,
@@ -694,108 +796,46 @@ public class InventoryController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
+        if (page < 1 || pageSize < 1 || pageSize > 1000)
+        {
+            return BadRequest(ApiResponse<object>.Error("page must be >= 1 and pageSize between 1 and 1000"));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
-                if (zamowieniaManager == null)
-                {
-                    return (PagedResponse<ReservationDto>?)null;
-                }
-
-                // Document status constants
-                const int StatusAnulowany = 4;
-
-                // Get reservations from customer orders (ZK)
-                var zamowienia = new List<object>();
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowieniaManager))
-                {
-                    if (DynamicPropertyHelper.GetInt(z, "Status") == StatusAnulowany)
-                        continue;
-
-                    if (customerId.HasValue)
-                    {
-                        var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                        if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != customerId.Value)
-                            continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(warehouseSymbol))
-                    {
-                        var magazyn = DynamicPropertyHelper.GetProperty(z, "Magazyn");
-                        if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != warehouseSymbol)
-                            continue;
-                    }
-
-                    zamowienia.Add(z);
-                }
-
-                var reservations = new List<ReservationDto>();
-
-                foreach (var zamowienie in zamowienia)
-                {
-                    var pozycje = DynamicPropertyHelper.GetCollection((object)zamowienie, "Pozycje");
-
-                    foreach (var pozycja in pozycje)
-                    {
-                        var asortyment = DynamicPropertyHelper.GetProperty(pozycja, "Asortyment");
-                        if (productId.HasValue && (asortyment == null || DynamicPropertyHelper.GetId(asortyment) != productId.Value))
-                        {
-                            continue;
-                        }
-
-                        // Check if position has reserved quantity
-                        var rezerwowana = DynamicPropertyHelper.GetDecimal(pozycja, "IloscZarezerwowana");
-                        if (rezerwowana <= 0)
-                        {
-                            continue;
-                        }
-
-                        var podmiot = DynamicPropertyHelper.GetProperty(zamowienie, "Podmiot");
-                        var magazyn = DynamicPropertyHelper.GetProperty(zamowienie, "Magazyn");
-                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie, "NumerWewnetrzny");
-                        var jednostka = DynamicPropertyHelper.GetProperty(pozycja, "Jednostka");
-
-                        reservations.Add(new ReservationDto
-                        {
-                            Id = DynamicPropertyHelper.GetId(pozycja),
-                            ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
-                            ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                            ProductName = DynamicPropertyHelper.GetString(pozycja, "Nazwa"),
-                            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
-                            ReservedQuantity = rezerwowana,
-                            Unit = DynamicPropertyHelper.UnitSymbol(jednostka) ?? "szt.",
-                            SourceDocumentId = DynamicPropertyHelper.GetId(zamowienie),
-                            SourceDocumentNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
-                            CustomerId = podmiot != null ? DynamicPropertyHelper.GetId(podmiot) : null,
-                            CustomerName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
-                            ReservationDate = DynamicPropertyHelper.GetDateTime(zamowienie, "DataWystawienia"),
-                            Status = GetReservationStatus(DynamicPropertyHelper.GetInt(zamowienie, "Status"))
-                        });
-                    }
-                }
-
-                var totalCount = reservations.Count;
-                var pagedReservations = reservations
-                    .OrderByDescending(r => r.ReservationDate)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
+                var query = OrderReader.OpenReservations(_sferaService.GetSfera(), productId, customerId, warehouseSymbol);
+                var totalCount = query.Count();
+                var rows = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
                 return new PagedResponse<ReservationDto>
                 {
-                    Data = pagedReservations,
+                    Data = rows.Select(r => new ReservationDto
+                    {
+                        Id = r.LineId,
+                        ProductId = r.ProductId ?? 0,
+                        ProductSymbol = r.ProductSymbol,
+                        ProductName = r.ProductName,
+                        WarehouseSymbol = r.LineWarehouseSymbol ?? r.OrderWarehouseSymbol,
+                        ReservedQuantity = r.Reserved - r.Consumed,
+                        Unit = r.StockUnitSymbol ?? r.BaseUnitSymbol ?? "szt.",
+                        SourceDocumentId = r.OrderId,
+                        SourceDocumentNumber = r.OrderNumber,
+                        CustomerId = r.CustomerId,
+                        CustomerName = r.CustomerName,
+                        ReservationDate = r.OrderDate,
+                        ExpirationDate = r.ExpiresAt,
+                        Status = r.OrderStatus,
+                        ReservationKind = r.IsStockReservation ? "stock" : "delivery",
+                        TotalReservedQuantity = r.Reserved,
+                        ConsumedQuantity = r.Consumed,
+                    }).ToList(),
                     Page = page,
                     PageSize = pageSize,
                     TotalCount = totalCount
                 };
             });
-
-            if (result == null)
-            {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
 
             return Ok(result);
         }
@@ -817,26 +857,6 @@ public class InventoryController : ControllerBase
         [FromQuery] int pageSize = 50)
     {
         return await GetReservations(productId, null, warehouseSymbol, page, pageSize);
-    }
-
-    private string GetReservationStatus(int status)
-    {
-        // Document status constants
-        const int StatusBufor = 0;
-        const int StatusZatwierdzony = 1;
-        const int StatusCzesciowoZrealizowany = 2;
-        const int StatusZrealizowany = 3;
-        const int StatusAnulowany = 4;
-
-        return status switch
-        {
-            StatusBufor => "Pending",
-            StatusZatwierdzony => "Confirmed",
-            StatusCzesciowoZrealizowany => "PartiallyFulfilled",
-            StatusZrealizowany => "Fulfilled",
-            StatusAnulowany => "Cancelled",
-            _ => "Unknown"
-        };
     }
 
     #endregion

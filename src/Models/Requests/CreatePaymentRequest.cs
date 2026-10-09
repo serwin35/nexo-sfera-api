@@ -78,7 +78,9 @@ public class CreatePaymentRequest
     public string? Title { get; set; }
 
     /// <summary>
-    /// Document IDs to settle (rozliczenie)
+    /// Not supported: a non-empty list is rejected with 400 and no payment is created. The bridge does not settle
+    /// documents (the SDK path is IOperacjaKasowa/IOperacjaBankowa.Rozrachunek.Rozlicz(rozrachunek, kwota)); create the
+    /// payment without it and settle it in Subiekt. Previously the list was accepted and silently ignored.
     /// </summary>
     public List<int>? DocumentIdsToSettle { get; set; }
 

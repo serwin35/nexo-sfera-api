@@ -66,6 +66,9 @@ public class SferaService : ISferaService, IDisposable
     private string? _currentWarehouse;
     private string? _currentBranch;
 
+    /// <summary>Cross-request state of this connection, partitioned per tenant (cleared on reconnect and dispose).</summary>
+    public TenantStateStore TenantState { get; } = new();
+
     public bool IsConnected => _sfera != null;
 
     /// <summary>The database this connection is bound to.</summary>
@@ -189,6 +192,9 @@ public class SferaService : ISferaService, IDisposable
                 _currentWarehouse = null;
                 _currentBranch = null;
             }
+
+            // Cached SDK data belongs to the previous connection.
+            TenantState.Clear();
 
             ConnectCore();
         });
@@ -817,6 +823,13 @@ public class SferaService : ISferaService, IDisposable
     public string? GetCurrentOperatorLogin() => _currentNexoLogin;
 
     /// <summary>
+    /// Direct (single-company) use: scoped to this database and the operator/context currently applied on it. In the
+    /// multi-company setup the router supplies the request's tenant instead.
+    /// </summary>
+    public T GetTenantState<T>(string name, Func<T> factory) where T : class =>
+        TenantState.GetOrAdd(TenantCacheKey.For(Database, _currentNexoLogin, _currentWarehouse, _currentBranch), name, factory);
+
+    /// <summary>
     /// Ensures the requested operator is logged in; with no requested login, ensures the
     /// DEFAULT operator from settings (so a tenant switched by a previous request never
     /// leaks into requests authenticated with keys that don't override the operator).
@@ -986,6 +999,8 @@ public class SferaService : ISferaService, IDisposable
 
     public void Dispose()
     {
+        TenantState.Clear();
+
         // Signal the SDK thread to stop
         _cts.Cancel();
         _workQueue?.CompleteAdding();
