@@ -233,8 +233,19 @@ public class ReservationDto
     public string? ProductName { get; set; }
 
     public string? WarehouseSymbol { get; set; }
+    /// <summary>Open reserved quantity in the stock unit (Rezerwacja.Ilosc - Rezerwacja.IloscZrealizowana).</summary>
     public decimal ReservedQuantity { get; set; }
+    /// <summary>Stock unit symbol of the product.</summary>
     public string? Unit { get; set; }
+
+    /// <summary>Rezerwacja.Ilosc: quantity reserved in total (stock unit).</summary>
+    public decimal? TotalReservedQuantity { get; set; }
+
+    /// <summary>Rezerwacja.IloscZrealizowana: part of the reservation already consumed (stock unit).</summary>
+    public decimal? ConsumedQuantity { get; set; }
+
+    /// <summary>"stock" (Rezerwacja.Ilosciowa: reservation of stock) or "delivery" (reservation of deliveries).</summary>
+    public string? ReservationKind { get; set; }
 
     /// <summary>
     /// Source document (usually customer order ZK)

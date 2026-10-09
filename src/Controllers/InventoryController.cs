@@ -708,9 +708,16 @@ public class InventoryController : ControllerBase
     #region Reservations
 
     /// <summary>
-    /// Get reservations
+    /// Get open reservations of customer orders (ZK)
     /// </summary>
+    /// <remarks>
+    /// One row per ZK line with an open reservation (Rezerwacja.Ilosc - Rezerwacja.IloscZrealizowana &gt; 0), invalidated
+    /// orders skipped. reservedQuantity and unit are in the stock unit. Filtering, count and paging run in SQL (the
+    /// previous implementation scanned every order and read members that do not exist, so it always returned nothing).
+    /// status is the Nexo status name of the order; reservationKind is "stock" or "delivery".
+    /// </remarks>
     [HttpGet("reservations")]
+    [ProducesResponseType(typeof(PagedResponse<ReservationDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResponse<ReservationDto>>> GetReservations(
         [FromQuery] int? productId,
         [FromQuery] int? customerId,
@@ -718,108 +725,46 @@ public class InventoryController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
+        if (page < 1 || pageSize < 1 || pageSize > 1000)
+        {
+            return BadRequest(ApiResponse<object>.Error("page must be >= 1 and pageSize between 1 and 1000"));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var zamowieniaManager = _sferaService.GetManager("ZamowieniaOdKlientow");
-                if (zamowieniaManager == null)
-                {
-                    return (PagedResponse<ReservationDto>?)null;
-                }
-
-                // Document status constants
-                const int StatusAnulowany = 4;
-
-                // Get reservations from customer orders (ZK)
-                var zamowienia = new List<object>();
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowieniaManager))
-                {
-                    if (DynamicPropertyHelper.GetInt(z, "Status") == StatusAnulowany)
-                        continue;
-
-                    if (customerId.HasValue)
-                    {
-                        var podmiot = DynamicPropertyHelper.GetProperty(z, "Podmiot");
-                        if (podmiot == null || DynamicPropertyHelper.GetId(podmiot) != customerId.Value)
-                            continue;
-                    }
-
-                    if (!string.IsNullOrEmpty(warehouseSymbol))
-                    {
-                        var magazyn = DynamicPropertyHelper.GetProperty(z, "Magazyn");
-                        if (magazyn == null || DynamicPropertyHelper.GetString(magazyn, "Symbol") != warehouseSymbol)
-                            continue;
-                    }
-
-                    zamowienia.Add(z);
-                }
-
-                var reservations = new List<ReservationDto>();
-
-                foreach (var zamowienie in zamowienia)
-                {
-                    var pozycje = DynamicPropertyHelper.GetCollection((object)zamowienie, "Pozycje");
-
-                    foreach (var pozycja in pozycje)
-                    {
-                        var asortyment = DynamicPropertyHelper.GetProperty(pozycja, "Asortyment");
-                        if (productId.HasValue && (asortyment == null || DynamicPropertyHelper.GetId(asortyment) != productId.Value))
-                        {
-                            continue;
-                        }
-
-                        // Check if position has reserved quantity
-                        var rezerwowana = DynamicPropertyHelper.GetDecimal(pozycja, "IloscZarezerwowana");
-                        if (rezerwowana <= 0)
-                        {
-                            continue;
-                        }
-
-                        var podmiot = DynamicPropertyHelper.GetProperty(zamowienie, "Podmiot");
-                        var magazyn = DynamicPropertyHelper.GetProperty(zamowienie, "Magazyn");
-                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie, "NumerWewnetrzny");
-                        var jednostka = DynamicPropertyHelper.GetProperty(pozycja, "Jednostka");
-
-                        reservations.Add(new ReservationDto
-                        {
-                            Id = DynamicPropertyHelper.GetId(pozycja),
-                            ProductId = asortyment != null ? DynamicPropertyHelper.GetId(asortyment) : 0,
-                            ProductSymbol = asortyment != null ? DynamicPropertyHelper.GetString(asortyment, "Symbol") : null,
-                            ProductName = DynamicPropertyHelper.GetString(pozycja, "Nazwa"),
-                            WarehouseSymbol = magazyn != null ? DynamicPropertyHelper.GetString(magazyn, "Symbol") : null,
-                            ReservedQuantity = rezerwowana,
-                            Unit = DynamicPropertyHelper.UnitSymbol(jednostka) ?? "szt.",
-                            SourceDocumentId = DynamicPropertyHelper.GetId(zamowienie),
-                            SourceDocumentNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") : null,
-                            CustomerId = podmiot != null ? DynamicPropertyHelper.GetId(podmiot) : null,
-                            CustomerName = podmiot != null ? DynamicPropertyHelper.GetString(podmiot, "NazwaSkrocona") : null,
-                            ReservationDate = DynamicPropertyHelper.GetDateTime(zamowienie, "DataWystawienia"),
-                            Status = GetReservationStatus(DynamicPropertyHelper.GetInt(zamowienie, "Status"))
-                        });
-                    }
-                }
-
-                var totalCount = reservations.Count;
-                var pagedReservations = reservations
-                    .OrderByDescending(r => r.ReservationDate)
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
+                var query = OrderReader.OpenReservations(_sferaService.GetSfera(), productId, customerId, warehouseSymbol);
+                var totalCount = query.Count();
+                var rows = query.Skip((page - 1) * pageSize).Take(pageSize).ToList();
 
                 return new PagedResponse<ReservationDto>
                 {
-                    Data = pagedReservations,
+                    Data = rows.Select(r => new ReservationDto
+                    {
+                        Id = r.LineId,
+                        ProductId = r.ProductId ?? 0,
+                        ProductSymbol = r.ProductSymbol,
+                        ProductName = r.ProductName,
+                        WarehouseSymbol = r.LineWarehouseSymbol ?? r.OrderWarehouseSymbol,
+                        ReservedQuantity = r.Reserved - r.Consumed,
+                        Unit = r.StockUnitSymbol ?? r.BaseUnitSymbol ?? "szt.",
+                        SourceDocumentId = r.OrderId,
+                        SourceDocumentNumber = r.OrderNumber,
+                        CustomerId = r.CustomerId,
+                        CustomerName = r.CustomerName,
+                        ReservationDate = r.OrderDate,
+                        ExpirationDate = r.ExpiresAt,
+                        Status = r.OrderStatus,
+                        ReservationKind = r.IsStockReservation ? "stock" : "delivery",
+                        TotalReservedQuantity = r.Reserved,
+                        ConsumedQuantity = r.Consumed,
+                    }).ToList(),
                     Page = page,
                     PageSize = pageSize,
                     TotalCount = totalCount
                 };
             });
-
-            if (result == null)
-            {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
 
             return Ok(result);
         }
@@ -841,26 +786,6 @@ public class InventoryController : ControllerBase
         [FromQuery] int pageSize = 50)
     {
         return await GetReservations(productId, null, warehouseSymbol, page, pageSize);
-    }
-
-    private string GetReservationStatus(int status)
-    {
-        // Document status constants
-        const int StatusBufor = 0;
-        const int StatusZatwierdzony = 1;
-        const int StatusCzesciowoZrealizowany = 2;
-        const int StatusZrealizowany = 3;
-        const int StatusAnulowany = 4;
-
-        return status switch
-        {
-            StatusBufor => "Pending",
-            StatusZatwierdzony => "Confirmed",
-            StatusCzesciowoZrealizowany => "PartiallyFulfilled",
-            StatusZrealizowany => "Fulfilled",
-            StatusAnulowany => "Cancelled",
-            _ => "Unknown"
-        };
     }
 
     #endregion

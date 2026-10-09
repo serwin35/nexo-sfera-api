@@ -836,17 +836,21 @@ public class CustomerOrdersController : ControllerBase
                 var numerWewn = DynamicPropertyHelper.GetProperty(zamowienie, "NumerWewnetrzny");
                 var orderNumber = numerWewn != null ? DynamicPropertyHelper.GetString(numerWewn, "PelnaSygnatura") : null;
 
-                decimal totalQty = 0;
-                decimal realizedQty = 0;
-
-                var pozycje = DynamicPropertyHelper.GetCollection((object)zamowienie, "Pozycje");
-                foreach (var poz in pozycje)
+                // Quantities are summed in the line units (as before); per-line values, also in the base unit, are in Lines.
+                var lines = new List<CustomerOrderItemDto>();
+                var lineNumber = 1;
+                foreach (var poz in DynamicPropertyHelper.GetCollection((object)zamowienie, "Pozycje"))
                 {
-                    var qty = DynamicPropertyHelper.GetDecimal(poz, "Ilosc");
-                    var realQty = DynamicPropertyHelper.GetDecimal(poz, "IloscZrealizowana");
-                    totalQty += qty;
-                    realizedQty += realQty;
+                    var line = new CustomerOrderItemDto { Id = DynamicPropertyHelper.GetId(poz), LineNumber = lineNumber++ };
+                    OrderReader.EnrichLine(line, (object)poz);
+                    lines.Add(line);
                 }
+
+                var totalQty = lines.Sum(l => l.Quantity);
+                var realizedQty = lines.Sum(l => l.QuantityRealized ?? 0m);
+                var remainingQty = lines.Sum(l => l.QuantityRemaining ?? 0m);
+                var header = new CustomerOrderDto();
+                OrderReader.EnrichHeader(header, (object)zamowienie);
 
                 return (CustomerOrderRealizationDto?)new CustomerOrderRealizationDto
                 {
@@ -854,9 +858,11 @@ public class CustomerOrdersController : ControllerBase
                     OrderNumber = orderNumber,
                     TotalQuantity = totalQty,
                     RealizedQuantity = realizedQty,
-                    RemainingQuantity = totalQty - realizedQty,
-                    RealizationPercent = totalQty > 0 ? Math.Round((realizedQty / totalQty) * 100, 2) : 0,
-                    IsFullyRealized = totalQty > 0 && realizedQty >= totalQty
+                    RemainingQuantity = remainingQty,
+                    RealizationPercent = header.RealizationPercent
+                                         ?? (totalQty > 0 ? Math.Round((realizedQty / totalQty) * 100, 2) : 0),
+                    IsFullyRealized = lines.Count > 0 && lines.All(l => (l.QuantityRemaining ?? 0m) <= 0m),
+                    Lines = lines
                 };
             });
 
@@ -1045,7 +1051,14 @@ public class CustomerOrdersController : ControllerBase
                 DepositValue = DynamicPropertyHelper.GetNullableDecimal(dane, "WartoscKaucji"),
                 DepositCurrency = DynamicPropertyHelper.GetString(dane, "WalutaKaucji", "Symbol")
             });
+
+            // Product, unit, prices, VAT, realization (StanRealizacjiZamowienia / IloscDoRealizacji) and reservation
+            // (Rezerwacja) from the real PozycjaDokumentu members.
+            OrderReader.EnrichLine(dto.Items[^1], (object)poz);
         }
+
+        // Totals, currency, issue date, status, timestamps and realization from the real Dokument members.
+        OrderReader.EnrichHeader(dto, (object)zamowienie);
 
         return dto;
     }

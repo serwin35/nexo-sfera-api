@@ -160,8 +160,13 @@ public class CustomerOrderDto
     // Items
     public List<CustomerOrderItemDto> Items { get; set; } = new();
 
+    /// <summary>Realization of the whole order (Dokument.StanRealizacjiZamowienia.ProcentowyStanRealizacji as 0..100).</summary>
+    public decimal? RealizationPercent { get; set; }
+
     // Timestamps
+    /// <summary>Naglowek.Utworzono (local time).</summary>
     public DateTime? CreatedAt { get; set; }
+    /// <summary>Naglowek.Zmieniono (local time).</summary>
     public DateTime? ModifiedAt { get; set; }
 }
 
@@ -183,11 +188,30 @@ public class CustomerOrderItemDto
     public string? Description { get; set; }
 
     // Quantity
+    /// <summary>Ordered quantity in the line unit (<see cref="Unit"/>).</summary>
     public decimal Quantity { get; set; }
+    /// <summary>Realized quantity in the line unit (StanRealizacjiZamowienia.ZrealizowanaIlosc converted from the base unit).</summary>
     public decimal? QuantityRealized { get; set; }
+    /// <summary>Quantity still to realize in the line unit (IloscDoRealizacji.PozostalaIlosc converted from the base unit).</summary>
     public decimal? QuantityRemaining { get; set; }
     public string Unit { get; set; } = "szt.";
     public int? UnitId { get; set; }
+    /// <summary>Ordered quantity in the product base (stock) unit (IloscWJednostceBazowej).</summary>
+    public decimal? QuantityInBaseUnit { get; set; }
+    /// <summary>Symbol of the product base unit.</summary>
+    public string? BaseUnit { get; set; }
+    /// <summary>StanRealizacjiZamowienia.ZrealizowanaIlosc (base unit).</summary>
+    public decimal? RealizedQuantityInBaseUnit { get; set; }
+    /// <summary>IloscDoRealizacji.PozostalaIlosc (base unit); IloscWJednostceBazowej - realized when the line has no such record.</summary>
+    public decimal? RemainingQuantityInBaseUnit { get; set; }
+    /// <summary>StanRealizacjiZamowienia.ProcentowyStanRealizacji as 0..100.</summary>
+    public decimal? RealizationPercent { get; set; }
+    /// <summary>StanRealizacjiZamowienia.DataOstatniejRealizacji.</summary>
+    public DateTime? LastRealizationDate { get; set; }
+    /// <summary>Numbers of the documents realizing this line, as Nexo formats them (NumeryDokumentowRealizujacych).</summary>
+    public string? RealizingDocumentNumbers { get; set; }
+    /// <summary>IloscDoRealizacji.BlokujRealizacje: realization of the order is blocked.</summary>
+    public bool IsRealizationBlocked { get; set; }
 
     // Prices
     public decimal PriceNet { get; set; }
@@ -208,8 +232,16 @@ public class CustomerOrderItemDto
     public decimal ValueGross { get; set; }
 
     // Reservation
+    /// <summary>True when the line has an open reservation (Rezerwacja.Ilosc - IloscZrealizowana &gt; 0).</summary>
     public bool IsReserved { get; set; }
+    /// <summary>Open reserved quantity in the line unit.</summary>
     public decimal? ReservedQuantity { get; set; }
+    /// <summary>Open reserved quantity in the stock unit (Rezerwacja.Ilosc - Rezerwacja.IloscZrealizowana).</summary>
+    public decimal? ReservedQuantityInBaseUnit { get; set; }
+    /// <summary>"stock" (Rezerwacja.Ilosciowa) or "delivery" reservation; null without a reservation.</summary>
+    public string? ReservationKind { get; set; }
+    /// <summary>Rezerwacja.Termin (reservation expiry).</summary>
+    public DateTime? ReservationExpiresAt { get; set; }
 
     /// <summary>
     /// Deposit (kaucja) value (SDK 60.0.0: PozycjaZamowieniaWysylkowego.WartoscKaucji)
@@ -234,5 +266,7 @@ public class CustomerOrderRealizationDto
     public decimal RemainingQuantity { get; set; }
     public decimal RealizationPercent { get; set; }
     public bool IsFullyRealized { get; set; }
+    /// <summary>Per-line realization (quantities in the line unit and in the base unit).</summary>
+    public List<CustomerOrderItemDto> Lines { get; set; } = new();
     public List<RelatedDocumentDto>? RealizingDocuments { get; set; }
 }
