@@ -174,7 +174,9 @@ public static class CustomerReader
         }
 
         dto.CountryEuCode = countryEuCode;
-        dto.GLN = SdkMember.Read(() => adres.GLN, null);
+        // Adres.GLN exists from SDK 61.0; read it by name so the bridge still builds and runs on a 60.x installation
+        // (null there).
+        dto.GLN = DynamicPropertyHelper.GetString(adres, "GLN");
         return dto;
     }
 
