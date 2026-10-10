@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-10) - build against SDK 60.x
+- **Customers, address `gln`.** `Adres.GLN` was read as a typed member, which exists only from SDK 61.0, so the bridge
+  did not compile against a 60.x SDK (`CS1061: 'Adres' does not contain a definition for 'GLN'`). It is now read by
+  name: the value on 61.x, `null` on 60.x. No other member added since #20 is missing in SDK 60.
+
 ### Fixed (2026-10-09) - SDK field mapping audit (members that do not exist in SDK 61.1)
 All fixes use typed, compile-checked readers/writers (`Helpers/ProductReader`, `ProductWriter`, `CustomerReader`,
 `OrderReader`, `DocumentReader`); old JSON fields keep their names, new fields are additive.
