@@ -379,8 +379,9 @@ public static class PriceListReader
             QuantityTierCount = isMain && tierCounts.TryGetValue(productId, out var tiers) ? tiers : 0,
             UnitId = Read(() => p.IdJednostkiMiaryAsortymentu, 0),
             UnitSymbol = Read(() => p.SymbolJednostkiMiary, null),
-            PriceNet = Read(() => p.CenaNetto, 0m),
-            PriceGross = Read(() => p.CenaBrutto, 0m),
+            // No fallback: a failed price read must fail the request, never come back as a valid 0.00 price.
+            PriceNet = p.CenaNetto,
+            PriceGross = p.CenaBrutto,
             CurrencySymbol = Read(() => p.SymbolWaluty, null),
             CurrencyPrecision = Read(() => p.PrecyzjaWaluty, 2),
             VatRateSymbol = string.IsNullOrWhiteSpace(vatSymbol) ? null : vatSymbol,

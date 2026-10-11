@@ -25,3 +25,9 @@ operator, warehouse, branch) from the API key claims on every request. Treat the
   `documentIdsToSettle` on payments.
 - Fiscal and accounting writes (FS, PA, FZ, KP/KW/BP/BW, KSeF import) stay all-or-nothing, run in a single SDK transaction, and
   do not retry on their own.
+
+## Reads that clients act on
+
+- A field that clients use to clear or overwrite their data (prices, e-mail, contacts, supplier ids, stock) never falls
+  back to a default (`0`, `null`, `[]`) when the SDK read fails. The request fails, or the field is left out of the
+  response. A failed lookup is never cached through `GetTenantState`.

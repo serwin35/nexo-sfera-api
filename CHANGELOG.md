@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-11) - failed reads no longer look like real values
+- **Customers, contact kinds.** A failed read of the default contact kinds was cached for the tenant as "no kinds"
+  until reconnect, so every customer came back with `email: null` and `emails: []`. WolfFire reads `null` as "e-mail
+  removed in nexo" and clears the contact (and then Google Contacts). The lookup now throws, so nothing is cached and
+  the request fails.
+- **Customers, contacts.** A failed read of `Podmiot.Kontakty` was returned as an empty list. It now fails the card.
+- **Customers, `full=true`.** A card that cannot be mapped is returned in the light list shape (`id`, `name`, `taxId`,
+  `phone`, `isActive`, `contractorType`) instead of a full card with empty `email`, `regon`, `krs`, ... A client keeps
+  the values it has.
+- **Price lists, prices.** A failed read of `CenaNetto`/`CenaBrutto` became a valid `0.00`. The request now fails.
+
 ### Fixed (2026-10-10) - build against SDK 60.x
 - **Customers, address `gln`.** `Adres.GLN` was read as a typed member, which exists only from SDK 61.0, so the bridge
   did not compile against a 60.x SDK (`CS1061: 'Adres' does not contain a definition for 'GLN'`). It is now read by

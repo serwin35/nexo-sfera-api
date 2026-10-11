@@ -1029,7 +1029,9 @@ public class CustomersController : ControllerBase
                     .Take(query.PageSize)
                     .ToList();
 
-                var items = new List<CustomerFullListItemDto>(pageRows.Count);
+                // object: a card that cannot be mapped is returned in the light shape, without the full-card keys, so a
+                // client keeps its stored e-mail, REGON, KRS... instead of reading them as cleared (null).
+                var items = new List<object>(pageRows.Count);
                 foreach (var podmiot in pageRows)
                 {
                     try
@@ -1042,12 +1044,11 @@ public class CustomersController : ControllerBase
                     {
                         // Never drop a contractor from a sync page: fall back to the light fields.
                         _logger.LogWarning(ex, "Full card of customer {Id} could not be mapped; returning the light fields", podmiot.Id);
-                        items.Add(new CustomerFullListItemDto
+                        items.Add(new CustomerListItemDto
                         {
                             Id = podmiot.Id,
                             Name = podmiot.NazwaSkrocona ?? string.Empty,
-                            ShortName = podmiot.NazwaSkrocona ?? string.Empty,
-                            NIP = podmiot.NIP,
+                            TaxId = podmiot.NIP,
                             Phone = podmiot.Telefon,
                             IsActive = podmiot.Aktywny,
                             ContractorType = (ContractorType)podmiot.RodzajKontrahenta,
@@ -1055,7 +1056,7 @@ public class CustomersController : ControllerBase
                     }
                 }
 
-                return new PagedResponse<CustomerFullListItemDto>
+                return new PagedResponse<object>
                 {
                     Data = items,
                     Page = query.Page,
