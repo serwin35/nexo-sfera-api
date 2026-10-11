@@ -28,15 +28,17 @@ public static class CustomerReader
     /// <summary>
     /// Reads the default contact kinds. Callers cache the result per tenant through
     /// <c>ISferaService.GetTenantState</c> (never in a static field).
+    /// A read failure throws instead of returning empty ids: an empty result would be cached until reconnect and every
+    /// customer would report no e-mail, which clients read as "e-mail removed in nexo". A throwing factory caches nothing.
     /// </summary>
     public static ContactKinds LoadContactKinds(Uchwyt sfera)
     {
-        var defaults = SdkMember.Read(() => sfera.RodzajeKontaktu().DaneDomyslne, null);
-        if (defaults == null) return new ContactKinds();
+        var defaults = sfera.RodzajeKontaktu().DaneDomyslne
+                       ?? throw new InvalidOperationException("Default contact kinds (RodzajeKontaktu.DaneDomyslne) are not available.");
 
         return new ContactKinds
         {
-            EmailId = SdkMember.Read<int?>(() => defaults.Email?.Id, null),
+            EmailId = defaults.Email?.Id ?? throw new InvalidOperationException("The default e-mail contact kind is not available."),
             PhoneId = SdkMember.Read<int?>(() => defaults.Telefon?.Id, null),
             WebsiteId = SdkMember.Read<int?>(() => defaults.StronaInternetowa?.Id, null),
         };
@@ -110,7 +112,9 @@ public static class CustomerReader
         dto.FirstName = osoba == null ? null : SdkMember.Text(() => osoba.Imie);
         dto.LastName = osoba == null ? null : SdkMember.Text(() => osoba.Nazwisko);
 
-        var contacts = SdkMember.Read(() => podmiot.Kontakty?.Where(k => k != null).ToList(), null) ?? new List<Kontakt>();
+        // No fallback: an unreadable collection must not become "no contacts" (clients clear the stored e-mail on null).
+        // The exception fails this card; the full list then returns the contractor with the light fields only.
+        var contacts = podmiot.Kontakty?.Where(k => k != null).ToList() ?? new List<Kontakt>();
         dto.Email = Contact(contacts, kinds.EmailId);
         dto.Emails = Contacts(contacts, kinds.EmailId);
         dto.Phone = SdkMember.Text(() => podmiot.Telefon) ?? Contact(contacts, kinds.PhoneId);
