@@ -250,7 +250,7 @@ public class UpdateProductResultDto : ProductDto
 /// <summary>Outcome of one field of a product update.</summary>
 public class ProductFieldResultDto
 {
-    /// <summary>JSON name of the request field (name, description, ean, pkWiU, weight, volume).</summary>
+    /// <summary>JSON name of the request field (symbol, name, description, ean, pkWiU, weight, volume).</summary>
     public string Field { get; set; } = string.Empty;
     /// <summary>"updated" or "unchanged" (the value already matched).</summary>
     public string Status { get; set; } = string.Empty;

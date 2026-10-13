@@ -51,6 +51,14 @@ public class CreateProductRequest
 /// </summary>
 public class UpdateProductRequest
 {
+    /// <summary>
+    /// Symbol (Asortyment.Symbol). Must not be empty or contain whitespace; a symbol already used by another product is
+    /// rejected. The card keeps its id, so documents, stock and price list positions stay attached. Clients that match
+    /// products by symbol (shop references, printed labels) must follow the change themselves.
+    /// </summary>
+    [MaxLength(50)]
+    public string? Symbol { get; set; }
+
     /// <summary>Product name (Asortyment.Nazwa). Must not be empty.</summary>
     [MaxLength(200)]
     public string? Name { get; set; }

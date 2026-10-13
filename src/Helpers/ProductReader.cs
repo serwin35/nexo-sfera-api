@@ -132,6 +132,17 @@ public static class ProductReader
     public static List<(string Code, bool IsPrimary)> BarcodesOf(JednostkaMiaryAsortymentu unit) =>
         Barcodes(unit).Select(c => (c.Code, c.IsPrimary)).ToList();
 
+    /// <summary>Ids of products whose symbol equals <paramref name="symbol"/>, one SQL query (recycle bin not included).</summary>
+    public static List<int> FindProductIdsBySymbol(Uchwyt sfera, string symbol)
+    {
+        var trimmed = symbol.Trim();
+        return sfera.Asortymenty().Dane.Wszystkie()
+            .Where(a => a.Symbol == trimmed)
+            .Select(a => a.Id)
+            .OrderBy(id => id)
+            .ToList();
+    }
+
     /// <summary>Ids of products (any unit) having a barcode equal to <paramref name="code"/>, one SQL query.</summary>
     public static List<int> FindProductIdsByBarcode(Uchwyt sfera, string code)
     {

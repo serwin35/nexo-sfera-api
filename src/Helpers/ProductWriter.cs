@@ -58,6 +58,18 @@ public static class ProductWriter
             errors.Add("name: must not be empty.");
         }
 
+        if (request.Symbol != null)
+        {
+            if (string.IsNullOrWhiteSpace(request.Symbol))
+            {
+                errors.Add("symbol: must not be empty.");
+            }
+            else if (request.Symbol.Trim().Any(char.IsWhiteSpace))
+            {
+                errors.Add("symbol: must not contain whitespace.");
+            }
+        }
+
         if (request.EAN != null)
         {
             if (string.IsNullOrWhiteSpace(request.EAN))
@@ -77,7 +89,7 @@ public static class ProductWriter
 
         if (!HasAnyWritableField(request) && errors.Count == 0)
         {
-            errors.Add("No fields to update. Writable fields: name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume.");
+            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume.");
         }
 
         return errors;
@@ -91,6 +103,11 @@ public static class ProductWriter
     {
         var outcome = new Outcome();
         var dane = product.Dane;
+
+        if (request.Symbol != null)
+        {
+            ApplySymbol(sfera, dane, request.Symbol.Trim(), outcome);
+        }
 
         if (request.Name != null)
         {
@@ -129,7 +146,7 @@ public static class ProductWriter
     }
 
     private static bool HasAnyWritableField(UpdateProductRequest request) =>
-        request.Name != null || request.Description != null || request.EAN != null || request.PKWiU != null
+        request.Symbol != null || request.Name != null || request.Description != null || request.EAN != null || request.PKWiU != null
         || request.Weight.HasValue || request.Volume.HasValue;
 
     private static void SetText(Outcome outcome, string field, Func<string?> get, Action<string> set, string value)
@@ -150,6 +167,31 @@ public static class ProductWriter
         {
             outcome.Errors.Add($"{field}: Nexo rejected the value ({ex.Message}).");
         }
+    }
+
+    /// <summary>
+    /// Sets <c>Asortyment.Symbol</c>. A symbol used by another product is refused here with that product's id, so the client
+    /// gets an actionable message instead of a failed save. The lookup goes through <c>Dane.Wszystkie()</c>, which does not
+    /// see products in the recycle bin; those are left to the save-time validation of Nexo.
+    /// </summary>
+    private static void ApplySymbol(Uchwyt sfera, Asortyment dane, string symbol, Outcome outcome)
+    {
+        var current = dane.Symbol;
+        if (string.Equals(current, symbol, StringComparison.Ordinal))
+        {
+            outcome.Fields.Add(Result("symbol", Unchanged, current, symbol));
+            return;
+        }
+
+        var owners = ProductReader.FindProductIdsBySymbol(sfera, symbol).Where(id => id != dane.Id).ToList();
+        if (owners.Count > 0)
+        {
+            outcome.Errors.Add($"symbol: {symbol} already belongs to product(s) {string.Join(", ", owners)}.");
+            return;
+        }
+
+        dane.Symbol = symbol;
+        outcome.Fields.Add(Result("symbol", Updated, current, symbol));
     }
 
     /// <summary>
