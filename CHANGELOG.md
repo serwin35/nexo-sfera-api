@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-13) - product symbol change
+- **Products, `PUT /api/products/{id}` `symbol`.** Changes `Asortyment.Symbol` in the same all-or-nothing update as the
+  other fields, reported in `fieldResults` (`updated` / `unchanged`). Empty or whitespace symbols return 400, and so does
+  a symbol already used by another product (`symbol: X already belongs to product(s) 123`); products in the recycle bin
+  are not visible to that check and are left to Nexo's own validation on save. The card keeps its id, so documents,
+  stock and price list positions stay attached. Used by WolfFire to renumber symbols that break its numbering (one
+  number per product, supplier + group prefix) instead of editing them one by one in Subiekt.
+
 ### Fixed (2026-10-11) - failed reads no longer look like real values
 - **Customers, contact kinds.** A failed read of the default contact kinds was cached for the tenant as "no kinds"
   until reconnect, so every customer came back with `email: null` and `emails: []`. WolfFire reads `null` as "e-mail

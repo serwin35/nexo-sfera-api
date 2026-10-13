@@ -408,7 +408,8 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
 - `GET /api/products/{id}`: `ean` = podstawowy kod kreskowy jednostki podstawowej (z fallbackiem), `eanUnitSymbol`,
   `barcodes[]`; `units[].barcode` to nadal kod opakowania zbiorczego, kody jednostki są w `units[].primaryBarcode` /
   `units[].barcodes`. `isActive` = towar nie jest w koszu.
-- `PUT /api/products/{id}` zapisuje `name`, `description`, `ean` (+ `eanUnitSymbol`), `pkWiU`, `weight` (kg), `volume`;
+- `PUT /api/products/{id}` zapisuje `symbol` (unikalny; kartoteka zachowuje id), `name`, `description`, `ean`
+  (+ `eanUnitSymbol`), `pkWiU`, `weight` (kg), `volume`;
   `priceNet`, `vatRate`, `isActive` → `400` (nic nie jest zapisywane). Odpowiedź ma `data.fieldResults[]`.
 - `GET /api/customers?full=true&pageSize=100` zwraca pełną kartotekę na każdej pozycji (max `pageSize` 200).
 - `GET /api/customer-orders/{id}`: `quantityRealized` / `quantityRemaining` / `reservedQuantity` z SDK
