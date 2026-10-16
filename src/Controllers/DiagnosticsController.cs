@@ -2113,7 +2113,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                                     if (numEx.ToString().Contains("TransakcjaVAT"))
                                     {
                                         stepResults["TransakcjaVAT_Error"] = true;
-                                        stepResults["TransakcjaVAT_FullError"] = numEx.ToString().Substring(0, Math.Min(2000, numEx.ToString().Length));
+                                        stepResults["TransakcjaVAT_FullError"] = "Diagnostic operation failed.";
                                     }
                                 }
 
@@ -2132,7 +2132,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                         if (createEx.ToString().Contains("TransakcjaVAT") || createEx.ToString().Contains("IdWInstancji"))
                         {
                             stepResults["TransakcjaVAT_Error"] = true;
-                            stepResults["TransakcjaVAT_FullError"] = createEx.ToString().Substring(0, Math.Min(2000, createEx.ToString().Length));
+                            stepResults["TransakcjaVAT_FullError"] = "Diagnostic operation failed.";
                         }
 
                         // Step 3b: Fallback to UtworzPrzyjecieZewnetrzne

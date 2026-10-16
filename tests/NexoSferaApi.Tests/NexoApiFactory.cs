@@ -13,6 +13,23 @@ public sealed class NexoApiFactory : WebApplicationFactory<Program>
 {
     public const string ApiKey = "test-api-key-for-contract-tests";
 
+    private readonly bool _diagnosticsEnabled;
+    private readonly bool _diagnosticWritesEnabled;
+    private readonly bool _swaggerEnabled;
+    private readonly bool _connectionWritesEnabled;
+
+    public NexoApiFactory(
+        bool diagnosticsEnabled = false,
+        bool diagnosticWritesEnabled = false,
+        bool swaggerEnabled = false,
+        bool connectionWritesEnabled = false)
+    {
+        _diagnosticsEnabled = diagnosticsEnabled;
+        _diagnosticWritesEnabled = diagnosticWritesEnabled;
+        _swaggerEnabled = swaggerEnabled;
+        _connectionWritesEnabled = connectionWritesEnabled;
+    }
+
     static NexoApiFactory()
     {
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Testing");
@@ -31,10 +48,10 @@ public sealed class NexoApiFactory : WebApplicationFactory<Program>
                 ["ApiKeys:Keys:0:Key"] = ApiKey,
                 ["ApiKeys:Keys:0:Name"] = "Contract test",
                 ["ApiKeys:Keys:0:IsActive"] = "true",
-                ["Diagnostics:Enabled"] = "false",
-                ["Diagnostics:WriteEnabled"] = "false",
-                ["Settings:ConnectionWriteEnabled"] = "false",
-                ["Swagger:Enabled"] = "false"
+                ["Diagnostics:Enabled"] = _diagnosticsEnabled.ToString(),
+                ["Diagnostics:WriteEnabled"] = _diagnosticWritesEnabled.ToString(),
+                ["Settings:ConnectionWriteEnabled"] = _connectionWritesEnabled.ToString(),
+                ["Swagger:Enabled"] = _swaggerEnabled.ToString()
             });
         });
         builder.ConfigureTestServices(services =>
