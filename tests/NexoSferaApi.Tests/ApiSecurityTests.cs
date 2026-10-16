@@ -5,8 +5,10 @@ using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using NexoSferaApi.Filters;
+using NexoSferaApi.Middleware;
 using Xunit;
 
 namespace NexoSferaApi.Tests;
@@ -55,14 +57,68 @@ public sealed class ApiSecurityTests(NexoApiFactory factory) : IClassFixture<Nex
     public async Task DisabledFlagsHideDiagnosticsSettingsWritesAndSwaggerInTestingEnvironment()
     {
         var diagnostics = await _authenticatedClient.GetAsync("/api/diagnostics/services");
+        var diagnosticGetWithSideEffects = await _authenticatedClient.GetAsync("/api/diagnostics/test-pz-creation-methods");
         var settingsWrite = await _authenticatedClient.PutAsync("/api/settings/connection", content: null);
         var swaggerJson = await _authenticatedClient.GetAsync("/swagger/v1/swagger.json");
         var root = await _authenticatedClient.GetAsync("/");
 
         Assert.Equal(HttpStatusCode.NotFound, diagnostics.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, diagnosticGetWithSideEffects.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, settingsWrite.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, swaggerJson.StatusCode);
         Assert.Equal(HttpStatusCode.NotFound, root.StatusCode);
+    }
+
+    [Fact]
+    public async Task EnabledSwaggerAndDiagnosticsStillRequireAnApiKey()
+    {
+        using var enabledFactory = new NexoApiFactory(diagnosticsEnabled: true, swaggerEnabled: true);
+        var anonymousClient = enabledFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        var authenticatedClient = CreateAuthenticatedClient(enabledFactory);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymousClient.GetAsync("/api/diagnostics/services")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymousClient.GetAsync("/swagger/v1/swagger.json")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await authenticatedClient.GetAsync("/swagger/v1/swagger.json")).StatusCode);
+        Assert.NotEqual(HttpStatusCode.NotFound, (await authenticatedClient.GetAsync("/api/diagnostics/services")).StatusCode);
+    }
+
+    [Fact]
+    public async Task EnabledWriteFlagsAllowOnlyTheirAuthenticatedRouteCategories()
+    {
+        using var enabledFactory = new NexoApiFactory(
+            diagnosticsEnabled: true,
+            diagnosticWritesEnabled: true,
+            connectionWritesEnabled: true);
+        var authenticatedClient = CreateAuthenticatedClient(enabledFactory);
+
+        var diagnosticRead = await authenticatedClient.GetAsync("/api/diagnostics/services");
+        var diagnosticWrite = await authenticatedClient.GetAsync("/api/diagnostics/test-pz-creation-methods");
+        var connectionWrite = await authenticatedClient.PutAsync("/api/settings/connection", content: null);
+
+        Assert.NotEqual(HttpStatusCode.NotFound, diagnosticRead.StatusCode);
+        Assert.NotEqual(HttpStatusCode.NotFound, diagnosticWrite.StatusCode);
+        Assert.NotEqual(HttpStatusCode.NotFound, connectionWrite.StatusCode);
+    }
+
+    [Fact]
+    public async Task DiagnosticUnhandledExceptionsDoNotExposeTechnicalDetails()
+    {
+        var middleware = new ErrorHandlingMiddleware(
+            _ => throw new Exception("private SDK connection details"),
+            factory.Services.GetRequiredService<ILogger<ErrorHandlingMiddleware>>(),
+            factory.Services.GetRequiredService<IWebHostEnvironment>());
+        var context = new DefaultHttpContext();
+        context.Request.Path = "/api/diagnostics/services";
+        context.Response.Body = new MemoryStream();
+
+        await middleware.InvokeAsync(context);
+
+        context.Response.Body.Position = 0;
+        using var reader = new StreamReader(context.Response.Body);
+        var responseBody = await reader.ReadToEndAsync();
+        Assert.Equal(StatusCodes.Status500InternalServerError, context.Response.StatusCode);
+        Assert.DoesNotContain("private SDK connection details", responseBody, StringComparison.Ordinal);
+        Assert.DoesNotContain("InvalidOperationException", responseBody, StringComparison.Ordinal);
     }
 
     [Fact]

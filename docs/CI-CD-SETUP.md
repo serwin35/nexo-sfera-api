@@ -52,43 +52,12 @@ Store your SDK DLLs as a zip file on a private server/storage and configure secr
 2. **Upload** to your private storage (Azure Blob, S3, private server)
 
 3. **Configure GitHub Secrets**:
-   - `NEXO_SDK_URL` - Direct download URL for the SDK zip
-   - `NEXO_SDK_TOKEN` - (Optional) Bearer token for authentication
+   - `NEXO_SDK_ZIP_URL` - Direct download URL for the private SDK zip
+   - `NEXO_SDK_ZIP_TOKEN` - Bearer token for authentication
 
 4. **Use workflow**: `.github/workflows/build.yml`
 
-### Option 2: Self-Hosted Runner (Recommended for Production)
-
-Best for organizations with existing Windows infrastructure:
-
-1. **Setup Windows runner** with InsERT Nexo installed
-   - Install InsERT Nexo on the runner machine
-   - Configure runner with labels: `self-hosted`, `windows`, `nexo`
-
-2. **Configure SDK path** in workflow:
-   ```yaml
-   env:
-     NEXO_SDK_PATH: 'C:\Program Files\InsERT\nexo\SDK'
-   ```
-
-3. **Use workflow**: `.github/workflows/build-selfhosted.yml`
-
-### Option 3: GitHub Artifacts Cache
-
-For smaller teams, cache SDK as encrypted artifact:
-
-1. **Create encrypted SDK archive**:
-   ```powershell
-   # Requires: Install-Module -Name 7Zip4Powershell
-   $password = Read-Host -AsSecureString "Enter password"
-   Compress-7Zip -Path "docs/nexoSDK_60.1.1.9292\Bin\InsERT.*.dll" `
-                 -ArchiveFileName "nexo-sdk.7z" `
-                 -SecurePassword $password
-   ```
-
-2. **Store password** in GitHub Secret: `SDK_ARCHIVE_PASSWORD`
-
-3. **Modify workflow** to decrypt during build
+The workflow downloads the SDK only to build and test. It does not upload build artifacts or publish SDK DLLs. Self-hosted runners and the release workflow are not used; do not run public repository workflows on a machine with access to production Nexo.
 
 ## Required SDK DLLs
 
@@ -137,7 +106,7 @@ InsERT.Mox.Security.Sql.dll
 
 ### Error: Platform not supported
 - InsERT SDK requires Windows
-- Use `windows-latest` or self-hosted Windows runner
+- Use the GitHub-hosted `windows-latest` runner for public repository workflows
 - Ensure `RuntimeIdentifier` is set to `win-x64`
 
 ### Error: License issues
