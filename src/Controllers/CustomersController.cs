@@ -72,7 +72,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -235,7 +236,7 @@ public class CustomersController : ControllerBase
                         }
                         catch (Exception ex)
                         {
-                            results["PodmiotyDane"] = new { Found = false, Error = ex.Message };
+                            results["PodmiotyDane"] = new { Found = false, Error = "Diagnostic operation failed." };
                         }
                     }
                     else
@@ -245,7 +246,7 @@ public class CustomersController : ControllerBase
                 }
                 catch (Exception ex)
                 {
-                    results["PodmiotyManager"] = new { Found = false, Error = ex.Message };
+                    results["PodmiotyManager"] = new { Found = false, Error = "Diagnostic operation failed." };
                 }
 
                 return (object)results;
@@ -255,7 +256,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -312,7 +314,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        props[prop.Name] = $"Error: {ex.Message}";
+                        props[prop.Name] = "Diagnostic operation failed.";
                     }
                 }
 
@@ -333,7 +335,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -380,7 +383,7 @@ public class CustomersController : ControllerBase
                         }
                         catch (Exception ex)
                         {
-                            adresProps[prop.Name] = $"Error: {ex.Message}";
+                            adresProps[prop.Name] = "Diagnostic operation failed.";
                         }
                     }
                     result["AdresPodstawowy"] = new
@@ -441,7 +444,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -509,7 +513,7 @@ public class CustomersController : ControllerBase
                         }
                         catch (Exception ex)
                         {
-                            daneProps[prop.Name] = $"Error: {ex.Message}";
+                            daneProps[prop.Name] = "Diagnostic operation failed.";
                         }
                     }
                     result["DaneProperties"] = daneProps.OrderBy(x => x.Key).ToDictionary(x => x.Key, x => x.Value);
@@ -535,7 +539,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        result["AdresGlowny"] = $"Error: {ex.Message}";
+                        result["AdresGlowny"] = "Diagnostic operation failed.";
                     }
 
                     // Try Adresy collection on business object
@@ -563,7 +567,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        result["AdresyFromBO"] = $"Error: {ex.Message}";
+                        result["AdresyFromBO"] = "Diagnostic operation failed.";
                     }
 
                     // Try Kontakty
@@ -581,7 +585,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        result["Kontakty"] = $"Error: {ex.Message}";
+                        result["Kontakty"] = "Diagnostic operation failed.";
                     }
 
                     return (Status: 200, Data: (object)result);
@@ -597,7 +601,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -660,7 +665,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        properties[prop.Name] = new { Error = ex.Message };
+                        properties[prop.Name] = new { Error = "Diagnostic operation failed." };
                     }
                 }
 
@@ -682,7 +687,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -724,7 +730,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        data[managerName] = new { Success = false, Error = ex.Message, ExType = ex.GetType().Name };
+                        data[managerName] = new { Success = false, Error = "Diagnostic operation failed." };
                     }
                 }
 
@@ -735,7 +741,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -794,7 +801,7 @@ public class CustomersController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        properties[prop.Name] = $"Error: {ex.Message}";
+                        properties[prop.Name] = "Diagnostic operation failed.";
                     }
                 }
 
@@ -816,7 +823,8 @@ public class CustomersController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Customer diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
