@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
+using NexoSferaApi.Filters;
 
 namespace NexoSferaApi.Controllers;
 
@@ -64,7 +66,6 @@ public class SettingsController : ControllerBase
     /// Get API health and version info
     /// </summary>
     [HttpGet("info")]
-    [AllowAnonymous]
     [ProducesResponseType(typeof(ApiResponse<ApiInfoDto>), StatusCodes.Status200OK)]
     public ActionResult<ApiResponse<ApiInfoDto>> GetApiInfo()
     {
@@ -123,6 +124,7 @@ public class SettingsController : ControllerBase
     /// Reconnect to Sfera with current settings
     /// </summary>
     [HttpPost("connection/reconnect")]
+    [EnableRateLimiting("reconnect")]
     [ProducesResponseType(typeof(ApiResponse<ConnectionTestResultDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<ConnectionTestResultDto>>> Reconnect()
     {
@@ -157,6 +159,7 @@ public class SettingsController : ControllerBase
     /// Writes to appsettings.json in Development, returns instructions in Production
     /// </summary>
     [HttpPut("connection")]
+    [ConfigurationFlag("Settings:ConnectionWriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<UpdateSettingsResultDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     public ActionResult<ApiResponse<UpdateSettingsResultDto>> UpdateConnectionSettings(

@@ -7,7 +7,7 @@ Subiekt · Rachmistrz · Rewizor · Gratyfikant · Gestor
 
 [![.NET](https://img.shields.io/badge/.NET_8-512BD4?style=for-the-badge&logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
 [![C#](https://img.shields.io/badge/C%23-239120?style=for-the-badge&logo=csharp&logoColor=white)](https://docs.microsoft.com/en-us/dotnet/csharp/)
-[![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](http://localhost:5000/swagger)
+[![Swagger](https://img.shields.io/badge/Swagger-85EA2D?style=for-the-badge&logo=swagger&logoColor=black)](#-autentykacja)
 [![Windows](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 
 Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski@dmservice.pl
@@ -16,7 +16,7 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 
 ---
 
-> 🚀 **Swagger UI (pełny katalog endpointów):** http://localhost:5000/swagger
+> 🚀 **Swagger UI:** dostępny po włączeniu flagi `Swagger:Enabled` i uwierzytelnieniu kluczem API.
 > 🔑 Autoryzacja kluczem API — patrz [Autentykacja](#-autentykacja)
 > 📦 Wersja SDK: **nexo 61.1.0.9431** (`docs/nexoSDK_61.1.0.9431/`)
 
@@ -106,8 +106,8 @@ dotnet run --project src\NexoSferaApi.csproj  # build + start
 ```
 
 - API: `http://localhost:5000` (port: env `API_PORT` albo `Kestrel:Endpoints:Http:Url`)
-- Swagger UI: `http://localhost:5000/swagger`
-- Specyfikacja OpenAPI: `http://localhost:5000/swagger/v1/swagger.json`
+- Swagger UI i specyfikacja OpenAPI są domyślnie wyłączone. Aby je udostępnić,
+  ustaw `Swagger:Enabled=true`; żądania nadal wymagają klucza API.
 
 ### Release / publish
 
@@ -124,17 +124,20 @@ dotnet publish src\NexoSferaApi.csproj -c Release -o publish
 # DLL-e SDK z innej ścieżki (bez setup-sdk.ps1)
 dotnet build src\NexoSferaApi.csproj -p:NexoSdkPath="C:\Program Files (x86)\InsERT\nexo"
 
-# Tryb Development - aktywne endpointy debug/* i diagnostics
+# Tryb Development nie włącza diagnostyki automatycznie. Aby udostępnić endpointy debug/* i diagnostics,
+# jawnie ustaw Diagnostics:Enabled=true; endpointy zmieniające stan wymagają też Diagnostics:WriteEnabled=true.
 $env:ASPNETCORE_ENVIRONMENT="Development"; dotnet run --project src\NexoSferaApi.csproj
 ```
 
 ### Build w CI (GitHub Actions)
 
-`appsettings.json` **nie jest potrzebny do builda** — konfiguracja jest wyłącznie runtime'owa (env vars `SFERA_*`, `API_KEY`, `ApiKeys__Keys__0__Key`… albo `appsettings.Production.json` obok exe). Gotowe workflow: `.github/workflows/build.yml` (windows-latest, SDK z prywatnego zipa przez secret `NEXO_SDK_URL`) oraz `build-selfhosted.yml` (runner z zainstalowanym nexo). Szczegóły: `docs/CI-CD-SETUP.md`.
+`appsettings.json` **nie jest potrzebny do builda** — konfiguracja jest wyłącznie runtime'owa (env vars `SFERA_*`, `API_KEY`, `ApiKeys__Keys__0__Key`… albo `appsettings.Production.json` obok exe). Workflow `.github/workflows/build.yml` uruchamia build i testy na `windows-latest`, pobierając SDK z prywatnego zipa przez sekrety `NEXO_SDK_ZIP_URL` i `NEXO_SDK_ZIP_TOKEN`. Nie publikuje artefaktu z bibliotekami SDK. Runner self-hosted i workflow release zostały usunięte. Szczegóły: `docs/CI-CD-SETUP.md`.
 
 ## 🔐 Autentykacja
 
-Każde żądanie (poza `GET /api/health` i `GET /api/settings/info`) wymaga klucza API. Obsługiwane formy (w kolejności preferencji):
+Każde żądanie API wymaga klucza API poza anonimowym `GET /api/health`. Swagger i przekierowanie `/` są domyślnie ukryte; po jawnym włączeniu `Swagger:Enabled` również wymagają klucza API. Diagnostyka jest domyślnie wyłączona przez `Diagnostics:Enabled`; endpointy diagnostyczne zmieniające stan wymagają dodatkowo `Diagnostics:WriteEnabled`. Zapis konfiguracji połączenia wymaga `Settings:ConnectionWriteEnabled`.
+
+Obsługiwane formy klucza API (w kolejności preferencji):
 
 ```
 Authorization: Bearer {klucz-api}     # preferowana
@@ -240,12 +243,12 @@ SDK Sfery działa na **jednym dedykowanym wątku STA** — wszystkie operacje SD
 ### Diagnostyka połączenia
 
 - `GET /api/health` — status API (anonimowy)
-- `GET /api/health/sfera` — status połączenia ze Sferą
-- `POST /api/health/reconnect` — pełna rekonekcja (dispose + connect na wątku STA)
+- `GET /api/health/sfera` — status połączenia ze Sferą (wymaga klucza API)
+- `POST /api/health/reconnect` — pełna rekonekcja (wymaga klucza API; limit 2 żądań/minutę na adres IP)
 
 ## 📡 Moduły API
 
-Pełny, zawsze aktualny katalog **354 endpointów** znajdziesz w **Swagger UI** (`/swagger`). Przegląd modułów:
+Pełny katalog **354 endpointów** znajdziesz w **Swagger UI** (`/swagger`) po ustawieniu `Swagger:Enabled=true` i uwierzytelnieniu kluczem API. Przegląd modułów:
 
 | Domena | Moduły (route prefix) |
 |--------|----------------------|

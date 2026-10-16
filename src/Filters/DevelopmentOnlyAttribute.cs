@@ -4,16 +4,16 @@ using Microsoft.AspNetCore.Mvc.Filters;
 namespace NexoSferaApi.Filters;
 
 /// <summary>
-/// Restricts an endpoint or controller to the Development environment.
-/// Outside Development it returns 404 so the endpoint is indistinguishable from a missing route.
+/// Restricts diagnostic endpoints to an explicit configuration flag, independent of environment.
+/// Disabled endpoints return 404 so they are indistinguishable from missing routes.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method)]
 public class DevelopmentOnlyAttribute : Attribute, IResourceFilter
 {
     public void OnResourceExecuting(ResourceExecutingContext context)
     {
-        var env = context.HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
-        if (!env.IsDevelopment())
+        var configuration = context.HttpContext.RequestServices.GetRequiredService<IConfiguration>();
+        if (!configuration.GetValue<bool>("Diagnostics:Enabled"))
         {
             context.Result = new NotFoundResult();
         }

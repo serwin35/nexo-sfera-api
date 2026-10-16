@@ -32,7 +32,15 @@ public class ErrorHandlingMiddleware
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+            if (IsDiagnosticRequest(context.Request.Path))
+            {
+                _logger.LogError("Unhandled diagnostic request failed with exception type {ExceptionType}", ex.GetType().Name);
+            }
+            else
+            {
+                _logger.LogError(ex, "Unhandled exception occurred: {Message}", ex.Message);
+            }
+
             await HandleExceptionAsync(context, ex);
         }
     }
@@ -77,6 +85,11 @@ public class ErrorHandlingMiddleware
             )
         };
 
+        if (IsDiagnosticRequest(context.Request.Path))
+        {
+            response = ApiResponse<object>.Error("The diagnostic request failed.");
+        }
+
         context.Response.StatusCode = (int)statusCode;
 
         var options = new JsonSerializerOptions
@@ -85,6 +98,13 @@ public class ErrorHandlingMiddleware
         };
 
         await context.Response.WriteAsync(JsonSerializer.Serialize(response, options));
+    }
+
+    private static bool IsDiagnosticRequest(PathString requestPath)
+    {
+        return requestPath.StartsWithSegments("/api/health")
+            || requestPath.StartsWithSegments("/api/diagnostics")
+            || requestPath.Value?.Contains("/debug/", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private ApiResponse<object> CreateErrorResponse(string message, string detail, Exception ex)
