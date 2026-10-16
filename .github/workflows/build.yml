@@ -28,33 +28,31 @@ jobs:
 
     - name: Download InsERT SDK
       env:
-        SDK_DOWNLOAD_URL: ${{ secrets.NEXO_SDK_URL }}
-        SDK_DOWNLOAD_TOKEN: ${{ secrets.NEXO_SDK_TOKEN }}
+        SDK_DOWNLOAD_URL: ${{ secrets.NEXO_SDK_ZIP_URL }}
+        SDK_DOWNLOAD_TOKEN: ${{ secrets.NEXO_SDK_ZIP_TOKEN }}
       run: |
         # Create SDK directory
         New-Item -ItemType Directory -Path "src\lib\nexo-sdk" -Force | Out-Null
 
-        # Option 1: Download from private URL (recommended)
         if ($env:SDK_DOWNLOAD_URL) {
-          Write-Host "Downloading SDK from private URL..."
           $headers = @{}
           if ($env:SDK_DOWNLOAD_TOKEN) {
             $headers["Authorization"] = "Bearer $env:SDK_DOWNLOAD_TOKEN"
           }
 
           $zipPath = "nexo-sdk.zip"
-          Invoke-WebRequest -Uri $env:SDK_DOWNLOAD_URL -OutFile $zipPath -Headers $headers
-          Expand-Archive -Path $zipPath -DestinationPath "src\lib\nexo-sdk" -Force
-          Remove-Item $zipPath
-          Write-Host "SDK downloaded and extracted successfully"
-        }
-        # Option 2: Use cached SDK from artifacts
-        elseif (Test-Path "docs\nexoSDK_61.1.0.9431\Bin") {
-          Write-Host "Using local SDK..."
-          .\scripts\setup-sdk.ps1
+          try {
+            Invoke-WebRequest -Uri $env:SDK_DOWNLOAD_URL -OutFile $zipPath -Headers $headers -ErrorAction Stop
+            Expand-Archive -Path $zipPath -DestinationPath "src\lib\nexo-sdk" -Force
+          } catch {
+            Write-Error "SDK download or extraction failed. Verify the private SDK secrets and archive."
+            exit 1
+          } finally {
+            Remove-Item $zipPath -ErrorAction SilentlyContinue
+          }
         }
         else {
-          Write-Error "No SDK source available. Please configure NEXO_SDK_URL secret."
+          Write-Error "No SDK source available. Configure the private SDK secrets."
           exit 1
         }
       shell: pwsh
@@ -65,15 +63,11 @@ jobs:
     - name: Build
       run: dotnet build src/NexoSferaApi.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-restore
 
+    - name: Test HTTP security and route contracts
+      run: dotnet test tests/NexoSferaApi.Tests/NexoSferaApi.Tests.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --verbosity normal
+
     - name: Publish
       run: dotnet publish src/NexoSferaApi.csproj --configuration ${{ env.BUILD_CONFIGURATION }} --no-build --output ./publish
-
-    - name: Upload build artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: nexo-sfera-api-${{ github.sha }}
-        path: ./publish
-        retention-days: 30
 
   # Optional: Deploy to staging/production
   # deploy:

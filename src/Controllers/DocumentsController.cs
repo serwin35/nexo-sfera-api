@@ -128,7 +128,7 @@ public class DocumentsController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        properties[prop.Name] = new { Error = ex.Message };
+                        properties[prop.Name] = new { Error = "Diagnostic operation failed." };
                     }
                 }
 
@@ -153,7 +153,8 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Document diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -273,7 +274,7 @@ public class DocumentsController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        props[prop.Name] = new { Error = ex.Message, Source = "direct" };
+                        props[prop.Name] = new { Error = "Diagnostic operation failed.", Source = "direct" };
                     }
                 }
 
@@ -324,7 +325,8 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Document diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 

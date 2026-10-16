@@ -45,10 +45,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting EF6 config diagnostics");
+            _logger.LogError("Error getting EF6 config diagnostics (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error getting EF6 diagnostics",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -222,7 +222,7 @@ public class DiagnosticsController : ControllerBase
                         }
                         catch (Exception ex)
                         {
-                            results["IdWInstancji_GetInt32Error"] = ex.Message;
+                            results["IdWInstancji_GetInt32Error"] = "Diagnostic operation failed.";
                         }
                     }
                     else
@@ -272,7 +272,7 @@ public class DiagnosticsController : ControllerBase
             }
             catch (Exception sysEx)
             {
-                results["SystemDataSqlClient_Error"] = sysEx.Message;
+                results["SystemDataSqlClient_Error"] = "Diagnostic operation failed.";
             }
 
             results["Diagnosis"] = "Compare Microsoft.Data.SqlClient vs System.Data.SqlClient results. " +
@@ -283,10 +283,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error investigating TransakcjaVAT schema");
+            _logger.LogError("Error investigating TransakcjaVAT schema (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error investigating TransakcjaVAT schema",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -488,10 +488,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking SDK v59 schema");
+            _logger.LogError("Error checking SDK v59 schema (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error checking SDK v59 schema",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -609,7 +609,7 @@ public class DiagnosticsController : ControllerBase
                             }
                             catch (Exception ex)
                             {
-                                ((Dictionary<string, object?>)rowData[reader.GetName(i)]!)["GetBooleanError"] = ex.Message;
+                                ((Dictionary<string, object?>)rowData[reader.GetName(i)]!)["GetBooleanError"] = "Diagnostic operation failed.";
                             }
                         }
                     }
@@ -628,10 +628,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error testing BIT type mapping");
+            _logger.LogError("Error testing BIT type mapping (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error testing BIT type mapping",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -670,8 +670,8 @@ public class DiagnosticsController : ControllerBase
             {
                 providerComparison["Microsoft.Data.SqlClient"] = new Dictionary<string, object?>
                 {
-                    ["Error"] = ex.Message,
-                    ["InnerError"] = ex.InnerException?.Message
+                    ["Error"] = "Diagnostic operation failed.",
+                    ["InnerError"] = "Diagnostic operation failed."
                 };
             }
 
@@ -700,8 +700,8 @@ public class DiagnosticsController : ControllerBase
             {
                 providerComparison["System.Data.SqlClient"] = new Dictionary<string, object?>
                 {
-                    ["Error"] = ex.Message,
-                    ["InnerError"] = ex.InnerException?.Message
+                    ["Error"] = "Diagnostic operation failed.",
+                    ["InnerError"] = "Diagnostic operation failed."
                 };
             }
 
@@ -748,10 +748,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error tracing TransakcjaVAT reader");
+            _logger.LogError("Error tracing TransakcjaVAT reader (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error tracing TransakcjaVAT reader",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -995,7 +995,7 @@ public class DiagnosticsController : ControllerBase
             }
             catch (Exception ex)
             {
-                results["EF6CoreError"] = ex.Message;
+                results["EF6CoreError"] = "Diagnostic operation failed.";
             }
 
             // Check if there's a ModelDanychContainer type (EF6 ObjectContext)
@@ -1033,10 +1033,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error examining EF6 model");
+            _logger.LogError("Error examining EF6 model (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error examining EF6 model",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -1206,10 +1206,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error analyzing TransakcjaVAT column mismatch");
+            _logger.LogError("Error analyzing TransakcjaVAT column mismatch (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error analyzing column mismatch",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -1260,10 +1260,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting SDK structure");
+            _logger.LogError("Error getting SDK structure (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<SdkStructureResponse>.Error(
                 "Error analyzing SDK structure",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -1366,7 +1366,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                 }
                 catch (Exception ex)
                 {
-                    response.SchemaError = ex.Message;
+                    response.SchemaError = "Diagnostic operation failed.";
                 }
 
                 return (Found: true, Response: (ManagerDetailResponse?)response);
@@ -1381,10 +1381,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting manager details for {ManagerName}", managerName);
+            _logger.LogError("Error getting manager details for {ManagerName} (exception type: {ExceptionType})", managerName, ex.GetType().Name);
             return StatusCode(500, ApiResponse<ManagerDetailResponse>.Error(
                 $"Error analyzing manager '{managerName}'",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -1526,7 +1526,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                     }
                     catch (Exception ex)
                     {
-                        response.Data[prop.Name] = $"[Error: {ex.Message}]";
+                        response.Data[prop.Name] = $"[Error: {"Diagnostic operation failed."}]";
                     }
                 }
 
@@ -1547,10 +1547,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error exploring entity {Id} in {ManagerName}", id, managerName);
+            _logger.LogError("Error exploring entity {Id} in {ManagerName} (exception type: {ExceptionType})", id, managerName, ex.GetType().Name);
             return StatusCode(500, ApiResponse<EntityExplorerResponse>.Error(
                 $"Error exploring entity",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -1568,10 +1568,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error discovering services");
+            _logger.LogError("Error discovering services (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<List<ServiceInfo>>.Error(
                 "Error discovering services",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -1579,6 +1579,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// Try to instantiate a service by type name
     /// </summary>
     [HttpGet("services/try/{typeName}")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<ServiceInstanceResponse>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<ServiceInstanceResponse>>> TryGetService(string typeName)
     {
@@ -1675,7 +1676,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                 catch (Exception ex)
                 {
                     serviceResponse.Success = false;
-                    serviceResponse.Error = ex.InnerException?.Message ?? ex.Message;
+                    serviceResponse.Error = "Diagnostic operation failed.";
                 }
 
                 return serviceResponse;
@@ -1685,10 +1686,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error trying service {TypeName}", typeName);
+            _logger.LogError("Error trying service {TypeName} (exception type: {ExceptionType})", typeName, ex.GetType().Name);
             return StatusCode(500, ApiResponse<ServiceInstanceResponse>.Error(
                 $"Error trying service '{typeName}'",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -1847,7 +1848,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                         }
                         catch (Exception ex)
                         {
-                            info.SchemaError = ex.Message;
+                            info.SchemaError = "Diagnostic operation failed.";
                         }
                     }
                 }
@@ -1855,7 +1856,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
             catch (Exception ex)
             {
                 info.Available = false;
-                info.Error = ex.Message;
+                info.Error = "Diagnostic operation failed.";
             }
 
             managers.Add(info);
@@ -2021,6 +2022,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// This endpoint attempts document creation without saving to identify where errors occur
     /// </summary>
     [HttpGet("test-pz-creation")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreation()
     {
@@ -2068,7 +2070,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                     }
                     catch (Exception configEx)
                     {
-                        stepResults["Step2_GetConfig"] = "ERROR: " + configEx.Message;
+                        stepResults["Step2_GetConfig"] = "ERROR: " + "Diagnostic operation failed.";
                     }
 
                     // Step 3: Try to create PZ using Utworz(Konfiguracja)
@@ -2093,7 +2095,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                                 }
                                 catch (Exception setEx)
                                 {
-                                    stepResults["Step4_SetAspektFinansowy"] = "ERROR: " + setEx.Message;
+                                    stepResults["Step4_SetAspektFinansowy"] = "ERROR: " + "Diagnostic operation failed.";
                                 }
 
                                 // Step 5: Try to reserve number (this might trigger VAT loading)
@@ -2107,7 +2109,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                                 }
                                 catch (Exception numEx)
                                 {
-                                    stepResults["Step5_ReserveNumber"] = "ERROR: " + numEx.Message;
+                                    stepResults["Step5_ReserveNumber"] = "ERROR: " + "Diagnostic operation failed.";
                                     if (numEx.ToString().Contains("TransakcjaVAT"))
                                     {
                                         stepResults["TransakcjaVAT_Error"] = true;
@@ -2126,7 +2128,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                     }
                     catch (Exception createEx)
                     {
-                        stepResults["Step3_CreateWithConfig"] = "ERROR: " + createEx.Message;
+                        stepResults["Step3_CreateWithConfig"] = "ERROR: " + "Diagnostic operation failed.";
                         if (createEx.ToString().Contains("TransakcjaVAT") || createEx.ToString().Contains("IdWInstancji"))
                         {
                             stepResults["TransakcjaVAT_Error"] = true;
@@ -2145,7 +2147,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                         }
                         catch (Exception fallbackEx)
                         {
-                            stepResults["Step3b_FallbackCreate"] = "ERROR: " + fallbackEx.Message;
+                            stepResults["Step3b_FallbackCreate"] = "ERROR: " + "Diagnostic operation failed.";
                             if (fallbackEx.ToString().Contains("TransakcjaVAT"))
                             {
                                 stepResults["FallbackTransakcjaVAT_Error"] = true;
@@ -2155,7 +2157,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                 }
                 catch (Exception managerEx)
                 {
-                    stepResults["Step1_GetManager"] = "ERROR: " + managerEx.Message;
+                    stepResults["Step1_GetManager"] = "ERROR: " + "Diagnostic operation failed.";
                 }
 
                 return stepResults;
@@ -2165,13 +2167,12 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
-            results["OuterStackTrace"] = ex.StackTrace?.Substring(0, Math.Min(1000, ex.StackTrace?.Length ?? 0));
+            results["OuterError"] = "Diagnostic operation failed.";
             if (ex.ToString().Contains("TransakcjaVAT"))
             {
                 results["TransakcjaVAT_Error"] = true;
             }
-            _logger.LogError(ex, "Error in TestPzCreation diagnostic");
+            _logger.LogError("Error in TestPzCreation diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -2226,7 +2227,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                         {
                             configurations.Add(new Dictionary<string, object?>
                             {
-                                ["Error"] = itemEx.Message
+                                ["Error"] = "Diagnostic operation failed."
                             });
                         }
                     }
@@ -2245,10 +2246,10 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error listing document configurations");
+            _logger.LogError("Error listing document configurations (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<List<Dictionary<string, object?>>>.Error(
                 "Error listing configurations",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -2257,6 +2258,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
     /// WARNING: This modifies the system configuration!
     /// </summary>
     [HttpPost("disable-pz-financial-aspect")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> DisablePzFinancialAspect()
     {
@@ -2317,7 +2319,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                         }
                         catch (Exception paramEx)
                         {
-                            stepResults["ParametryKonfiguracji_Error"] = paramEx.Message;
+                            stepResults["ParametryKonfiguracji_Error"] = "Diagnostic operation failed.";
 
                             // Method 2: Try direct property
                             try
@@ -2327,7 +2329,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                             }
                             catch (Exception daneEx)
                             {
-                                stepResults["Dane_Error"] = daneEx.Message;
+                                stepResults["Dane_Error"] = "Diagnostic operation failed.";
                                 stepResults["Step2_ModifyConfig"] = "FAILED";
                             }
                         }
@@ -2356,13 +2358,13 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                         }
                         catch (Exception saveEx)
                         {
-                            stepResults["Step3_SaveConfig"] = "ERROR: " + saveEx.Message;
+                            stepResults["Step3_SaveConfig"] = "ERROR: " + "Diagnostic operation failed.";
                         }
                     }
                 }
                 catch (Exception findEx)
                 {
-                    stepResults["Step1_FindConfig"] = "ERROR: " + findEx.Message;
+                    stepResults["Step1_FindConfig"] = "ERROR: " + "Diagnostic operation failed.";
 
                     // The Znajdz might trigger the same VAT error
                     if (findEx.ToString().Contains("TransakcjaVAT"))
@@ -2384,7 +2386,7 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
                 }
                 catch (Exception verifyEx)
                 {
-                    stepResults["Step4_Verify"] = "ERROR: " + verifyEx.Message;
+                    stepResults["Step4_Verify"] = "ERROR: " + "Diagnostic operation failed.";
                 }
 
                 return stepResults;
@@ -2394,8 +2396,8 @@ FROM [ModelDanychContainer].[TransakcjeVAT]
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
-            _logger.LogError(ex, "Error disabling PZ financial aspect");
+            results["OuterError"] = "Diagnostic operation failed.";
+            _logger.LogError("Error disabling PZ financial aspect (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -2576,9 +2578,8 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["Error"] = ex.Message;
-            results["StackTrace"] = ex.StackTrace?.Substring(0, Math.Min(1000, ex.StackTrace?.Length ?? 0));
-            _logger.LogError(ex, "Error exploring PZ manager methods");
+            results["Error"] = "Diagnostic operation failed.";
+            _logger.LogError("Error exploring PZ manager methods (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -2587,6 +2588,7 @@ WHERE Symbol = 'PZ'",
     /// Test PZ creation with explicit date parameters to diagnose VAT initialization issues
     /// </summary>
     [HttpPost("test-pz-creation-with-dates")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreationWithDates(
         [FromQuery] DateTime? issueDate = null,
@@ -2643,14 +2645,14 @@ WHERE Symbol = 'PZ'",
                             pz.Dane.DataWydaniaWystawienia = effectiveIssueDate;
                             stepResults["SetDataWydaniaWystawienia"] = effectiveIssueDate.ToString("o");
                         }
-                        catch (Exception ex) { stepResults["DataWydaniaWystawienia_Error"] = ex.Message; }
+                        catch (Exception ex) { stepResults["DataWydaniaWystawienia_Error"] = "Diagnostic operation failed."; }
 
                         try
                         {
                             pz.Dane.DataWprowadzenia = effectiveIssueDate;
                             stepResults["SetDataWprowadzenia"] = effectiveIssueDate.ToString("o");
                         }
-                        catch (Exception ex) { stepResults["DataWprowadzenia_Error"] = ex.Message; }
+                        catch (Exception ex) { stepResults["DataWprowadzenia_Error"] = "Diagnostic operation failed."; }
 
                         // Try setting external document date (critical for VAT)
                         try
@@ -2660,7 +2662,7 @@ WHERE Symbol = 'PZ'",
                         }
                         catch (Exception ex)
                         {
-                            stepResults["DataDokumentuZewnetrznego_Error"] = ex.Message;
+                            stepResults["DataDokumentuZewnetrznego_Error"] = "Diagnostic operation failed.";
                             // Try alternative property names
                             try
                             {
@@ -2678,7 +2680,7 @@ WHERE Symbol = 'PZ'",
                                 pz.Dane.NumerZewnetrzny = externalDocNumber;
                                 stepResults["SetNumerZewnetrzny"] = externalDocNumber;
                             }
-                            catch (Exception ex) { stepResults["NumerZewnetrzny_Error"] = ex.Message; }
+                            catch (Exception ex) { stepResults["NumerZewnetrzny_Error"] = "Diagnostic operation failed."; }
                         }
 
                         stepResults["Step2_SetDates"] = "SUCCESS";
@@ -2694,7 +2696,7 @@ WHERE Symbol = 'PZ'",
                         }
                         catch (Exception numEx)
                         {
-                            stepResults["Step3_ReserveNumber"] = "ERROR: " + numEx.Message;
+                            stepResults["Step3_ReserveNumber"] = "ERROR: " + "Diagnostic operation failed.";
                             if (numEx.ToString().Contains("TransakcjaVAT"))
                             {
                                 stepResults["TransakcjaVAT_Error"] = true;
@@ -2722,13 +2724,13 @@ WHERE Symbol = 'PZ'",
                         }
                         catch (Exception propEx)
                         {
-                            stepResults["Step4_ListDaneProperties"] = "ERROR: " + propEx.Message;
+                            stepResults["Step4_ListDaneProperties"] = "ERROR: " + "Diagnostic operation failed.";
                         }
                     }
                 }
                 catch (Exception createEx)
                 {
-                    stepResults["Step1_CreateDocument"] = "ERROR: " + createEx.Message;
+                    stepResults["Step1_CreateDocument"] = "ERROR: " + "Diagnostic operation failed.";
                     stepResults["DocumentCreated"] = false;
 
                     if (createEx.ToString().Contains("TransakcjaVAT"))
@@ -2749,12 +2751,12 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
+            results["OuterError"] = "Diagnostic operation failed.";
             if (ex.ToString().Contains("TransakcjaVAT"))
             {
                 results["TransakcjaVAT_Error"] = true;
             }
-            _logger.LogError(ex, "Error in TestPzCreationWithDates diagnostic");
+            _logger.LogError("Error in TestPzCreationWithDates diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -2764,6 +2766,7 @@ WHERE Symbol = 'PZ'",
     /// This tests: UtworzPrzyjecieZewnetrzne() vs UtworzPrzyjecieZewnetrzneVAT()
     /// </summary>
     [HttpGet("test-pz-creation-methods")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreationMethods()
     {
@@ -2800,7 +2803,7 @@ WHERE Symbol = 'PZ'",
                             catch { configInfo["PrzyjecieZewnetrzne_PosiadaAspektFinansowy"] = "Cannot read"; }
                         }
                     }
-                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzne_Error"] = ex.Message; }
+                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzne_Error"] = "Diagnostic operation failed."; }
 
                     try
                     {
@@ -2813,7 +2816,7 @@ WHERE Symbol = 'PZ'",
                             catch { configInfo["PrzyjecieZewnetrzneZVAT_PosiadaAspektFinansowy"] = "Cannot read"; }
                         }
                     }
-                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzneZVAT_Error"] = ex.Message; }
+                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzneZVAT_Error"] = "Diagnostic operation failed."; }
 
                     methodResults["Configurations"] = configInfo;
                 }
@@ -2841,7 +2844,7 @@ WHERE Symbol = 'PZ'",
                                 catch { method1Result["DocumentConfigPosiadaAspektFinansowy"] = "Cannot read"; }
                             }
                         }
-                        catch (Exception ex) { method1Result["ConfigReadError"] = ex.Message; }
+                        catch (Exception ex) { method1Result["ConfigReadError"] = "Diagnostic operation failed."; }
 
                         // Try to reserve number - this may trigger VAT loading
                         try
@@ -2853,7 +2856,7 @@ WHERE Symbol = 'PZ'",
                         catch (Exception numEx)
                         {
                             method1Result["ReserveNumberSuccess"] = false;
-                            method1Result["ReserveNumberError"] = numEx.Message;
+                            method1Result["ReserveNumberError"] = "Diagnostic operation failed.";
                             if (numEx.ToString().Contains("TransakcjaVAT") || numEx.ToString().Contains("IdWInstancji"))
                             {
                                 method1Result["IsTransakcjaVATError"] = true;
@@ -2867,12 +2870,12 @@ WHERE Symbol = 'PZ'",
                 catch (Exception ex)
                 {
                     method1Result["CreateSuccess"] = false;
-                    method1Result["CreateError"] = ex.Message;
+                    method1Result["CreateError"] = "Diagnostic operation failed.";
                     if (ex.ToString().Contains("TransakcjaVAT") || ex.ToString().Contains("IdWInstancji"))
                     {
                         method1Result["IsTransakcjaVATError"] = true;
                     }
-                    _logger.LogError(ex, "UtworzPrzyjecieZewnetrzne() failed");
+                    _logger.LogError("UtworzPrzyjecieZewnetrzne() failed (exception type: {ExceptionType})", ex.GetType().Name);
                 }
 
                 // Test Method 2: UtworzPrzyjecieZewnetrzneVAT() - PZ WITH VAT
@@ -2898,7 +2901,7 @@ WHERE Symbol = 'PZ'",
                                 catch { method2Result["DocumentConfigPosiadaAspektFinansowy"] = "Cannot read"; }
                             }
                         }
-                        catch (Exception ex) { method2Result["ConfigReadError"] = ex.Message; }
+                        catch (Exception ex) { method2Result["ConfigReadError"] = "Diagnostic operation failed."; }
 
                         // Try to reserve number - this WILL likely trigger VAT loading
                         try
@@ -2910,7 +2913,7 @@ WHERE Symbol = 'PZ'",
                         catch (Exception numEx)
                         {
                             method2Result["ReserveNumberSuccess"] = false;
-                            method2Result["ReserveNumberError"] = numEx.Message;
+                            method2Result["ReserveNumberError"] = "Diagnostic operation failed.";
                             if (numEx.ToString().Contains("TransakcjaVAT") || numEx.ToString().Contains("IdWInstancji"))
                             {
                                 method2Result["IsTransakcjaVATError"] = true;
@@ -2924,12 +2927,12 @@ WHERE Symbol = 'PZ'",
                 catch (Exception ex)
                 {
                     method2Result["CreateSuccess"] = false;
-                    method2Result["CreateError"] = ex.Message;
+                    method2Result["CreateError"] = "Diagnostic operation failed.";
                     if (ex.ToString().Contains("TransakcjaVAT") || ex.ToString().Contains("IdWInstancji"))
                     {
                         method2Result["IsTransakcjaVATError"] = true;
                     }
-                    _logger.LogError(ex, "UtworzPrzyjecieZewnetrzneVAT() failed");
+                    _logger.LogError("UtworzPrzyjecieZewnetrzneVAT() failed (exception type: {ExceptionType})", ex.GetType().Name);
                 }
 
                 // Summary
@@ -2964,12 +2967,12 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
+            results["OuterError"] = "Diagnostic operation failed.";
             if (ex.ToString().Contains("TransakcjaVAT"))
             {
                 results["TransakcjaVAT_Error"] = true;
             }
-            _logger.LogError(ex, "Error in TestPzCreationMethods diagnostic");
+            _logger.LogError("Error in TestPzCreationMethods diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -3050,14 +3053,14 @@ WHERE Symbol = 'PZ'",
                         {
                             allConfigsList.Add(new Dictionary<string, object?>
                             {
-                                ["Error"] = configEx.Message
+                                ["Error"] = "Diagnostic operation failed."
                             });
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    configs["GetAllConfigsError"] = ex.Message;
+                    configs["GetAllConfigsError"] = "Diagnostic operation failed.";
                 }
 
                 configs["TotalConfigurationsCount"] = allConfigsList.Count;
@@ -3081,7 +3084,7 @@ WHERE Symbol = 'PZ'",
                 }
                 catch (Exception ex)
                 {
-                    defaults["PrzyjecieZewnetrzne_Error"] = ex.Message;
+                    defaults["PrzyjecieZewnetrzne_Error"] = "Diagnostic operation failed.";
                 }
 
                 try
@@ -3100,7 +3103,7 @@ WHERE Symbol = 'PZ'",
                 }
                 catch (Exception ex)
                 {
-                    defaults["PrzyjecieZewnetrzneZVAT_Error"] = ex.Message;
+                    defaults["PrzyjecieZewnetrzneZVAT_Error"] = "Diagnostic operation failed.";
                 }
 
                 configs["DefaultConfigurations"] = defaults;
@@ -3141,8 +3144,8 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
-            _logger.LogError(ex, "Error in ListPzConfigurations diagnostic");
+            results["OuterError"] = "Diagnostic operation failed.";
+            _logger.LogError("Error in ListPzConfigurations diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
