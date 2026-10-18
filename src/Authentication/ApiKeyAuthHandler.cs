@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
@@ -26,7 +28,7 @@ public class ApiKeyAuthenticationOptions : AuthenticationSchemeOptions
 
 /// <summary>
 /// API Key authentication handler supporting Bearer token format
-/// Supports: Authorization: Bearer {api-key}, X-API-Key: {api-key}, ?api_key={api-key}
+/// Supports: Authorization: Bearer {api-key}, X-API-Key: {api-key}
 /// </summary>
 public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthenticationOptions>
 {
@@ -62,24 +64,23 @@ public class ApiKeyAuthenticationHandler : AuthenticationHandler<ApiKeyAuthentic
             providedApiKey = legacyHeaderValues.FirstOrDefault();
         }
 
-        // 3. Fallback to query parameter (for testing/webhooks)
-        if (string.IsNullOrEmpty(providedApiKey) && Request.Query.TryGetValue("api_key", out var queryValues))
-        {
-            providedApiKey = queryValues.FirstOrDefault();
-        }
-
         if (string.IsNullOrEmpty(providedApiKey))
         {
             return Task.FromResult(AuthenticateResult.Fail("API Key not provided. Use 'Authorization: Bearer {api-key}' header."));
         }
 
         // Validate API key
-        var matchingKey = _apiKeySettings.Keys
-            .FirstOrDefault(k => k.Key == providedApiKey && k.IsActive);
+        var providedKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(providedApiKey));
+        var matchingKey = _apiKeySettings.Keys.FirstOrDefault(key =>
+        {
+            var configuredKeyHash = SHA256.HashData(Encoding.UTF8.GetBytes(key.Key));
+
+            return key.IsActive && CryptographicOperations.FixedTimeEquals(configuredKeyHash, providedKeyHash);
+        });
 
         if (matchingKey == null)
         {
-            Logger.LogWarning("Invalid API key attempt: {ApiKey}", providedApiKey[..Math.Min(8, providedApiKey.Length)] + "...");
+            Logger.LogWarning("Invalid API key attempt");
             return Task.FromResult(AuthenticateResult.Fail("Invalid API Key"));
         }
 
