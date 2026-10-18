@@ -51,6 +51,9 @@ public sealed class ApiSecurityTests(NexoApiFactory factory) : IClassFixture<Nex
 
         var reconnect = await _anonymousClient.PostAsync("/api/health/reconnect", content: null);
         Assert.Equal(HttpStatusCode.Unauthorized, reconnect.StatusCode);
+
+        var queryStringKey = await _anonymousClient.GetAsync("/api/settings/info?api_key=test-api-key-for-contract-tests");
+        Assert.Equal(HttpStatusCode.Unauthorized, queryStringKey.StatusCode);
     }
 
     [Fact]
@@ -199,6 +202,16 @@ public sealed class ApiSecurityTests(NexoApiFactory factory) : IClassFixture<Nex
             AssertFlagDisabled(document.RootElement, "Diagnostics", "WriteEnabled");
             AssertFlagDisabled(document.RootElement, "Settings", "ConnectionWriteEnabled");
             AssertFlagDisabled(document.RootElement, "Swagger", "Enabled");
+
+            if (document.RootElement.TryGetProperty("ApiKeys", out var apiKeys)
+                && apiKeys.TryGetProperty("Keys", out var keys))
+            {
+                foreach (var key in keys.EnumerateArray())
+                {
+                    Assert.False(key.GetProperty("IsActive").GetBoolean());
+                    Assert.Equal(string.Empty, key.GetProperty("Key").GetString());
+                }
+            }
         }
     }
 

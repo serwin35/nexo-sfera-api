@@ -142,7 +142,6 @@ Obsługiwane formy klucza API (w kolejności preferencji):
 ```
 Authorization: Bearer {klucz-api}     # preferowana
 X-API-Key: {klucz-api}                # legacy
-?api_key={klucz-api}                  # tylko do testów — klucz ląduje w logach!
 ```
 
 Endpoint MCP (`/mcp`, integracja z agentami AI) podlega tej samej autoryzacji.
