@@ -206,10 +206,16 @@ public sealed class ApiSecurityTests(NexoApiFactory factory) : IClassFixture<Nex
             if (document.RootElement.TryGetProperty("ApiKeys", out var apiKeys)
                 && apiKeys.TryGetProperty("Keys", out var keys))
             {
+                var sfera = document.RootElement.GetProperty("Sfera");
+                Assert.Equal(string.Empty, sfera.GetProperty("NexoLogin").GetString());
+                Assert.Equal(string.Empty, sfera.GetProperty("NexoPassword").GetString());
+
                 foreach (var key in keys.EnumerateArray())
                 {
                     Assert.False(key.GetProperty("IsActive").GetBoolean());
                     Assert.Equal(string.Empty, key.GetProperty("Key").GetString());
+                    Assert.Equal(string.Empty, key.GetProperty("NexoLogin").GetString());
+                    Assert.Equal(string.Empty, key.GetProperty("NexoPassword").GetString());
                 }
             }
         }
