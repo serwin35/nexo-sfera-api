@@ -790,6 +790,9 @@ public class EcommerceController : ControllerBase
             Title = DynamicPropertyHelper.GetString(o, "Tytul"),
             Kind = DynamicPropertyHelper.GetEnumString(o, "Rodzaj"),
             PurchaseDate = DynamicPropertyHelper.GetDateTime(o, "DataZakupu"),
+            ShipByDate = o is InsERT.Moria.ModelDanych.ZamowienieWysylkowe zamowienie
+                ? SdkMember.Read(() => zamowienie.WysylkaDoDnia, null)
+                : null,
             StatusId = statusObj != null ? DynamicPropertyHelper.GetId(statusObj) : null,
             Status = statusObj != null ? DynamicPropertyHelper.GetString(statusObj, "Nazwa") : null,
             ServiceStatus = DynamicPropertyHelper.GetString(o, "StatusZamowieniaWSerwisie"),
@@ -1057,6 +1060,9 @@ public class ShippingOrderDto
     /// <summary>RodzajZamowieniaWysylkowego: Normalne / TylkoWysylki / TylkoDokumenty</summary>
     public string? Kind { get; set; }
     public DateTime? PurchaseDate { get; set; }
+
+    /// <summary>Ship-by date set by the marketplace (SDK 62.0.0: ZamowienieWysylkowe.WysylkaDoDnia)</summary>
+    public DateTime? ShipByDate { get; set; }
     public int? StatusId { get; set; }
     public string? Status { get; set; }
     public string? ServiceStatus { get; set; }

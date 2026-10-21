@@ -1,17 +1,17 @@
 # Setup InsERT Nexo SDK for build
 # Copies required SDK DLLs from a full SDK installation to the lib folder.
 #
-# Default source: docs\nexoSDK_61.1.0.9431\Bin (latest SDK shipped with this repo)
+# Default source: docs\nexoSDK_62.0.0.9537\Bin (latest SDK shipped with this repo)
 # Default target: src\lib\nexo-sdk (matches NexoSdkPath in NexoSferaApi.csproj)
 #
 # Usage:
-#   .\scripts\setup-sdk.ps1                       # use defaults (61.0.0)
+#   .\scripts\setup-sdk.ps1                       # use defaults (62.0.0)
 #   .\scripts\setup-sdk.ps1 -SdkSourcePath "C:\Other\Bin"
 #   .\scripts\setup-sdk.ps1 -SyncRootLib          # also sync legacy root .\lib\nexo-sdk
 #   .\scripts\setup-sdk.ps1 -DryRun               # show what would happen without copying
 
 param(
-    [string]$SdkSourcePath = "docs\nexoSDK_61.1.0.9431\Bin",
+    [string]$SdkSourcePath = "docs\nexoSDK_62.0.0.9537\Bin",
     [string]$TargetPath    = "src\lib\nexo-sdk",
     [switch]$SyncRootLib,
     [switch]$DryRun
@@ -106,10 +106,12 @@ $requiredDlls = @(
 # Note: some namespaces do NOT exist as standalone assemblies in the SDK Bin folder -
 # they are exposed through InsERT.Moria.API.dll and must NOT be listed above:
 # InsERT.Moria.Dokumenty, InsERT.Moria.CennikiICeny, InsERT.Moria.Intrastat.
-# (still confirmed absent as standalone DLLs in SDK 61.1.0.9431)
-# SDK 61.0.0 API/model changes are contained within InsERT.Moria.API.dll and
-# InsERT.Moria.ModelDanych.dll - no new standalone assemblies were introduced, so
-# this required-DLL list is unchanged from 60.1.1.
+# (still confirmed absent as standalone DLLs in SDK 62.0.0.9537)
+# SDK 62.0.0 adds standalone assemblies (InsERT.Mox.DataModeling.Abstractions,
+# InsERT.WebServices.Client.KSeF2.CollectiveIdentifiers, InsERT.WebServices.Extensions.Http,
+# InsERT.Mox.Controls.TelerikUI) and drops CoreWCF.*. None of them is referenced by the
+# csproj - they are runtime dependencies that NexoSdkSynchronizer copies from the nexo
+# installation - so this required-DLL list is unchanged from 60.1.1.
 
 function Sync-SdkFolder {
     param(
@@ -201,7 +203,7 @@ if (-not (Test-Path $sourcePath)) {
     Write-Host ""
     Write-Host "Hint: pass -SdkSourcePath '<path>' pointing at the SDK Bin folder or the nexo install dir," -ForegroundColor Yellow
     Write-Host "e.g. -SdkSourcePath 'C:\Program Files (x86)\InsERT\nexo'" -ForegroundColor Yellow
-    Write-Host "or extract the SDK documentation package to docs\nexoSDK_61.1.0.9431\." -ForegroundColor Yellow
+    Write-Host "or extract the SDK documentation package to docs\nexoSDK_62.0.0.9537\." -ForegroundColor Yellow
     exit 1
 }
 
