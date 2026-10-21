@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - decimal range validation on a Polish Windows
+- **`POST /api/products/{id}/components`** returned 400 `0.000001 is not a valid value for Decimal` for every request,
+  and so did `POST /api/products/{id}/units` (same attribute on `newUnitCount`/`baseUnitCount`; `RangeAttribute` parses
+  its limits before it checks for null, so the request fails even without those fields). `[Range(typeof(decimal), "0.000001",
+  ...)]` parses its limits in the current culture, and on a pl-PL host `0.000001` is not a number (the separator is a
+  comma). The limits are now parsed in the invariant culture (`ParseLimitsInInvariantCulture`). No other decimal
+  `Range` uses string limits.
+  
 ### Changed (2026-10-22) - SDK 62.0.0.9537
 - **SDK reference bumped to nexo 62.0.0.9537** (README, `scripts/setup-sdk.ps1`, local-SDK fallback in `build.yml` and
   `release.yml`). Reviewed `ZmianyAPI_61.1.1_62.0.0.txt` and `ZmianyModeluDanych_61.1.1_62.0.0.txt`, and diffed the
