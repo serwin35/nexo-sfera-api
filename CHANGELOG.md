@@ -20,9 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `InsERT.WebServices.Client.KSeF2.CollectiveIdentifiers`, `InsERT.WebServices.Extensions.Http`,
   `InsERT.Mox.Controls.TelerikUI`) and drops `CoreWCF.*`. The csproj references none of them; `NexoSdkSynchronizer`
   copies them from the nexo installation at startup. The SDK still targets .NET 8.
-- The bridge still builds against SDK 60.x and 61.x: the new fields below are read by name.
+- **SDK 62.0.0 is now the minimum.** Production nexo runs 61.1.1 and is upgraded to 62, so the bridge no longer keeps
+  building on 60.x/61.x. New members are read typed (`SdkMember.Read` on the entity), so a wrong name fails the build
+  instead of returning `null`. `Adres.GLN` is typed again (the by-name read from 2026-10-10 existed only for 60.x).
+  The last 61.x state of the code is tagged `sdk-61.1.0.9431`.
+- **Deploy order:** upgrade nexo on the server first, then deploy this build. Against a 61.x installation the three new
+  fields come back `null`, because the typed read guard swallows the missing member.
 
-### Added (2026-10-22) - SDK 62.0.0 fields (`null` on older SDKs)
+### Added (2026-10-22) - SDK 62.0.0 fields
 - **E-commerce, `GET /api/ecommerce/shipping-orders` and `/{id}`:** `shipByDate` (`ZamowienieWysylkowe.WysylkaDoDnia`),
   the ship-by date set by the marketplace.
 - **Payments, `GET /api/payments/receivables`, `/{id}`:** `ksefNumber` (`Rozrachunek.NumerKSeF`), the KSeF number of

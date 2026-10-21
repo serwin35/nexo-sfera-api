@@ -1415,7 +1415,9 @@ public class KsefController : ControllerBase
             PaymentDueDate = DynamicPropertyHelper.GetDateTime(d, "TerminPlatnosci"),
             IsSynchronized = DynamicPropertyHelper.GetNullableBool(d, "Zsynchronizowany"),
             // SDK 62.0.0 new fields
-            DeliveryOrServiceEndDate = DynamicPropertyHelper.GetDateTime(d, "DataZakonczeniaDostawyLubUslug"),
+            DeliveryOrServiceEndDate = (object)d is InsERT.Moria.ModelDanych.DokumentElektroniczny dokumentElektroniczny
+                ? SdkMember.Read(() => dokumentElektroniczny.DataZakonczeniaDostawyLubUslug, null)
+                : null,
             // Inbound (KSeF receive) fields
             Direction = rodzaj == 0 ? "Created" : rodzaj == 1 ? "Imported" : null,
             ProcessingStatusCode = statusPrzetworzenia,

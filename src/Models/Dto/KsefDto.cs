@@ -58,7 +58,6 @@ public class ElectronicDocumentDto
 
     /// <summary>
     /// Delivery or service completion date (SDK 62.0.0: DokumentElektroniczny.DataZakonczeniaDostawyLubUslug).
-    /// Null on older SDKs.
     /// </summary>
     public DateTime? DeliveryOrServiceEndDate { get; set; }
 
