@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`updated` / `unchanged`) per product.
 - The `priceNet` refusal of `PUT /api/products/{id}` now points to this endpoint.
 
+### Added (2026-10-22) - product group change
+- **`PUT /api/products/{id}` `groupId`** moves the product to an existing product group (`Asortyment.Grupa`, ids from
+  `GET /api/product-groups`). An unknown group returns 400 (`groupId: product group 123 not found`). The change is
+  reported in `fieldResults` with the old and new group names.
+
+### Fixed (2026-10-22) - product group id
+- **Products, `groupId`** was always `null`: it was read from `Grupa_Id`, which `Asortyment` does not have. It now
+  comes from the `Grupa` navigation, the same object that already gave `groupName`.
+
 ### Fixed (2026-10-22) - decimal range validation on a Polish Windows
 - **`POST /api/products/{id}/components`** returned 400 `0.000001 is not a valid value for Decimal` for every request,
   and so did `POST /api/products/{id}/units` (same attribute on `newUnitCount`/`baseUnitCount`; `RangeAttribute` parses

@@ -1572,7 +1572,6 @@ public class ProductsController : ControllerBase
 
             // Type and classification
             Type = (ProductType)(DynamicPropertyHelper.GetNullableInt(asortyment, "Rodzaj_Id") ?? 0),
-            GroupId = DynamicPropertyHelper.GetNullableInt(asortyment, "Grupa_Id"),
 
             // Units
             SaleUnit = DynamicPropertyHelper.GetString(asortyment, "JednostkaSprzedazy", "Symbol"),
@@ -1702,9 +1701,11 @@ public class ProductsController : ControllerBase
         }
 
         // Try to get group name from Grupa navigation property
+        // Asortyment has no Grupa_Id member; the id comes from the Grupa navigation.
         var grupa = DynamicPropertyHelper.GetProperty(asortyment, "Grupa");
         if (grupa != null)
         {
+            dto.GroupId = DynamicPropertyHelper.GetId(grupa);
             dto.GroupName = DynamicPropertyHelper.GetString(grupa, "Nazwa");
         }
 
@@ -1753,14 +1754,15 @@ public class ProductsController : ControllerBase
             Symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? "",
             Name = DynamicPropertyHelper.GetString(asortyment, "Nazwa") ?? "",
             Price = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaEwidencyjna"),
-            GroupId = DynamicPropertyHelper.GetNullableInt(asortyment, "Grupa_Id"),
             IsActive = ProductReader.IsActive((object)asortyment)
         };
 
         // Try to get group name from Grupa navigation property
+        // Asortyment has no Grupa_Id member; the id comes from the Grupa navigation.
         var grupa = DynamicPropertyHelper.GetProperty(asortyment, "Grupa");
         if (grupa != null)
         {
+            dto.GroupId = DynamicPropertyHelper.GetId(grupa);
             dto.GroupName = DynamicPropertyHelper.GetString(grupa, "Nazwa");
         }
 
