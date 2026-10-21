@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Models.Dto;
+using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 using NexoSferaApi.Helpers;
@@ -822,6 +823,53 @@ public class DictionaryController : ControllerBase
         {
             _logger.LogError(ex, "Error getting positions of price list {PriceListId}", id);
             return StatusCode(500, ApiResponse<object>.Error("Error retrieving price list positions", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
+    /// Set sales prices of main price list positions
+    /// </summary>
+    /// <remarks>
+    /// Sets the gross (<c>priceGross</c>) or net (<c>priceNet</c>) price of the main position (<c>Glowna</c>, no quantity
+    /// tier) of each product through the price list business object (<c>ICennik.Pozycje</c>). Nexo derives the other
+    /// price and the calculation parameter (markup / margin / profit); the calculation method, rounding function and
+    /// quantity tiers stay as they are, so a later base price change recalculates the position like a price set in Subiekt.
+    ///
+    /// All-or-nothing: unknown products, a missing or ambiguous main position, or a kit position priced from its
+    /// components (<c>WyliczCeneKompletuZeSkladnikow</c>) return 400 before anything is edited, and every edit is saved
+    /// with one <c>ICennik.Zapisz()</c>. Prices are rounded to the currency precision. 1-200 items per request.
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    /// <param name="request">Products and their new prices</param>
+    [HttpPut("price-lists/by-id/{id:int}/items")]
+    [ProducesResponseType(typeof(ApiResponse<List<PriceListPriceChangeDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPriceListPrices(int id, [FromBody] SetPriceListPricesRequest request)
+    {
+        var errors = PriceListWriter.Validate(request);
+        if (errors.Count > 0)
+            return BadRequest(ApiResponse<object>.Error("Invalid price request", errors));
+
+        try
+        {
+            var outcome = await _sferaService.ExecuteWithLockAsync(() =>
+                PriceListWriter.SetMainPrices(_sferaService.GetSfera(), id, request.Items));
+
+            if (!outcome.PriceListFound)
+                return NotFound(ApiResponse<object>.Error($"Price list {id} not found"));
+
+            if (outcome.Errors.Count > 0)
+                return BadRequest(ApiResponse<object>.Error("Prices not saved", outcome.Errors));
+
+            _logger.LogInformation("Set {Updated} of {Total} prices in price list {PriceListId}",
+                outcome.Changes.Count(c => c.Status == PriceListWriter.Updated), outcome.Changes.Count, id);
+            return Ok(ApiResponse<List<PriceListPriceChangeDto>>.Ok(outcome.Changes, "Prices saved"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting prices in price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error saving price list prices"));
         }
     }
 

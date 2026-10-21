@@ -342,6 +342,28 @@ public class PriceListPositionDto
 }
 
 /// <summary>
+/// Price change of one main price list position, returned by <c>PUT /api/dictionary/price-lists/by-id/{id}/items</c>.
+/// </summary>
+public class PriceListPriceChangeDto
+{
+    public int ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+
+    /// <summary><c>updated</c>, or <c>unchanged</c> when the position already had this price.</summary>
+    public string Status { get; set; } = string.Empty;
+
+    public decimal OldPriceNet { get; set; }
+    public decimal OldPriceGross { get; set; }
+
+    /// <summary>Prices after the save; Nexo derives the other price from the one that was sent.</summary>
+    public decimal PriceNet { get; set; }
+    public decimal PriceGross { get; set; }
+
+    /// <summary>Calculation parameter after the save (markup / margin / profit recalculated by Nexo).</summary>
+    public decimal CalculationParameter { get; set; }
+}
+
+/// <summary>
 /// Price list item DTO
 /// </summary>
 public class PriceListItemDto

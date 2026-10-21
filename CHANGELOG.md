@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - price list price write
+- **`PUT /api/dictionary/price-lists/by-id/{id}/items`** sets the gross or net price of main price list positions:
+  `{"items": [{"productId": 105003, "priceGross": 38.00}]}`, 1-200 items, exactly one of `priceGross` / `priceNet` per
+  item. Writes go through the price list business object (`ICennik.Pozycje`, typed `PriceListWriter`). Nexo derives
+  the other price and the calculation parameter. The calculation method, rounding function and quantity tiers are not
+  changed, so a later base price change recalculates the position like a price set in Subiekt.
+- All-or-nothing. Unknown products, a missing or ambiguous main position, or a kit position priced from its components
+  (`WyliczCeneKompletuZeSkladnikow`) return 400 before anything is edited, and the price list is saved once. The response
+  lists `oldPriceNet/oldPriceGross`, the saved `priceNet/priceGross`, `calculationParameter` and `status`
+  (`updated` / `unchanged`) per product.
+- The `priceNet` refusal of `PUT /api/products/{id}` now points to this endpoint.
+
 ### Fixed (2026-10-22) - decimal range validation on a Polish Windows
 - **`POST /api/products/{id}/components`** returned 400 `0.000001 is not a valid value for Decimal` for every request,
   and so did `POST /api/products/{id}/units` (same attribute on `newUnitCount`/`baseUnitCount`; `RangeAttribute` parses

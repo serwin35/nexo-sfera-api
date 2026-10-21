@@ -210,7 +210,7 @@ public static class PriceListReader
         return new Dictionary<int, List<int>> { [levelId.Value] = baseIds };
     }
 
-    private static Dictionary<int, Asortyment> LoadProducts(Uchwyt sfera, IReadOnlyCollection<int> productIds)
+    internal static Dictionary<int, Asortyment> LoadProducts(Uchwyt sfera, IReadOnlyCollection<int> productIds)
     {
         var ids = productIds.Distinct().ToList();
         IAsortymentyDane dane = sfera.Asortymenty().Dane;
