@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-10-22) - SDK 62.0.0.9537
+- **SDK reference bumped to nexo 62.0.0.9537** (README, `scripts/setup-sdk.ps1`, local-SDK fallback in `build.yml` and
+  `release.yml`). Reviewed `ZmianyAPI_61.1.1_62.0.0.txt` and `ZmianyModeluDanych_61.1.1_62.0.0.txt`, and diffed the
+  public metadata of the referenced assemblies between 61.1.0.9431 and 62.0.0.9537 (which also covers 61.1.1). The
+  bridge uses none of the removed types or members. Removed in 62: online calendars, automatic action definitions,
+  Portal Podatkowy VAT/NIP checks, the e-invoice generators FA1/FA2, `OperacjaSP.NumerKSeF` (now `NumeryKSeF`),
+  `ZgloszenieKlienta.DataZakonczenia`, `Paczka` on courier shipment DTOs, the `Link*WSerwisieZewnetrznym` overloads
+  without an integration account, and the old `IWydrukNaklejek.Drukuj` overloads. `OstrzegajOPowtorzonymNumerzeKSeF`
+  changed from `bool` to `byte`; the bridge does not read it.
+- SDK 62 adds standalone assemblies (`InsERT.Mox.DataModeling.Abstractions`,
+  `InsERT.WebServices.Client.KSeF2.CollectiveIdentifiers`, `InsERT.WebServices.Extensions.Http`,
+  `InsERT.Mox.Controls.TelerikUI`) and drops `CoreWCF.*`. The csproj references none of them; `NexoSdkSynchronizer`
+  copies them from the nexo installation at startup. The SDK still targets .NET 8.
+- The bridge still builds against SDK 60.x and 61.x: the new fields below are read by name.
+
+### Added (2026-10-22) - SDK 62.0.0 fields (`null` on older SDKs)
+- **E-commerce, `GET /api/ecommerce/shipping-orders` and `/{id}`:** `shipByDate` (`ZamowienieWysylkowe.WysylkaDoDnia`),
+  the ship-by date set by the marketplace.
+- **Payments, `GET /api/payments/receivables`, `/{id}`:** `ksefNumber` (`Rozrachunek.NumerKSeF`), the KSeF number of
+  the settled invoice, for matching payments to e-invoices.
+- **KSeF, `GET /api/ksef/documents`, `/{id}`, `/by-ksef-number/{ksefNumber}`, `/inbox`:** `deliveryOrServiceEndDate`
+  (`DokumentElektroniczny.DataZakonczeniaDostawyLubUslug`).
+
 ### Added (2026-10-13) - product symbol change
 - **Products, `PUT /api/products/{id}` `symbol`.** Changes `Asortyment.Symbol` in the same all-or-nothing update as the
   other fields, reported in `fieldResults` (`updated` / `unchanged`). Empty or whitespace symbols return 400, and so does

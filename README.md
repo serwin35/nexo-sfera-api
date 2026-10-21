@@ -18,7 +18,7 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 
 > 🚀 **Swagger UI (pełny katalog endpointów):** http://localhost:5000/swagger
 > 🔑 Autoryzacja kluczem API — patrz [Autentykacja](#-autentykacja)
-> 📦 Wersja SDK: **nexo 61.1.0.9431** (`docs/nexoSDK_61.1.0.9431/`)
+> 📦 Wersja SDK: **nexo 62.0.0.9537** (`docs/nexoSDK_62.0.0.9537/`)
 
 ---
 
@@ -507,7 +507,7 @@ nexo-sfera-api/
 │   └── Program.cs
 ├── lib/nexo-sdk/            # DLL-e SDK Nexo
 ├── docs/
-│   ├── nexoSDK_61.1.0.9431/ # Oficjalna dokumentacja SDK (nieśledzona w git)
+│   ├── nexoSDK_62.0.0.9537/ # Oficjalna dokumentacja SDK (nieśledzona w git)
 │   └── AUDIT-2026-06-12.md  # Audyt jakości i mapa pokrycia SDK
 └── scripts/                 # Skrypty deploy/diagnostyka
 ```

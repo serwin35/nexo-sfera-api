@@ -57,6 +57,12 @@ public class ElectronicDocumentDto
     public bool? IsSynchronized { get; set; }
 
     /// <summary>
+    /// Delivery or service completion date (SDK 62.0.0: DokumentElektroniczny.DataZakonczeniaDostawyLubUslug).
+    /// Null on older SDKs.
+    /// </summary>
+    public DateTime? DeliveryOrServiceEndDate { get; set; }
+
+    /// <summary>
     /// Direction of the e-invoice: "Created" (issued by my company) or "Imported" (received from KSeF).
     /// SDK: DokumentElektroniczny.Rodzaj (RodzajDokumentuElektronicznego: Utworzony=0, Importowany=1).
     /// </summary>

@@ -1170,7 +1170,9 @@ public class PaymentsController : ControllerBase
                 Title = DynamicPropertyHelper.GetString(rozrachunek, "Tytul"),
                 Subtype = DynamicPropertyHelper.GetString(rozrachunek, "Podtyp", "Nazwa"),
                 IsCollectible = DynamicPropertyHelper.GetNullableBool(rozrachunek, "Sciagalny"),
-                SplitPayment = DynamicPropertyHelper.GetNullableBool(rozrachunek, "PodzielonaPlatnosc")
+                SplitPayment = DynamicPropertyHelper.GetNullableBool(rozrachunek, "PodzielonaPlatnosc"),
+                // SDK 62.0.0: Rozrachunek.NumerKSeF (null on older SDKs)
+                KsefNumber = DynamicPropertyHelper.GetString(rozrachunek, "NumerKSeF")
             };
         }
         catch
