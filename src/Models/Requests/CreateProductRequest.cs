@@ -102,6 +102,11 @@ public class UpdateProductRequest
     [Range(0, double.MaxValue)]
     public decimal? Volume { get; set; }
 
+    /// <summary>
+    /// Product group (Asortyment.Grupa): id of an existing GrupaAsortymentu, as listed by GET /api/product-groups.
+    /// </summary>
+    public int? GroupId { get; set; }
+
     /// <summary>Rejected with 400: Nexo has no activity flag on products (inactive = in the recycle bin).</summary>
     public bool? IsActive { get; set; }
 }
