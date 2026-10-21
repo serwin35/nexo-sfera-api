@@ -1170,7 +1170,10 @@ public class PaymentsController : ControllerBase
                 Title = DynamicPropertyHelper.GetString(rozrachunek, "Tytul"),
                 Subtype = DynamicPropertyHelper.GetString(rozrachunek, "Podtyp", "Nazwa"),
                 IsCollectible = DynamicPropertyHelper.GetNullableBool(rozrachunek, "Sciagalny"),
-                SplitPayment = DynamicPropertyHelper.GetNullableBool(rozrachunek, "PodzielonaPlatnosc")
+                SplitPayment = DynamicPropertyHelper.GetNullableBool(rozrachunek, "PodzielonaPlatnosc"),
+                KsefNumber = (object)rozrachunek is InsERT.Moria.ModelDanych.Rozrachunek typedRozrachunek
+                    ? SdkMember.Text(() => typedRozrachunek.NumerKSeF)
+                    : null
             };
         }
         catch

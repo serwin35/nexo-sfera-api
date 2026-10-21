@@ -115,6 +115,9 @@ public class ReceivableDto
     public bool? IsCollectible { get; set; }
     public bool? SplitPayment { get; set; }
 
+    /// <summary>KSeF number of the settled invoice (SDK 62.0.0: Rozrachunek.NumerKSeF).</summary>
+    public string? KsefNumber { get; set; }
+
     public string? Notes { get; set; }
 }
 

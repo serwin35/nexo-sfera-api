@@ -1,4 +1,4 @@
-# Nexo SDK entity reference (verified against SDK 61.1.0.9431)
+# Nexo SDK entity reference (verified against SDK 61.1.0.9431, re-checked against 62.0.0.9537)
 
 Property names below were extracted from the `.NET` metadata of `InsERT.Moria.ModelDanych.dll` /
 `InsERT.Moria.API.dll` (SDK 61.1.0.9431) and the shipped CHM documentation - they are **not** guesses.
@@ -221,6 +221,24 @@ Managers: `sfera.Cenniki()` (`ICenniki`: `Dane.Wszystkie()`, `Znajdz(Cennik)`, `
 ## Other enums (numeric)
 `MetodaGrupowaniaPozycji`: 1 BezKonsolidacji, 2 KonsolidacjaWJednostceMiary, 3 KonsolidacjaBezWzgleduNaJednostkeMiary, 4 KonsolidacjaWJednostceMiaryICenie.
 `TypDokumentu` (flags): ZK 1, ZD 2, WZ 4, PZ 8, KPZ 16, KWZ 32, FS 64, PW 128, RW 256, KFS 512, FZ 1024, KFZ 2048, MMW 4096, MMP 8192, ZPM 16384, ZPR 32768.
+
+## SDK 62.0.0.9537 changes vs 61.1.x (relevant)
+- Model (no removed types): `ZamowienieWysylkowe.WysylkaDoDnia`, `Rozrachunek.NumerKSeF`,
+  `DokumentElektroniczny.DataZakonczeniaDostawyLubUslug` + `Konfiguracja`, `PaczkaWysylkowa.WydrukowalEtykiete`,
+  collective corrections (`Dokument.DaneKorektyZbiorczej`, `DokumentDS/DZ.KorektyZbiorcze`,
+  `DokumentKDS/KDZ.DokumentyKorygowaneZbiorczo`), purchase advance invoices (`DokumentHandlowy.AspektZaliczkiZakupu`),
+  `OperacjaSP.NumeryKSeF` replacing `OperacjaSP.NumerKSeF`. Removed: `ZgloszenieKlienta.DataZakonczenia`,
+  `ParametrPodmiotu.*PortaluPodatnika*`, `KontoKalendarza.IdentyfikatorFunkcjiOperacjiKalendarzyOnline`.
+  `OstrzegajOPowtorzonymNumerzeKSeF` (registers, period parameters) is now `byte`.
+- API: collective corrections (`IKorektyDokumentowSprzedazy/Zakupu.UtworzZbiorcza`, `ParametryKorektyZbiorczej<T>`,
+  `KonfiguracjeDokumentow.ZbiorczaKorektaSprzedazy_Id/ZbiorczaKorektaZakupu_Id`), realising supplier orders from an
+  imported e-invoice (`IDokumentImportowanyEFaktury.RealizujZamowieniaDoDostawcy/WyszukajNiezrealizowaneZamowienia`),
+  KSeF collective payment identifiers (`IKoordynatorZbiorczychIdentyfikatorowPlatnosci`), `IPrzyjecieZewnetrzne.WypelnijNaPodstawieLZ`,
+  `IParametryPlatnosci.Utworz()`. Removed: online calendars, automatic action definitions, Portal Podatkowy checks,
+  e-invoice generators FA1/FA2, `Link*WSerwisieZewnetrznym(id)` (now `(id, idKontaIntegracji)`).
+- New standalone assemblies (runtime only, not referenced by the csproj): `InsERT.Mox.DataModeling.Abstractions`,
+  `InsERT.WebServices.Client.KSeF2.CollectiveIdentifiers`, `InsERT.WebServices.Extensions.Http`,
+  `InsERT.Mox.Controls.TelerikUI`. `CoreWCF.*` dropped. Target framework still .NET 8.
 
 ## SDK 61.1.0.9431 changes vs 61.0.x (relevant)
 - Model: `DokumentDane.WygenerowanePrzezAI` (attachments/binary documents), `PozycjaZamowieniaWysylkowego.KodTaryfyCelnej`.
