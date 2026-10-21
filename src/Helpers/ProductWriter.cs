@@ -38,8 +38,8 @@ public static class ProductWriter
         if (request.PriceNet.HasValue)
         {
             errors.Add("priceNet: not writable through PUT /api/products/{id}. Asortyment has no sales price; Nexo keeps " +
-                       "prices in price list positions (Cennik), which this bridge does not write yet. Change the price " +
-                       "in Subiekt or drop the field.");
+                       "prices in price list positions (Cennik): use PUT /api/dictionary/price-lists/by-id/{id}/items " +
+                       "or drop the field.");
         }
 
         if (request.VatRate != null)
