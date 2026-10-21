@@ -25,13 +25,13 @@ public class AddProductUnitRequest
     /// Must be provided together with <see cref="BaseUnitCount"/>; when both are omitted the converter is copied
     /// from the unit dictionary (if defined there).
     /// </summary>
-    [Range(typeof(decimal), "0.000001", "79228162514264337593543950335")]
+    [Range(typeof(decimal), "0.000001", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true)]
     public decimal? NewUnitCount { get; set; }
 
     /// <summary>
     /// Conversion: how many base units correspond to <see cref="NewUnitCount"/> new units.
     /// </summary>
-    [Range(typeof(decimal), "0.000001", "79228162514264337593543950335")]
+    [Range(typeof(decimal), "0.000001", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true)]
     public decimal? BaseUnitCount { get; set; }
 
     /// <summary>
@@ -95,7 +95,7 @@ public class AddProductComponentRequest
     /// <summary>
     /// Quantity of the component in one kit (must be greater than zero)
     /// </summary>
-    [Range(typeof(decimal), "0.000001", "79228162514264337593543950335")]
+    [Range(typeof(decimal), "0.000001", "79228162514264337593543950335", ParseLimitsInInvariantCulture = true)]
     public decimal Quantity { get; set; }
 
     /// <summary>
