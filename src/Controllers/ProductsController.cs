@@ -1247,7 +1247,9 @@ public class ProductsController : ControllerBase
                     }
 
                     dynamic dane = edytowanyAsortyment.Dane;
-                    dynamic skladniki = edytowanyAsortyment.Skladniki;
+                    // Typed: the business object implements the components interface explicitly, so a dynamic
+                    // call fails with "AsortymentKartotekowyBO does not contain a definition for 'Dodaj'".
+                    InsERT.Moria.Asortymenty.ISkladnikiKompletu skladniki = ((InsERT.Moria.Asortymenty.IAsortyment)edytowanyAsortyment).Skladniki;
 
                     if (FindComponentByProductId(dane, componentId) != null)
                     {
@@ -1257,7 +1259,7 @@ public class ProductsController : ControllerBase
                     try
                     {
                         // (string symbol, decimal quantity, string unitSymbol) — empty unit symbol = component's base unit.
-                        skladniki.Dodaj(componentSymbol, request.Quantity, request.UnitSymbol ?? string.Empty);
+                        skladniki.Dodaj((string)componentSymbol, request.Quantity, request.UnitSymbol ?? string.Empty);
                     }
                     catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
                     {
@@ -1325,7 +1327,7 @@ public class ProductsController : ControllerBase
                     }
 
                     dynamic dane = edytowanyAsortyment.Dane;
-                    dynamic skladniki = edytowanyAsortyment.Skladniki;
+                    InsERT.Moria.Asortymenty.ISkladnikiKompletu skladniki = ((InsERT.Moria.Asortymenty.IAsortyment)edytowanyAsortyment).Skladniki;
 
                     if (FindComponentByProductId(dane, componentProductId) == null)
                     {
@@ -1335,7 +1337,7 @@ public class ProductsController : ControllerBase
                     bool removed;
                     try
                     {
-                        removed = (bool)skladniki.Usun(componentProductId);
+                        removed = skladniki.Usun(componentProductId);
                     }
                     catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
                     {

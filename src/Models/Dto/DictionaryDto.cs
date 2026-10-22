@@ -361,6 +361,9 @@ public class PriceListPriceChangeDto
 
     /// <summary>Calculation parameter after the save (markup / margin / profit recalculated by Nexo).</summary>
     public decimal CalculationParameter { get; set; }
+
+    /// <summary><c>true</c> when this request switched off <c>WyliczCeneKompletuZeSkladnikow</c> for the kit position.</summary>
+    public bool KitComponentPricingDisabled { get; set; }
 }
 
 /// <summary>
