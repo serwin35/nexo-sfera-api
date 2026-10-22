@@ -87,6 +87,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `GET /api/product-groups`). An unknown group returns 400 (`groupId: product group 123 not found`). The change is
   reported in `fieldResults` with the old and new group names.
 
+### Fixed (2026-10-22) - product create and delete are typed
+- **`POST /api/products`** set every field on a `dynamic` and failed with 500 for `ean` (`Asortyment.EAN`), `pkWiU`
+  (`PKWIU`), `weight` (`Masa`), `volume` (`Objetosc`) and `priceNet` (`CenaNetto`), none of which exist. It silently
+  ignored `type`, `saleUnit`, `purchaseUnit` and `vatRate`, and applied `templateSymbol` only when it happened to equal
+  a template's default product symbol. It is now typed and all-or-nothing (new `ProductCreator`), following the SDK
+  sample `ObslugaKartotek`: `IAsortymenty.Utworz()` + `WypelnijNaPodstawieSzablonu`. The kind, base unit and VAT come
+  from `templateId` (new), the legacy `templateSymbol` (must match exactly one template) or the default template of
+  `type` (Goods / Service / Set = kit; default Goods, Material refused). `symbol` is optional (omitted:
+  `AutoSymbol()`). New `baseUnit` (dictionary unit instead of the template's, `UstawPodstawowaJednostkeMiary`),
+  `groupId` and `components` (kit only, typed `IAsortyment.Skladniki.Dodaj`). `vatRate` (a symbol as products report
+  it) sets the sales and purchase VAT rate. `name`, `description`, `ean`, `pkWiU`, `weight`, `volume`, `groupId` and
+  `symbol` go through the same `ProductWriter` as `PUT /api/products/{id}` (duplicate symbol and barcode checks
+  included). `saleUnit` / `purchaseUnit` must be the base unit, `priceNet` returns 400. Any problem returns 400 with
+  "field: reason" and nothing is created; save errors are read typed (`SdkErrors`, `IObiektBiznesowy.Bledy`) instead
+  of the late-bound reader, which always came back empty. `saleUnit`, `vatRate` and `type` lost their implicit
+  defaults ("szt.", "23%", Goods), which were never applied.
+- **`DELETE /api/products/{id}`** loaded every product to find one and called `Usun()` on a `dynamic`. It now looks the
+  product up by id, deletes it through the typed business object and says whether Nexo kept it in the recycle bin
+  ("Product moved to the recycle bin" / "Product deleted"). A product already in the recycle bin returns 200 instead of
+  404, so a retried DELETE is not reported as a missing product. Nexo's refusal reasons are returned with the 400.
+
 ### Fixed (2026-10-22) - product group id
 - **Products, `groupId`** was always `null`: it was read from `Grupa_Id`, which `Asortyment` does not have. It now
   comes from the `Grupa` navigation, the same object that already gave `groupName`.
