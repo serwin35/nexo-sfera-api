@@ -73,3 +73,25 @@ public class VariantPropertyValueRequest
     [MaxLength(100)]
     public string Value { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// Moves an existing card into a model as its variant (<c>PUT /api/products/{id}/model</c>), e.g. an unused card that was
+/// generated in the wrong model.
+/// </summary>
+public class MoveToModelRequest
+{
+    /// <summary>Target model id (<c>GET /api/product-models</c>).</summary>
+    [Range(1, int.MaxValue)]
+    public int ModelId { get; set; }
+
+    /// <summary>Value of every property of the target model, by property name or symbol.</summary>
+    [Required]
+    public List<VariantPropertyValueRequest> Values { get; set; } = new();
+
+    /// <summary>New card symbol, e.g. <c>DMSUDKP00090_0113</c>. Omitted: the symbol stays.</summary>
+    [MaxLength(40)]
+    public string? Symbol { get; set; }
+
+    /// <summary>Validate and report the change without saving.</summary>
+    public bool DryRun { get; set; }
+}

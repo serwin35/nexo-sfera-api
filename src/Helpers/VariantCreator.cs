@@ -320,7 +320,7 @@ public static class VariantCreator
     }
 
     /// <summary>Order-independent key of a value set: "property=value" pairs sorted by property, case-insensitive names.</summary>
-    private static string Key(IEnumerable<(string Property, string Value)> values) =>
+    internal static string Key(IEnumerable<(string Property, string Value)> values) =>
         string.Join("|", values
             .Select(v => $"{v.Property.Trim().ToLowerInvariant()}={v.Value.Trim()}")
             .OrderBy(v => v, StringComparer.Ordinal));

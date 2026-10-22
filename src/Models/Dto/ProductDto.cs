@@ -406,3 +406,51 @@ public class CreateVariantsResultDto
     public bool DryRun { get; set; }
     public List<CreatedVariantDto> Variants { get; set; } = new();
 }
+
+/// <summary>A product model (<c>Model</c>): the Subiekt card that groups variants, with its properties.</summary>
+public class ProductModelDto
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+    /// <summary>Signature (<c>Sygnatura.PelnaSygnatura</c>), the symbol prefix of its variants, e.g. DMSUDKP03820.</summary>
+    public string? Signature { get; set; }
+    public int VariantCount { get; set; }
+    public List<ProductModelPropertyDto> Properties { get; set; } = new();
+    /// <summary>Only in <c>GET /api/product-models/{id}</c>.</summary>
+    public List<ProductModelVariantDto>? Variants { get; set; }
+}
+
+/// <summary>A property of a model (<c>WlasciwoscModelu</c>).</summary>
+public class ProductModelPropertyDto
+{
+    public int Id { get; set; }
+    public string? Name { get; set; }
+    public string? Symbol { get; set; }
+    public bool Required { get; set; }
+    public string? DefaultValue { get; set; }
+}
+
+/// <summary>A variant of a model with the value of each property.</summary>
+public class ProductModelVariantDto
+{
+    public int ProductId { get; set; }
+    public string? Symbol { get; set; }
+    public string? Name { get; set; }
+    public int? Number { get; set; }
+    public List<ProductVariantPropertyDto> Values { get; set; } = new();
+}
+
+/// <summary>Result of <c>PUT /api/products/{id}/model</c>.</summary>
+public class MovedVariantDto
+{
+    /// <summary>moved, planned (dry run) or unchanged (already in that model with these values and symbol).</summary>
+    public string Status { get; set; } = string.Empty;
+    public int ProductId { get; set; }
+    public int? OldModelId { get; set; }
+    public int ModelId { get; set; }
+    public string? OldSymbol { get; set; }
+    public string? Symbol { get; set; }
+    public string? OldName { get; set; }
+    public string? Name { get; set; }
+    public List<ProductVariantPropertyDto> Values { get; set; } = new();
+}

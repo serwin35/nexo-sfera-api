@@ -177,6 +177,95 @@ public class ProductPropertiesController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// List product models (the Subiekt cards that group variants) with their properties and variant counts
+    /// </summary>
+    /// <param name="search">Fragment of the model name or signature, e.g. "ZOSP" or "DMSUDKP03820"</param>
+    [HttpGet("product-models")]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductModelDto>>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetModels([FromQuery] string? search = null)
+    {
+        try
+        {
+            var models = await _sferaService.ExecuteWithLockAsync(() => ProductModelReader.List(_sferaService.GetSfera(), search));
+            return Ok(ApiResponse<List<ProductModelDto>>.Ok(models));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading product models");
+            return StatusCode(500, ApiResponse<object>.Error("Error reading product models", ExceptionErrors(ex)));
+        }
+    }
+
+    /// <summary>
+    /// Get one product model with its properties and every variant (symbol, name, number, property values)
+    /// </summary>
+    /// <param name="id">Model id</param>
+    [HttpGet("product-models/{id:int}")]
+    [ProducesResponseType(typeof(ApiResponse<ProductModelDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetModel(int id)
+    {
+        try
+        {
+            var model = await _sferaService.ExecuteWithLockAsync(() => ProductModelReader.Get(_sferaService.GetSfera(), id));
+            if (model == null) return NotFound(ApiResponse<object>.Error($"Model {id} not found"));
+            return Ok(ApiResponse<ProductModelDto>.Ok(model));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading product model {Id}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error reading the product model", ExceptionErrors(ex)));
+        }
+    }
+
+    /// <summary>
+    /// Move an existing card into a model as its variant (or give it other values in its own model)
+    /// </summary>
+    /// <remarks>
+    /// Sets the model, the next free variant number (when the model changes), the value of every property of the target
+    /// model, the optional new symbol, and regenerates the name and description from the model. Kind, group, components
+    /// and prices stay; change them with the other endpoints. Refused (400, nothing saved): an unknown property or value,
+    /// a missing value, a value set the model already has, a symbol of another card, or a property of the card the target
+    /// model does not have.
+    ///
+    /// Example: <c>{"modelId": 100150, "values": [{"property":"Kolor","value":"Czarny"},{"property":"RM","value":"S"}], "symbol": "DMSUDKP00090_0113", "dryRun": true}</c>
+    /// </remarks>
+    /// <param name="id">Product id</param>
+    /// <param name="request">Target model, values, symbol, dry run</param>
+    [HttpPut("products/{id:int}/model")]
+    [ProducesResponseType(typeof(ApiResponse<MovedVariantDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MoveToModel(int id, [FromBody] MoveToModelRequest request)
+    {
+        var errors = VariantMover.Validate(request);
+        if (errors.Count > 0) return BadRequest(ApiResponse<object>.Error("Invalid request; nothing was saved", errors));
+
+        try
+        {
+            var outcome = await _sferaService.ExecuteWithLockAsync(() => VariantMover.Move(_sferaService.GetSfera(), id, request));
+            if (!outcome.Found) return NotFound(ApiResponse<object>.Error($"Product with ID {id} not found"));
+            if (outcome.Errors.Count > 0)
+                return BadRequest(new ApiResponse<MovedVariantDto> { Success = false, Message = "Not moved; nothing was saved", Data = outcome.Result, Errors = outcome.Errors });
+
+            var result = outcome.Result!;
+            _logger.LogInformation("Product {Id}: model {Old} -> {New}, {OldSymbol} -> {Symbol} ({Status})", id, result.OldModelId, result.ModelId, result.OldSymbol, result.Symbol, result.Status);
+            var message = result.Status switch
+            {
+                VariantMover.Moved => "Moved",
+                VariantMover.Planned => "Dry run: would be moved",
+                _ => "Already a variant of this model with these values",
+            };
+            return Ok(ApiResponse<MovedVariantDto>.Ok(result, message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error moving product {Id} to model {Model}", id, request.ModelId);
+            return StatusCode(500, ApiResponse<object>.Error("Error moving the product", ExceptionErrors(ex)));
+        }
+    }
+
     /// <summary>The exception and its root cause (EF wraps SDK errors), as the other controllers report a 500.</summary>
     private static List<string> ExceptionErrors(Exception ex)
     {

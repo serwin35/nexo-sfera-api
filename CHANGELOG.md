@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - product models: list, details, and moving a card into a model
+- `GET /api/product-models?search=` lists models, the Subiekt cards that group variants. Each model has its name,
+  signature, properties and variant count.
+- `GET /api/product-models/{id}` returns one model with every variant: symbol, name, number and property values.
+- `PUT /api/products/{id}/model` with `{"modelId","values","symbol","dryRun"}` makes an existing card a variant of the
+  target model:
+  - sets the model and the next free number (counting the recycle bin);
+  - sets the value of every property of the target model, by property name or symbol;
+  - sets the new symbol, if given;
+  - regenerates the name and description from the model.
+  - Kind, group, components and prices stay as they are.
+  - Refused with 400, nothing saved: an unknown property or value, a missing value, a value set another variant already
+    has, a symbol of another card, or a property of the card that the target model does not have.
+- Reads are SQL projections, which never lazy load untracked entities. The move opens the card as a business object, as
+  `PUT .../variant-properties` does.
+- Why: seven unused Coyote CY kits generated in the FLRA 340 model (`PMTPROD01391_CY12–CY18`) can be reused as variants
+  of the embroidered T-shirt STRAŻ (`DMSUDKP00090`) instead of being deleted. The bridge also had no way to look at a
+  model.
+
 ### Fixed (2026-10-22) - POST /api/products/{id}/variants failed on every request
 - The first dry run (ZOSP T-shirts, template `DMSUDKP03820_0113`) failed with "When an object is returned with a
   NoTracking merge option, Load can only be called when the EntityCollection or EntityReference does not contain
