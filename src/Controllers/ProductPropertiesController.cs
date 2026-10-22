@@ -41,7 +41,7 @@ public class ProductPropertiesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reading product properties");
-            return StatusCode(500, ApiResponse<object>.Error("Error reading product properties"));
+            return StatusCode(500, ApiResponse<object>.Error("Error reading product properties", ExceptionErrors(ex)));
         }
     }
 
@@ -78,7 +78,7 @@ public class ProductPropertiesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding a value to property {Id}", id);
-            return StatusCode(500, ApiResponse<object>.Error("Error adding the value"));
+            return StatusCode(500, ApiResponse<object>.Error("Error adding the value", ExceptionErrors(ex)));
         }
     }
 
@@ -118,7 +118,7 @@ public class ProductPropertiesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting {Property} on product {Id}", property, id);
-            return StatusCode(500, ApiResponse<object>.Error("Error setting the property"));
+            return StatusCode(500, ApiResponse<object>.Error("Error setting the property", ExceptionErrors(ex)));
         }
     }
 
@@ -173,7 +173,16 @@ public class ProductPropertiesController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating variants from product {Id}", id);
-            return StatusCode(500, ApiResponse<object>.Error("Error creating the variants"));
+            return StatusCode(500, ApiResponse<object>.Error("Error creating the variants", ExceptionErrors(ex)));
         }
+    }
+
+    /// <summary>The exception and its root cause (EF wraps SDK errors), as the other controllers report a 500.</summary>
+    private static List<string> ExceptionErrors(Exception ex)
+    {
+        var errors = new List<string> { $"{ex.GetType().Name}: {ex.Message}" };
+        var root = ex.GetBaseException();
+        if (!ReferenceEquals(root, ex)) errors.Add($"{root.GetType().Name}: {root.Message}");
+        return errors;
     }
 }

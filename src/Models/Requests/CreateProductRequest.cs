@@ -144,9 +144,8 @@ public class UpdateProductRequest
     public decimal? RecordPrice { get; set; }
 
     /// <summary>
-    /// Kind of the card: Goods, Service or Set (kit), set to the default Nexo kind of that type
-    /// (<c>RodzajeAsortymentu().DaneDomyslne</c>). Use it for a card generated with the wrong kind, e.g. a supplier
-    /// polar created as a kit. A kit with components cannot become Goods or Service; Material is refused.
+    /// Not writable: Nexo does not change the kind of an existing card, so any value returns 400 with how to recreate the
+    /// card. Kept so that a client sending it gets that message instead of the field being silently ignored.
     /// </summary>
     public ProductType? Type { get; set; }
 

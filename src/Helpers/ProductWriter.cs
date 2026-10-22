@@ -92,9 +92,11 @@ public static class ProductWriter
             errors.Add("groupId: must be a positive product group id.");
         }
 
-        if (request.Type == ProductType.Material)
+        if (request.Type.HasValue)
         {
-            errors.Add("type: Material is not a Nexo product kind; use Goods, Service or Set.");
+            errors.Add("type: Nexo does not change the kind of an existing card (\"Nie można zmieniać rodzaju asortymentu w " +
+                       "kartotece\"). Create a card of the right kind instead: POST /api/products, or for a variant " +
+                       "POST /api/products/{id}/variants from a variant of that kind; then delete the old card.");
         }
 
         if (request.SupplierId is <= 0)
@@ -167,11 +169,6 @@ public static class ProductWriter
             ApplyRecordPrice(dane, request.RecordPrice.Value, outcome);
         }
 
-        if (request.Type.HasValue)
-        {
-            ApplyType(sfera, dane, request.Type.Value, outcome);
-        }
-
         if (request.SupplierId.HasValue)
         {
             ApplySupplier(sfera, product, request.SupplierId.Value, outcome);
@@ -183,7 +180,7 @@ public static class ProductWriter
     private static bool HasAnyWritableField(UpdateProductRequest request) =>
         request.Symbol != null || request.Name != null || request.Description != null || request.EAN != null || request.PKWiU != null
         || request.Weight.HasValue || request.Volume.HasValue || request.GroupId.HasValue || request.RecordPrice.HasValue
-        || request.Type.HasValue || request.SupplierId.HasValue;
+        || request.SupplierId.HasValue;
 
     private static void SetText(Outcome outcome, string field, Func<string?> get, Action<string> set, string value)
     {
@@ -370,46 +367,6 @@ public static class ProductWriter
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             outcome.Errors.Add($"weight: Nexo rejected the value ({ex.Message}).");
-        }
-    }
-
-    /// <summary>Kind → the default Nexo kind of the type; a kit keeps its kind while it still has components.</summary>
-    private static void ApplyType(Uchwyt sfera, Asortyment dane, ProductType type, Outcome outcome)
-    {
-        var current = ProductReader.KindOf(dane.Rodzaj).Type;
-        if (current == type)
-        {
-            outcome.Fields.Add(Result("type", Unchanged, current.ToString(), type.ToString()));
-            return;
-        }
-
-        if (type != ProductType.Set && dane.SkladnikiKompletu.Any())
-        {
-            outcome.Errors.Add($"type: the kit still has {dane.SkladnikiKompletu.Count} components; remove them before changing it to {type}.");
-            return;
-        }
-
-        var defaults = sfera.RodzajeAsortymentu().DaneDomyslne;
-        var kind = type switch
-        {
-            ProductType.Service => defaults.Usluga,
-            ProductType.Set => defaults.Komplet,
-            _ => defaults.Towar,
-        };
-        if (kind == null)
-        {
-            outcome.Errors.Add($"type: Nexo has no default kind for {type}.");
-            return;
-        }
-
-        try
-        {
-            dane.Rodzaj = kind;
-            outcome.Fields.Add(Result("type", Updated, current.ToString(), type.ToString()));
-        }
-        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
-        {
-            outcome.Errors.Add($"type: Nexo rejected the kind change ({ex.Message}).");
         }
     }
 
