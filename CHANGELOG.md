@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - variant properties: allowed values and the value of a variant
+- `GET /api/product-properties`: every variant property (`Wlasciwosc`, e.g. "Kolor", "RM") with its allowed values
+  (`Wlasciwosc.CechyAsortymentu`).
+- `POST /api/product-properties/{id}/values` with `{"name"}` adds an allowed value to a property, e.g. a new colour.
+  - A value of the same name already in the dictionary (`CechaAsortymentu`) is reused; otherwise it is created.
+- `PUT /api/products/{id}/variant-properties` with `{"property","value","regenerateName"}` sets the value of one
+  property on one variant, e.g. Kolor: Piaskowy → Beżowy.
+  - It changes `Asortyment.WlasciwosciAsortymentu` of that product only.
+  - It regenerates the variant name and description from the model (`WygenerujNazweWariantu` / `WygenerujOpisWariantu`).
+  - A value that the property does not allow returns 400, and nothing is saved.
+- Why: production polars sewn from beige fabric were named "Piaskowy". The global value "Piaskowy" stays, because
+  it is also the real sand of other products. The owner needs to switch only those variants, and later add CY
+  (coyote).
+
 ### Added (2026-10-22) - registry price of a product through PUT /api/products/{id}
 - New field `recordPrice` (`Asortyment.CenaEwidencyjna`), rounded to 2 decimals and reported in `fieldResults`.
 - Why: the dry runs of `recalculate-costs` showed where a kit's base price comes from.
