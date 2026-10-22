@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - sales invoice and receipt payments (needs a joint test before merge)
+- **`POST /api/documents/sales-invoice` and the receipt endpoint** never added the requested payment.
+  `SetPaymentMethodOnDocument` called `Platnosci.DodajPlatnoscOdroczona/DodajPlatnoscNatychmiastowa` through `dynamic`,
+  but `DokumentSprzedazyBO` implements them explicitly (`IPlatnosciNaDokumencie`), so the call never bound; the error was
+  logged at Debug and only `dane.FormaPlatnosci` was set. After the lines every document then got the SDK default
+  immediate payment, so `isDeferredPayment: true` never created a receivable.
+- Now the header gets `dane.FormaPlatnosci` first, and after the lines `AddDocumentPayment` adds exactly one payment:
+  deferred or immediate in the requested form (typed `IPlatnosciNaDokumencie`), or the SDK default immediate payment
+  when no form was requested (unchanged behaviour for those requests).
+
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
   now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
