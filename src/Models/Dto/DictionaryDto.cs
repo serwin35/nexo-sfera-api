@@ -398,6 +398,10 @@ public class PriceListCostChangeDto
     public decimal OldCalculationPrice { get; set; }
     public decimal CalculationPrice { get; set; }
 
+    /// <summary>Estimated cost (<c>SzacowanyKoszt</c>); for a kit with cost estimation, the sum of its components' costs.</summary>
+    public decimal OldEstimatedCost { get; set; }
+    public decimal EstimatedCost { get; set; }
+
     /// <summary>Margin as a fraction of the net price (0.35 = 35%), as Nexo reports it.</summary>
     public decimal? OldMargin { get; set; }
     public decimal? Margin { get; set; }
