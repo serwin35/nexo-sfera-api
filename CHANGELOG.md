@@ -62,6 +62,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comma). The limits are now parsed in the invariant culture (`ParseLimitsInInvariantCulture`). No other decimal
   `Range` uses string limits.
   
+### Documentation (2026-10-22) - SDK coverage and roadmap
+- New `docs/SDK-COVERAGE.md`: per area (products, groups, contractors, price lists, sales/purchase and warehouse
+  documents, orders, line editing, settlements, KSeF, assembly, stocktaking) what SDK 62 offers (verified members), what
+  the bridge exposes and whether it works, and what WolfFire uses. Ends with a prioritized roadmap. Cross-cutting
+  findings: save errors were never returned (explicit `ITypedDataErrorInfo`), `dynamic` calls on explicit interface
+  members, members that do not exist, false 200s and full-table scans under the SDK lock.
+
 ### Changed (2026-10-22) - SDK 62.0.0.9537
 - **SDK reference bumped to nexo 62.0.0.9537** (README, `scripts/setup-sdk.ps1`, local-SDK fallback in `build.yml` and
   `release.yml`). Reviewed `ZmianyAPI_61.1.1_62.0.0.txt` and `ZmianyModeluDanych_61.1.1_62.0.0.txt`, and diffed the
