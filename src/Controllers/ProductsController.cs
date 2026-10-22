@@ -173,14 +173,40 @@ public class ProductsController : ControllerBase
     /// <summary>
     /// Get all products with optional filtering (lightweight list view)
     /// </summary>
+    /// <remarks>
+    /// Delta sync: <c>modifiedSince</c> returns only products whose card changed at or after the given time
+    /// (<c>Asortyment.Naglowek.Zmieniono</c>, reported as <c>modifiedAt</c>). Combine it with <c>sortBy=modified_asc</c>
+    /// and an overlap of a few minutes. Prices in price lists, stock levels and products moved to the recycle bin are not
+    /// part of the card, so a periodic full pass is still needed for them.
+    /// </remarks>
+    /// <param name="search">Symbol, name or barcode fragment</param>
+    /// <param name="type">Product kind (Goods, Service, Set); Material matches no Nexo kind</param>
+    /// <param name="activeOnly">Only products available for sale (<c>Dane.WszystkieDostepne()</c>)</param>
+    /// <param name="modifiedSince">Only products whose card changed at or after this time (ISO 8601 with offset)</param>
+    /// <param name="sortBy">modified_asc or modified_desc (card change time, then id); default is the Nexo order</param>
+    /// <param name="page">Page number (1-based)</param>
+    /// <param name="pageSize">Page size</param>
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ProductListItemDto>>> GetProducts(
         [FromQuery] string? search,
         [FromQuery] ProductType? type,
         [FromQuery] bool? activeOnly,
+        [FromQuery] DateTimeOffset? modifiedSince,
+        [FromQuery] string? sortBy,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
+        var sort = sortBy?.Trim().ToLowerInvariant();
+        if (!string.IsNullOrEmpty(sort) && sort is not ("modified_asc" or "modified_desc"))
+        {
+            return BadRequest(ApiResponse<object>.Error("sortBy must be modified_asc or modified_desc"));
+        }
+
+        if (page < 1 || pageSize < 1)
+        {
+            return BadRequest(ApiResponse<object>.Error("page and pageSize must be at least 1"));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
@@ -198,6 +224,23 @@ public class ProductsController : ControllerBase
                     allAsortymenty.Add(a);
                 }
 
+                var sfera = _sferaService.GetSfera();
+                var kinds = ProductReader.Kinds(sfera);
+
+                // Delta sync and kind filter: one SQL query each over the header/kind columns (the dynamic list read
+                // Rodzaj_Id, which does not exist, and ignored both).
+                if (modifiedSince.HasValue)
+                {
+                    var changed = ProductReader.ModifiedSince(sfera, modifiedSince.Value);
+                    allAsortymenty = allAsortymenty.Where(a => changed.Contains(DynamicPropertyHelper.GetId(a))).ToList();
+                }
+
+                if (type.HasValue)
+                {
+                    var ofType = ProductReader.ProductIdsOfType(sfera, type.Value, kinds);
+                    allAsortymenty = allAsortymenty.Where(a => ofType.Contains(DynamicPropertyHelper.GetId(a))).ToList();
+                }
+
                 if (!string.IsNullOrEmpty(search))
                 {
                     // Barcodes live on the product units (KodyKreskowe); one SQL query instead of lazy loads per product.
@@ -213,7 +256,21 @@ public class ProductsController : ControllerBase
                 }
 
                 var totalCount = allAsortymenty.Count;
-                var items = allAsortymenty
+                IEnumerable<object> ordered = allAsortymenty;
+                if (sort != null && sort.StartsWith("modified_", StringComparison.Ordinal))
+                {
+                    var allStamps = ProductReader.Stamps(sfera);
+                    DateTimeOffset ModifiedAt(object a) =>
+                        allStamps.TryGetValue(DynamicPropertyHelper.GetId(a), out var st) && st.ModifiedAt.HasValue
+                            ? st.ModifiedAt.Value
+                            : DateTimeOffset.MinValue;
+
+                    ordered = sort == "modified_desc"
+                        ? allAsortymenty.OrderByDescending(ModifiedAt).ThenByDescending(a => (int)DynamicPropertyHelper.GetId(a))
+                        : allAsortymenty.OrderBy(ModifiedAt).ThenBy(a => (int)DynamicPropertyHelper.GetId(a));
+                }
+
+                var items = ordered
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
@@ -223,6 +280,8 @@ public class ProductsController : ControllerBase
                 {
                     mappedItems.Add(MapToListItemDto(item));
                 }
+
+                ProductReader.ApplyStamps(mappedItems, ProductReader.Stamps(sfera, mappedItems.Select(i => i.Id).ToList()), kinds);
 
                 return new PagedResponse<ProductListItemDto>
                 {

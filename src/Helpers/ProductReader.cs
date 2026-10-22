@@ -36,6 +36,19 @@ public static class ProductReader
     /// <summary>The product EAN together with the unit it was taken from.</summary>
     public sealed record EanSource(string Code, JednostkaMiaryAsortymentu Unit);
 
+    /// <summary>A Nexo product kind (<c>RodzajAsortymentu</c>) as the API type, with its Nexo name.</summary>
+    public sealed record Kind(ProductType Type, string? Name);
+
+    /// <summary>Kind, model and card header times of a product, read for many products in one SQL query.</summary>
+    public sealed class Stamp
+    {
+        public int Id { get; set; }
+        public int? KindId { get; set; }
+        public int? ModelId { get; set; }
+        public DateTimeOffset? CreatedAt { get; set; }
+        public DateTimeOffset? ModifiedAt { get; set; }
+    }
+
     /// <summary>Overwrites the fields of a <see cref="ProductDto"/> built by the dynamic mapper with the real SDK members.</summary>
     public static void Enrich(ProductDto dto, object entity)
     {
@@ -78,7 +91,113 @@ public static class ProductReader
             dto.VatRateSalesId = SdkMember.Read<Guid?>(() => salesVat.Id, null)?.ToString();
         }
 
+        var rodzaj = SdkMember.Read(() => asortyment.Rodzaj, null);
+        if (rodzaj != null)
+        {
+            var kind = KindOf(rodzaj);
+            dto.Type = kind.Type;
+            dto.KindName = kind.Name;
+        }
+
+        var model = SdkMember.Read(() => asortyment.Model, null);
+        dto.ModelId = model == null ? null : SdkMember.Read<int?>(() => model.Id, null);
+        dto.IsVariant = model != null;
+
+        var header = SdkMember.Read(() => asortyment.Naglowek, null);
+        if (header != null)
+        {
+            dto.CreatedAt = SdkMember.Read<DateTimeOffset?>(() => header.Utworzono, null)?.LocalDateTime ?? dto.CreatedAt;
+            dto.ModifiedAt = SdkMember.Read<DateTimeOffset?>(() => header.Zmieniono, null)?.LocalDateTime ?? dto.ModifiedAt;
+        }
+
         EnrichUnits(dto.Units, asortyment);
+    }
+
+    /// <summary>Every product kind of the database by id (a small dictionary, read once per request).</summary>
+    public static Dictionary<int, Kind> Kinds(Uchwyt sfera) =>
+        sfera.RodzajeAsortymentu().Dane.Wszystkie()
+            .ToList()
+            .ToDictionary(r => r.Id, KindOf);
+
+    /// <summary>
+    /// The API type of a Nexo kind through the SDK kind checks (<c>CzyKomplet</c>, <c>CzyUsluga</c>, <c>CzyTowar</c>).
+    /// Kinds that are none of them (returnable packaging, additional fees) are reported as Goods, as before; the Nexo name
+    /// tells them apart.
+    /// </summary>
+    public static Kind KindOf(RodzajAsortymentu rodzaj)
+    {
+        var type = SdkMember.Read(() => rodzaj.CzyKomplet(), false) ? ProductType.Set
+            : SdkMember.Read(() => rodzaj.CzyUsluga(), false) ? ProductType.Service
+            : ProductType.Goods;
+        return new Kind(type, SdkMember.Text(() => rodzaj.NaString()) ?? SdkMember.Text(() => rodzaj.Nazwa));
+    }
+
+    /// <summary>Ids of the products of the given API type (one SQL query). Material matches no Nexo kind.</summary>
+    public static HashSet<int> ProductIdsOfType(Uchwyt sfera, ProductType type, IReadOnlyDictionary<int, Kind> kinds)
+    {
+        var kindIds = kinds.Where(k => k.Value.Type == type).Select(k => k.Key).ToList();
+        if (type == ProductType.Material || kindIds.Count == 0) return new HashSet<int>();
+
+        return sfera.Asortymenty().Dane.Wszystkie()
+            .Where(a => a.Rodzaj != null && kindIds.Contains(a.Rodzaj.Id))
+            .Select(a => a.Id)
+            .ToList()
+            .ToHashSet();
+    }
+
+    /// <summary>
+    /// Ids of products whose card changed at or after <paramref name="since"/> (<c>Naglowek.Zmieniono</c>, one SQL query).
+    /// Products moved to the recycle bin leave <c>Dane.Wszystkie()</c> and are not reported.
+    /// </summary>
+    public static HashSet<int> ModifiedSince(Uchwyt sfera, DateTimeOffset since) =>
+        sfera.Asortymenty().Dane.Wszystkie()
+            .Where(a => a.Naglowek != null && a.Naglowek.Zmieniono >= since)
+            .Select(a => a.Id)
+            .ToList()
+            .ToHashSet();
+
+    /// <summary>Stamps of the given products, or of every product when <paramref name="productIds"/> is null (one SQL query).</summary>
+    public static Dictionary<int, Stamp> Stamps(Uchwyt sfera, IReadOnlyCollection<int>? productIds = null)
+    {
+        IQueryable<Asortyment> products = sfera.Asortymenty().Dane.Wszystkie();
+        if (productIds != null)
+        {
+            var ids = productIds.Distinct().ToList();
+            products = products.Where(a => ids.Contains(a.Id));
+        }
+
+        return products
+            .Select(a => new Stamp
+            {
+                Id = a.Id,
+                KindId = a.Rodzaj == null ? (int?)null : a.Rodzaj.Id,
+                ModelId = a.Model == null ? (int?)null : a.Model.Id,
+                CreatedAt = a.Naglowek == null ? (DateTimeOffset?)null : a.Naglowek.Utworzono,
+                ModifiedAt = a.Naglowek == null ? (DateTimeOffset?)null : a.Naglowek.Zmieniono,
+            })
+            .ToList()
+            .GroupBy(st => st.Id)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
+
+    /// <summary>Fills the kind, variant and card times of list rows.</summary>
+    public static void ApplyStamps(IEnumerable<ProductListItemDto> items, IReadOnlyDictionary<int, Stamp> stamps, IReadOnlyDictionary<int, Kind> kinds)
+    {
+        foreach (var item in items)
+        {
+            if (!stamps.TryGetValue(item.Id, out var stamp)) continue;
+
+            if (stamp.KindId.HasValue && kinds.TryGetValue(stamp.KindId.Value, out var kind))
+            {
+                item.Type = kind.Type;
+                item.KindName = kind.Name;
+            }
+
+            item.ModelId = stamp.ModelId;
+            item.IsVariant = stamp.ModelId.HasValue;
+            item.CreatedAt = stamp.CreatedAt;
+            item.ModifiedAt = stamp.ModifiedAt;
+        }
     }
 
     /// <summary>Adds the unit barcodes and mass/volume unit symbols to <see cref="ProductUnitDto"/> rows (matched by unit id).</summary>
