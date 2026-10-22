@@ -259,7 +259,7 @@ Pełny, zawsze aktualny katalog **354 endpointów** znajdziesz w **Swagger UI** 
 | **Majątek** | `fixed-assets` (środki trwałe), `fleet` (pojazdy) |
 | **CRM i serwis** | `activities` (działania CRM), `service-orders` (zlecenia serwisowe), `comments`, `calendars`, `attachments` |
 | **E-commerce i logistyka** | `ecommerce` (integracje, oferty internetowe, paczki), `couriers` |
-| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje, poziomy cen, cenniki — pozycje cennika po id: `price-lists/by-id/{id}/items`), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
+| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje, poziomy cen, cenniki — pozycje cennika po id: `price-lists/by-id/{id}/items`, zapis cen z warunkiem `expectedPrice*`, przecena `price-lists/by-id/{id}/reprice`), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
 | **System** | `health`, `system` (firma, operator, licencja), `audit-trail`, `reports`, `office-clients`, `diagnostics` (tylko do debugowania) |
 
 ## 🐘 Integracja z Laravel
@@ -416,6 +416,10 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
   (`StanRealizacjiZamowienia`, `IloscDoRealizacji`, `Rezerwacja`) + wartości w jednostce bazowej.
 - `GET /api/documents?modifiedSince=2026-10-09T00:00:00%2B02:00&sortBy=modified_asc`: tylko dokumenty zmienione (nagłówek
   lub rozrachunek) od podanego czasu; lista ma `isCanceled`, `createdAt`, `modifiedAt`, `settlementModifiedAt`.
+- `GET /api/products?modifiedSince=2026-10-22T00:00:00%2B02:00&sortBy=modified_asc`: tylko towary ze zmienioną kartoteką
+  (`Naglowek.Zmieniono`) od podanego czasu. Ceny w cennikach, stany i przeniesienie do kosza nie zmieniają kartoteki, więc
+  okresowy pełny przelot listy zostaje. Lista i szczegóły mają `type` (z rodzaju nexo; filtr `type` działa), `kindName`,
+  `isVariant`, `modelId` (id karty modelu `Asortyment.Model`), `createdAt`, `modifiedAt`.
 - `POST /api/payments/*` z niepustym `documentIdsToSettle` → `400` (rozliczanie nie jest obsługiwane).
 - Cache danych SDK między żądaniami tylko przez `ISferaService.GetTenantState` (per baza + operator + magazyn + oddział).
 
