@@ -1771,6 +1771,14 @@ public class ProductsController : ControllerBase
 
     private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
+        // Typed first: the entity errors are explicit interface members (ITypedDataErrorInfo), which the late-bound read
+        // below cannot see, so it returned no errors for a refused save.
+        if ((object?)obiekt is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy businessObject)
+        {
+            var typed = SdkErrors.Of(businessObject);
+            if (typed.Count > 0) return typed;
+        }
+
         var errors = new List<string>();
         try
         {
