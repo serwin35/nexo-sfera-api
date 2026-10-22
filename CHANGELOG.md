@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   got 1.
 - Both no longer set any number. `GET /api/product-models/{id}` returns `LpWariantu` as the variant number, which was
   empty before.
+- Variant property values (`variantProperties` on a product, `values` of model variants) also carry `propertySymbol`
+  (`Wlasciwosc.Symbol`: "Kolor", "RM", "RS"…). The full property name ("Rozmiar międzynarodowy (S,M,L)") is not a stable
+  key for WolfFire to map colour and size; the symbol is what variant names show.
 
 ### Added (2026-10-22) - product models: list, details, and moving a card into a model
 - `GET /api/product-models?search=` lists models, the Subiekt cards that group variants. Each model has its name,
