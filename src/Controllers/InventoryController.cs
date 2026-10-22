@@ -339,15 +339,7 @@ public class InventoryController : ControllerBase
                     return (found: true, managerMissing: true, items: (List<InventoryItemDto>?)null);
                 }
 
-                dynamic? produkt = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(a) == productId)
-                    {
-                        produkt = a;
-                        break;
-                    }
-                }
+                dynamic? produkt = DynamicPropertyHelper.FindById(asortymentyManager, productId);
                 if (produkt == null)
                 {
                     return (found: false, managerMissing: false, items: (List<InventoryItemDto>?)null);
@@ -1577,15 +1569,7 @@ public class InventoryController : ControllerBase
                     return (statusCode: 500, dto: (FreeQuantityDto?)null, error: "Failed to get Asortymenty manager");
                 }
 
-                dynamic? produkt = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(a) == productId)
-                    {
-                        produkt = a;
-                        break;
-                    }
-                }
+                dynamic? produkt = DynamicPropertyHelper.FindById(asortymentyManager, productId);
 
                 if (produkt == null)
                 {

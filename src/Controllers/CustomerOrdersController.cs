@@ -222,15 +222,7 @@ public class CustomerOrdersController : ControllerBase
                 var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowienia == null) return (CustomerOrderDto?)null;
 
-                dynamic? zamowienie = null;
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-                {
-                    if (DynamicPropertyHelper.GetId(z) == id)
-                    {
-                        zamowienie = z;
-                        break;
-                    }
-                }
+                dynamic? zamowienie = DynamicPropertyHelper.FindById(zamowienia, id);
 
                 if (zamowienie == null) return (CustomerOrderDto?)null;
                 return (CustomerOrderDto?)MapToDto(zamowienie);
@@ -585,15 +577,7 @@ public class CustomerOrdersController : ControllerBase
                 var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowienia == null) return (false, "manager_null", (CustomerOrderDto?)null, new List<string>());
 
-                dynamic? zamowienieDane = null;
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-                {
-                    if (DynamicPropertyHelper.GetId(z) == id)
-                    {
-                        zamowienieDane = z;
-                        break;
-                    }
-                }
+                dynamic? zamowienieDane = DynamicPropertyHelper.FindById(zamowienia, id);
 
                 if (zamowienieDane == null) return (false, "not_found", (CustomerOrderDto?)null, new List<string>());
 
@@ -679,15 +663,7 @@ public class CustomerOrdersController : ControllerBase
                 var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowienia == null) return (false, "manager_null", new List<string>());
 
-                dynamic? zamowienieDane = null;
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-                {
-                    if (DynamicPropertyHelper.GetId(z) == id)
-                    {
-                        zamowienieDane = z;
-                        break;
-                    }
-                }
+                dynamic? zamowienieDane = DynamicPropertyHelper.FindById(zamowienia, id);
 
                 if (zamowienieDane == null) return (false, "not_found", new List<string>());
 
@@ -745,15 +721,7 @@ public class CustomerOrdersController : ControllerBase
                 var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowienia == null) return (false, "manager_null", (CustomerOrderDto?)null, new List<string>());
 
-                dynamic? zamowienieDane = null;
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-                {
-                    if (DynamicPropertyHelper.GetId(z) == id)
-                    {
-                        zamowienieDane = z;
-                        break;
-                    }
-                }
+                dynamic? zamowienieDane = DynamicPropertyHelper.FindById(zamowienia, id);
 
                 if (zamowienieDane == null) return (false, "not_found", (CustomerOrderDto?)null, new List<string>());
 
@@ -821,15 +789,7 @@ public class CustomerOrdersController : ControllerBase
                 var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
                 if (zamowienia == null) return (CustomerOrderRealizationDto?)null;
 
-                dynamic? zamowienie = null;
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-                {
-                    if (DynamicPropertyHelper.GetId(z) == id)
-                    {
-                        zamowienie = z;
-                        break;
-                    }
-                }
+                dynamic? zamowienie = DynamicPropertyHelper.FindById(zamowienia, id);
 
                 if (zamowienie == null) return (CustomerOrderRealizationDto?)null;
 
