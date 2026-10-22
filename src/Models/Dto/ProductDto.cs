@@ -363,6 +363,8 @@ public class VariantPropertyChangeDto
 public class ProductVariantPropertyDto
 {
     public string Property { get; set; } = string.Empty;
+    /// <summary>Property symbol (<c>Wlasciwosc.Symbol</c>), e.g. "Kolor", "RM", "RS"; the key variant names show.</summary>
+    public string? PropertySymbol { get; set; }
     public string? Value { get; set; }
 }
 

@@ -128,6 +128,7 @@ public static class ProductReader
             .Select(w => new ProductVariantPropertyDto
             {
                 Property = w.Wlasciwosc.Nazwa,
+                PropertySymbol = string.IsNullOrWhiteSpace(w.Wlasciwosc.Symbol) ? null : w.Wlasciwosc.Symbol,
                 Value = string.Join(", ", w.CechyAsortymentu.Select(c => c.Nazwa)),
             })
             .ToList(), new List<ProductVariantPropertyDto>());

@@ -67,16 +67,16 @@ public static class ProductModelReader
 
         model.Variants = sfera.Asortymenty().Dane.Wszystkie()
             .Where(a => a.Model != null && a.Model.Id == modelId)
-            .OrderBy(a => a.Numer)
+            .OrderBy(a => a.LpWariantu)
             .Select(a => new
             {
                 a.Id,
                 a.Symbol,
                 a.Nazwa,
-                a.Numer,
+                a.LpWariantu,
                 Values = a.WlasciwosciAsortymentu
                     .OrderBy(w => w.LP)
-                    .Select(w => new { w.Wlasciwosc.Nazwa, Values = w.CechyAsortymentu.Select(c => c.Nazwa) }),
+                    .Select(w => new { w.Wlasciwosc.Nazwa, w.Wlasciwosc.Symbol, Values = w.CechyAsortymentu.Select(c => c.Nazwa) }),
             })
             .ToList()
             .Select(a => new ProductModelVariantDto
@@ -84,8 +84,13 @@ public static class ProductModelReader
                 ProductId = a.Id,
                 Symbol = a.Symbol,
                 Name = a.Nazwa,
-                Number = a.Numer,
-                Values = a.Values.Select(v => new ProductVariantPropertyDto { Property = v.Nazwa, Value = string.Join(", ", v.Values) }).ToList(),
+                Number = a.LpWariantu,
+                Values = a.Values.Select(v => new ProductVariantPropertyDto
+                {
+                    Property = v.Nazwa,
+                    PropertySymbol = string.IsNullOrWhiteSpace(v.Symbol) ? null : v.Symbol,
+                    Value = string.Join(", ", v.Values),
+                }).ToList(),
             })
             .ToList();
         return model;

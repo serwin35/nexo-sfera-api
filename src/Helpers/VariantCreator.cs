@@ -14,7 +14,7 @@ namespace NexoSferaApi.Helpers;
 /// <para>
 /// Each variant is a new card (<c>IAsortymenty.Utworz()</c>) filled from the template variant
 /// (<c>IAsortyment.WypelnijNaPodstawie</c>: kind, group, units, VAT, suppliers, model), with its own value of every model
-/// property (<c>Asortyment.WlasciwosciAsortymentu</c>), the next free variant number, the given symbol or
+/// property (<c>Asortyment.WlasciwosciAsortymentu</c>), the given symbol or
 /// <c>AutoSymbol()</c>, and a name generated from the model (<c>WygenerujNazweWariantu</c>). Barcodes are never copied,
 /// because a barcode identifies one variant; kit components are copied only on request.
 /// </para>
@@ -46,7 +46,7 @@ public static class VariantCreator
     private sealed record ModelProperty(int Id, string Name, string? Symbol, bool Required, bool Unique, int Order, Dictionary<string, int> ValueIds);
 
     /// <summary>The model of the template variant, read through a business object (tracked, so lazy loading works).</summary>
-    private sealed record ModelSnapshot(int Id, string? Name, List<ModelProperty> Properties, Dictionary<string, (int Id, string? Symbol, string? Name)> Existing, int MaxNumber);
+    private sealed record ModelSnapshot(int Id, string? Name, List<ModelProperty> Properties, Dictionary<string, (int Id, string? Symbol, string? Name)> Existing);
 
     private sealed record PlanItem(CreatedVariantDto Result, List<(ModelProperty Property, int ValueId)> Values, string? Symbol);
 
@@ -162,13 +162,12 @@ public static class VariantCreator
 
         if (outcome.Failed || request.DryRun) return outcome;
 
-        var nextNumber = model.MaxNumber + 1;
         foreach (var item in plan)
         {
             var result = item.Result;
             try
             {
-                if (!Save(sfera, templateId, model.Id, item, request.CopyComponents, nextNumber++)) break;
+                if (!Save(sfera, templateId, model.Id, item, request.CopyComponents)) break;
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
             {
@@ -213,17 +212,14 @@ public static class VariantCreator
             .ToList();
 
         var existing = new Dictionary<string, (int Id, string? Symbol, string? Name)>(StringComparer.Ordinal);
-        var maxNumber = 0;
         foreach (var variant in model.Asortymenty.ToList())
         {
-            // Variants in the recycle bin keep their numbers, so they count for numbering, not as existing.
-            maxNumber = Math.Max(maxNumber, variant.Numer ?? 0);
             if (!ProductReader.IsActive(variant)) continue;
             existing.TryAdd(Key(ProductReader.VariantProperties(variant).Select(v => (v.Property, v.Value ?? string.Empty))),
                 (variant.Id, variant.Symbol, variant.Nazwa));
         }
 
-        return new ModelSnapshot(model.Id, model.Nazwa, properties, existing, maxNumber);
+        return new ModelSnapshot(model.Id, model.Nazwa, properties, existing);
     }
 
     /// <summary>
@@ -231,7 +227,7 @@ public static class VariantCreator
     /// the new card is a fresh untracked entity (the template, the model, property values), the way the other writers
     /// assign groups and kinds.
     /// </summary>
-    private static bool Save(Uchwyt sfera, int templateId, int modelId, PlanItem item, bool copyComponents, int number)
+    private static bool Save(Uchwyt sfera, int templateId, int modelId, PlanItem item, bool copyComponents)
     {
         var result = item.Result;
         var asortymenty = sfera.Asortymenty();
@@ -245,7 +241,6 @@ public static class VariantCreator
         ClearBarcodes(dane);
         if (!copyComponents) ClearComponents(product);
 
-        dane.Numer = number;
         if (item.Symbol != null) dane.Symbol = item.Symbol;
         else product.AutoSymbol();
         product.WygenerujNazweWariantu();
