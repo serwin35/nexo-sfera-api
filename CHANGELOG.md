@@ -28,6 +28,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `.zip-cache` of every version (and Program Files) and copied any missing file, including InsERT modules from other
   versions (seen on 2026-10-22: `InsERT.Mox.VMPackage.55.0.1.8249.dll` from a 2025 deployment). InsERT assemblies are
   now taken only from the selected deployment; third-party DLLs are still filled from anywhere.
+### Fixed (2026-10-22) - contractor group membership
+- Group membership is `Podmiot.Grupy` (a contractor belongs to any number of groups). The endpoints read and wrote
+  `Podmiot.Grupa`, which does not exist:
+  - `GET /api/contractor-groups/{id}/contractors` always returned an empty list, so the WolfFire group sync assigned no
+    contractors;
+  - member counts (`includeContractorCount`, `contractorCount` in the group detail) were always 0;
+  - adding a member failed, and removing one always answered "not in this group".
+- All of them now go through the typed `ContractorGroupMembers`:
+  - the member list is one SQL query with paging, ordered by short name;
+  - counts are one SQL query for all groups;
+  - add and remove edit `Podmiot.Grupy` and keep the contractor's other groups.
+- Behaviour changes:
+  - adding a contractor that is already in the group answers 200 without saving;
+  - `pageSize` above 500 or `page` below 1 returns 400;
+  - the bulk add lists every contractor that was not added in `errors` (the count in `data` is unchanged in meaning).
+- Members of subgroups are not included. The group hierarchy (`Grupa.KategoriaNadrzedna`) is not read yet.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
