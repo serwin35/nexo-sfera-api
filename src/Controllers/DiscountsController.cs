@@ -16,6 +16,9 @@ namespace NexoSferaApi.Controllers;
 [Tags("Discounts")]
 public class DiscountsController : ControllerBase
 {
+    /// <summary>Largest page of <c>GET /api/discounts</c>.</summary>
+    private const int MaxPageSize = 500;
+
     private readonly ISferaService _sferaService;
     private readonly ILogger<DiscountsController> _logger;
 
@@ -28,8 +31,12 @@ public class DiscountsController : ControllerBase
     #region Discounts
 
     /// <summary>
-    /// Get all discounts
+    /// Get all discounts, with the contractors each one is assigned to (<c>subjects</c>)
     /// </summary>
+    /// <remarks>
+    /// Nexo discounts have no validity period or activity flag, so <c>validAt</c> and <c>activeOnly</c> filter nothing;
+    /// discounts in the recycle bin are never listed.
+    /// </remarks>
     [HttpGet]
     [ProducesResponseType(typeof(PagedResponse<DiscountDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<PagedResponse<DiscountDto>>> GetDiscounts(
@@ -38,53 +45,26 @@ public class DiscountsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 50)
     {
+        if (page < 1 || pageSize < 1 || pageSize > MaxPageSize)
+        {
+            return BadRequest(ApiResponse<object>.Error($"page must be at least 1 and pageSize between 1 and {MaxPageSize}"));
+        }
+
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var (items, totalCount) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var rabatyManager = _sferaService.GetManager("Rabaty");
-                if (rabatyManager == null) return (null, 0);
-                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
-
-                if (activeOnly == true)
-                {
-                    allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
-                }
-
-                var checkDate = validAt ?? DateTime.Now;
-                allRabaty = allRabaty.Where(r =>
-                {
-                    var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
-                    var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
-                    return (!odDaty.HasValue || odDaty.Value <= checkDate) &&
-                           (!doDaty.HasValue || doDaty.Value >= checkDate);
-                }).ToList();
-
-                var totalCount = allRabaty.Count;
-                var pagedRabaty = allRabaty
-                    .OrderBy(r => DynamicPropertyHelper.GetString(r, "Symbol"))
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
-
-                var items = new List<DiscountDto>();
-                foreach (var r in pagedRabaty)
-                {
-                    items.Add(MapDiscount(r, false));
-                }
-
-                return (items, totalCount);
+                var sfera = _sferaService.GetSfera();
+                var discounts = DiscountReader.All(sfera);
+                return (DiscountReader.Page(sfera, discounts, (page - 1) * pageSize, pageSize), discounts.Count());
             });
-
-            if (result.Item1 == null)
-                return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
 
             return Ok(new PagedResponse<DiscountDto>
             {
-                Data = result.Item1,
+                Data = items,
                 Page = page,
                 PageSize = pageSize,
-                TotalCount = result.Item2
+                TotalCount = totalCount
             });
         }
         catch (Exception ex)
@@ -104,25 +84,16 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var (managerNull, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            var dto = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var rabatyManager = _sferaService.GetManager("Rabaty");
-                if (rabatyManager == null) return (true, (DiscountDto?)null);
-                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
-                var rabat = allRabaty.FirstOrDefault(r => DynamicPropertyHelper.GetId(r) == id);
-
-                if (rabat == null)
-                    return (false, (DiscountDto?)null);
-
-                return (false, MapDiscount(rabat, includeDetails));
+                var sfera = _sferaService.GetSfera();
+                return DiscountReader.Map(sfera, DiscountReader.All(sfera).Where(r => r.Id == id)).FirstOrDefault();
             });
-
-            if (managerNull)
-                return StatusCode(500, ApiResponse<object>.Error("Rabaty manager not available"));
 
             if (dto == null)
                 return NotFound(ApiResponse<DiscountDto>.Error($"Discount with ID {id} not found"));
 
+            if (!includeDetails) dto.Subjects = null;
             return Ok(ApiResponse<DiscountDto>.Ok(dto));
         }
         catch (Exception ex)
@@ -172,7 +143,7 @@ public class DiscountsController : ControllerBase
     }
 
     /// <summary>
-    /// Get discounts applicable to a contractor
+    /// Get discounts applicable to a contractor: assigned to it, or assigned to no contractor
     /// </summary>
     [HttpGet("for-contractor/{contractorId}")]
     [ProducesResponseType(typeof(ApiResponse<List<DiscountDto>>), StatusCodes.Status200OK)]
@@ -180,68 +151,21 @@ public class DiscountsController : ControllerBase
     {
         try
         {
-            var (status, dtos) = await _sferaService.ExecuteWithLockAsync(() =>
+            var dtos = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                // Verify contractor exists
-                var kontrahenciManager = _sferaService.GetManager("Podmioty");
-                if (kontrahenciManager == null) return ("podmioty_null", (List<DiscountDto>?)null);
-                var allKontrahenci = DynamicPropertyHelper.SafeGetAll((object)kontrahenciManager);
-                var kontrahent = allKontrahenci.FirstOrDefault(k => DynamicPropertyHelper.GetId(k) == contractorId);
-
-                if (kontrahent == null)
-                    return ("not_found", (List<DiscountDto>?)null);
-
-                var rabatyManager = _sferaService.GetManager("Rabaty");
-                if (rabatyManager == null) return ("rabaty_null", (List<DiscountDto>?)null);
-                var allRabaty = DynamicPropertyHelper.SafeGetAll((object)rabatyManager);
-
-                if (activeOnly == true)
+                var sfera = _sferaService.GetSfera();
+                if (!DiscountReader.ContractorExists(sfera, contractorId))
                 {
-                    allRabaty = allRabaty.Where(r => DynamicPropertyHelper.GetBool(r, "Aktywny")).ToList();
+                    return null;
                 }
 
-                // Filter by contractor
-                var now = DateTime.Now;
-                var applicableDiscounts = allRabaty
-                    .Where(r =>
-                    {
-                        var odDaty = DynamicPropertyHelper.GetDateTime(r, "OdDaty");
-                        var doDaty = DynamicPropertyHelper.GetDateTime(r, "DoDaty");
-                        return (!odDaty.HasValue || odDaty.Value <= now) &&
-                               (!doDaty.HasValue || doDaty.Value >= now);
-                    })
-                    .Where(r =>
-                    {
-                        var podmioty = DynamicPropertyHelper.GetCollection((object)r, "Podmioty");
-                        // No subjects = applies to all, OR contractor is in the list
-                        if (!podmioty.Any()) return true;
-                        foreach (var p in podmioty)
-                        {
-                            if (DynamicPropertyHelper.GetId(p) == contractorId) return true;
-                        }
-                        return false;
-                    })
-                    .ToList();
-
-                var applicableDiscountDtos = new List<DiscountDto>();
-                foreach (var r in applicableDiscounts)
-                {
-                    applicableDiscountDtos.Add(MapDiscount(r, false));
-                }
-
-                return ("ok", applicableDiscountDtos);
+                return DiscountReader.Map(sfera, DiscountReader.ForContractor(sfera, contractorId).OrderBy(r => r.Nazwa).ThenBy(r => r.Id));
             });
 
-            if (status == "podmioty_null")
-                return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Podmioty manager not available"));
-
-            if (status == "not_found")
+            if (dtos == null)
                 return NotFound(ApiResponse<List<DiscountDto>>.Error($"Contractor with ID {contractorId} not found"));
 
-            if (status == "rabaty_null")
-                return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Rabaty manager not available"));
-
-            return Ok(ApiResponse<List<DiscountDto>>.Ok(dtos!));
+            return Ok(ApiResponse<List<DiscountDto>>.Ok(dtos));
         }
         catch (Exception ex)
         {
@@ -249,7 +173,6 @@ public class DiscountsController : ControllerBase
             return StatusCode(500, ApiResponse<List<DiscountDto>>.Error("Error retrieving discounts", new List<string> { ex.Message }));
         }
     }
-
     #endregion
 
     #region Mapping
