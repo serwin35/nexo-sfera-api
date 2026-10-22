@@ -72,10 +72,9 @@ public static class NexoSdkSynchronizer
             var sourceVersionInfo = FileVersionInfo.GetVersionInfo(sourceDllPath);
             result.InstalledVersion = sourceVersionInfo.ProductVersion ?? sourceVersionInfo.FileVersion;
 
-            // Hash match means SAME VERSION, not "nothing to do": the build copies only the
-            // ~60 referenced DLLs, while the SDK needs hundreds of dependencies at runtime
-            // (e.g. InsERT.Moria.Narzedzia). On a fresh machine the version matches but most
-            // dependencies are missing - the fill steps below must always run.
+            // Hash match means SAME VERSION of Sfera, not "nothing to do": the SDK needs hundreds of
+            // dependencies at runtime (e.g. InsERT.Moria.Narzedzia), which may be missing (fresh machine)
+            // or stale (copied by the build from src\lib\nexo-sdk or left by earlier runs).
             var versionsMatch = false;
 
             if (File.Exists(localDllPath))
@@ -121,9 +120,23 @@ public static class NexoSdkSynchronizer
             // First try .zip-cache (official SDK packages, fully consistent versions)
             var zipCacheDir = FindMatchingZipCache(dllDir, logger);
 
-            if (versionsMatch)
+            if (versionsMatch && preferDeploymentBinaries)
             {
-                // Same version - just complete the dependency set, never overwrite.
+                // A matching InsERT.Moria.Sfera.dll says nothing about the other DLLs. MSBuild copies the dependency
+                // closure found next to the referenced DLLs (src\lib\nexo-sdk), and earlier runs leave files behind,
+                // so the runtime directory can hold modules from an older SDK. Sfera then refuses the database
+                // ("baza zawiera oczekujace aktualizacje"). Re-align every DLL that differs from the deployment;
+                // identical files are skipped.
+                logger?.LogInformation("[SDK Sync] Versions match - re-aligning dependency DLLs with the deployment...");
+
+                if (zipCacheDir != null)
+                    CopyDlls(zipCacheDir, runtimeDir, result, logger);
+
+                CopyDlls(dllDir, runtimeDir, result, logger);
+            }
+            else if (versionsMatch)
+            {
+                // Conservative mode with the same version - only complete the dependency set.
                 if (zipCacheDir != null)
                     FillMissingDlls(zipCacheDir, runtimeDir, result, logger);
 
