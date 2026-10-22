@@ -121,4 +121,59 @@ public class ProductPropertiesController : ControllerBase
             return StatusCode(500, ApiResponse<object>.Error("Error setting the property"));
         }
     }
+
+    /// <summary>
+    /// Create new variants of the model of an existing variant (the Subiekt variant generator)
+    /// </summary>
+    /// <remarks>
+    /// Each new card is filled from the template variant <c>{id}</c> (kind, group, units, VAT, suppliers, model), gets a
+    /// value for every model property, the next free variant number, the given symbol (or the next Nexo variant symbol)
+    /// and a name generated from the model. Barcodes are not copied; kit components only with <c>copyComponents</c>.
+    /// Sales prices stay as Nexo sets them for a new card: set them with
+    /// <c>PUT /api/dictionary/price-lists/by-id/{id}/items</c>.
+    ///
+    /// A value set the model already has is reported as <c>exists</c> and not created again. Every variant is validated
+    /// before anything is saved (400, nothing saved); the save phase stops at the first variant Nexo refuses, and the
+    /// variants saved before it stay (listed with <c>created</c>). <c>dryRun</c> validates only.
+    ///
+    /// Example: <c>{"variants":[{"values":[{"property":"Kolor","value":"Coyote CY"},{"property":"Rozmiar","value":"XS"}],"symbol":"DMSUDKP02967_CY12"}],"dryRun":true}</c>
+    /// </remarks>
+    /// <param name="id">Id of an existing variant of the model; the new variants are filled from it</param>
+    /// <param name="request">Variants, component copy, dry run</param>
+    [HttpPost("products/{id:int}/variants")]
+    [ProducesResponseType(typeof(ApiResponse<CreateVariantsResultDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> CreateVariants(int id, [FromBody] CreateVariantsRequest request)
+    {
+        var errors = VariantCreator.Validate(request);
+        if (errors.Count > 0) return BadRequest(ApiResponse<object>.Error("Invalid variants; nothing was created", errors));
+
+        try
+        {
+            var outcome = await _sferaService.ExecuteWithLockAsync(() => VariantCreator.Create(_sferaService.GetSfera(), id, request));
+            if (!outcome.Found) return NotFound(ApiResponse<object>.Error($"Product with ID {id} not found"));
+            if (outcome.Errors.Count > 0) return BadRequest(ApiResponse<object>.Error("Variants not created", outcome.Errors));
+
+            var result = outcome.Result!;
+            var created = result.Variants.Count(v => v.Status == VariantCreator.Created);
+            _logger.LogInformation("Model {Model} from product {Id}: {Created} variant(s) created, dry run {DryRun}", result.ModelId, id, created, request.DryRun);
+            if (outcome.Failed)
+            {
+                var message = created > 0 ? $"Stopped after {created} created variant(s); see the failed one" : "Variants not created; nothing was saved";
+                return BadRequest(new ApiResponse<CreateVariantsResultDto> { Success = false, Message = message, Data = result, Errors = result.Variants.SelectMany(v => v.Errors).ToList() });
+            }
+
+            var exists = result.Variants.Count(v => v.Status == VariantCreator.Exists);
+            var summary = request.DryRun
+                ? $"Dry run: {result.Variants.Count(v => v.Status == VariantCreator.Planned)} to create, {exists} already exist"
+                : $"{created} created, {exists} already exist";
+            return Ok(ApiResponse<CreateVariantsResultDto>.Ok(result, summary));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating variants from product {Id}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error creating the variants"));
+        }
+    }
 }

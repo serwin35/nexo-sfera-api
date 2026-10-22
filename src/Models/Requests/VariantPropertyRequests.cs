@@ -27,3 +27,49 @@ public class SetVariantPropertyRequest
     /// <summary>Regenerate the variant name and description from the model (default true).</summary>
     public bool RegenerateName { get; set; } = true;
 }
+
+/// <summary>
+/// New variants of the model of an existing variant (<c>POST /api/products/{id}/variants</c>). Each variant is filled from
+/// that template variant (<c>IAsortyment.WypelnijNaPodstawie</c>) and gets its own property values, symbol and name.
+/// </summary>
+public class CreateVariantsRequest
+{
+    /// <summary>Variants to create, at most 50 per request.</summary>
+    [Required]
+    public List<CreateVariantRequest> Variants { get; set; } = new();
+
+    /// <summary>
+    /// Keep the kit components copied from the template (default false: a new variant starts without components, because
+    /// the garment of a kit differs per colour and size).
+    /// </summary>
+    public bool CopyComponents { get; set; }
+
+    /// <summary>Validate and report what would be created without saving anything.</summary>
+    public bool DryRun { get; set; }
+}
+
+/// <summary>One new variant: a value for every property of the model, and optionally its symbol.</summary>
+public class CreateVariantRequest
+{
+    /// <summary>Value of each model property, e.g. <c>[{"property":"Kolor","value":"Coyote CY"},{"property":"Rozmiar","value":"XS"}]</c>.</summary>
+    [Required]
+    public List<VariantPropertyValueRequest> Values { get; set; } = new();
+
+    /// <summary>Card symbol, e.g. <c>DMSUDKP02967_CY12</c>. Omitted: the next Nexo variant symbol (<c>AutoSymbol</c>).</summary>
+    [MaxLength(40)]
+    public string? Symbol { get; set; }
+}
+
+/// <summary>Value of one model property for a new variant.</summary>
+public class VariantPropertyValueRequest
+{
+    /// <summary>Property name or symbol, e.g. "Kolor" or "RM" (the symbol variant names show).</summary>
+    [Required]
+    [MaxLength(100)]
+    public string Property { get; set; } = string.Empty;
+
+    /// <summary>An allowed value of the property, e.g. "Coyote CY".</summary>
+    [Required]
+    [MaxLength(100)]
+    public string Value { get; set; } = string.Empty;
+}

@@ -144,6 +144,16 @@ public class UpdateProductRequest
     public decimal? RecordPrice { get; set; }
 
     /// <summary>
+    /// Kind of the card: Goods, Service or Set (kit), set to the default Nexo kind of that type
+    /// (<c>RodzajeAsortymentu().DaneDomyslne</c>). Use it for a card generated with the wrong kind, e.g. a supplier
+    /// polar created as a kit. A kit with components cannot become Goods or Service; Material is refused.
+    /// </summary>
+    public ProductType? Type { get; set; }
+
+    /// <summary>Contractor id of the primary supplier (<c>IAsortyment.Dostawcy</c>); added when missing.</summary>
+    public int? SupplierId { get; set; }
+
+    /// <summary>
     /// Gross weight of one base unit in kilograms. Stored in the base unit (Masa), converted to its mass unit; when the
     /// base unit has no mass unit yet it is set to kilograms.
     /// </summary>
