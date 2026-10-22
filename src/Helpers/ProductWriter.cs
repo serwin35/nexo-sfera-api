@@ -94,7 +94,7 @@ public static class ProductWriter
 
         if (!HasAnyWritableField(request) && errors.Count == 0)
         {
-            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume, groupId.");
+            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume, groupId, recordPrice.");
         }
 
         return errors;
@@ -152,12 +152,17 @@ public static class ProductWriter
             ApplyGroup(sfera, dane, request.GroupId.Value, outcome);
         }
 
+        if (request.RecordPrice.HasValue)
+        {
+            ApplyRecordPrice(dane, request.RecordPrice.Value, outcome);
+        }
+
         return outcome;
     }
 
     private static bool HasAnyWritableField(UpdateProductRequest request) =>
         request.Symbol != null || request.Name != null || request.Description != null || request.EAN != null || request.PKWiU != null
-        || request.Weight.HasValue || request.Volume.HasValue || request.GroupId.HasValue;
+        || request.Weight.HasValue || request.Volume.HasValue || request.GroupId.HasValue || request.RecordPrice.HasValue;
 
     private static void SetText(Outcome outcome, string field, Func<string?> get, Action<string> set, string value)
     {
@@ -344,6 +349,28 @@ public static class ProductWriter
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             outcome.Errors.Add($"weight: Nexo rejected the value ({ex.Message}).");
+        }
+    }
+
+    /// <summary>Registry price → <c>Asortyment.CenaEwidencyjna</c>, rounded to 2 decimals like Subiekt shows it.</summary>
+    private static void ApplyRecordPrice(Asortyment dane, decimal recordPrice, Outcome outcome)
+    {
+        var value = Math.Round(recordPrice, 2, MidpointRounding.AwayFromZero);
+        var current = dane.CenaEwidencyjna;
+        if (current == value)
+        {
+            outcome.Fields.Add(Result("recordPrice", Unchanged, Format(current), Format(value)));
+            return;
+        }
+
+        try
+        {
+            dane.CenaEwidencyjna = value;
+            outcome.Fields.Add(Result("recordPrice", Updated, Format(current), Format(value)));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            outcome.Errors.Add($"recordPrice: Nexo rejected the value ({ex.Message}).");
         }
     }
 

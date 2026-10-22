@@ -433,7 +433,8 @@ public class ProductsController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Writable: symbol (unique among products; the card keeps its id), name, description (empty clears), ean (+ optional
-    /// eanUnitSymbol), pkWiU (empty clears), weight (kg, base unit) and volume (base unit's volume unit). priceNet, vatRate and isActive are rejected with 400 and nothing is
+    /// eanUnitSymbol), pkWiU (empty clears), weight (kg, base unit), volume (base unit's volume unit), groupId and recordPrice
+    /// (registry price, the base price of a kit in the price list). priceNet, vatRate and isActive are rejected with 400 and nothing is
     /// saved: Nexo keeps sales prices in price lists, and has no activity flag on products. Every field sent is reported in
     /// data.fieldResults ("updated" or "unchanged"); rejected fields are listed in errors[] as "field: reason".
     ///

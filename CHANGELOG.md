@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - registry price of a product through PUT /api/products/{id}
+- New field `recordPrice` (`Asortyment.CenaEwidencyjna`), rounded to 2 decimals and reported in `fieldResults`.
+- Why: the dry runs of `recalculate-costs` showed where a kit's base price comes from.
+  - With the function `WgCenyEwidencyjnej`, the price list takes the registry price of the kit card itself, not the
+    value of its components. DMSUMDP02063_0808: 3.50, the card's registry price, while its components cost 10.15.
+  - New kits have 0.
+- To make the cost of a kit current: set `recordPrice` to the value of its components, then call
+  `recalculate-costs` with `mode: calculation`. That mode keeps the sales price and recalculates the margin.
+- `mode: full` changed the sales price despite the lock (DMSUMDP02063_0808: 38.00 → 40.67 gross). The guard refused
+  it, and nothing was saved.
+
 ### Fixed (2026-10-22) - recalculate-costs did not refresh the base price
 - In the first version, `POST .../items/recalculate-costs` ran only `AktualizujCeneKalkulacyjna`.
   - That method recalculates the calculation price from the current base price and leaves the base price as it is.

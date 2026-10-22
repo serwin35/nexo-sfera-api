@@ -136,6 +136,14 @@ public class UpdateProductRequest
     public string? VatRate { get; set; }
 
     /// <summary>
+    /// Registry price (<c>Asortyment.CenaEwidencyjna</c>) in the registry price currency. For a kit it is the cost the
+    /// price list takes as the base price (function <c>WgCenyEwidencyjnej</c>), so set it to the value of the components
+    /// and then refresh the costs with <c>POST /api/dictionary/price-lists/by-id/{id}/items/recalculate-costs</c>.
+    /// </summary>
+    [Range(0, double.MaxValue)]
+    public decimal? RecordPrice { get; set; }
+
+    /// <summary>
     /// Gross weight of one base unit in kilograms. Stored in the base unit (Masa), converted to its mass unit; when the
     /// base unit has no mass unit yet it is set to kilograms.
     /// </summary>
