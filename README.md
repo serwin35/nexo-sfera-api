@@ -442,6 +442,18 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
 Lista rozrachunków: `GET /api/payments/receivables?type=Receivable&status=Unsettled&overdue=true`,
 per dokument: `GET /api/payments/receivables/by-document/{documentId}`.
 
+Stan rozliczenia wielu dokumentów jednym zapytaniem SQL (windykacja, wiekowanie, KPI):
+`GET /api/documents/settlements?symbols=FS,KFS&type=Receivable&overdue=true&sortBy=due_date&pageSize=500`.
+
+- Filtry: `symbols`, `ids` (do 200), `customerId`, `type`, `status` (jak w `receivables`), `open`, `overdue`,
+  `dateFrom`/`dateTo` (wystawienie), `dueDateFrom`/`dueDateTo` (termin rozrachunku), `modifiedSince`, `isCanceled`,
+  `includeWithoutSettlement`.
+- Sortowanie: `sortBy` = `id` | `due_date` | `issue_date` | `issue_date_desc`. `pageSize` do 1000.
+- Pozycja zawiera dokument (numer, kontrahent, brutto, `amountToPay`) i jego rozrachunek: `amount`, `remainingAmount`,
+  `paidAmount`, `unsettledAmount`, `currency`, `dueDate`, `nextDueDate`, `overdueAmount`, `daysOverdue`,
+  `installmentCount`, `isSettled`, `isOverdue`, `settlementModifiedAt`.
+- Przeterminowanie liczy się per rata harmonogramu (`Rozrachunek.Pozycje`) względem daty hosta mostu.
+
 ### Odbiór faktur z KSeF (bufor) i import do Subiekta
 
 ```bash

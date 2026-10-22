@@ -709,6 +709,45 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Settlement state of many documents: paid, remaining, due date and overdue instalments (Dokument.Rozrachunek)
+    /// </summary>
+    /// <remarks>
+    /// One SQL query for the page and one count; every filter runs in SQL. Read only.
+    /// Example: <c>GET /api/documents/settlements?symbols=FS,KFS&amp;type=Receivable&amp;overdue=true&amp;sortBy=due_date</c>
+    /// </remarks>
+    [HttpGet("settlements")]
+    public async Task<ActionResult<PagedResponse<DocumentSettlementStateDto>>> GetDocumentSettlements([FromQuery] DocumentSettlementQueryRequest query)
+    {
+        var errors = DocumentSettlementReader.Validate(query, out var ids);
+        if (errors.Count > 0)
+        {
+            return BadRequest(ApiResponse<object>.Error("Invalid settlement query", errors));
+        }
+
+        try
+        {
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var (totalCount, items) = DocumentSettlementReader.Read(_sferaService.GetSfera(), query, ids, DateTime.Today);
+                return new PagedResponse<DocumentSettlementStateDto>
+                {
+                    Data = items,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading document settlements");
+            return StatusCode(500, ApiResponse<object>.Error("Error reading document settlements", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
     /// Get document by ID
     /// </summary>
     [HttpGet("{id}")]
