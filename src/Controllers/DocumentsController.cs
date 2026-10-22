@@ -1746,8 +1746,8 @@ public class DocumentsController : ControllerBase
                         }
                     }
 
-                    // Set payment method using SDK pattern
-                    SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId, faktura, request.IsDeferredPayment);
+                    // Payment method on the header; the payment itself is added after the lines (AddDocumentPayment)
+                    var formaPlatnosci = SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
 
                     // Set notes (uwagi) - transfer notes to invoice
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -2013,28 +2013,9 @@ public class DocumentsController : ControllerBase
                         _logger.LogDebug("[FS-v2] Could not count items: {Msg}", itemEx.Message);
                     }
 
-                    // Add default payments (required for sales invoices per SDK examples)
-                    // SDK pattern: faktura.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()
-                    try
-                    {
-                        faktura.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
-                        _logger.LogInformation("[FS-v3] Called Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
-                    }
-                    catch (Exception payEx)
-                    {
-                        _logger.LogDebug("[FS-v3] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", payEx.Message);
-
-                        // Try alternative payment method
-                        try
-                        {
-                            faktura.Platnosci.DodajPlatnosciDomyslne();
-                            _logger.LogInformation("[FS-v3] Called Platnosci.DodajPlatnosciDomyslne() successfully");
-                        }
-                        catch (Exception payEx2)
-                        {
-                            _logger.LogDebug("[FS-v3] Platnosci.DodajPlatnosciDomyslne() also failed: {Msg}", payEx2.Message);
-                        }
-                    }
+                    // Payment (required for sales invoices per SDK examples): requested form, deferred or immediate,
+                    // or the SDK default immediate payment for the document amount
+                    AddDocumentPayment(faktura, formaPlatnosci, request.IsDeferredPayment, "FS-v3");
 
                     // NEW: Try calling Bilansuj() to balance the document before save
                     // This might be required for the document to be valid for saving
@@ -3676,8 +3657,8 @@ public class DocumentsController : ControllerBase
                     }
                 }
 
-                // Set payment method using SDK pattern
-                SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId, paragon, request.IsDeferredPayment);
+                // Payment method on the header; the payment itself is added after the lines (AddDocumentPayment)
+                var formaPlatnosci = SetPaymentMethodOnDocument(dane, request.PaymentMethod, request.PaymentMethodId);
 
                 // Add items using product ID
                 AddReceiptItemsById(paragon, request.Items);
@@ -3694,29 +3675,8 @@ public class DocumentsController : ControllerBase
                     _logger.LogWarning("[PA] Przelicz() failed: {Msg}", przeliczEx.Message);
                 }
 
-                // CRITICAL: Add default payment for receipt (required by SDK for receipts)
-                // SDK pattern: paragon.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu()
-                _logger.LogInformation("[PA] Adding default immediate payment...");
-                try
-                {
-                    paragon.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
-                    _logger.LogInformation("[PA] Called Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully");
-                }
-                catch (Exception platEx)
-                {
-                    _logger.LogDebug("[PA] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", platEx.Message);
-
-                    // Try alternative payment method
-                    try
-                    {
-                        paragon.Platnosci.DodajPlatnosciDomyslne();
-                        _logger.LogInformation("[PA] Called Platnosci.DodajPlatnosciDomyslne() successfully");
-                    }
-                    catch (Exception platEx2)
-                    {
-                        _logger.LogDebug("[PA] Platnosci.DodajPlatnosciDomyslne() also failed: {Msg}", platEx2.Message);
-                    }
-                }
+                // CRITICAL: payment for the receipt (required by SDK for receipts)
+                AddDocumentPayment(paragon, formaPlatnosci, request.IsDeferredPayment, "PA");
 
                 // Handle historical documents - NOTE: For receipts, status manipulation might not be supported
                 // Receipts (paragons) typically don't support the same status management as invoices
@@ -4876,18 +4836,19 @@ public class DocumentsController : ControllerBase
     };
 
     /// <summary>
-    /// Sets payment method on a document by symbol or ID.
-    /// Uses SDK pattern: faktura.Platnosci.DodajPlatnoscNatychmiastowa/Odroczona for proper payment handling.
+    /// Resolves the payment method by symbol or ID and sets it on the document header (dane.FormaPlatnosci).
+    /// Returns the resolved FormaPlatnosci (null when none was requested or found). The payment itself is added
+    /// after the lines by <see cref="AddDocumentPayment"/>, because its amount is the document total.
     /// </summary>
-    private void SetPaymentMethodOnDocument(dynamic dokumentDane, string? paymentMethodSymbol, int? paymentMethodId, dynamic? dokumentBO = null, bool isDeferred = false)
+    private object? SetPaymentMethodOnDocument(dynamic dokumentDane, string? paymentMethodSymbol, int? paymentMethodId)
     {
-        _logger.LogDebug("SetPaymentMethodOnDocument called with Symbol={Symbol}, Id={Id}, IsDeferred={IsDeferred}",
-            (object?)paymentMethodSymbol ?? "(null)", (object?)paymentMethodId?.ToString() ?? "(null)", isDeferred);
+        _logger.LogDebug("SetPaymentMethodOnDocument called with Symbol={Symbol}, Id={Id}",
+            (object?)paymentMethodSymbol ?? "(null)", (object?)paymentMethodId?.ToString() ?? "(null)");
 
         if (string.IsNullOrEmpty(paymentMethodSymbol) && !paymentMethodId.HasValue)
         {
             _logger.LogDebug("No payment method specified - skipping");
-            return;
+            return null;
         }
 
         try
@@ -4896,7 +4857,7 @@ public class DocumentsController : ControllerBase
             if (formyManager == null)
             {
                 _logger.LogWarning("FormyPlatnosci manager is null");
-                return;
+                return null;
             }
 
             // Log available payment methods for debugging
@@ -4987,46 +4948,10 @@ public class DocumentsController : ControllerBase
                 string? symbol = DynamicPropertyHelper.GetString(formaPlatnosci, "Symbol");
                 string? nazwa = DynamicPropertyHelper.GetString(formaPlatnosci, "Nazwa");
 
-                bool paymentSet = false;
-
-                // Try SDK pattern first: use Platnosci interface for proper payment handling
-                if (dokumentBO != null)
-                {
-                    try
-                    {
-                        var platnosci = dokumentBO.Platnosci;
-                        if (platnosci != null)
-                        {
-                            if (isDeferred)
-                            {
-                                // Deferred payment (przelew)
-                                platnosci.DodajPlatnoscOdroczona(formaPlatnosci);
-                                _logger.LogInformation("Added deferred payment via Platnosci.DodajPlatnoscOdroczona: [{Id}] {Symbol} ({Nazwa})",
-                                    (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
-                            }
-                            else
-                            {
-                                // Immediate payment (gotówka, karta)
-                                platnosci.DodajPlatnoscNatychmiastowa(formaPlatnosci);
-                                _logger.LogInformation("Added immediate payment via Platnosci.DodajPlatnoscNatychmiastowa: [{Id}] {Symbol} ({Nazwa})",
-                                    (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
-                            }
-                            paymentSet = true;
-                        }
-                    }
-                    catch (Exception platEx)
-                    {
-                        _logger.LogDebug("SDK Platnosci pattern failed: {Msg}. Falling back to dane.FormaPlatnosci", platEx.Message);
-                    }
-                }
-
-                // Fallback: Set FormaPlatnosci directly on dane (legacy approach)
-                if (!paymentSet)
-                {
-                    dokumentDane.FormaPlatnosci = formaPlatnosci;
-                    _logger.LogInformation("Set payment method via dane.FormaPlatnosci: [{Id}] {Symbol} ({Nazwa})",
-                        (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
-                }
+                dokumentDane.FormaPlatnosci = formaPlatnosci;
+                _logger.LogInformation("Set payment method via dane.FormaPlatnosci: [{Id}] {Symbol} ({Nazwa})",
+                    (object?)id?.ToString() ?? "?", (object?)symbol ?? "(null)", (object?)nazwa ?? "(null)");
+                return (object)formaPlatnosci;
             }
             else
             {
@@ -5039,6 +4964,65 @@ public class DocumentsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Error setting payment method: {Message}", ex.Message);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Adds the document payment after the lines: a deferred (DodajPlatnoscOdroczona) or immediate
+    /// (DodajPlatnoscNatychmiastowa) payment in the requested form, or the SDK default immediate payment for the
+    /// document amount when no form was requested.
+    /// </summary>
+    /// <remarks>
+    /// DokumentSprzedazyBO and the other document BOs implement IPlatnosciNaDokumencie.DodajPlatnoscOdroczona /
+    /// DodajPlatnoscNatychmiastowa explicitly, so these calls must be typed: the former dynamic calls never bound and
+    /// every document silently got the default immediate payment, even with isDeferredPayment = true.
+    /// </remarks>
+    private void AddDocumentPayment(dynamic dokumentBO, object? formaPlatnosci, bool isDeferred, string logTag)
+    {
+        if (formaPlatnosci is InsERT.Moria.ModelDanych.FormaPlatnosci forma)
+        {
+            try
+            {
+                InsERT.Moria.Dokumenty.Logistyka.IPlatnosciNaDokumencie platnosci = dokumentBO.Platnosci;
+                if (isDeferred)
+                {
+                    platnosci.DodajPlatnoscOdroczona(forma);
+                }
+                else
+                {
+                    platnosci.DodajPlatnoscNatychmiastowa(forma);
+                }
+
+                _logger.LogInformation("[{Tag}] Added {Kind} payment: {Name}", logTag, isDeferred ? "deferred" : "immediate",
+                    SdkMember.Read(() => forma.Nazwa, null) ?? "(null)");
+                return;
+            }
+            catch (Exception ex) when (ex is not OutOfMemoryException)
+            {
+                _logger.LogWarning(ex, "[{Tag}] Adding the {Kind} payment failed; falling back to the default immediate payment",
+                    logTag, isDeferred ? "deferred" : "immediate");
+            }
+        }
+
+        try
+        {
+            dokumentBO.Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu();
+            _logger.LogInformation("[{Tag}] Called Platnosci.DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() successfully", logTag);
+        }
+        catch (Exception payEx)
+        {
+            _logger.LogDebug("[{Tag}] DodajDomyslnaPlatnoscNatychmiastowaNaKwoteDokumentu() failed: {Msg}", logTag, payEx.Message);
+            try
+            {
+                dokumentBO.Platnosci.DodajPlatnosciDomyslne();
+                _logger.LogInformation("[{Tag}] Called Platnosci.DodajPlatnosciDomyslne() successfully", logTag);
+            }
+            catch (Exception payEx2)
+            {
+                _logger.LogDebug("[{Tag}] Platnosci.DodajPlatnosciDomyslne() also failed: {Msg}", logTag, payEx2.Message);
+            }
         }
     }
 
