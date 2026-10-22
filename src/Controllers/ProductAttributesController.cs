@@ -144,15 +144,7 @@ public class ProductAttributesController : ControllerBase
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (ProductAttributeDto?)null;
 
-                dynamic? cecha = null;
-                foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
-                {
-                    if (DynamicPropertyHelper.GetId(c) == id)
-                    {
-                        cecha = c;
-                        break;
-                    }
-                }
+                dynamic? cecha = DynamicPropertyHelper.FindById(cechy, id);
 
                 if (cecha == null) return (ProductAttributeDto?)null;
                 return (ProductAttributeDto?)MapToDto(cecha, includeValues);
@@ -340,15 +332,7 @@ public class ProductAttributesController : ControllerBase
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (false, "manager_null", (ProductAttributeDto?)null, new List<string>());
 
-                dynamic? cechaDane = null;
-                foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
-                {
-                    if (DynamicPropertyHelper.GetId(c) == id)
-                    {
-                        cechaDane = c;
-                        break;
-                    }
-                }
+                dynamic? cechaDane = DynamicPropertyHelper.FindById(cechy, id);
 
                 if (cechaDane == null) return (false, "not_found", (ProductAttributeDto?)null, new List<string>());
 
@@ -459,15 +443,7 @@ public class ProductAttributesController : ControllerBase
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (false, "manager_null", new List<string>());
 
-                dynamic? cechaDane = null;
-                foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
-                {
-                    if (DynamicPropertyHelper.GetId(c) == id)
-                    {
-                        cechaDane = c;
-                        break;
-                    }
-                }
+                dynamic? cechaDane = DynamicPropertyHelper.FindById(cechy, id);
 
                 if (cechaDane == null) return (false, "not_found", new List<string>());
 
@@ -525,15 +501,7 @@ public class ProductAttributesController : ControllerBase
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (List<ProductAttributeValueDto>?)null;
 
-                dynamic? cecha = null;
-                foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
-                {
-                    if (DynamicPropertyHelper.GetId(c) == id)
-                    {
-                        cecha = c;
-                        break;
-                    }
-                }
+                dynamic? cecha = DynamicPropertyHelper.FindById(cechy, id);
 
                 if (cecha == null) return (List<ProductAttributeValueDto>?)null;
 
@@ -582,15 +550,7 @@ public class ProductAttributesController : ControllerBase
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (false, "manager_null", (ProductAttributeValueDto?)null, new List<string>());
 
-                dynamic? cechaDane = null;
-                foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
-                {
-                    if (DynamicPropertyHelper.GetId(c) == id)
-                    {
-                        cechaDane = c;
-                        break;
-                    }
-                }
+                dynamic? cechaDane = DynamicPropertyHelper.FindById(cechy, id);
 
                 if (cechaDane == null) return (false, "not_found", (ProductAttributeValueDto?)null, new List<string>());
 
@@ -669,30 +629,14 @@ public class ProductAttributesController : ControllerBase
                 var asortymenty = _sferaService.GetManager("Asortymenty");
                 if (asortymenty == null) return (false, "manager_asortymenty_null", (ProductAttributeAssignmentDto?)null, new List<string>());
 
-                dynamic? asortymentDane = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                {
-                    if (DynamicPropertyHelper.GetId(a) == request.ProductId)
-                    {
-                        asortymentDane = a;
-                        break;
-                    }
-                }
+                dynamic? asortymentDane = DynamicPropertyHelper.FindById(asortymenty, request.ProductId);
 
                 if (asortymentDane == null) return (false, "product_not_found", (ProductAttributeAssignmentDto?)null, new List<string>());
 
                 var cechy = _sferaService.GetManager("CechyAsortymentu");
                 if (cechy == null) return (false, "manager_cechy_null", (ProductAttributeAssignmentDto?)null, new List<string>());
 
-                dynamic? cechaDane = null;
-                foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cechy))
-                {
-                    if (DynamicPropertyHelper.GetId(c) == request.AttributeId)
-                    {
-                        cechaDane = c;
-                        break;
-                    }
-                }
+                dynamic? cechaDane = DynamicPropertyHelper.FindById(cechy, request.AttributeId);
 
                 if (cechaDane == null) return (false, "attribute_not_found", (ProductAttributeAssignmentDto?)null, new List<string>());
 

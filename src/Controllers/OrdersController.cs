@@ -179,15 +179,7 @@ public class OrdersController : ControllerBase
                     // Set supplier
                     if (request.SupplierId.HasValue && podmioty != null)
                     {
-                        dynamic? podmiot = null;
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                        {
-                            if (DynamicPropertyHelper.GetId(p) == request.SupplierId.Value)
-                            {
-                                podmiot = p;
-                                break;
-                            }
-                        }
+                        dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, request.SupplierId.Value);
                         if (podmiot != null)
                         {
                             zamowienie.Dane.Podmiot = podmiot;
@@ -441,15 +433,7 @@ public class OrdersController : ControllerBase
                     // Set customer
                     if (request.CustomerId.HasValue && podmioty != null)
                     {
-                        dynamic? podmiot = null;
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                        {
-                            if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
-                            {
-                                podmiot = p;
-                                break;
-                            }
-                        }
+                        dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, request.CustomerId.Value);
                         if (podmiot != null)
                         {
                             oferta.Dane.Podmiot = podmiot;

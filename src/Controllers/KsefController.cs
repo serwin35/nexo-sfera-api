@@ -147,15 +147,7 @@ public class KsefController : ControllerBase
                     return (found: false, managerMissing: true, dto: (ElectronicDocumentDto?)null);
                 }
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (dokument == null)
                 {
@@ -262,15 +254,7 @@ public class KsefController : ControllerBase
                     return (status: "managerMissing", managerName: "DokumentySprzedazy", dto: (EInvoiceGenerationResultDto?)null);
                 }
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == documentId)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, documentId);
 
                 if (dokument == null)
                 {
@@ -450,15 +434,7 @@ public class KsefController : ControllerBase
                     return (status: "managerMissing", managerName: "DokumentyElektroniczne", dto: (KsefSendResultDto?)null);
                 }
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == electronicDocumentId)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, electronicDocumentId);
 
                 if (dokument == null)
                 {
@@ -1108,15 +1084,7 @@ public class KsefController : ControllerBase
                     return ("managerMissing", null);
                 }
 
-                dynamic? eDokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        eDokument = d;
-                        break;
-                    }
-                }
+                dynamic? eDokument = DynamicPropertyHelper.FindById(dokumentyManager, id);
                 if (eDokument == null)
                 {
                     return ("notFound", null);

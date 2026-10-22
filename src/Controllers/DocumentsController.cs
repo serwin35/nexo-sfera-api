@@ -77,15 +77,7 @@ public class DocumentsController : ControllerBase
                     return (object)new { ManagerMissing = true, NotFound = false, Id = id };
                 }
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (dokument == null)
                 {
@@ -344,21 +336,14 @@ public class DocumentsController : ControllerBase
                     return (PagedResponse<DocumentListItemDto>?)null;
                 }
 
-                var allDokumenty = new List<object>();
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    allDokumenty.Add(d);
-                }
-
                 var sfera = _sferaService.GetSfera();
 
-                // Delta sync and cancellation: one SQL query each over the header/status columns (the dynamic members
-                // DataModyfikacji/Anulowany do not exist).
-                if (query.ModifiedSince.HasValue)
-                {
-                    var changed = DocumentReader.ModifiedSince(sfera, query.ModifiedSince.Value);
-                    allDokumenty = allDokumenty.Where(d => changed.Contains(DynamicPropertyHelper.GetId(d))).ToList();
-                }
+                // Delta sync: only the changed documents are loaded (one SQL query over the header and settlement change
+                // times) instead of the whole table; the filters below run on them unchanged. The dynamic members
+                // DataModyfikacji/Anulowany do not exist.
+                var allDokumenty = query.ModifiedSince.HasValue
+                    ? DocumentReader.ChangedDocuments(sfera, query.ModifiedSince.Value).Cast<object>().ToList()
+                    : DynamicPropertyHelper.SafeGetAll((object)dokumentyManager);
 
                 if (query.IsCanceled.HasValue)
                 {
@@ -374,7 +359,7 @@ public class DocumentsController : ControllerBase
                 // Sort and paginate
                 var sortBy = query.SortBy?.ToLowerInvariant();
                 var sortedItems = sortBy is "modified_asc" or "modified_desc"
-                    ? SortByModification(allDokumenty, DocumentReader.AllStamps(sfera), sortBy == "modified_desc")
+                    ? SortByModification(allDokumenty, ModificationStamps(sfera, allDokumenty, query.ModifiedSince.HasValue), sortBy == "modified_desc")
                     : ApplyDocumentSorting(allDokumenty, query.SortBy);
                 var items = sortedItems
                     .Skip((query.Page - 1) * query.PageSize)
@@ -660,6 +645,18 @@ public class DocumentsController : ControllerBase
         return documents;
     }
 
+    /// <summary>Largest delta result whose stamps are read by id; a bigger one reads the stamps of every document.</summary>
+    private const int MaxStampIdsPerQuery = 2000;
+
+    /// <summary>
+    /// Stamps for sorting: of the listed documents only when the list is a delta (usually a handful), otherwise of every
+    /// document (one projection over the id and header columns).
+    /// </summary>
+    private static IReadOnlyDictionary<int, DocumentReader.Stamp> ModificationStamps(InsERT.Moria.Sfera.Uchwyt sfera, List<object> documents, bool isDelta) =>
+        isDelta && documents.Count <= MaxStampIdsPerQuery
+            ? DocumentReader.Stamps(sfera, documents.Select(d => (int)DynamicPropertyHelper.GetId(d)).ToList())
+            : DocumentReader.AllStamps(sfera);
+
     /// <summary>Orders by the latest of the document and settlement change times (documents without stamps last).</summary>
     private static IEnumerable<object> SortByModification(List<object> documents, IReadOnlyDictionary<int, DocumentReader.Stamp> stamps, bool descending)
     {
@@ -709,6 +706,45 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// Settlement state of many documents: paid, remaining, due date and overdue instalments (Dokument.Rozrachunek)
+    /// </summary>
+    /// <remarks>
+    /// One SQL query for the page and one count; every filter runs in SQL. Read only.
+    /// Example: <c>GET /api/documents/settlements?symbols=FS,KFS&amp;type=Receivable&amp;overdue=true&amp;sortBy=due_date</c>
+    /// </remarks>
+    [HttpGet("settlements")]
+    public async Task<ActionResult<PagedResponse<DocumentSettlementStateDto>>> GetDocumentSettlements([FromQuery] DocumentSettlementQueryRequest query)
+    {
+        var errors = DocumentSettlementReader.Validate(query, out var ids);
+        if (errors.Count > 0)
+        {
+            return BadRequest(ApiResponse<object>.Error("Invalid settlement query", errors));
+        }
+
+        try
+        {
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var (totalCount, items) = DocumentSettlementReader.Read(_sferaService.GetSfera(), query, ids, DateTime.Today);
+                return new PagedResponse<DocumentSettlementStateDto>
+                {
+                    Data = items,
+                    Page = query.Page,
+                    PageSize = query.PageSize,
+                    TotalCount = totalCount
+                };
+            });
+
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading document settlements");
+            return StatusCode(500, ApiResponse<object>.Error("Error reading document settlements", new List<string> { ex.Message }));
+        }
+    }
+
+    /// <summary>
     /// Get document by ID
     /// </summary>
     [HttpGet("{id}")]
@@ -722,15 +758,7 @@ public class DocumentsController : ControllerBase
                 if (dokumentyManager == null)
                     return (true, null);
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (dokument == null)
                     return (false, null);
@@ -787,15 +815,7 @@ public class DocumentsController : ControllerBase
                 }
 
                 // Find the document
-                dynamic? encja = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        encja = d;
-                        break;
-                    }
-                }
+                dynamic? encja = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (encja == null)
                 {
@@ -840,15 +860,7 @@ public class DocumentsController : ControllerBase
                         var pracownicyManager = _sferaService.GetManager("Pracownicy");
                         if (pracownicyManager != null)
                         {
-                            dynamic? pracownik = null;
-                            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)pracownicyManager))
-                            {
-                                if (DynamicPropertyHelper.GetId(p) == request.WystawilaOsobaId.Value)
-                                {
-                                    pracownik = p;
-                                    break;
-                                }
-                            }
+                            dynamic? pracownik = DynamicPropertyHelper.FindById(pracownicyManager, request.WystawilaOsobaId.Value);
 
                             if (pracownik != null)
                             {
@@ -968,15 +980,7 @@ public class DocumentsController : ControllerBase
                         var statusyManager = _sferaService.GetManager("StatusyDokumentow");
                         if (statusyManager != null)
                         {
-                            dynamic? status = null;
-                            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)statusyManager))
-                            {
-                                if (DynamicPropertyHelper.GetId(s) == request.StatusId.Value)
-                                {
-                                    status = s;
-                                    break;
-                                }
-                            }
+                            dynamic? status = DynamicPropertyHelper.FindById(statusyManager, request.StatusId.Value);
 
                             if (status != null)
                             {
@@ -3239,15 +3243,7 @@ public class DocumentsController : ControllerBase
                         return (false, false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
                     }
 
-                    dynamic? oryginal = null;
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
-                    {
-                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
-                        {
-                            oryginal = d;
-                            break;
-                        }
-                    }
+                    dynamic? oryginal = DynamicPropertyHelper.FindById(dokumentySprzedazy, request.OriginalDocumentId.Value);
 
                     if (oryginal == null)
                     {
@@ -3359,15 +3355,7 @@ public class DocumentsController : ControllerBase
                         return (false, false, null, "Failed to get DokumentyZakupu manager", new List<string>());
                     }
 
-                    dynamic? oryginal = null;
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyZakupu))
-                    {
-                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
-                        {
-                            oryginal = d;
-                            break;
-                        }
-                    }
+                    dynamic? oryginal = DynamicPropertyHelper.FindById(dokumentyZakupu, request.OriginalDocumentId.Value);
 
                     if (oryginal == null)
                     {
@@ -4156,15 +4144,7 @@ public class DocumentsController : ControllerBase
                         return (false, false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
                     }
 
-                    dynamic? paragon = null;
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
-                    {
-                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
-                        {
-                            paragon = d;
-                            break;
-                        }
-                    }
+                    dynamic? paragon = DynamicPropertyHelper.FindById(dokumentySprzedazy, request.OriginalDocumentId.Value);
 
                     if (paragon == null)
                     {
@@ -4509,15 +4489,7 @@ public class DocumentsController : ControllerBase
 
                 foreach (int orderId in request.OrderIds)
                 {
-                    dynamic? order = null;
-                    foreach (var zk in DynamicPropertyHelper.SafeGetAll((object)zamowieniaManager))
-                    {
-                        if (DynamicPropertyHelper.GetId(zk) == orderId)
-                        {
-                            order = zk;
-                            break;
-                        }
-                    }
+                    dynamic? order = DynamicPropertyHelper.FindById(zamowieniaManager, orderId);
 
                     if (order == null)
                     {

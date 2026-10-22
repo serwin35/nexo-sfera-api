@@ -260,15 +260,7 @@ public class ProductGroupsController : ControllerBase
                 if (grupy == null)
                     return (true, (ProductGroupDto?)null);
 
-                dynamic? grupa = null;
-                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                {
-                    if (DynamicPropertyHelper.GetId(g) == id)
-                    {
-                        grupa = g;
-                        break;
-                    }
-                }
+                dynamic? grupa = DynamicPropertyHelper.FindById(grupy, id);
 
                 if (grupa == null)
                     return (false, (ProductGroupDto?)null);
@@ -416,15 +408,7 @@ public class ProductGroupsController : ControllerBase
                     // Set parent
                     if (request.ParentId.HasValue)
                     {
-                        dynamic? rodzic = null;
-                        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                        {
-                            if (DynamicPropertyHelper.GetId(g) == request.ParentId.Value)
-                            {
-                                rodzic = g;
-                                break;
-                            }
-                        }
+                        dynamic? rodzic = DynamicPropertyHelper.FindById(grupy, request.ParentId.Value);
                         if (rodzic != null)
                         {
                             dane.Rodzic = rodzic;
@@ -519,15 +503,7 @@ public class ProductGroupsController : ControllerBase
                 if (grupy == null)
                     return ("manager_null", (ProductGroupDto?)null, (List<string>?)null);
 
-                dynamic? grupaDane = null;
-                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                {
-                    if (DynamicPropertyHelper.GetId(g) == id)
-                    {
-                        grupaDane = g;
-                        break;
-                    }
-                }
+                dynamic? grupaDane = DynamicPropertyHelper.FindById(grupy, id);
 
                 if (grupaDane == null)
                     return ("not_found", (ProductGroupDto?)null, (List<string>?)null);
@@ -642,15 +618,7 @@ public class ProductGroupsController : ControllerBase
                 if (grupy == null)
                     return ("manager_null", (ProductGroupDto?)null, (List<string>?)null);
 
-                dynamic? grupaDane = null;
-                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                {
-                    if (DynamicPropertyHelper.GetId(g) == id)
-                    {
-                        grupaDane = g;
-                        break;
-                    }
-                }
+                dynamic? grupaDane = DynamicPropertyHelper.FindById(grupy, id);
 
                 if (grupaDane == null)
                     return ("not_found", (ProductGroupDto?)null, (List<string>?)null);
@@ -664,15 +632,7 @@ public class ProductGroupsController : ControllerBase
 
                     if (request.NewParentId.HasValue)
                     {
-                        dynamic? nowyRodzic = null;
-                        foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                        {
-                            if (DynamicPropertyHelper.GetId(g) == request.NewParentId.Value)
-                            {
-                                nowyRodzic = g;
-                                break;
-                            }
-                        }
+                        dynamic? nowyRodzic = DynamicPropertyHelper.FindById(grupy, request.NewParentId.Value);
                         if (nowyRodzic != null)
                         {
                             dane.Rodzic = nowyRodzic;
@@ -729,15 +689,7 @@ public class ProductGroupsController : ControllerBase
                 if (grupy == null)
                     return ("manager_null", (List<string>?)null);
 
-                dynamic? grupaDane = null;
-                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                {
-                    if (DynamicPropertyHelper.GetId(g) == id)
-                    {
-                        grupaDane = g;
-                        break;
-                    }
-                }
+                dynamic? grupaDane = DynamicPropertyHelper.FindById(grupy, id);
 
                 if (grupaDane == null)
                     return ("not_found", (List<string>?)null);
@@ -792,15 +744,7 @@ public class ProductGroupsController : ControllerBase
                 if (grupy == null)
                     return ("grupy_null", 0);
 
-                dynamic? grupaDane = null;
-                foreach (var g in DynamicPropertyHelper.SafeGetAll((object)grupy))
-                {
-                    if (DynamicPropertyHelper.GetId(g) == id)
-                    {
-                        grupaDane = g;
-                        break;
-                    }
-                }
+                dynamic? grupaDane = DynamicPropertyHelper.FindById(grupy, id);
 
                 if (grupaDane == null)
                     return ("not_found", 0);
@@ -812,15 +756,7 @@ public class ProductGroupsController : ControllerBase
                 int assignedCount = 0;
                 foreach (var productId in request.ProductIds)
                 {
-                    dynamic? asortymentDane = null;
-                    foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                    {
-                        if (DynamicPropertyHelper.GetId(a) == productId)
-                        {
-                            asortymentDane = a;
-                            break;
-                        }
-                    }
+                    dynamic? asortymentDane = DynamicPropertyHelper.FindById(asortymenty, productId);
 
                     if (asortymentDane != null)
                     {
