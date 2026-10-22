@@ -294,276 +294,38 @@ public class CustomerOrdersController : ControllerBase
     /// <summary>
     /// Create a new customer order (ZK)
     /// </summary>
+    /// <remarks>
+    /// All-or-nothing: an unknown customer, recipient, warehouse or product returns 400 and nothing is created. Line prices
+    /// (<c>priceNet</c> or <c>priceGross</c>) are set in the calculation mode of the order (net or gross); a price of the other
+    /// kind is converted with the VAT rate of the line. Lines without a price keep the Nexo price list price.
+    /// A line with <c>name</c> and no product is a one-off service.
+    /// </remarks>
     [HttpPost]
     public async Task<ActionResult<ApiResponse<CustomerOrderDto>>> CreateCustomerOrder([FromBody] CreateCustomerOrderRequest request)
     {
+        var validationErrors = CustomerOrderCreator.Validate(request);
+        if (validationErrors.Count > 0)
+        {
+            return BadRequest(ApiResponse<CustomerOrderDto>.Error("Invalid customer order; nothing was created", validationErrors));
+        }
+
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var outcome = await _sferaService.ExecuteWithLockAsync(() =>
+                CustomerOrderCreator.Create(_sferaService.GetSfera(), request,
+                    bo => GetBusinessObjectErrors(bo),
+                    dane => (CustomerOrderDto)MapToDto(dane)));
+
+            if (outcome.OrderId == null)
             {
-                var zamowienia = _sferaService.GetManager("ZamowieniaOdKlientow");
-                if (zamowienia == null) return (false, "manager_null", 0, "", (CustomerOrderDto?)null, new List<string>());
-
-                // Get default configuration
-                var konfiguracje = _sferaService.GetManager("Konfiguracje");
-                var konfiguracja = konfiguracje?.DaneDomyslne?.ZamowienieOdKlienta;
-
-                using (var zamowienie = konfiguracja != null ? zamowienia.Utworz(konfiguracja) : zamowienia.Utworz())
-                {
-                    var podmioty = _sferaService.GetManager("Podmioty");
-
-                    // Set customer
-                    if (request.CustomerId.HasValue && podmioty != null)
-                    {
-                        dynamic? podmiot = null;
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                        {
-                            if (DynamicPropertyHelper.GetId(p) == request.CustomerId.Value)
-                            {
-                                podmiot = p;
-                                break;
-                            }
-                        }
-                        if (podmiot != null)
-                        {
-                            zamowienie.Dane.Podmiot = podmiot;
-                        }
-                    }
-                    else if (!string.IsNullOrEmpty(request.CustomerNIP) && podmioty != null)
-                    {
-                        dynamic? podmiot = null;
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                        {
-                            if (DynamicPropertyHelper.GetString(p, "NIP") == request.CustomerNIP)
-                            {
-                                podmiot = p;
-                                break;
-                            }
-                        }
-                        if (podmiot != null)
-                        {
-                            zamowienie.Dane.Podmiot = podmiot;
-                        }
-                    }
-
-                    // Set recipient if different from customer
-                    if (request.RecipientId.HasValue && podmioty != null)
-                    {
-                        dynamic? odbiorca = null;
-                        foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                        {
-                            if (DynamicPropertyHelper.GetId(p) == request.RecipientId.Value)
-                            {
-                                odbiorca = p;
-                                break;
-                            }
-                        }
-                        if (odbiorca != null)
-                        {
-                            try { zamowienie.Dane.Odbiorca = odbiorca; } catch { }
-                        }
-                    }
-
-                    // Set warehouse
-                    if (request.WarehouseId.HasValue || !string.IsNullOrEmpty(request.WarehouseSymbol))
-                    {
-                        var magazyny = _sferaService.GetManager("Magazyny");
-                        if (magazyny != null)
-                        {
-                            dynamic? magazyn = null;
-                            foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazyny))
-                            {
-                                if (request.WarehouseId.HasValue && DynamicPropertyHelper.GetId(m) == request.WarehouseId.Value)
-                                {
-                                    magazyn = m;
-                                    break;
-                                }
-                                if (!string.IsNullOrEmpty(request.WarehouseSymbol) && DynamicPropertyHelper.GetString(m, "Symbol") == request.WarehouseSymbol)
-                                {
-                                    magazyn = m;
-                                    break;
-                                }
-                            }
-                            if (magazyn != null)
-                            {
-                                zamowienie.Dane.Magazyn = magazyn;
-                            }
-                        }
-                    }
-
-                    // Set dates
-                    if (request.IssueDate.HasValue)
-                    {
-                        zamowienie.Dane.DataWystawienia = request.IssueDate.Value;
-                    }
-
-                    if (request.DeadlineDate.HasValue)
-                    {
-                        zamowienie.Dane.TerminRealizacji = request.DeadlineDate.Value;
-                    }
-
-                    // Set external/reference numbers
-                    if (!string.IsNullOrEmpty(request.ExternalNumber))
-                    {
-                        try { zamowienie.Dane.NumerZewnetrzny = request.ExternalNumber; } catch { }
-                    }
-
-                    if (!string.IsNullOrEmpty(request.ReferenceNumber))
-                    {
-                        try { zamowienie.Dane.NumerReferencyjny = request.ReferenceNumber; } catch { }
-                    }
-
-                    if (!string.IsNullOrEmpty(request.Title))
-                    {
-                        try { zamowienie.Dane.Tytul = request.Title; } catch { }
-                    }
-
-                    // Set notes
-                    if (!string.IsNullOrEmpty(request.Notes))
-                    {
-                        zamowienie.Dane.Uwagi = request.Notes;
-                    }
-
-                    // Set reservation type
-                    if (request.ReservationType.HasValue)
-                    {
-                        try { zamowienie.Dane.TypRezerwacji = request.ReservationType.Value; } catch { }
-                    }
-
-                    // Set split payment
-                    if (request.SplitPayment.HasValue)
-                    {
-                        try { zamowienie.Dane.MechanizmPodzielonejPlatnosci = request.SplitPayment.Value; } catch { }
-                    }
-
-                    // Set price level
-                    if (request.PriceLevelId.HasValue)
-                    {
-                        var cenniki = _sferaService.GetManager("Cenniki");
-                        if (cenniki != null)
-                        {
-                            dynamic? poziom = null;
-                            foreach (var c in DynamicPropertyHelper.SafeGetAll((object)cenniki))
-                            {
-                                if (DynamicPropertyHelper.GetId(c) == request.PriceLevelId.Value)
-                                {
-                                    poziom = c;
-                                    break;
-                                }
-                            }
-                            if (poziom != null)
-                            {
-                                try { zamowienie.Dane.PoziomCen = poziom; } catch { }
-                            }
-                        }
-                    }
-
-                    // Add items
-                    var asortymenty = _sferaService.GetManager("Asortymenty");
-                    foreach (var item in request.Items)
-                    {
-                        dynamic? asortyment = null;
-
-                        if (asortymenty != null)
-                        {
-                            if (item.ProductId.HasValue)
-                            {
-                                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                                {
-                                    if (DynamicPropertyHelper.GetId(a) == item.ProductId.Value)
-                                    {
-                                        asortyment = a;
-                                        break;
-                                    }
-                                }
-                            }
-                            else if (!string.IsNullOrEmpty(item.ProductSymbol))
-                            {
-                                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymenty))
-                                {
-                                    if (DynamicPropertyHelper.GetString(a, "Symbol") == item.ProductSymbol)
-                                    {
-                                        asortyment = a;
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-
-                        if (asortyment != null)
-                        {
-                            var jednostka = DynamicPropertyHelper.GetProperty(asortyment, "JednostkaSprzedazy");
-                            var pozycja = zamowienie.Pozycje.Dodaj(asortyment, item.Quantity, jednostka);
-
-                            if (pozycja != null)
-                            {
-                                if (item.PriceNet.HasValue)
-                                {
-                                    try { pozycja.Dane.CenaNetto = item.PriceNet.Value; } catch { }
-                                }
-                                else if (item.PriceGross.HasValue)
-                                {
-                                    try { pozycja.Dane.CenaBrutto = item.PriceGross.Value; } catch { }
-                                }
-
-                                if (item.DiscountPercent.HasValue)
-                                {
-                                    try { pozycja.Dane.RabatProcent = item.DiscountPercent.Value; } catch { }
-                                }
-
-                                if (!string.IsNullOrEmpty(item.Description))
-                                {
-                                    try { pozycja.Dane.Opis = item.Description; } catch { }
-                                }
-                            }
-                        }
-                        else if (!string.IsNullOrEmpty(item.Name))
-                        {
-                            // Add item without product reference (manual entry)
-                            try
-                            {
-                                var pozycja = zamowienie.Pozycje.DodajUslugeJednorazowa(item.Name, item.PriceNet ?? 0, item.Quantity);
-                                if (pozycja != null && item.DiscountPercent.HasValue)
-                                {
-                                    pozycja.Dane.RabatProcent = item.DiscountPercent.Value;
-                                }
-                            }
-                            catch { }
-                        }
-                    }
-
-                    if ((bool)zamowienie.Zapisz())
-                    {
-                        var numerWewnetrzny = DynamicPropertyHelper.GetProperty(zamowienie.Dane, "NumerWewnetrzny");
-                        string orderNumber = numerWewnetrzny != null ? DynamicPropertyHelper.GetString(numerWewnetrzny, "PelnaSygnatura") ?? "" : "";
-                        int newId = DynamicPropertyHelper.GetId(zamowienie.Dane);
-                        var dto = MapToDto(zamowienie.Dane);
-                        return (true, "created", newId, orderNumber, (CustomerOrderDto?)dto, new List<string>());
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(zamowienie);
-                        return (false, "save_failed", 0, "", (CustomerOrderDto?)null, errors);
-                    }
-                }
-            });
-
-            var (success, code, newId, orderNumber, dto, errors) = result;
-
-            if (code == "manager_null")
-            {
-                return StatusCode(500, ApiResponse<CustomerOrderDto>.Error("Failed to get ZamowieniaOdKlientow manager"));
-            }
-            if (code == "save_failed")
-            {
-                return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to create customer order", errors));
+                return BadRequest(ApiResponse<CustomerOrderDto>.Error("Failed to create customer order; nothing was created", outcome.Errors));
             }
 
-            _logger.LogInformation("Created customer order {Number}", orderNumber);
+            _logger.LogInformation("Created customer order {Id} ({Number})", outcome.OrderId, outcome.Order?.Number);
             return CreatedAtAction(
                 nameof(GetCustomerOrder),
-                new { id = newId },
-                ApiResponse<CustomerOrderDto>.Ok(dto!, "Customer order created successfully"));
+                new { id = outcome.OrderId },
+                ApiResponse<CustomerOrderDto>.Ok(outcome.Order!, "Customer order created successfully"));
         }
         catch (Exception ex)
         {
