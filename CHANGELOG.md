@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - settlement state of many documents
+- **`GET /api/documents/settlements`** returns documents with the state of their settlement (`Dokument.Rozrachunek`):
+  `amount`, `remainingAmount`, `paidAmount`, `unsettledAmount`, `currency`, `dueDate`, `nextDueDate`, `overdueAmount`,
+  `daysOverdue`, `installmentCount`, `isSettled`, `isOverdue`, `settlementModifiedAt`, plus the document number,
+  contractor, gross value and `amountToPay`.
+- It is one typed SQL query for the page and one count (`DocumentSettlementReader`). Every filter runs in SQL: `symbols`,
+  `ids` (up to 200), `customerId`, `type`, `status` (same meaning as `/api/payments/receivables`), `open`, `overdue`,
+  issue and due date ranges, `modifiedSince` (document or settlement changed, as in `GET /api/documents`), `isCanceled`
+  and `includeWithoutSettlement`. Sort is `id`, `due_date`, `issue_date` or `issue_date_desc`. `pageSize` goes up to 1000.
+- Overdue is decided per instalment of the payment schedule (`Rozrachunek.Pozycje`): `overdueAmount` is the remaining
+  amount of the instalments past their due date, and `daysOverdue` counts from the earliest open one. A settlement without
+  instalments uses `Rozrachunek.TerminPlatnosci`.
+- Read only. The list and detail of `GET /api/documents` are unchanged.
+
 ### Changed (2026-10-22) - product list as one SQL query
 - `GET /api/products` runs the filters (`search`, `type`, `activeOnly`, `modifiedSince`), the order and the page as one SQL
   query and projects only the list columns. Before, every request loaded every product card on the SDK thread
