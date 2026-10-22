@@ -377,6 +377,39 @@ public class PriceListPriceChangeDto
 }
 
 /// <summary>
+/// Cost refresh of one main price list position, returned by
+/// <c>POST /api/dictionary/price-lists/by-id/{id}/items/recalculate-costs</c>. The sales price does not change.
+/// </summary>
+public class PriceListCostChangeDto
+{
+    public int ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+
+    /// <summary><c>updated</c>, or <c>unchanged</c> when the cost was already current.</summary>
+    public string Status { get; set; } = string.Empty;
+
+    public decimal PriceNet { get; set; }
+    public decimal PriceGross { get; set; }
+
+    public decimal OldBasePrice { get; set; }
+    public decimal BasePrice { get; set; }
+
+    /// <summary>Calculation price (<c>CenaKalkulacyjna</c>): the cost the margin is calculated from.</summary>
+    public decimal OldCalculationPrice { get; set; }
+    public decimal CalculationPrice { get; set; }
+
+    /// <summary>Margin as a fraction of the net price (0.35 = 35%), as Nexo reports it.</summary>
+    public decimal? OldMargin { get; set; }
+    public decimal? Margin { get; set; }
+
+    public decimal OldProfit { get; set; }
+    public decimal Profit { get; set; }
+
+    /// <summary><c>true</c> when the request locked the sales price of the position.</summary>
+    public bool PriceLocked { get; set; }
+}
+
+/// <summary>
 /// Price list item DTO
 /// </summary>
 public class PriceListItemDto

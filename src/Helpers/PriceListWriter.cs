@@ -11,7 +11,8 @@ namespace NexoSferaApi.Helpers;
 /// <summary>
 /// Typed write paths of price list positions through the price list business object (<c>ICenniki.Znajdz(Cennik)</c>):
 /// <c>PUT /api/dictionary/price-lists/by-id/{id}/items</c> sets the gross or net price of main positions
-/// (<c>ICennik.Pozycje</c>), <c>POST .../reprice</c> runs Nexo's price change (<c>ICennik.Przecen</c>).
+/// (<c>ICennik.Pozycje</c>), <c>POST .../reprice</c> runs Nexo's price change (<c>ICennik.Przecen</c>), and
+/// <c>POST .../items/recalculate-costs</c> refreshes the cost of positions and keeps their sales prices.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -48,6 +49,14 @@ public static class PriceListWriter
     {
         public bool PriceListFound { get; init; } = true;
         public List<PriceListRepriceChangeDto> Changes { get; } = new();
+        public List<string> Errors { get; } = new();
+    }
+
+    /// <summary>Result of <see cref="RecalculateCosts"/>.</summary>
+    public sealed class CostOutcome
+    {
+        public bool PriceListFound { get; init; } = true;
+        public List<PriceListCostChangeDto> Changes { get; } = new();
         public List<string> Errors { get; } = new();
     }
 
@@ -377,6 +386,135 @@ public static class PriceListWriter
                 CalculationParameter = position.ParametrKalkulacyjny,
                 Status = position.CenaNetto == oldNet && position.CenaBrutto == oldGross ? Unchanged : Updated,
             });
+        }
+
+        return outcome;
+    }
+
+    /// <summary>Validation of a cost refresh request that needs no SDK access, one message per problem.</summary>
+    public static List<string> ValidateRecalculateCosts(RecalculatePriceListCostsRequest? request)
+    {
+        var errors = new List<string>();
+        var productIds = request?.ProductIds;
+        if (productIds == null || productIds.Count == 0)
+        {
+            errors.Add("productIds: at least one product id is required.");
+            return errors;
+        }
+
+        if (productIds.Count > MaxItems) errors.Add($"productIds: at most {MaxItems} ids per request, got {productIds.Count}.");
+        if (productIds.Any(id => id <= 0)) errors.Add("productIds: every id must be a positive Nexo product id.");
+        if (productIds.Distinct().Count() != productIds.Count) errors.Add("productIds: every product must be listed once.");
+        return errors;
+    }
+
+    /// <summary>
+    /// Refreshes the calculation price (cost) of the main positions of <c>request.ProductIds</c> in price list
+    /// <paramref name="priceListId"/> from the price list defaults (<c>ICennikPozycje.AktualizujCeneKalkulacyjna</c>);
+    /// Nexo recalculates margin, markup and profit and keeps the sales price. For a kit the cost is the sum of its
+    /// components, so this is the step that follows a change of the components. With <c>LockPrices</c> the sales prices
+    /// are locked (<c>UstawBlokadeCen</c>). Returns errors (and saves nothing) for a closed price list, a missing
+    /// product or main position, a position priced from its kit components, a sales price that Nexo would change, or a
+    /// refused save. With <c>DryRun</c> nothing is saved. Call <see cref="ValidateRecalculateCosts"/> first.
+    /// </summary>
+    public static CostOutcome RecalculateCosts(Uchwyt sfera, int priceListId, RecalculatePriceListCostsRequest request)
+    {
+        var cennik = sfera.Cenniki().Dane.Wszystkie().FirstOrDefault(c => c.Id == priceListId);
+        if (cennik == null) return new CostOutcome { PriceListFound = false };
+
+        var outcome = new CostOutcome();
+        if (cennik.Status == (int)StatusCennika.Zamkniety)
+        {
+            outcome.Errors.Add($"price list {priceListId}: the price list is closed.");
+            return outcome;
+        }
+
+        var products = PriceListReader.LoadProducts(sfera, request.ProductIds);
+
+        using ICennik cennikBo = sfera.Cenniki().Znajdz(cennik);
+        var targets = new List<IUproszczonaPozycjaCennika>();
+
+        foreach (var productId in request.ProductIds)
+        {
+            if (!products.TryGetValue(productId, out var asortyment))
+            {
+                outcome.Errors.Add($"product {productId}: not found.");
+                continue;
+            }
+
+            var main = (cennikBo.Pozycje.ZnajdzPozycjeCennika(asortyment) ?? Enumerable.Empty<IUproszczonaPozycjaCennika>())
+                .Where(p => p.Glowna)
+                .ToList();
+            if (main.Count != 1)
+            {
+                outcome.Errors.Add($"product {productId}: expected one main position in price list {priceListId}, found {main.Count}.");
+                continue;
+            }
+
+            if (main[0].WyliczCeneKompletuZeSkladnikow)
+            {
+                // The sales price follows the components there, so a fixed price with a margin does not apply.
+                outcome.Errors.Add($"product {productId}: the price is calculated from kit components " +
+                                   "(WyliczCeneKompletuZeSkladnikow); set a fixed price first (disableKitComponentPricing).");
+                continue;
+            }
+
+            targets.Add(main[0]);
+        }
+
+        if (outcome.Errors.Count > 0) return outcome;
+
+        var before = targets.Select(p => new PriceListCostChangeDto
+        {
+            ProductId = p.IdAsortymentu,
+            ProductSymbol = SdkMember.Read(() => p.SymbolAsortymentu, null),
+            PriceNet = p.CenaNetto,
+            PriceGross = p.CenaBrutto,
+            OldBasePrice = p.CenaBazowa,
+            OldCalculationPrice = p.CenaKalkulacyjna,
+            OldMargin = SdkMember.Read(() => (decimal?)p.Marza, null),
+            OldProfit = p.Zysk,
+        }).ToList();
+
+        cennikBo.Pozycje.AktualizujCeneKalkulacyjna(targets);
+
+        for (var i = 0; i < targets.Count; i++)
+        {
+            if (targets[i].CenaNetto != before[i].PriceNet || targets[i].CenaBrutto != before[i].PriceGross)
+            {
+                // Nothing is saved: disposing the business object discards the recalculation.
+                outcome.Errors.Add($"{Describe(targets[i])}: Nexo would change the sales price from {Format(before[i].PriceGross)} " +
+                                   $"to {Format(targets[i].CenaBrutto)} gross; nothing was saved.");
+            }
+        }
+
+        if (outcome.Errors.Count > 0) return outcome;
+
+        if (request.LockPrices)
+        {
+            cennikBo.Pozycje.UstawBlokadeCen(true, targets);
+        }
+
+        if (!request.DryRun && !cennikBo.Zapisz())
+        {
+            outcome.Errors.AddRange(SaveErrors(cennikBo));
+            if (outcome.Errors.Count == 0) outcome.Errors.Add("Nexo refused to save the price list.");
+            return outcome;
+        }
+
+        for (var i = 0; i < targets.Count; i++)
+        {
+            var change = before[i];
+            var position = targets[i];
+            change.BasePrice = position.CenaBazowa;
+            change.CalculationPrice = position.CenaKalkulacyjna;
+            change.Margin = SdkMember.Read(() => (decimal?)position.Marza, null);
+            change.Profit = position.Zysk;
+            change.PriceLocked = request.LockPrices;
+            change.Status = change.CalculationPrice == change.OldCalculationPrice && change.BasePrice == change.OldBasePrice
+                ? Unchanged
+                : Updated;
+            outcome.Changes.Add(change);
         }
 
         return outcome;
