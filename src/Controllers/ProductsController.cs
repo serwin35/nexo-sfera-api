@@ -384,132 +384,60 @@ public class ProductsController : ControllerBase
     }
 
     /// <summary>
-    /// Create a new product
+    /// Create a new product (typed, all-or-nothing)
     /// </summary>
+    /// <remarks>
+    /// The kind, base unit and VAT rate come from a Nexo product template: <c>templateId</c> (or the legacy
+    /// <c>templateSymbol</c>), otherwise the default template of <c>type</c> (Goods, Service, Set = kit; default Goods).
+    /// Optional: <c>symbol</c> (omitted: Nexo numbers it), <c>description</c>, <c>ean</c> (base unit barcode),
+    /// <c>pkWiU</c>, <c>baseUnit</c> (a unit from the units dictionary instead of the template's), <c>vatRate</c> (a VAT
+    /// symbol as products report it; sets the sales and purchase rate), <c>weight</c> (kg), <c>volume</c>,
+    /// <c>groupId</c> and, for a kit, <c>components</c> (product id, quantity, optional unit). <c>saleUnit</c> /
+    /// <c>purchaseUnit</c> must be the base unit; add other units after creation. <c>priceNet</c> is refused: prices live in
+    /// price lists.
+    ///
+    /// Any field that cannot be applied returns 400 with "field: reason", and nothing is created.
+    ///
+    /// Example: { "name": "Nici 40 czerwone", "type": 0, "groupId": 12, "ean": "5901234123457", "vatRate": "23" }
+    /// </remarks>
     [HttpPost]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<ProductDto>), StatusCodes.Status400BadRequest)]
     public async Task<ActionResult<ApiResponse<ProductDto>>> CreateProduct([FromBody] CreateProductRequest request)
     {
+        var validationErrors = ProductCreator.Validate(request);
+        if (validationErrors.Count > 0)
+        {
+            return BadRequest(ApiResponse<ProductDto>.Error("Invalid product; nothing was created", validationErrors));
+        }
+
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var (outcome, dto) = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, dto: (ProductDto?)null, error: "Failed to get Asortymenty manager", errors: (List<string>?)null);
-                }
-
-                // Check if symbol already exists
-                var existing = asortymentyManager.Znajdz(request.Symbol);
-                if (existing != null)
-                {
-                    return (statusCode: 400, dto: (ProductDto?)null, error: $"Product with symbol {request.Symbol} already exists", errors: (List<string>?)null);
-                }
-
-                using (var nowyAsortyment = asortymentyManager.Utworz())
-                {
-                    dynamic dane = nowyAsortyment.Dane;
-
-                    // Apply template if specified
-                    if (!string.IsNullOrEmpty(request.TemplateSymbol))
-                    {
-                        var szablonyManager = _sferaService.GetManager("SzablonyAsortymentu");
-                        if (szablonyManager != null)
-                        {
-                            dynamic? szablon = null;
-                            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablonyManager))
-                            {
-                                if (DynamicPropertyHelper.GetString(s, "Symbol") == request.TemplateSymbol)
-                                {
-                                    szablon = s;
-                                    break;
-                                }
-                            }
-                            if (szablon != null)
-                            {
-                                nowyAsortyment.WypelnijNaPodstawieSzablonu(szablon);
-                            }
-                        }
-                    }
-
-                    dane.Symbol = request.Symbol;
-                    dane.Nazwa = request.Name;
-
-                    if (!string.IsNullOrEmpty(request.Description))
-                    {
-                        dane.Opis = request.Description;
-                    }
-
-                    if (!string.IsNullOrEmpty(request.EAN))
-                    {
-                        dane.EAN = request.EAN;
-                    }
-
-                    if (!string.IsNullOrEmpty(request.PKWiU))
-                    {
-                        dane.PKWIU = request.PKWiU;
-                    }
-
-                    // Set unit (GetUnit accesses SDK managers, must be called inside lock)
-                    var jednostka = GetUnit(request.SaleUnit);
-                    if (jednostka != null)
-                    {
-                        dane.JednostkaSprzedazy = jednostka;
-                    }
-
-                    if (!string.IsNullOrEmpty(request.PurchaseUnit))
-                    {
-                        var jednostkaZakupu = GetUnit(request.PurchaseUnit);
-                        if (jednostkaZakupu != null)
-                        {
-                            dane.JednostkaZakupu = jednostkaZakupu;
-                        }
-                    }
-
-                    // Set price
-                    if (request.PriceNet.HasValue)
-                    {
-                        dane.CenaNetto = request.PriceNet.Value;
-                    }
-
-                    // Set physical properties
-                    if (request.Weight.HasValue)
-                    {
-                        dane.Masa = request.Weight.Value;
-                    }
-
-                    if (request.Volume.HasValue)
-                    {
-                        dane.Objetosc = request.Volume.Value;
-                    }
-
-                    if ((bool)nowyAsortyment.Zapisz())
-                    {
-                        var dto = MapToDto(dane);
-                        return (statusCode: 201, dto: (ProductDto?)dto, error: (string?)null, errors: (List<string>?)null);
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(nowyAsortyment);
-                        return (statusCode: 400, dto: (ProductDto?)null, error: "Failed to create product", errors: (List<string>?)errors);
-                    }
-                }
+                var sfera = _sferaService.GetSfera();
+                var created = ProductCreator.Create(sfera, request);
+                var entity = created.ProductId is int newId
+                    ? sfera.Asortymenty().Dane.Wszystkie().FirstOrDefault(a => a.Id == newId)
+                    : null;
+                return (created, entity == null ? null : MapToDto(entity));
             });
 
-            if (result.statusCode == 500)
+            if (outcome.Errors.Count > 0 || outcome.ProductId == null)
             {
-                return StatusCode(500, ApiResponse<object>.Error(result.error ?? "Internal error"));
-            }
-            if (result.statusCode == 400)
-            {
-                return BadRequest(ApiResponse<ProductDto>.Error(result.error ?? "Bad request", result.errors ?? new List<string>()));
+                return BadRequest(ApiResponse<ProductDto>.Error("Invalid product; nothing was created", outcome.Errors));
             }
 
-            _logger.LogInformation("Created product {Symbol}", request.Symbol);
+            if (dto == null)
+            {
+                _logger.LogWarning("Created product {Id}, but it could not be read back", outcome.ProductId);
+            }
+
+            _logger.LogInformation("Created product {Id} ({Symbol})", outcome.ProductId, dto?.Symbol);
             return CreatedAtAction(
                 nameof(GetProduct),
-                new { id = result.dto!.Id },
-                ApiResponse<ProductDto>.Ok(result.dto, "Product created successfully"));
+                new { id = outcome.ProductId },
+                ApiResponse<ProductDto>.Ok(dto!, "Product created successfully"));
         }
         catch (Exception ex)
         {
@@ -596,68 +524,37 @@ public class ProductsController : ControllerBase
     /// <summary>
     /// Delete a product
     /// </summary>
+    /// <remarks>
+    /// Deletes the product through its business object (<c>Usun()</c>). Nexo keeps products that support it in the recycle
+    /// bin; the message says which happened. A product already in the recycle bin returns 200 (idempotent). A product Nexo
+    /// refuses to delete (for example one that is still used) returns 400 with Nexo's reasons.
+    /// </remarks>
+    /// <param name="id">Product ID</param>
     [HttpDelete("{id}")]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<bool>), StatusCodes.Status404NotFound)]
     public async Task<ActionResult<ApiResponse<bool>>> DeleteProduct(int id)
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var outcome = await _sferaService.ExecuteWithLockAsync(() => ProductCreator.Delete(_sferaService.GetSfera(), id));
+
+            if (!outcome.Found)
             {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, success: false, error: "Failed to get Asortymenty manager", errors: (List<string>?)null);
-                }
-
-                dynamic? asortyment = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(a) == id)
-                    {
-                        asortyment = a;
-                        break;
-                    }
-                }
-
-                if (asortyment == null)
-                {
-                    return (statusCode: 404, success: false, error: $"Product with ID {id} not found", errors: (List<string>?)null);
-                }
-
-                using (var usuwanyAsortyment = asortymentyManager.Znajdz(asortyment))
-                {
-                    if (usuwanyAsortyment == null)
-                    {
-                        return (statusCode: 404, success: false, error: $"Product with ID {id} not found", errors: (List<string>?)null);
-                    }
-
-                    if ((bool)usuwanyAsortyment.Usun())
-                    {
-                        return (statusCode: 200, success: true, error: (string?)null, errors: (List<string>?)null);
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(usuwanyAsortyment);
-                        return (statusCode: 400, success: false, error: "Failed to delete product", errors: (List<string>?)errors);
-                    }
-                }
-            });
-
-            if (result.statusCode == 500)
-            {
-                return StatusCode(500, ApiResponse<object>.Error(result.error ?? "Internal error"));
-            }
-            if (result.statusCode == 404)
-            {
-                return NotFound(ApiResponse<bool>.Error(result.error ?? "Not found"));
-            }
-            if (result.statusCode == 400)
-            {
-                return BadRequest(ApiResponse<bool>.Error(result.error ?? "Bad request", result.errors ?? new List<string>()));
+                return NotFound(ApiResponse<bool>.Error($"Product with ID {id} not found"));
             }
 
-            _logger.LogInformation("Deleted product {Id}", id);
-            return Ok(ApiResponse<bool>.Ok(true, "Product deleted successfully"));
+            if (outcome.Errors.Count > 0)
+            {
+                return BadRequest(ApiResponse<bool>.Error("Failed to delete product", outcome.Errors));
+            }
+
+            var message = outcome.AlreadyInRecycleBin
+                ? "Product is already in the recycle bin"
+                : outcome.InRecycleBin ? "Product moved to the recycle bin" : "Product deleted";
+            _logger.LogInformation("Deleted product {Id}: {Result}", id, message);
+            return Ok(ApiResponse<bool>.Ok(true, message));
         }
         catch (Exception ex)
         {
@@ -1526,23 +1423,6 @@ public class ProductsController : ControllerBase
         }
 
         return DynamicPropertyHelper.GetNullableInt(asortyment, "Rodzaj_Id") == (int)ProductType.Set;
-    }
-
-    private dynamic? GetUnit(string symbol)
-    {
-        if (string.IsNullOrEmpty(symbol)) return null;
-
-        var jednostkiManager = _sferaService.GetManagerByType("InsERT.Moria.ModelDanych", "InsERT.Moria.ModelDanych.Jednostki");
-        if (jednostkiManager == null) return null;
-
-        foreach (var j in DynamicPropertyHelper.SafeGetAll((object)jednostkiManager))
-        {
-            if (DynamicPropertyHelper.GetString(j, "Symbol") == symbol)
-            {
-                return j;
-            }
-        }
-        return null;
     }
 
     private static ProductDto MapToDto(dynamic asortyment) => MapToDtoAs<ProductDto>((object)asortyment);
