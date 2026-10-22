@@ -44,6 +44,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `pageSize` above 500 or `page` below 1 returns 400;
   - the bulk add lists every contractor that was not added in `errors` (the count in `data` is unchanged in meaning).
 - Members of subgroups are not included. The group hierarchy (`Grupa.KategoriaNadrzedna`) is not read yet.
+### Added (2026-10-22) - product delta and real kind/variant
+- **`GET /api/products?modifiedSince=…&sortBy=modified_asc|modified_desc`**: only products whose card changed at or
+  after the given time (`Asortyment.Naglowek.Zmieniono`, one SQL query). It is the same contract as the document delta.
+  Every list row has `modifiedAt` and `createdAt`, so a client can detect bridges that support the delta.
+  - Not covered: prices in price lists, stock levels, and products moved to the recycle bin (they leave
+    `Dane.Wszystkie()`). They are not part of the card, so a periodic full pass stays.
+- **Real product kind and variant**:
+  - `type` in the list and the detail comes from `Asortyment.Rodzaj` through the SDK kind checks (`CzyKomplet`,
+    `CzyUsluga`). Before, it was always `Goods`, because the mapper read `Rodzaj_Id`, which does not exist. Kinds that
+    are neither goods, service nor set are still reported as `Goods`; the new `kindName` gives the Nexo name.
+  - The `type` list filter, previously ignored, now filters. `Material` matches no Nexo kind.
+  - `isVariant` / `modelId` come from `Asortyment.Model` (before: always `false` / `null`). `modelId` is the id of the
+    Nexo model card (`Model`), not a product id.
+  - The product detail has `kindName` and real `createdAt` / `modifiedAt` (local time, as for documents).
+- `sortBy` other than `modified_asc` / `modified_desc`, and `page` / `pageSize` below 1, return 400.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are

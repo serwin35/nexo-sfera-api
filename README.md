@@ -416,6 +416,10 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
   (`StanRealizacjiZamowienia`, `IloscDoRealizacji`, `Rezerwacja`) + wartości w jednostce bazowej.
 - `GET /api/documents?modifiedSince=2026-10-09T00:00:00%2B02:00&sortBy=modified_asc`: tylko dokumenty zmienione (nagłówek
   lub rozrachunek) od podanego czasu; lista ma `isCanceled`, `createdAt`, `modifiedAt`, `settlementModifiedAt`.
+- `GET /api/products?modifiedSince=2026-10-22T00:00:00%2B02:00&sortBy=modified_asc`: tylko towary ze zmienioną kartoteką
+  (`Naglowek.Zmieniono`) od podanego czasu. Ceny w cennikach, stany i przeniesienie do kosza nie zmieniają kartoteki, więc
+  okresowy pełny przelot listy zostaje. Lista i szczegóły mają `type` (z rodzaju nexo; filtr `type` działa), `kindName`,
+  `isVariant`, `modelId` (id karty modelu `Asortyment.Model`), `createdAt`, `modifiedAt`.
 - `POST /api/payments/*` z niepustym `documentIdsToSettle` → `400` (rozliczanie nie jest obsługiwane).
 - Cache danych SDK między żądaniami tylko przez `ISferaService.GetTenantState` (per baza + operator + magazyn + oddział).
 
