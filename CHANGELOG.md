@@ -107,6 +107,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   #38), and keep the old read as a fallback.
 - Affected: customers, customer orders, documents, warehouse documents, offers, orders, payments, products, product
   groups, attributes and templates, contractor groups, KSeF and assembly.
+### Fixed (2026-10-22) - customer order (ZK) create
+- `POST /api/customer-orders` is typed (`CustomerOrderCreator`). The late-bound version:
+  - failed with 500 whenever `issueDate` was sent: it set `Dokument.DataWystawienia`, which does not exist; the date is
+    `DataWydaniaWystawienia`. WolfFire `PushShopOrderToNexoJob` always sends it;
+  - dropped line prices silently (`CenaNetto` / `CenaBrutto` inside `try/catch`);
+  - dropped manual lines silently: `DodajUslugeJednorazowa(name, price, quantity)` was called, but the parameters are
+    (name, quantity, unit symbol);
+  - skipped unknown products and saved the ZK without the line;
+  - read every product and contractor for each lookup.
+- All-or-nothing:
+  - validation first, then the customer (id, or exactly one contractor with the NIP raw or without separators), the
+    recipient, the warehouse and every product are resolved in SQL;
+  - any problem returns 400 with one message per field, and nothing is created;
+  - a refused `Zapisz()` returns the Nexo errors.
+- Line prices go to `PozycjaDokumentu.Cena` in the calculation mode of the order: `NettoPrzedRabatem` for net orders,
+  `BruttoPrzedRabatem` for gross orders. A price of the other kind is converted with the line VAT rate and rounded to
+  0.01. `discountPercent` (percent, 0-100) goes to `Cena.RabatProcent` as a fraction, because Nexo keeps 8.61 % as
+  0.0861. Lines without a price keep the price list price.
+- The document is created with `UtworzZamowienieOdKlienta()`. Before, it used the default configuration, or `Utworz()`,
+  which always throws.
+- Unchanged: the response shape (`CustomerOrderDto`, lines in request order). The reservation type, split payment and
+  price level are still set late-bound, as before.
+- Not applied, as before: item `unit` (products use the sale unit, services the template unit), item `vatRate`,
+  `createReservation`, `currency` and `reserveNumber`.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
