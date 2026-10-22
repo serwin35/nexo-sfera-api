@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   up-to-date database with "baza zawiera oczekujące aktualizacje". With `PreferDeploymentBinaries` (the default), a hash
   match now re-aligns every DLL that differs from the deployment, the same way as after a version change. Identical
   files are skipped.
+- **SDK sync, related directories:** the fill of DLLs missing from the deployment searched every nexo deployment and
+  `.zip-cache` of every version (and Program Files) and copied any missing file, including InsERT modules from other
+  versions (seen on 2026-10-22: `InsERT.Mox.VMPackage.55.0.1.8249.dll` from a 2025 deployment). InsERT assemblies are
+  now taken only from the selected deployment; third-party DLLs are still filled from anywhere.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are

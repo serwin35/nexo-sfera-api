@@ -663,6 +663,13 @@ public static class NexoSdkSynchronizer
                     searchRoots.Add(pf);
             }
 
+            // InsERT assemblies must come from the selected deployment only. The roots above include other
+            // deployments and .zip-cache folders of every nexo version, and an InsERT module from another version
+            // in the runtime directory is the stale-DLL failure (Sfera reports pending database updates).
+            // Third-party DLLs missing from the selected deployment may still be filled from anywhere.
+            var selectedDeploymentDir = Path.GetDirectoryName(selectedDir) ?? selectedDir;
+            var skippedForeignInsert = 0;
+
             var copiedExtra = 0;
             foreach (var searchRoot in searchRoots)
             {
@@ -682,6 +689,13 @@ public static class NexoSdkSynchronizer
 
                     if (File.Exists(destFile)) continue;
 
+                    if (fileName.StartsWith("InsERT.", StringComparison.OrdinalIgnoreCase) &&
+                        !sourceFile.StartsWith(selectedDeploymentDir + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+                    {
+                        skippedForeignInsert++;
+                        continue;
+                    }
+
                     try
                     {
                         File.Copy(sourceFile, destFile, overwrite: false);
@@ -692,6 +706,9 @@ public static class NexoSdkSynchronizer
                     catch { /* skip if locked or failed */ }
                 }
             }
+
+            if (skippedForeignInsert > 0)
+                logger?.LogInformation("[SDK Sync] Skipped {Count} InsERT DLLs found outside the selected deployment (other nexo versions).", skippedForeignInsert);
 
             if (copiedExtra > 0)
                 logger?.LogInformation("[SDK Sync] Copied {Count} additional DLLs from related directories.", copiedExtra);
