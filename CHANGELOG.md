@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - POST /api/products/{id}/variants failed on every request
+- The first dry run (ZOSP T-shirts, template `DMSUDKP03820_0113`) failed with "When an object is returned with a
+  NoTracking merge option, Load can only be called when the EntityCollection or EntityReference does not contain
+  objects".
+  - Cause: entities from `Dane.Wszystkie()` are not tracked. The model's variant list was already partly filled with the
+    template by relationship fix-up, so lazy loading it threw.
+- The model (properties, allowed values, existing variants, highest number) is now read once through a business object
+  of the template, which is never saved. The same pattern is used by `PUT .../variant-properties`.
+- The new card gets fresh untracked entities only: the template, the model, each property and each value.
+
 ### Fixed (2026-10-22) - kind change refused up front, primary supplier flag, variant errors
 - `PUT /api/products/{id}` with `type` now returns 400 before touching Nexo. Nexo refuses to change the kind of an
   existing card ("Nie można zmieniać rodzaju asortymentu w kartotece"; seen on `PMTPROD01391_CY13`), so the write from

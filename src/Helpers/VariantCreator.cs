@@ -42,7 +42,13 @@ public static class VariantCreator
         public bool Failed => Errors.Count > 0 || Result?.Variants.Any(v => v.Status == VariantCreator.Failed) == true;
     }
 
-    private sealed record PlanItem(CreatedVariantDto Result, List<(WlasciwoscModelu Property, CechaAsortymentu Value)> Values, string? Symbol);
+    /// <summary>A model property read once, as plain data, so nothing later navigates the SDK entities again.</summary>
+    private sealed record ModelProperty(int Id, string Name, string? Symbol, bool Required, bool Unique, int Order, Dictionary<string, int> ValueIds);
+
+    /// <summary>The model of the template variant, read through a business object (tracked, so lazy loading works).</summary>
+    private sealed record ModelSnapshot(int Id, string? Name, List<ModelProperty> Properties, Dictionary<string, (int Id, string? Symbol, string? Name)> Existing, int MaxNumber);
+
+    private sealed record PlanItem(CreatedVariantDto Result, List<(ModelProperty Property, int ValueId)> Values, string? Symbol);
 
     /// <summary>Validation that needs no SDK access, one message per rejected field.</summary>
     public static List<string> Validate(CreateVariantsRequest request)
@@ -83,27 +89,21 @@ public static class VariantCreator
         if (template == null) return new Outcome { Found = false };
 
         var outcome = new Outcome();
-        var model = template.Model;
+        var model = ReadModel(asortymenty, template);
         if (model == null)
         {
             outcome.Errors.Add($"product {templateId} ({template.Symbol}) is not a variant; send the id of a variant of the model.");
             return outcome;
         }
 
-        var properties = model.WlasciwosciModelu.Where(w => w.Wlasciwosc != null).OrderBy(w => w.LP).ToList();
-        var siblings = model.Asortymenty.Where(a => ProductReader.IsActive(a)).ToList();
-        var existing = new Dictionary<string, Asortyment>(StringComparer.Ordinal);
-        foreach (var sibling in siblings)
-        {
-            existing.TryAdd(Key(ProductReader.VariantProperties(sibling).Select(v => (v.Property, v.Value ?? string.Empty))), sibling);
-        }
+        var properties = model.Properties;
 
         outcome.Result = new CreateVariantsResultDto
         {
             TemplateProductId = template.Id,
             TemplateSymbol = template.Symbol,
             ModelId = model.Id,
-            ModelName = model.Nazwa,
+            ModelName = model.Name,
             DryRun = request.DryRun,
         };
 
@@ -114,40 +114,39 @@ public static class VariantCreator
             var result = new CreatedVariantDto { Symbol = string.IsNullOrWhiteSpace(variant.Symbol) ? null : variant.Symbol.Trim() };
             outcome.Result.Variants.Add(result);
 
-            var values = new List<(WlasciwoscModelu Property, CechaAsortymentu Value)>();
+            var values = new List<(ModelProperty Property, int ValueId)>();
             foreach (var given in variant.Values)
             {
                 var name = given.Property.Trim();
-                var property = properties.FirstOrDefault(p => string.Equals(p.Wlasciwosc.Nazwa, name, StringComparison.OrdinalIgnoreCase))
-                               ?? properties.FirstOrDefault(p => string.Equals(p.Wlasciwosc.Symbol, name, StringComparison.OrdinalIgnoreCase));
+                var property = properties.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+                               ?? properties.FirstOrDefault(p => string.Equals(p.Symbol, name, StringComparison.OrdinalIgnoreCase));
                 if (property == null)
                 {
-                    result.Errors.Add($"variants[{i}]: the model has no property '{name}' (it has: {string.Join(", ", properties.Select(p => p.Wlasciwosc.Nazwa))}).");
+                    result.Errors.Add($"variants[{i}]: the model has no property '{name}' (it has: {string.Join(", ", properties.Select(p => p.Name))}).");
                     continue;
                 }
 
                 var valueName = given.Value.Trim();
-                var value = property.Wlasciwosc.CechyAsortymentu.FirstOrDefault(c => c.Nazwa == valueName);
-                if (value == null)
+                if (!property.ValueIds.TryGetValue(valueName, out var valueId))
                 {
-                    result.Errors.Add($"variants[{i}]: '{valueName}' is not a value of property '{property.Wlasciwosc.Nazwa}'; add it with POST /api/product-properties/{property.Wlasciwosc.Id}/values.");
+                    result.Errors.Add($"variants[{i}]: '{valueName}' is not a value of property '{property.Name}'; add it with POST /api/product-properties/{property.Id}/values.");
                     continue;
                 }
 
-                values.Add((property, value));
-                result.Values.Add(new ProductVariantPropertyDto { Property = property.Wlasciwosc.Nazwa, Value = value.Nazwa });
+                values.Add((property, valueId));
+                result.Values.Add(new ProductVariantPropertyDto { Property = property.Name, Value = valueName });
             }
 
-            var missing = properties.Where(p => values.All(v => v.Property.Id != p.Id)).Select(p => p.Wlasciwosc.Nazwa).ToList();
+            var missing = properties.Where(p => values.All(v => v.Property.Id != p.Id)).Select(p => p.Name).ToList();
             if (missing.Count > 0 && result.Errors.Count == 0)
                 result.Errors.Add($"variants[{i}]: no value for {string.Join(", ", missing)}; every model property needs one.");
 
-            if (result.Errors.Count == 0 && existing.TryGetValue(Key(values.Select(v => (v.Property.Wlasciwosc.Nazwa, v.Value.Nazwa))), out var twin))
+            if (result.Errors.Count == 0 && model.Existing.TryGetValue(Key(result.Values.Select(v => (v.Property, v.Value ?? string.Empty))), out var twin))
             {
                 result.Status = Exists;
                 result.ProductId = twin.Id;
                 result.Symbol = twin.Symbol;
-                result.Name = twin.Nazwa;
+                result.Name = twin.Name;
                 continue;
             }
 
@@ -163,14 +162,13 @@ public static class VariantCreator
 
         if (outcome.Failed || request.DryRun) return outcome;
 
-        // Variants in the recycle bin keep their numbers, so they count too.
-        var nextNumber = model.Asortymenty.Select(s => s.Numer ?? 0).DefaultIfEmpty(0).Max() + 1;
+        var nextNumber = model.MaxNumber + 1;
         foreach (var item in plan)
         {
             var result = item.Result;
             try
             {
-                if (!Save(asortymenty, template, model, item, request.CopyComponents, nextNumber++)) break;
+                if (!Save(sfera, templateId, model.Id, item, request.CopyComponents, nextNumber++)) break;
             }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or NotSupportedException)
             {
@@ -185,16 +183,65 @@ public static class VariantCreator
         return outcome;
     }
 
-    /// <summary>Creates and saves one planned variant; false (with the errors on the result) when Nexo refuses it.</summary>
-    private static bool Save(IAsortymenty asortymenty, Asortyment template, Model model, PlanItem item, bool copyComponents, int number)
+    /// <summary>
+    /// Reads the model of <paramref name="template"/> through a business object of the template that is never saved.
+    /// Entities from <c>Dane.Wszystkie()</c> are not tracked (NoTracking), and lazy loading a collection that the
+    /// relationship fix-up has already partly filled (the model's variants contain the template) throws
+    /// "When an object is returned with a NoTracking merge option, Load can only be called when the EntityCollection or
+    /// EntityReference does not contain objects". Null when the template is not a variant.
+    /// </summary>
+    private static ModelSnapshot? ReadModel(IAsortymenty asortymenty, Asortyment template)
+    {
+        using var bo = asortymenty.Znajdz(template);
+        var model = bo.Dane.Model;
+        if (model == null) return null;
+
+        var properties = model.WlasciwosciModelu
+            .Where(w => w.Wlasciwosc != null)
+            .OrderBy(w => w.LP)
+            .Select(w => new ModelProperty(
+                w.Wlasciwosc.Id,
+                w.Wlasciwosc.Nazwa,
+                string.IsNullOrWhiteSpace(w.Wlasciwosc.Symbol) ? null : w.Wlasciwosc.Symbol,
+                w.Wymagana,
+                w.Unikalna,
+                w.LP,
+                w.Wlasciwosc.CechyAsortymentu
+                    .Where(c => c.Nazwa != null)
+                    .GroupBy(c => c.Nazwa)
+                    .ToDictionary(g => g.Key, g => g.First().Id, StringComparer.Ordinal)))
+            .ToList();
+
+        var existing = new Dictionary<string, (int Id, string? Symbol, string? Name)>(StringComparer.Ordinal);
+        var maxNumber = 0;
+        foreach (var variant in model.Asortymenty.ToList())
+        {
+            // Variants in the recycle bin keep their numbers, so they count for numbering, not as existing.
+            maxNumber = Math.Max(maxNumber, variant.Numer ?? 0);
+            if (!ProductReader.IsActive(variant)) continue;
+            existing.TryAdd(Key(ProductReader.VariantProperties(variant).Select(v => (v.Property, v.Value ?? string.Empty))),
+                (variant.Id, variant.Symbol, variant.Nazwa));
+        }
+
+        return new ModelSnapshot(model.Id, model.Nazwa, properties, existing, maxNumber);
+    }
+
+    /// <summary>
+    /// Creates and saves one planned variant; false (with the errors on the result) when Nexo refuses it. Everything put on
+    /// the new card is a fresh untracked entity (the template, the model, property values), the way the other writers
+    /// assign groups and kinds.
+    /// </summary>
+    private static bool Save(Uchwyt sfera, int templateId, int modelId, PlanItem item, bool copyComponents, int number)
     {
         var result = item.Result;
+        var asortymenty = sfera.Asortymenty();
+        var template = asortymenty.Dane.Wszystkie().First(a => a.Id == templateId);
         using IAsortyment product = asortymenty.Utworz();
         product.WypelnijNaPodstawie(template);
         var dane = product.Dane;
-        if (dane.Model == null || dane.Model.Id != model.Id) dane.Model = model;
+        if (dane.Model == null || dane.Model.Id != modelId) dane.Model = sfera.Modele().Dane.Wszystkie().First(m => m.Id == modelId);
 
-        SetValues(dane, item.Values);
+        SetValues(sfera, dane, item.Values);
         ClearBarcodes(dane);
         if (!copyComponents) ClearComponents(product);
 
@@ -224,22 +271,24 @@ public static class VariantCreator
     /// One value per model property. A property link copied from the template gets the new value; a missing one is added
     /// with the model's flags (required, unique, order).
     /// </summary>
-    private static void SetValues(Asortyment dane, List<(WlasciwoscModelu Property, CechaAsortymentu Value)> values)
+    private static void SetValues(Uchwyt sfera, Asortyment dane, List<(ModelProperty Property, int ValueId)> values)
     {
-        foreach (var (property, value) in values)
+        foreach (var (property, valueId) in values)
         {
-            var link = dane.WlasciwosciAsortymentu.FirstOrDefault(w => w.Wlasciwosc != null && w.Wlasciwosc.Id == property.Wlasciwosc.Id);
+            var link = dane.WlasciwosciAsortymentu.FirstOrDefault(w => w.Wlasciwosc != null && w.Wlasciwosc.Id == property.Id);
             if (link == null)
             {
                 link = new WlasciwoscAsortymentu
                 {
-                    Wlasciwosc = property.Wlasciwosc,
-                    Wymagana = property.Wymagana,
-                    Unikalna = property.Unikalna,
-                    LP = property.LP,
+                    Wlasciwosc = sfera.Wlasciwosci().Dane.Wszystkie().First(w => w.Id == property.Id),
+                    Wymagana = property.Required,
+                    Unikalna = property.Unique,
+                    LP = property.Order,
                 };
                 dane.WlasciwosciAsortymentu.Add(link);
             }
+
+            var value = sfera.CechyAsortymentu().Dane.Wszystkie().First(c => c.Id == valueId);
 
             foreach (var old in link.CechyAsortymentu.ToList())
             {
