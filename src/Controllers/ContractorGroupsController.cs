@@ -108,15 +108,19 @@ public class ContractorGroupsController : ControllerBase
                     .Take(query.PageSize)
                     .ToList();
 
+                var memberCounts = query.IncludeContractorCount
+                    ? ContractorGroupMembers.CountMembersByGroup(_sferaService.GetSfera())
+                    : null;
+
                 var items = new List<ContractorGroupListItemDto>();
                 foreach (var g in pagedItems)
                 {
                     var dto = MapToListItemDto(g);
 
                     // Include contractor count if requested
-                    if (query.IncludeContractorCount)
+                    if (memberCounts != null)
                     {
-                        dto.ContractorCount = GetContractorCountForGroup(DynamicPropertyHelper.GetId(g), grupy);
+                        dto.ContractorCount = memberCounts.GetValueOrDefault(dto.Id);
                     }
 
                     // Check if has children
@@ -183,6 +187,10 @@ public class ContractorGroupsController : ControllerBase
                     }
                 }
 
+                var memberCounts = includeContractorCount
+                    ? ContractorGroupMembers.CountMembersByGroup(_sferaService.GetSfera())
+                    : null;
+
                 // Build tree
                 var groupMap = new Dictionary<int, ContractorGroupTreeDto>();
                 var roots = new List<ContractorGroupTreeDto>();
@@ -201,7 +209,7 @@ public class ContractorGroupsController : ControllerBase
                         Name = DynamicPropertyHelper.GetString(g, "Nazwa") ?? "",
                         ParentId = parentId,
                         Level = DynamicPropertyHelper.GetNullableInt(g, "Poziom") ?? 0,
-                        ContractorCount = includeContractorCount ? GetContractorCountForGroup(id, grupy) : 0
+                        ContractorCount = memberCounts?.GetValueOrDefault(id) ?? 0
                     };
 
                     groupMap[id] = node;
@@ -391,85 +399,50 @@ public class ContractorGroupsController : ControllerBase
     }
 
     /// <summary>
-    /// Get contractors in a group
+    /// Get the direct members of a contractor group (<c>Podmiot.Grupy</c>), ordered by short name
     /// </summary>
     [HttpGet("{id}/contractors")]
     public async Task<ActionResult<PagedResponse<CustomerListItemDto>>> GetGroupContractors(int id, [FromQuery] int page = 1, [FromQuery] int pageSize = 50)
     {
+        if (page < 1 || pageSize < 1 || pageSize > ContractorGroupMembers.MaxPageSize)
+        {
+            return BadRequest(ApiResponse<object>.Error($"page must be at least 1 and pageSize between 1 and {ContractorGroupMembers.MaxPageSize}"));
+        }
+
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var response = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var grupy = _sferaService.GetManager("Grupy");
-                if (grupy == null)
+                var sfera = _sferaService.GetSfera();
+                if (ContractorGroupMembers.FindGroup(sfera, id) == null)
                 {
-                    return (managerNull: true, notFound: false, response: (PagedResponse<CustomerListItemDto>?)null);
+                    return null;
                 }
 
-                // Verify group exists
-                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-                if (grupaDane == null)
-                {
-                    return (false, true, (PagedResponse<CustomerListItemDto>?)null);
-                }
-
-                var podmioty = _sferaService.GetManager("Podmioty");
-                if (podmioty == null)
-                {
-                    return (true, false, (PagedResponse<CustomerListItemDto>?)null);
-                }
-
-                var contractors = new List<object>();
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
-                    if (grupa != null && DynamicPropertyHelper.GetId(grupa) == id)
-                    {
-                        contractors.Add(p);
-                    }
-                }
-
-                var totalCount = contractors.Count;
-                var pagedItems = contractors
-                    .OrderBy(p => DynamicPropertyHelper.GetString(p, "NazwaSkrocona"))
+                var members = ContractorGroupMembers.Members(sfera, id);
+                var totalCount = members.Count();
+                var pageRows = members
+                    .OrderBy(p => p.NazwaSkrocona)
+                    .ThenBy(p => p.Id)
                     .Skip((page - 1) * pageSize)
                     .Take(pageSize)
                     .ToList();
 
-                var items = new List<CustomerListItemDto>();
-                foreach (var p in pagedItems)
+                return new PagedResponse<CustomerListItemDto>
                 {
-                    items.Add(new CustomerListItemDto
-                    {
-                        Id = DynamicPropertyHelper.GetId(p),
-                        Name = DynamicPropertyHelper.GetString(p, "NazwaSkrocona") ?? "",
-                        TaxId = DynamicPropertyHelper.GetString(p, "NIP"),
-                        Phone = DynamicPropertyHelper.GetString(p, "Telefon"),
-                        IsActive = DynamicPropertyHelper.GetNullableBool(p, "Aktywny") ?? true,
-                        ContractorType = (ContractorType)(DynamicPropertyHelper.GetNullableInt(p, "RodzajKontrahenta") ?? 0)
-                    });
-                }
-
-                return (false, false, new PagedResponse<CustomerListItemDto>
-                {
-                    Data = items,
+                    Data = pageRows.Select(ContractorGroupMembers.MapToListItem).ToList(),
                     Page = page,
                     PageSize = pageSize,
                     TotalCount = totalCount
-                });
+                };
             });
 
-            if (result.Item1)
-            {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Grupy manager"));
-            }
-
-            if (result.Item2)
+            if (response == null)
             {
                 return NotFound(ApiResponse<object>.Error($"Contractor group with ID {id} not found"));
             }
 
-            return Ok(result.Item3!);
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -802,8 +775,9 @@ public class ContractorGroupsController : ControllerBase
     }
 
     /// <summary>
-    /// Add a contractor to a group
+    /// Add a contractor to a group (<c>Podmiot.Grupy</c>); the contractor keeps its other groups
     /// </summary>
+    /// <remarks>Idempotent: a contractor already in the group is answered with 200 and nothing is saved.</remarks>
     [HttpPost("{id}/contractors")]
     public async Task<ActionResult<ApiResponse<ContractorGroupMembershipDto>>> AddContractorToGroup(int id, [FromBody] AddContractorToGroupRequest request)
     {
@@ -811,90 +785,49 @@ public class ContractorGroupsController : ControllerBase
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var grupy = _sferaService.GetManager("Grupy");
-                if (grupy == null)
+                var sfera = _sferaService.GetSfera();
+                var group = ContractorGroupMembers.FindGroup(sfera, id);
+                if (group == null)
                 {
-                    return (status: "grupyNull", membership: (ContractorGroupMembershipDto?)null, errors: (List<string>?)null);
+                    return (groupName: (string?)null, change: (ContractorGroupMembers.Change?)null);
                 }
 
-                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-                if (grupaDane == null)
-                {
-                    return ("groupNotFound", (ContractorGroupMembershipDto?)null, (List<string>?)null);
-                }
-
-                var podmioty = _sferaService.GetManager("Podmioty");
-                if (podmioty == null)
-                {
-                    return ("podmiotyNull", (ContractorGroupMembershipDto?)null, (List<string>?)null);
-                }
-
-                var podmiotDane = DynamicPropertyHelper.FindById(podmioty, request.ContractorId);
-                if (podmiotDane == null)
-                {
-                    return ("contractorNotFound", (ContractorGroupMembershipDto?)null, (List<string>?)null);
-                }
-
-                using (var podmiot = podmioty.Znajdz(podmiotDane))
-                {
-                    if (podmiot == null)
-                    {
-                        return ("contractorNotFound", (ContractorGroupMembershipDto?)null, (List<string>?)null);
-                    }
-
-                    podmiot.Dane.Grupa = grupaDane;
-
-                    if ((bool)podmiot.Zapisz())
-                    {
-                        var membership = new ContractorGroupMembershipDto
-                        {
-                            ContractorId = request.ContractorId,
-                            ContractorSymbol = DynamicPropertyHelper.GetString(podmiotDane, "Symbol"),
-                            ContractorName = DynamicPropertyHelper.GetString(podmiotDane, "NazwaSkrocona"),
-                            GroupId = id,
-                            GroupSymbol = DynamicPropertyHelper.GetString(grupaDane, "Symbol"),
-                            GroupName = DynamicPropertyHelper.GetString(grupaDane, "Nazwa"),
-                            JoinDate = DateTime.Now,
-                            IsPrimary = request.IsPrimary
-                        };
-
-                        return ("ok", membership, (List<string>?)null);
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(podmiot);
-                        return ("saveFailed", (ContractorGroupMembershipDto?)null, errors);
-                    }
-                }
+                var change = ContractorGroupMembers.Add(sfera, group, request.ContractorId, bo => GetBusinessObjectErrors(bo));
+                return (groupName: (string?)group.Nazwa, change: (ContractorGroupMembers.Change?)change);
             });
 
-            if (result.Item1 == "grupyNull")
-            {
-                return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Grupy manager"));
-            }
-
-            if (result.Item1 == "groupNotFound")
+            var change = result.change;
+            if (change == null)
             {
                 return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.Item1 == "podmiotyNull")
+            switch (change.Status)
             {
-                return StatusCode(500, ApiResponse<ContractorGroupMembershipDto>.Error("Failed to get Podmioty manager"));
+                case ContractorGroupMembers.ContractorNotFound:
+                    return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor with ID {request.ContractorId} not found"));
+                case ContractorGroupMembers.SaveFailed:
+                    return BadRequest(ApiResponse<ContractorGroupMembershipDto>.Error("Failed to add contractor to group", change.Errors));
             }
 
-            if (result.Item1 == "contractorNotFound")
+            var membership = new ContractorGroupMembershipDto
             {
-                return NotFound(ApiResponse<ContractorGroupMembershipDto>.Error($"Contractor with ID {request.ContractorId} not found"));
-            }
+                ContractorId = change.ContractorId,
+                ContractorSymbol = change.ContractorSymbol,
+                ContractorName = change.ContractorName,
+                GroupId = id,
+                GroupName = result.groupName,
+                JoinDate = change.Status == ContractorGroupMembers.Added ? DateTime.Now : null,
+                IsPrimary = request.IsPrimary
+            };
 
-            if (result.Item1 == "saveFailed")
+            if (change.Status == ContractorGroupMembers.AlreadyMember)
             {
-                return BadRequest(ApiResponse<ContractorGroupMembershipDto>.Error("Failed to add contractor to group", result.Item3));
+                return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(membership, "Contractor is already in this group"));
             }
 
             _logger.LogInformation("Added contractor {ContractorId} to group {GroupId}", request.ContractorId, id);
-            return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(result.Item2!, "Contractor added to group successfully"));
+            return Ok(ApiResponse<ContractorGroupMembershipDto>.Ok(membership, "Contractor added to group successfully"));
         }
         catch (Exception ex)
         {
@@ -906,78 +839,61 @@ public class ContractorGroupsController : ControllerBase
     /// <summary>
     /// Bulk add contractors to a group
     /// </summary>
+    /// <remarks>
+    /// Each contractor card is saved on its own, so one refused card does not stop the others. <c>data</c> is the number of
+    /// contractors added; contractors that were already in the group are not counted, and every other contractor that was
+    /// not added is listed in <c>errors</c>.
+    /// </remarks>
     [HttpPost("{id}/contractors/bulk")]
     public async Task<ActionResult<ApiResponse<int>>> BulkAddContractorsToGroup(int id, [FromBody] BulkAddContractorsToGroupRequest request)
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var changes = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var grupy = _sferaService.GetManager("Grupy");
-                if (grupy == null)
+                var sfera = _sferaService.GetSfera();
+                var group = ContractorGroupMembers.FindGroup(sfera, id);
+                if (group == null)
                 {
-                    return (status: "grupyNull", addedCount: 0);
+                    return null;
                 }
 
-                var grupaDane = DynamicPropertyHelper.FindById(grupy, id);
-                if (grupaDane == null)
+                var results = new List<ContractorGroupMembers.Change>();
+                foreach (var contractorId in request.ContractorIds.Distinct())
                 {
-                    return ("groupNotFound", 0);
-                }
-
-                var podmioty = _sferaService.GetManager("Podmioty");
-                if (podmioty == null)
-                {
-                    return ("podmiotyNull", 0);
-                }
-
-                int addedCount = 0;
-                foreach (var contractorId in request.ContractorIds)
-                {
-                    var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
-                    if (podmiotDane != null)
+                    try
                     {
-                        try
-                        {
-                            using (var podmiot = podmioty.Znajdz(podmiotDane))
-                            {
-                                if (podmiot != null)
-                                {
-                                    podmiot.Dane.Grupa = grupaDane;
-                                    if ((bool)podmiot.Zapisz())
-                                    {
-                                        addedCount++;
-                                    }
-                                }
-                            }
-                        }
-                        catch
-                        {
-                            // Continue with other contractors
-                        }
+                        results.Add(ContractorGroupMembers.Add(sfera, group, contractorId, bo => GetBusinessObjectErrors(bo)));
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Adding contractor {ContractorId} to group {GroupId} failed", contractorId, id);
+                        var failed = new ContractorGroupMembers.Change { ContractorId = contractorId, Status = ContractorGroupMembers.SaveFailed };
+                        failed.Errors.Add(ex.Message);
+                        results.Add(failed);
                     }
                 }
 
-                return ("ok", addedCount);
+                return results;
             });
 
-            if (result.Item1 == "grupyNull")
-            {
-                return StatusCode(500, ApiResponse<int>.Error("Failed to get Grupy manager"));
-            }
-
-            if (result.Item1 == "groupNotFound")
+            if (changes == null)
             {
                 return NotFound(ApiResponse<int>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.Item1 == "podmiotyNull")
-            {
-                return StatusCode(500, ApiResponse<int>.Error("Failed to get Podmioty manager"));
-            }
+            var addedCount = changes.Count(c => c.Status == ContractorGroupMembers.Added);
+            var problems = changes
+                .Where(c => c.Status is ContractorGroupMembers.ContractorNotFound or ContractorGroupMembers.SaveFailed)
+                .Select(c => c.Errors.Count > 0
+                    ? $"contractor {c.ContractorId}: {c.Status}: {string.Join("; ", c.Errors)}"
+                    : $"contractor {c.ContractorId}: {c.Status}")
+                .ToList();
 
-            _logger.LogInformation("Bulk added {Count} contractors to group {GroupId}", result.Item2, id);
-            return Ok(ApiResponse<int>.Ok(result.Item2, $"Added {result.Item2} contractors to group"));
+            _logger.LogInformation("Bulk added {Count} contractors to group {GroupId}, {Failed} not added", addedCount, id, problems.Count);
+            var response = ApiResponse<int>.Ok(addedCount, $"Added {addedCount} contractors to group");
+            response.Errors = problems.Count > 0 ? problems : null;
+            return Ok(response);
         }
         catch (Exception ex)
         {
@@ -987,73 +903,35 @@ public class ContractorGroupsController : ControllerBase
     }
 
     /// <summary>
-    /// Remove a contractor from a group
+    /// Remove a contractor from a group; the contractor keeps its other groups
     /// </summary>
     [HttpDelete("{id}/contractors/{contractorId}")]
     public async Task<ActionResult<ApiResponse<bool>>> RemoveContractorFromGroup(int id, int contractorId)
     {
         try
         {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
+            var change = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var podmioty = _sferaService.GetManager("Podmioty");
-                if (podmioty == null)
-                {
-                    return (status: "podmiotyNull", errors: (List<string>?)null);
-                }
-
-                var podmiotDane = DynamicPropertyHelper.FindById(podmioty, contractorId);
-                if (podmiotDane == null)
-                {
-                    return ("contractorNotFound", (List<string>?)null);
-                }
-
-                // Verify contractor is in this group
-                var currentGroup = DynamicPropertyHelper.GetProperty(podmiotDane, "Grupa");
-                if (currentGroup == null || DynamicPropertyHelper.GetId(currentGroup) != id)
-                {
-                    return ("notInGroup", (List<string>?)null);
-                }
-
-                using (var podmiot = podmioty.Znajdz(podmiotDane))
-                {
-                    if (podmiot == null)
-                    {
-                        return ("contractorNotFound", (List<string>?)null);
-                    }
-
-                    try { podmiot.Dane.Grupa = null; } catch { }
-
-                    if ((bool)podmiot.Zapisz())
-                    {
-                        return ("ok", (List<string>?)null);
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(podmiot);
-                        return ("saveFailed", errors);
-                    }
-                }
+                var sfera = _sferaService.GetSfera();
+                var group = ContractorGroupMembers.FindGroup(sfera, id);
+                return group == null
+                    ? null
+                    : ContractorGroupMembers.Remove(sfera, group, contractorId, bo => GetBusinessObjectErrors(bo));
             });
 
-            if (result.Item1 == "podmiotyNull")
+            if (change == null)
             {
-                return StatusCode(500, ApiResponse<bool>.Error("Failed to get Podmioty manager"));
+                return NotFound(ApiResponse<bool>.Error($"Contractor group with ID {id} not found"));
             }
 
-            if (result.Item1 == "contractorNotFound")
+            switch (change.Status)
             {
-                return NotFound(ApiResponse<bool>.Error($"Contractor with ID {contractorId} not found"));
-            }
-
-            if (result.Item1 == "notInGroup")
-            {
-                return BadRequest(ApiResponse<bool>.Error("Contractor is not in this group"));
-            }
-
-            if (result.Item1 == "saveFailed")
-            {
-                return BadRequest(ApiResponse<bool>.Error("Failed to remove contractor from group", result.Item2));
+                case ContractorGroupMembers.ContractorNotFound:
+                    return NotFound(ApiResponse<bool>.Error($"Contractor with ID {contractorId} not found"));
+                case ContractorGroupMembers.NotMember:
+                    return BadRequest(ApiResponse<bool>.Error("Contractor is not in this group"));
+                case ContractorGroupMembers.SaveFailed:
+                    return BadRequest(ApiResponse<bool>.Error("Failed to remove contractor from group", change.Errors));
             }
 
             _logger.LogInformation("Removed contractor {ContractorId} from group {GroupId}", contractorId, id);
@@ -1066,26 +944,9 @@ public class ContractorGroupsController : ControllerBase
         }
     }
 
-    private static int GetContractorCountForGroup(int groupId, dynamic podmioty)
-    {
-        try
-        {
-            int count = 0;
-            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-            {
-                var grupa = DynamicPropertyHelper.GetProperty(p, "Grupa");
-                if (grupa != null && DynamicPropertyHelper.GetId(grupa) == groupId)
-                {
-                    count++;
-                }
-            }
-            return count;
-        }
-        catch
-        {
-            return 0;
-        }
-    }
+    /// <summary>Direct members of the group (<c>Podmiot.Grupy</c>), counted in SQL. Must run on the SDK thread.</summary>
+    private int CountMembers(int groupId) =>
+        ContractorGroupMembers.Members(_sferaService.GetSfera(), groupId).Count();
 
     private static ContractorGroupListItemDto MapToListItemDto(dynamic grupa)
     {
@@ -1102,13 +963,14 @@ public class ContractorGroupsController : ControllerBase
         };
     }
 
-    private static ContractorGroupDto MapToDto(dynamic grupa, dynamic grupy)
+    private ContractorGroupDto MapToDto(dynamic grupa, dynamic grupy)
     {
         var parent = DynamicPropertyHelper.GetProperty(grupa, "Rodzic");
         var defaultPriceLevel = DynamicPropertyHelper.GetProperty(grupa, "DomyslnyPoziomCen");
         var defaultPaymentMethod = DynamicPropertyHelper.GetProperty(grupa, "DomyslnySposobPlatnosci");
 
-        var groupId = DynamicPropertyHelper.GetId(grupa);
+        int groupId = DynamicPropertyHelper.GetId(grupa);
+        var memberCount = CountMembers(groupId);
 
         // Count children
         int childCount = 0;
@@ -1137,8 +999,9 @@ public class ContractorGroupsController : ControllerBase
             Path = DynamicPropertyHelper.GetString(grupa, "Sciezka"),
 
             // Statistics
-            ContractorCount = GetContractorCountForGroup(groupId, grupy),
-            DirectContractorCount = GetContractorCountForGroup(groupId, grupy),
+            // Subgroups are not read yet (the parent is Grupa.KategoriaNadrzedna), so both counts are direct members.
+            ContractorCount = memberCount,
+            DirectContractorCount = memberCount,
             ChildGroupCount = childCount,
 
             // Default settings

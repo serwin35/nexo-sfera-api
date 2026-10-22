@@ -16,9 +16,24 @@ public class PriceListPositionPriceRequest
     /// <summary>Nexo product id (<c>Asortyment.Id</c>).</summary>
     public int ProductId { get; set; }
 
+    /// <summary>
+    /// Optional precondition: the gross price the client last read. When it differs from the current price (rounded to
+    /// the currency precision), nothing is saved and the request returns 409.
+    /// </summary>
+    public decimal? ExpectedPriceGross { get; set; }
+
+    /// <summary>Optional precondition on the current net price, like <see cref="ExpectedPriceGross"/>.</summary>
+    public decimal? ExpectedPriceNet { get; set; }
+
     /// <summary>Gross price (<c>CenaBrutto</c>). Exactly one of priceGross / priceNet is required.</summary>
     public decimal? PriceGross { get; set; }
 
     /// <summary>Net price (<c>CenaNetto</c>). Exactly one of priceGross / priceNet is required.</summary>
     public decimal? PriceNet { get; set; }
+
+    /// <summary>
+    /// Kit positions priced as the sum of their components (<c>WyliczCeneKompletuZeSkladnikow</c>) are refused unless
+    /// this is <c>true</c>; then the flag is switched off and the given price becomes the fixed kit price.
+    /// </summary>
+    public bool DisableKitComponentPricing { get; set; }
 }

@@ -13,6 +13,20 @@ public class ProductListItemDto
     public string? GroupName { get; set; }
     /// <summary>False only for products in the recycle bin (the SDK has no other activity flag on Asortyment).</summary>
     public bool IsActive { get; set; }
+    /// <summary>Product kind (<c>Asortyment.Rodzaj</c>); kinds other than goods, service and set are reported as Goods.</summary>
+    public ProductType Type { get; set; }
+    /// <summary>Name of the Nexo product kind (<c>RodzajAsortymentu</c>), e.g. "Towar", "Usługa", "Komplet".</summary>
+    public string? KindName { get; set; }
+    /// <summary>True for a variant of a product model (<c>Asortyment.Model</c> is set).</summary>
+    public bool IsVariant { get; set; }
+    public int? ModelId { get; set; }
+    /// <summary>Card creation time (<c>Asortyment.Naglowek.Utworzono</c>).</summary>
+    public DateTimeOffset? CreatedAt { get; set; }
+    /// <summary>
+    /// Last change of the product card (<c>Asortyment.Naglowek.Zmieniono</c>), the value <c>modifiedSince</c> filters on.
+    /// Price list prices and stock levels are not part of the card and do not move it.
+    /// </summary>
+    public DateTimeOffset? ModifiedAt { get; set; }
 }
 
 /// <summary>
@@ -185,6 +199,9 @@ public class ProductDto
     // Timestamps
     public DateTime? CreatedAt { get; set; }
     public DateTime? ModifiedAt { get; set; }
+
+    /// <summary>Name of the Nexo product kind (<c>RodzajAsortymentu</c>), e.g. "Towar", "Usługa", "Komplet".</summary>
+    public string? KindName { get; set; }
 }
 
 public class StockInfoDto
