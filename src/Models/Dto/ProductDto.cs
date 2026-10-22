@@ -324,3 +324,31 @@ public enum ProductType
     Set = 2,          // Komplet
     Material = 3      // Material
 }
+
+/// <summary>A variant property (<c>Wlasciwosc</c>, e.g. "Kolor") with its allowed values.</summary>
+public class ProductPropertyDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Symbol { get; set; }
+    public List<ProductPropertyValueDto> Values { get; set; } = new();
+}
+
+/// <summary>An allowed value of a variant property (<c>CechaAsortymentu</c>).</summary>
+public class ProductPropertyValueDto
+{
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>Change of one variant property value, returned by <c>PUT /api/products/{id}/variant-properties</c>.</summary>
+public class VariantPropertyChangeDto
+{
+    public int ProductId { get; set; }
+    public string? Symbol { get; set; }
+    public string Property { get; set; } = string.Empty;
+    public string? OldValue { get; set; }
+    public string Value { get; set; } = string.Empty;
+    public string? OldName { get; set; }
+    public string? Name { get; set; }
+}
