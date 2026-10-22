@@ -336,21 +336,14 @@ public class DocumentsController : ControllerBase
                     return (PagedResponse<DocumentListItemDto>?)null;
                 }
 
-                var allDokumenty = new List<object>();
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    allDokumenty.Add(d);
-                }
-
                 var sfera = _sferaService.GetSfera();
 
-                // Delta sync and cancellation: one SQL query each over the header/status columns (the dynamic members
-                // DataModyfikacji/Anulowany do not exist).
-                if (query.ModifiedSince.HasValue)
-                {
-                    var changed = DocumentReader.ModifiedSince(sfera, query.ModifiedSince.Value);
-                    allDokumenty = allDokumenty.Where(d => changed.Contains(DynamicPropertyHelper.GetId(d))).ToList();
-                }
+                // Delta sync: only the changed documents are loaded (one SQL query over the header and settlement change
+                // times) instead of the whole table; the filters below run on them unchanged. The dynamic members
+                // DataModyfikacji/Anulowany do not exist.
+                var allDokumenty = query.ModifiedSince.HasValue
+                    ? DocumentReader.ChangedDocuments(sfera, query.ModifiedSince.Value).Cast<object>().ToList()
+                    : DynamicPropertyHelper.SafeGetAll((object)dokumentyManager);
 
                 if (query.IsCanceled.HasValue)
                 {
@@ -366,7 +359,7 @@ public class DocumentsController : ControllerBase
                 // Sort and paginate
                 var sortBy = query.SortBy?.ToLowerInvariant();
                 var sortedItems = sortBy is "modified_asc" or "modified_desc"
-                    ? SortByModification(allDokumenty, DocumentReader.AllStamps(sfera), sortBy == "modified_desc")
+                    ? SortByModification(allDokumenty, ModificationStamps(sfera, allDokumenty, query.ModifiedSince.HasValue), sortBy == "modified_desc")
                     : ApplyDocumentSorting(allDokumenty, query.SortBy);
                 var items = sortedItems
                     .Skip((query.Page - 1) * query.PageSize)
@@ -651,6 +644,18 @@ public class DocumentsController : ControllerBase
 
         return documents;
     }
+
+    /// <summary>Largest delta result whose stamps are read by id; a bigger one reads the stamps of every document.</summary>
+    private const int MaxStampIdsPerQuery = 2000;
+
+    /// <summary>
+    /// Stamps for sorting: of the listed documents only when the list is a delta (usually a handful), otherwise of every
+    /// document (one projection over the id and header columns).
+    /// </summary>
+    private static IReadOnlyDictionary<int, DocumentReader.Stamp> ModificationStamps(InsERT.Moria.Sfera.Uchwyt sfera, List<object> documents, bool isDelta) =>
+        isDelta && documents.Count <= MaxStampIdsPerQuery
+            ? DocumentReader.Stamps(sfera, documents.Select(d => (int)DynamicPropertyHelper.GetId(d)).ToList())
+            : DocumentReader.AllStamps(sfera);
 
     /// <summary>Orders by the latest of the document and settlement change times (documents without stamps last).</summary>
     private static IEnumerable<object> SortByModification(List<object> documents, IReadOnlyDictionary<int, DocumentReader.Stamp> stamps, bool descending)

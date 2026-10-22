@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-10-22) - document delta loads only the changed documents
+- `GET /api/documents?modifiedSince=…` loads only the documents changed since then: header or settlement change time, the
+  same condition as before, in one SQL query. Before, it loaded every document of the database on the SDK thread and
+  then kept the changed ones. The other filters and the mapping run on those entities unchanged, so the result is the
+  same.
+- With `sortBy=modified_*`, a delta reads the stamps of the listed documents only (up to 2000 ids), instead of every
+  document.
+- Lists without `modifiedSince`, such as the nightly full pass, still scan; replacing that scan needs every list filter
+  as SQL.
+  
 ### Changed (2026-10-22) - lookups by id run in SQL
 - `DynamicPropertyHelper.FindById` composes `Where(e => e.Id == @id)` on `Dane.Wszystkie()`, so the lookup runs as one
   SQL query. It used to enumerate `Wszystkie()`, materializing the whole entity set on the SDK thread until the id came
