@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-10-22) - document delta loads only the changed documents
+- `GET /api/documents?modifiedSince=…` loads only the documents changed since then: header or settlement change time, the
+  same condition as before, in one SQL query. Before, it loaded every document of the database on the SDK thread and
+  then kept the changed ones. The other filters and the mapping run on those entities unchanged, so the result is the
+  same.
+- With `sortBy=modified_*`, a delta reads the stamps of the listed documents only (up to 2000 ids), instead of every
+  document.
+- Lists without `modifiedSince`, such as the nightly full pass, still scan; replacing that scan needs every list filter
+  as SQL.
+
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
   now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
