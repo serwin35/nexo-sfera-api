@@ -87,9 +87,14 @@ public static class ProductWriter
             errors.Add("eanUnitSymbol: only allowed together with ean.");
         }
 
+        if (request.GroupId is <= 0)
+        {
+            errors.Add("groupId: must be a positive product group id.");
+        }
+
         if (!HasAnyWritableField(request) && errors.Count == 0)
         {
-            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume.");
+            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume, groupId.");
         }
 
         return errors;
@@ -142,12 +147,17 @@ public static class ProductWriter
             ApplyVolume(dane, request.Volume.Value, outcome);
         }
 
+        if (request.GroupId.HasValue)
+        {
+            ApplyGroup(sfera, dane, request.GroupId.Value, outcome);
+        }
+
         return outcome;
     }
 
     private static bool HasAnyWritableField(UpdateProductRequest request) =>
         request.Symbol != null || request.Name != null || request.Description != null || request.EAN != null || request.PKWiU != null
-        || request.Weight.HasValue || request.Volume.HasValue;
+        || request.Weight.HasValue || request.Volume.HasValue || request.GroupId.HasValue;
 
     private static void SetText(Outcome outcome, string field, Func<string?> get, Action<string> set, string value)
     {
@@ -167,6 +177,27 @@ public static class ProductWriter
         {
             outcome.Errors.Add($"{field}: Nexo rejected the value ({ex.Message}).");
         }
+    }
+
+    /// <summary>Moves the product to an existing product group (<c>Asortyment.Grupa</c> = <c>GrupaAsortymentu</c>).</summary>
+    private static void ApplyGroup(Uchwyt sfera, Asortyment dane, int groupId, Outcome outcome)
+    {
+        var current = dane.Grupa;
+        if (current != null && current.Id == groupId)
+        {
+            outcome.Fields.Add(Result("groupId", Unchanged, current.Nazwa, current.Nazwa));
+            return;
+        }
+
+        var group = sfera.GrupyAsortymentu().Dane.Wszystkie().FirstOrDefault(g => g.Id == groupId);
+        if (group == null)
+        {
+            outcome.Errors.Add($"groupId: product group {groupId} not found.");
+            return;
+        }
+
+        dane.Grupa = group;
+        outcome.Fields.Add(Result("groupId", Updated, current?.Nazwa, group.Nazwa));
     }
 
     /// <summary>

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - price list write did not build
+- `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
+  now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
+
 ### Added (2026-10-22) - price list price write
 - **`PUT /api/dictionary/price-lists/by-id/{id}/items`** sets the gross or net price of main price list positions:
   `{"items": [{"productId": 105003, "priceGross": 38.00}]}`, 1-200 items, exactly one of `priceGross` / `priceNet` per
@@ -18,6 +22,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   lists `oldPriceNet/oldPriceGross`, the saved `priceNet/priceGross`, `calculationParameter` and `status`
   (`updated` / `unchanged`) per product.
 - The `priceNet` refusal of `PUT /api/products/{id}` now points to this endpoint.
+
+### Added (2026-10-22) - product group change
+- **`PUT /api/products/{id}` `groupId`** moves the product to an existing product group (`Asortyment.Grupa`, ids from
+  `GET /api/product-groups`). An unknown group returns 400 (`groupId: product group 123 not found`). The change is
+  reported in `fieldResults` with the old and new group names.
+
+### Fixed (2026-10-22) - product group id
+- **Products, `groupId`** was always `null`: it was read from `Grupa_Id`, which `Asortyment` does not have. It now
+  comes from the `Grupa` navigation, the same object that already gave `groupName`.
 
 ### Fixed (2026-10-22) - decimal range validation on a Polish Windows
 - **`POST /api/products/{id}/components`** returned 400 `0.000001 is not a valid value for Decimal` for every request,
