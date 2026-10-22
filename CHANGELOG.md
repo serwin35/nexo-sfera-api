@@ -99,6 +99,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   document.
 - Lists without `modifiedSince`, such as the nightly full pass, still scan; replacing that scan needs every list filter
   as SQL.
+### Fixed (2026-10-22) - refused saves report their errors
+- The save error readers of the 13 write controllers read `InvalidData[].Errors` / `MemberErrors` late-bound. Nexo
+  entities implement those members explicitly (`ITypedDataErrorInfo`), so the reads found nothing, and a refused
+  `Zapisz()` returned 400 with an empty `errors` list.
+- The readers now take the errors typed first, through `IObiektBiznesowy.Bledy` (`SdkErrors`, the same helper as #36 and
+  #38), and keep the old read as a fallback.
+- Affected: customers, customer orders, documents, warehouse documents, offers, orders, payments, products, product
+  groups, attributes and templates, contractor groups, KSeF and assembly.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
