@@ -39,10 +39,15 @@ public static class ProductReader
     /// <summary>A Nexo product kind (<c>RodzajAsortymentu</c>) as the API type, with its Nexo name.</summary>
     public sealed record Kind(ProductType Type, string? Name);
 
-    /// <summary>Kind, model and card header times of a product, read for many products in one SQL query.</summary>
-    public sealed class Stamp
+    /// <summary>The columns of one <c>GET /api/products</c> row, projected in SQL.</summary>
+    public sealed class ListRow
     {
         public int Id { get; set; }
+        public string? Symbol { get; set; }
+        public string? Name { get; set; }
+        public decimal? Price { get; set; }
+        public int? GroupId { get; set; }
+        public string? GroupName { get; set; }
         public int? KindId { get; set; }
         public int? ModelId { get; set; }
         public DateTimeOffset? CreatedAt { get; set; }
@@ -132,72 +137,93 @@ public static class ProductReader
         return new Kind(type, SdkMember.Text(() => rodzaj.NaString()) ?? SdkMember.Text(() => rodzaj.Nazwa));
     }
 
-    /// <summary>Ids of the products of the given API type (one SQL query). Material matches no Nexo kind.</summary>
-    public static HashSet<int> ProductIdsOfType(Uchwyt sfera, ProductType type, IReadOnlyDictionary<int, Kind> kinds)
+    /// <summary>
+    /// The filters of <c>GET /api/products</c> as one SQL query. Search matches the symbol, the name or a barcode of any
+    /// unit (database collation, case-insensitive). <c>type</c> goes through the product kinds; Material matches no kind.
+    /// Products in the recycle bin are never returned (<c>Dane.Wszystkie()</c>).
+    /// </summary>
+    public static IQueryable<Asortyment> Query(Uchwyt sfera, string? search, ProductType? type, bool activeOnly,
+        DateTimeOffset? modifiedSince, IReadOnlyDictionary<int, Kind> kinds)
     {
-        var kindIds = kinds.Where(k => k.Value.Type == type).Select(k => k.Key).ToList();
-        if (type == ProductType.Material || kindIds.Count == 0) return new HashSet<int>();
+        var dane = sfera.Asortymenty().Dane;
+        IQueryable<Asortyment> products = activeOnly ? dane.WszystkieDostepne() : dane.Wszystkie();
 
-        return sfera.Asortymenty().Dane.Wszystkie()
-            .Where(a => a.Rodzaj != null && kindIds.Contains(a.Rodzaj.Id))
-            .Select(a => a.Id)
-            .ToList()
-            .ToHashSet();
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var fragment = search.Trim();
+            products = products.Where(a =>
+                a.Symbol.Contains(fragment) ||
+                a.Nazwa.Contains(fragment) ||
+                a.JednostkiMiar.Any(j => j.KodyKreskowe.Any(k => k.Kod.Contains(fragment))));
+        }
+
+        if (modifiedSince.HasValue)
+        {
+            var since = modifiedSince.Value;
+            products = products.Where(a => a.Naglowek != null && a.Naglowek.Zmieniono >= since);
+        }
+
+        if (type.HasValue)
+        {
+            var kindIds = kinds.Where(k => k.Value.Type == type.Value).Select(k => k.Key).ToList();
+            products = type.Value == ProductType.Material || kindIds.Count == 0
+                ? products.Where(a => false)
+                : products.Where(a => a.Rodzaj != null && kindIds.Contains(a.Rodzaj.Id));
+        }
+
+        return products;
     }
 
     /// <summary>
-    /// Ids of products whose card changed at or after <paramref name="since"/> (<c>Naglowek.Zmieniono</c>, one SQL query).
-    /// Products moved to the recycle bin leave <c>Dane.Wszystkie()</c> and are not reported.
+    /// Stable order for paging: by id, or by card change time then id (<c>modified_asc</c> / <c>modified_desc</c>).
     /// </summary>
-    public static HashSet<int> ModifiedSince(Uchwyt sfera, DateTimeOffset since) =>
-        sfera.Asortymenty().Dane.Wszystkie()
-            .Where(a => a.Naglowek != null && a.Naglowek.Zmieniono >= since)
-            .Select(a => a.Id)
-            .ToList()
-            .ToHashSet();
-
-    /// <summary>Stamps of the given products, or of every product when <paramref name="productIds"/> is null (one SQL query).</summary>
-    public static Dictionary<int, Stamp> Stamps(Uchwyt sfera, IReadOnlyCollection<int>? productIds = null)
+    public static IOrderedQueryable<Asortyment> Order(IQueryable<Asortyment> products, string? sortBy) => sortBy switch
     {
-        IQueryable<Asortyment> products = sfera.Asortymenty().Dane.Wszystkie();
-        if (productIds != null)
-        {
-            var ids = productIds.Distinct().ToList();
-            products = products.Where(a => ids.Contains(a.Id));
-        }
+        "modified_asc" => products.OrderBy(a => a.Naglowek.Zmieniono).ThenBy(a => a.Id),
+        "modified_desc" => products.OrderByDescending(a => a.Naglowek.Zmieniono).ThenByDescending(a => a.Id),
+        _ => products.OrderBy(a => a.Id),
+    };
 
-        return products
-            .Select(a => new Stamp
+    /// <summary>One page of list rows, projected in SQL (no product card is materialized).</summary>
+    public static List<ListRow> ListRows(IOrderedQueryable<Asortyment> ordered, int skip, int take) =>
+        ordered
+            .Skip(skip)
+            .Take(take)
+            .Select(a => new ListRow
             {
                 Id = a.Id,
+                Symbol = a.Symbol,
+                Name = a.Nazwa,
+                Price = a.CenaEwidencyjna,
+                GroupId = a.Grupa == null ? (int?)null : a.Grupa.Id,
+                GroupName = a.Grupa == null ? null : a.Grupa.Nazwa,
                 KindId = a.Rodzaj == null ? (int?)null : a.Rodzaj.Id,
                 ModelId = a.Model == null ? (int?)null : a.Model.Id,
                 CreatedAt = a.Naglowek == null ? (DateTimeOffset?)null : a.Naglowek.Utworzono,
                 ModifiedAt = a.Naglowek == null ? (DateTimeOffset?)null : a.Naglowek.Zmieniono,
             })
-            .ToList()
-            .GroupBy(st => st.Id)
-            .ToDictionary(g => g.Key, g => g.First());
-    }
+            .ToList();
 
-    /// <summary>Fills the kind, variant and card times of list rows.</summary>
-    public static void ApplyStamps(IEnumerable<ProductListItemDto> items, IReadOnlyDictionary<int, Stamp> stamps, IReadOnlyDictionary<int, Kind> kinds)
+    /// <summary>The API list item of a row. Every listed product is active: the recycle bin is never listed.</summary>
+    public static ProductListItemDto ToListItem(ListRow row, IReadOnlyDictionary<int, Kind> kinds)
     {
-        foreach (var item in items)
+        var kind = row.KindId.HasValue && kinds.TryGetValue(row.KindId.Value, out var k) ? k : null;
+        return new ProductListItemDto
         {
-            if (!stamps.TryGetValue(item.Id, out var stamp)) continue;
-
-            if (stamp.KindId.HasValue && kinds.TryGetValue(stamp.KindId.Value, out var kind))
-            {
-                item.Type = kind.Type;
-                item.KindName = kind.Name;
-            }
-
-            item.ModelId = stamp.ModelId;
-            item.IsVariant = stamp.ModelId.HasValue;
-            item.CreatedAt = stamp.CreatedAt;
-            item.ModifiedAt = stamp.ModifiedAt;
-        }
+            Id = row.Id,
+            Symbol = row.Symbol ?? string.Empty,
+            Name = row.Name ?? string.Empty,
+            Price = row.Price,
+            GroupId = row.GroupId,
+            GroupName = row.GroupName,
+            IsActive = true,
+            Type = kind?.Type ?? ProductType.Goods,
+            KindName = kind?.Name,
+            ModelId = row.ModelId,
+            IsVariant = row.ModelId.HasValue,
+            CreatedAt = row.CreatedAt,
+            ModifiedAt = row.ModifiedAt,
+        };
     }
 
     /// <summary>Adds the unit barcodes and mass/volume unit symbols to <see cref="ProductUnitDto"/> rows (matched by unit id).</summary>

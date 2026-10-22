@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-10-22) - product list as one SQL query
+- `GET /api/products` runs the filters (`search`, `type`, `activeOnly`, `modifiedSince`), the order and the page as one SQL
+  query and projects only the list columns. Before, every request loaded every product card on the SDK thread
+  (`Dane.Wszystkie()` materialized in memory) and filtered and paged it in memory: a 100-row page of a 6000-card
+  catalogue cost 6000 entities, and all other bridge requests queued behind it.
+- Same response and semantics. `search` still matches the symbol, the name or any unit barcode, now case-insensitive
+  through the database collation and trimmed. The default order is explicitly by id; it was implicit before.
+
 ### Added (2026-10-22) - product delta and real kind/variant
 - **`GET /api/products?modifiedSince=…&sortBy=modified_asc|modified_desc`**: only products whose card changed at or
   after the given time (`Asortyment.Naglowek.Zmieniono`, one SQL query). It is the same contract as the document delta.

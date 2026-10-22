@@ -183,7 +183,7 @@ public class ProductsController : ControllerBase
     /// <param name="type">Product kind (Goods, Service, Set); Material matches no Nexo kind</param>
     /// <param name="activeOnly">Only products available for sale (<c>Dane.WszystkieDostepne()</c>)</param>
     /// <param name="modifiedSince">Only products whose card changed at or after this time (ISO 8601 with offset)</param>
-    /// <param name="sortBy">modified_asc or modified_desc (card change time, then id); default is the Nexo order</param>
+    /// <param name="sortBy">modified_asc or modified_desc (card change time, then id); default is by id</param>
     /// <param name="page">Page number (1-based)</param>
     /// <param name="pageSize">Page size</param>
     [HttpGet]
@@ -211,91 +211,22 @@ public class ProductsController : ControllerBase
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (PagedResponse<ProductListItemDto>?)null;
-                }
-
-                var allAsortymenty = new List<object>();
-                var sourceData = activeOnly == true ? asortymentyManager.Dane.WszystkieDostepne() : DynamicPropertyHelper.SafeGetAll((object)asortymentyManager);
-                foreach (var a in sourceData)
-                {
-                    allAsortymenty.Add(a);
-                }
-
+                // One SQL query for the filters, the order and the page (the list used to load every product card on the
+                // SDK thread for each page and filter it in memory).
                 var sfera = _sferaService.GetSfera();
                 var kinds = ProductReader.Kinds(sfera);
-
-                // Delta sync and kind filter: one SQL query each over the header/kind columns (the dynamic list read
-                // Rodzaj_Id, which does not exist, and ignored both).
-                if (modifiedSince.HasValue)
-                {
-                    var changed = ProductReader.ModifiedSince(sfera, modifiedSince.Value);
-                    allAsortymenty = allAsortymenty.Where(a => changed.Contains(DynamicPropertyHelper.GetId(a))).ToList();
-                }
-
-                if (type.HasValue)
-                {
-                    var ofType = ProductReader.ProductIdsOfType(sfera, type.Value, kinds);
-                    allAsortymenty = allAsortymenty.Where(a => ofType.Contains(DynamicPropertyHelper.GetId(a))).ToList();
-                }
-
-                if (!string.IsNullOrEmpty(search))
-                {
-                    // Barcodes live on the product units (KodyKreskowe); one SQL query instead of lazy loads per product.
-                    var barcodeMatches = ProductReader.FindProductIdsByBarcodeFragment(_sferaService.GetSfera(), search);
-                    allAsortymenty = allAsortymenty.Where(a =>
-                    {
-                        var symbol = DynamicPropertyHelper.GetString(a, "Symbol") ?? "";
-                        var nazwa = DynamicPropertyHelper.GetString(a, "Nazwa") ?? "";
-                        return symbol.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                               nazwa.Contains(search, StringComparison.OrdinalIgnoreCase) ||
-                               barcodeMatches.Contains(DynamicPropertyHelper.GetId(a));
-                    }).ToList();
-                }
-
-                var totalCount = allAsortymenty.Count;
-                IEnumerable<object> ordered = allAsortymenty;
-                if (sort != null && sort.StartsWith("modified_", StringComparison.Ordinal))
-                {
-                    var allStamps = ProductReader.Stamps(sfera);
-                    DateTimeOffset ModifiedAt(object a) =>
-                        allStamps.TryGetValue(DynamicPropertyHelper.GetId(a), out var st) && st.ModifiedAt.HasValue
-                            ? st.ModifiedAt.Value
-                            : DateTimeOffset.MinValue;
-
-                    ordered = sort == "modified_desc"
-                        ? allAsortymenty.OrderByDescending(ModifiedAt).ThenByDescending(a => (int)DynamicPropertyHelper.GetId(a))
-                        : allAsortymenty.OrderBy(ModifiedAt).ThenBy(a => (int)DynamicPropertyHelper.GetId(a));
-                }
-
-                var items = ordered
-                    .Skip((page - 1) * pageSize)
-                    .Take(pageSize)
-                    .ToList();
-
-                var mappedItems = new List<ProductListItemDto>();
-                foreach (var item in items)
-                {
-                    mappedItems.Add(MapToListItemDto(item));
-                }
-
-                ProductReader.ApplyStamps(mappedItems, ProductReader.Stamps(sfera, mappedItems.Select(i => i.Id).ToList()), kinds);
+                var filtered = ProductReader.Query(sfera, search, type, activeOnly == true, modifiedSince, kinds);
+                var totalCount = filtered.Count();
+                var rows = ProductReader.ListRows(ProductReader.Order(filtered, sort), (page - 1) * pageSize, pageSize);
 
                 return new PagedResponse<ProductListItemDto>
                 {
-                    Data = mappedItems,
+                    Data = rows.Select(r => ProductReader.ToListItem(r, kinds)).ToList(),
                     Page = page,
                     PageSize = pageSize,
                     TotalCount = totalCount
                 };
             });
-
-            if (result == null)
-            {
-                return StatusCode(500, ApiResponse<object>.Error("Failed to get Asortymenty manager"));
-            }
 
             return Ok(result);
         }
@@ -1798,32 +1729,6 @@ public class ProductsController : ControllerBase
         // EAN/barcodes, active flag, PKWiU, base unit weight/volume, unit symbols and sales VAT from the real SDK members
         // (the dynamic names above for these fields do not exist on Asortyment).
         ProductReader.Enrich(dto, (object)asortyment);
-
-        return dto;
-    }
-
-    /// <summary>
-    /// Maps to lightweight DTO for list views (minimal fields for performance)
-    /// </summary>
-    private static ProductListItemDto MapToListItemDto(dynamic asortyment)
-    {
-        var dto = new ProductListItemDto
-        {
-            Id = DynamicPropertyHelper.GetId(asortyment),
-            Symbol = DynamicPropertyHelper.GetString(asortyment, "Symbol") ?? "",
-            Name = DynamicPropertyHelper.GetString(asortyment, "Nazwa") ?? "",
-            Price = DynamicPropertyHelper.GetNullableDecimal(asortyment, "CenaEwidencyjna"),
-            IsActive = ProductReader.IsActive((object)asortyment)
-        };
-
-        // Try to get group name from Grupa navigation property
-        // Asortyment has no Grupa_Id member; the id comes from the Grupa navigation.
-        var grupa = DynamicPropertyHelper.GetProperty(asortyment, "Grupa");
-        if (grupa != null)
-        {
-            dto.GroupId = DynamicPropertyHelper.GetId(grupa);
-            dto.GroupName = DynamicPropertyHelper.GetString(grupa, "Nazwa");
-        }
 
         return dto;
     }
