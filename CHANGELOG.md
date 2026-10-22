@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - stale SDK DLLs after a build against the same nexo version
+- **SDK sync:** when the runtime `InsERT.Moria.Sfera.dll` matched the nexo deployment, the synchronizer only added
+  missing DLLs and never replaced existing ones. MSBuild copies the dependency closure found in `src\lib\nexo-sdk`, and
+  earlier runs leave files behind, so `bin` could mix SDK 62 Sfera with modules from an older SDK. Sfera then refused the
+  up-to-date database with "baza zawiera oczekujące aktualizacje". With `PreferDeploymentBinaries` (the default), a hash
+  match now re-aligns every DLL that differs from the deployment, the same way as after a version change. Identical
+  files are skipped.
+- **SDK sync, related directories:** the fill of DLLs missing from the deployment searched every nexo deployment and
+  `.zip-cache` of every version (and Program Files) and copied any missing file, including InsERT modules from other
+  versions (seen on 2026-10-22: `InsERT.Mox.VMPackage.55.0.1.8249.dll` from a 2025 deployment). InsERT assemblies are
+  now taken only from the selected deployment; third-party DLLs are still filled from anywhere.
+
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
   now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
