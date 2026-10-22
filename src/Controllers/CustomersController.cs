@@ -1188,152 +1188,76 @@ public class CustomersController : ControllerBase
     /// <summary>
     /// Create a new customer
     /// </summary>
+    /// <remarks>
+    /// Typed (<see cref="CustomerCreator"/>): a company (<c>UtworzFirme</c>) or a person (<c>UtworzOsobe</c>, with
+    /// firstName and lastName), symbol (or the next automatic one), NIP, EU VAT number, REGON, primary address, e-mail /
+    /// phone / website contacts, notes and contractor groups, saved with one <c>Zapisz()</c>.
+    /// <para>
+    /// 400: invalid fields or a refused save, with one message per problem; nothing is saved. 409: the symbol or NIP
+    /// already belongs to a contractor; nothing is saved and <c>data</c> is that contractor. Fields this endpoint does not
+    /// write (bank account, payment terms, credit limits, SUN, ...) are refused with 400 when set.
+    /// </para>
+    /// </remarks>
     [HttpPost]
+    [ProducesResponseType(typeof(ApiResponse<CustomerDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<CustomerDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<CustomerDto>), StatusCodes.Status409Conflict)]
     public async Task<ActionResult<ApiResponse<CustomerDto>>> CreateCustomer([FromBody] CreateCustomerRequest request)
     {
+        var validationErrors = CustomerCreator.Validate(request);
+        if (validationErrors.Count > 0)
+        {
+            return BadRequest(ApiResponse<CustomerDto>.Error("Invalid customer; nothing was saved", validationErrors));
+        }
+
         try
         {
-            // Execute all SDK operations on the dedicated STA thread for EF6 thread-safety
-            var result = await _sferaService.ExecuteWithLockAsync<(bool Success, CustomerDto? Data, string Message, List<string> Errors)>(() =>
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                var podmioty = _sferaService.GetManager("Podmioty");
-                if (podmioty == null)
+                var sfera = _sferaService.GetSfera();
+                var outcome = CustomerCreator.Create(sfera, request);
+                var id = outcome.CustomerId ?? outcome.ExistingCustomerId;
+
+                CustomerDto? dto = null;
+                if (id.HasValue)
                 {
-                    return (false, null, "Failed to get Podmioty manager", new List<string>());
+                    try
+                    {
+                        var entity = sfera.Podmioty().Dane.Wszystkie().FirstOrDefault(p => p.Id == id.Value);
+                        if (entity != null) dto = MapToDto(entity);
+                    }
+                    catch (Exception mapEx)
+                    {
+                        // The card is saved (or exists); a mapping failure must not turn that into an error the client retries.
+                        _logger.LogWarning(mapEx, "Customer {Id} could not be mapped after create", id);
+                    }
+
+                    dto ??= new CustomerDto { Id = id.Value, ShortName = request.ShortName.Trim() };
                 }
 
-                // Check if symbol already exists
-                dynamic? existing = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetString(p, "Symbol") == request.Symbol)
-                    {
-                        existing = p;
-                        break;
-                    }
-                }
-                if (existing != null)
-                {
-                    return (false, null, $"Customer with symbol {request.Symbol} already exists", new List<string>());
-                }
-
-                // Get default configuration - based on working examples
-                var konfiguracje = _sferaService.GetManager("Konfiguracje");
-                dynamic? konfig = null;
-                try
-                {
-                    konfig = konfiguracje?.DaneDomyslne?.Kontrahent;
-                }
-                catch { /* Configuration might not exist */ }
-
-                using (var nowyPodmiot = konfig != null ? podmioty.Utworz(konfig) : podmioty.Utworz())
-                {
-                    dynamic dane = nowyPodmiot.Dane;
-                    dane.Symbol = request.Symbol;
-                    dane.NazwaSkrocona = request.ShortName;
-                    dane.NazwaPelna = request.FullName ?? request.ShortName;
-
-                    if (!string.IsNullOrEmpty(request.NIP))
-                    {
-                        dane.NIP = request.NIP.Replace("-", "").Replace(" ", "");
-                    }
-
-                    if (!string.IsNullOrEmpty(request.REGON))
-                    {
-                        dane.REGON = request.REGON;
-                    }
-
-                    // Set customer type (0=Firmy, 1=Osoby)
-                    dane.Typ = request.Type == CustomerType.Company ? (short)0 : (short)1;
-
-                    // Set address
-                    if (request.Address != null)
-                    {
-                        var adres = DynamicPropertyHelper.GetProperty(dane, "AdresGlowny");
-                        if (adres != null)
-                        {
-                            adres.Ulica = request.Address.Street;
-                            adres.NumerDomu = request.Address.BuildingNumber;
-                            adres.NumerLokalu = request.Address.ApartmentNumber;
-                            adres.Miejscowosc = request.Address.City;
-                            adres.KodPocztowy = request.Address.PostalCode;
-                        }
-                    }
-
-                    // Set contacts
-                    if (!string.IsNullOrEmpty(request.Email))
-                    {
-                        try
-                        {
-                            var kontakt = nowyPodmiot.Kontakty.DodajEmail(request.Email);
-                            if (kontakt != null)
-                            {
-                                kontakt.Dane.Glowny = true;
-                            }
-                        }
-                        catch { /* Ignore contact errors */ }
-                    }
-
-                    if (!string.IsNullOrEmpty(request.Phone))
-                    {
-                        try
-                        {
-                            var kontakt = nowyPodmiot.Kontakty.DodajTelefon(request.Phone);
-                            if (kontakt != null)
-                            {
-                                kontakt.Dane.Glowny = true;
-                            }
-                        }
-                        catch { /* Ignore contact errors */ }
-                    }
-
-                    if (!string.IsNullOrEmpty(request.Website))
-                    {
-                        try
-                        {
-                            nowyPodmiot.Kontakty.DodajWww(request.Website);
-                        }
-                        catch { /* Ignore contact errors */ }
-                    }
-
-                    // Set bank account
-                    if (!string.IsNullOrEmpty(request.BankAccount))
-                    {
-                        try
-                        {
-                            var rachunek = nowyPodmiot.RachunkiBankowe.Dodaj();
-                            if (rachunek != null)
-                            {
-                                rachunek.Dane.NumerRachunku = request.BankAccount;
-                                rachunek.Dane.NazwaBanku = request.BankName;
-                                rachunek.Dane.Glowny = true;
-                            }
-                        }
-                        catch { /* Ignore bank account errors */ }
-                    }
-
-                    if ((bool)nowyPodmiot.Zapisz())
-                    {
-                        var symbolLog = request.Symbol;
-                        _logger.LogInformation("Created customer {Symbol}", symbolLog);
-                        return (true, MapToDto(dane), "Customer created successfully", new List<string>());
-                    }
-                    else
-                    {
-                        var errors = GetBusinessObjectErrors(nowyPodmiot);
-                        return (false, null, "Failed to create customer", errors);
-                    }
-                }
+                return (outcome, dto);
             });
 
-            if (result.Success && result.Data != null)
+            var (created, card) = result;
+            if (created.CustomerId.HasValue)
             {
-                return CreatedAtAction(nameof(GetCustomer), new { id = result.Data.Id }, ApiResponse<CustomerDto>.Ok(result.Data, result.Message));
+                _logger.LogInformation("Created customer {Id} ({Symbol})", created.CustomerId, card?.Symbol);
+                return CreatedAtAction(nameof(GetCustomer), new { id = created.CustomerId.Value },
+                    ApiResponse<CustomerDto>.Ok(card!, "Customer created successfully"));
             }
-            else
+
+            if (created.ExistingCustomerId.HasValue)
             {
-                return BadRequest(ApiResponse<CustomerDto>.Error(result.Message, result.Errors));
+                return Conflict(new ApiResponse<CustomerDto>
+                {
+                    Success = false,
+                    Data = card,
+                    Message = "Customer already exists; nothing was saved",
+                    Errors = created.Errors,
+                });
             }
+
+            return BadRequest(ApiResponse<CustomerDto>.Error("Failed to create customer; nothing was saved", created.Errors));
         }
         catch (Exception ex)
         {

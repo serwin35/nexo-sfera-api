@@ -310,7 +310,7 @@ curl -X POST http://localhost:5000/api/customers \
     "symbol": "KLIENT001",
     "shortName": "Firma ABC",
     "fullName": "Firma ABC Sp. z o.o.",
-    "nip": "1234567890",
+    "nip": "1111111111",
     "email": "kontakt@firmaabc.pl",
     "phone": "123456789",
     "type": 0,
@@ -322,6 +322,14 @@ curl -X POST http://localhost:5000/api/customers \
     }
   }'
 ```
+
+- Osoba: `"type": 1` z `firstName` i `lastName` (bez `fullName` i `regon`).
+- Bez `symbol`: nexo nada kolejny symbol automatyczny.
+- `groupIds`: grupy kontrahentów z `GET /api/contractor-groups`.
+- `201`: utworzona kartoteka.
+- `400`: błędne pola albo odmowa zapisu w nexo, po jednym komunikacie na problem; nic nie jest zapisywane.
+- `409`: symbol lub NIP ma już inny kontrahent; nic nie jest zapisywane, a `data` to ten kontrahent.
+- Pola, których endpoint nie zapisuje (rachunek bankowy, terminy płatności, limity kredytu, SUN, …), dają `400`, gdy są ustawione.
 
 ### Utworzenie faktury sprzedaży
 
