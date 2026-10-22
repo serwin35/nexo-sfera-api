@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - variant number is LpWariantu
+- The variant creator and mover set `Asortyment.Numer`. That is not the variant number: it is empty on every variant,
+  and Nexo cleared it on save. The variant number is `LpWariantu`, which Nexo assigns itself when a card is created in
+  a model or moved into one. Seen on 22 October: new ZOSP variants got 7 and up, and the first card moved into STRAŻ
+  got 1.
+- Both no longer set any number. `GET /api/product-models/{id}` returns `LpWariantu` as the variant number, which was
+  empty before.
+
 ### Added (2026-10-22) - product models: list, details, and moving a card into a model
 - `GET /api/product-models?search=` lists models, the Subiekt cards that group variants. Each model has its name,
   signature, properties and variant count.

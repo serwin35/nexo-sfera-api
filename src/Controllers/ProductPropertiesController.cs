@@ -127,7 +127,7 @@ public class ProductPropertiesController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Each new card is filled from the template variant <c>{id}</c> (kind, group, units, VAT, suppliers, model), gets a
-    /// value for every model property, the next free variant number, the given symbol (or the next Nexo variant symbol)
+    /// value for every model property, the given symbol (or the next Nexo variant symbol)
     /// and a name generated from the model. Barcodes are not copied; kit components only with <c>copyComponents</c>.
     /// Sales prices stay as Nexo sets them for a new card: set them with
     /// <c>PUT /api/dictionary/price-lists/by-id/{id}/items</c>.
@@ -223,7 +223,7 @@ public class ProductPropertiesController : ControllerBase
     /// Move an existing card into a model as its variant (or give it other values in its own model)
     /// </summary>
     /// <remarks>
-    /// Sets the model, the next free variant number (when the model changes), the value of every property of the target
+    /// Sets the model (Nexo gives the next variant number), the value of every property of the target
     /// model, the optional new symbol, and regenerates the name and description from the model. Kind, group, components
     /// and prices stay; change them with the other endpoints. Refused (400, nothing saved): an unknown property or value,
     /// a missing value, a value set the model already has, a symbol of another card, or a property of the card the target

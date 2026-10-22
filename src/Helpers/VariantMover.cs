@@ -7,8 +7,8 @@ namespace NexoSferaApi.Helpers;
 
 /// <summary>
 /// Write path of <c>PUT /api/products/{id}/model</c>: an existing card becomes a variant of another model (or gets other
-/// values in its own), with the target model's property values, the next free variant number, an optional new symbol and
-/// a name generated from the model.
+/// values in its own), with the target model's property values, an optional new symbol and a name generated from
+/// the model; Nexo gives it the next variant number (<c>LpWariantu</c>).
 /// </summary>
 /// <remarks>
 /// Meant for unused cards generated in the wrong model (the empty Coyote CY kits of FLRA 340), so they can be reused instead
@@ -163,20 +163,11 @@ public static class VariantMover
             return outcome;
         }
 
-        // Variants in the recycle bin keep their numbers, so they count too.
-        var numbers = asortymenty.Dane.Wszystkie().Where(a => a.Model != null && a.Model.Id == target.Id).Select(a => a.Numer)
-            .ToList()
-            .Concat(asortymenty.Dane.Nieaktywne().Where(a => a.Model != null && a.Model.Id == target.Id).Select(a => a.Numer).ToList());
-        var nextNumber = numbers.Select(n => n ?? 0).DefaultIfEmpty(0).Max() + 1;
-
         var entity = asortymenty.Dane.Wszystkie().First(a => a.Id == productId);
         using var product = asortymenty.Znajdz(entity);
         var dane = product.Dane;
-        if (dane.Model == null || dane.Model.Id != target.Id)
-        {
-            dane.Model = sfera.Modele().Dane.Wszystkie().First(m => m.Id == target.Id);
-            dane.Numer = nextNumber;
-        }
+        // Nexo numbers the variant in its new model itself (LpWariantu).
+        if (dane.Model == null || dane.Model.Id != target.Id) dane.Model = sfera.Modele().Dane.Wszystkie().First(m => m.Id == target.Id);
 
         foreach (var (property, valueId, _) in values)
         {
