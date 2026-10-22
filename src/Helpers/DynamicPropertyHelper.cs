@@ -1,3 +1,7 @@
+using System.Collections;
+using System.Linq.Expressions;
+using System.Reflection;
+
 namespace NexoSferaApi.Helpers;
 
 /// <summary>
@@ -636,6 +640,12 @@ public static class DynamicPropertyHelper
     /// Finds an entity by ID in a manager's Dane.Wszystkie() collection.
     /// Returns null if not found or if Dane is null.
     /// </summary>
+    /// <remarks>
+    /// <c>Wszystkie()</c> is a LINQ query over the entity set, so the lookup runs as one SQL query (<c>WHERE Id = @id</c>).
+    /// Enumerating it instead materialized the whole set on the SDK thread until the id came up: every product, document
+    /// or contractor lookup by id read the whole table. Sets that are not a query, or whose element has no int
+    /// <c>Id</c>, are still scanned.
+    /// </remarks>
     public static dynamic? FindById(object manager, int id)
     {
         if (manager == null) return null;
@@ -644,7 +654,14 @@ public static class DynamicPropertyHelper
             dynamic dynManager = manager;
             var dane = dynManager.Dane;
             if (dane == null) return null;
-            foreach (var item in dane.Wszystkie())
+
+            object all = dane.Wszystkie();
+            if (all is IQueryable query && TryFindByIdInSql(query, id, out var found))
+            {
+                return found;
+            }
+
+            foreach (var item in (IEnumerable)all)
             {
                 if (GetId(item) == id)
                     return item;
@@ -655,6 +672,53 @@ public static class DynamicPropertyHelper
             // Return null on any error
         }
         return null;
+    }
+
+    /// <summary>Holds the id as a field, so the query provider sends it as a SQL parameter (one cached plan for all ids).</summary>
+    private sealed class IdParameter
+    {
+        public readonly int Value;
+
+        public IdParameter(int value) => Value = value;
+    }
+
+    /// <summary>
+    /// <c>source.Where(e => e.Id == id).FirstOrDefault()</c> for an element type known only at run time. False when the
+    /// element has no int <c>Id</c> or the provider cannot run the query; the caller then scans.
+    /// </summary>
+    private static bool TryFindByIdInSql(IQueryable source, int id, out object? found)
+    {
+        found = null;
+        var idProperty = source.ElementType
+            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .FirstOrDefault(p => p.Name == "Id" && p.PropertyType == typeof(int) && p.GetIndexParameters().Length == 0);
+        if (idProperty == null) return false;
+
+        try
+        {
+            var entity = Expression.Parameter(source.ElementType, "e");
+            var value = Expression.Field(
+                Expression.Constant(new IdParameter(id)), nameof(IdParameter.Value));
+            var predicate = Expression.Lambda(
+                Expression.Equal(Expression.Property(entity, idProperty), value),
+                entity);
+            var filtered = source.Provider.CreateQuery(Expression.Call(
+                typeof(Queryable), nameof(Queryable.Where), new[] { source.ElementType },
+                source.Expression, Expression.Quote(predicate)));
+
+            foreach (var item in filtered)
+            {
+                found = item;
+                break;
+            }
+
+            return true;
+        }
+        catch
+        {
+            found = null;
+            return false;
+        }
     }
 
     #region Units of measure (verified against SDK 61.1.0.9431 metadata)

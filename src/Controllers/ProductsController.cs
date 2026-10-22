@@ -263,15 +263,7 @@ public class ProductsController : ControllerBase
                     return (ProductDto?)null;
                 }
 
-                dynamic? asortyment = null;
-                foreach (var a in DynamicPropertyHelper.SafeGetAll((object)asortymentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(a) == id)
-                    {
-                        asortyment = a;
-                        break;
-                    }
-                }
+                dynamic? asortyment = DynamicPropertyHelper.FindById(asortymentyManager, id);
 
                 if (asortyment == null)
                 {

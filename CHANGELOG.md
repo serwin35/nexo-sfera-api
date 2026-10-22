@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-10-22) - lookups by id run in SQL
+- `DynamicPropertyHelper.FindById` composes `Where(e => e.Id == @id)` on `Dane.Wszystkie()`, so the lookup runs as one
+  SQL query. It used to enumerate `Wszystkie()`, materializing the whole entity set on the SDK thread until the id came
+  up. Sets that are not a LINQ query, or whose element has no int `Id`, are still scanned.
+- 53 hand-written copies of that scan in the controllers (`foreach SafeGetAll … if GetId == id … break`) now call
+  `FindById`, with the same result. Among them are the details and write lookups of contractors, documents, customer
+  orders, product groups, attributes and templates, KSeF, and `GET /api/products/{id}`.
+  - The other product lookups are left to #38, and the ZK create lookups to #46; both rewrite them typed.
+- The WolfFire product detail refresh calls `GET /api/products/{id}` once per product, so each call no longer reads the
+  whole catalogue.
+
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
   now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
