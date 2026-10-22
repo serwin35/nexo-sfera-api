@@ -23,7 +23,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - a refused `Zapisz()` returns the Nexo errors.
 - Line prices go to `PozycjaDokumentu.Cena` in the calculation mode of the order: `NettoPrzedRabatem` for net orders,
   `BruttoPrzedRabatem` for gross orders. A price of the other kind is converted with the line VAT rate and rounded to
-  0.01; `discountPercent` goes to `Cena.RabatProcent`. Lines without a price keep the price list price.
+  0.01. `discountPercent` (percent, 0-100) goes to `Cena.RabatProcent` as a fraction, because Nexo keeps 8.61 % as
+  0.0861. Lines without a price keep the price list price.
 - The document is created with `UtworzZamowienieOdKlienta()`. Before, it used the default configuration, or `Utworz()`,
   which always throws.
 - Unchanged: the response shape (`CustomerOrderDto`, lines in request order). The reservation type, split payment and

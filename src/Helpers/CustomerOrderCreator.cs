@@ -196,7 +196,8 @@ public static class CustomerOrderCreator
             else line.Cena.BruttoPrzedRabatem = price;
         }
 
-        if (item.DiscountPercent is decimal discount) line.Cena.RabatProcent = discount;
+        // The request is in percent (0-100); Nexo keeps the discount as a fraction (0.0861 = 8.61 %, read on a live ZD line).
+        if (item.DiscountPercent is decimal discount) line.Cena.RabatProcent = discount / 100m;
     }
 
     /// <summary>The customer by id, or the single contractor with the NIP (raw or without separators).</summary>
