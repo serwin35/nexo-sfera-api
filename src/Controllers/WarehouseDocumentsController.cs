@@ -1087,15 +1087,7 @@ public class WarehouseDocumentsController : ControllerBase
                     return ("error", null, "Failed to get ZamowieniaOdKlientow/RozchodyWewnetrzne manager", new List<string>());
                 }
 
-                dynamic? order = null;
-                foreach (var z in DynamicPropertyHelper.SafeGetAll((object)zamowienia))
-                {
-                    if (DynamicPropertyHelper.GetId(z) == request.OrderId)
-                    {
-                        order = z;
-                        break;
-                    }
-                }
+                dynamic? order = DynamicPropertyHelper.FindById(zamowienia, request.OrderId);
                 if (order == null)
                 {
                     return ("notFound", null, $"Customer order with ID {request.OrderId} not found", new List<string>());

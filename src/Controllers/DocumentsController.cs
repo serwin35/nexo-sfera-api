@@ -77,15 +77,7 @@ public class DocumentsController : ControllerBase
                     return (object)new { ManagerMissing = true, NotFound = false, Id = id };
                 }
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (dokument == null)
                 {
@@ -761,15 +753,7 @@ public class DocumentsController : ControllerBase
                 if (dokumentyManager == null)
                     return (true, null);
 
-                dynamic? dokument = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        dokument = d;
-                        break;
-                    }
-                }
+                dynamic? dokument = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (dokument == null)
                     return (false, null);
@@ -826,15 +810,7 @@ public class DocumentsController : ControllerBase
                 }
 
                 // Find the document
-                dynamic? encja = null;
-                foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyManager))
-                {
-                    if (DynamicPropertyHelper.GetId(d) == id)
-                    {
-                        encja = d;
-                        break;
-                    }
-                }
+                dynamic? encja = DynamicPropertyHelper.FindById(dokumentyManager, id);
 
                 if (encja == null)
                 {
@@ -879,15 +855,7 @@ public class DocumentsController : ControllerBase
                         var pracownicyManager = _sferaService.GetManager("Pracownicy");
                         if (pracownicyManager != null)
                         {
-                            dynamic? pracownik = null;
-                            foreach (var p in DynamicPropertyHelper.SafeGetAll((object)pracownicyManager))
-                            {
-                                if (DynamicPropertyHelper.GetId(p) == request.WystawilaOsobaId.Value)
-                                {
-                                    pracownik = p;
-                                    break;
-                                }
-                            }
+                            dynamic? pracownik = DynamicPropertyHelper.FindById(pracownicyManager, request.WystawilaOsobaId.Value);
 
                             if (pracownik != null)
                             {
@@ -1007,15 +975,7 @@ public class DocumentsController : ControllerBase
                         var statusyManager = _sferaService.GetManager("StatusyDokumentow");
                         if (statusyManager != null)
                         {
-                            dynamic? status = null;
-                            foreach (var s in DynamicPropertyHelper.SafeGetAll((object)statusyManager))
-                            {
-                                if (DynamicPropertyHelper.GetId(s) == request.StatusId.Value)
-                                {
-                                    status = s;
-                                    break;
-                                }
-                            }
+                            dynamic? status = DynamicPropertyHelper.FindById(statusyManager, request.StatusId.Value);
 
                             if (status != null)
                             {
@@ -3278,15 +3238,7 @@ public class DocumentsController : ControllerBase
                         return (false, false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
                     }
 
-                    dynamic? oryginal = null;
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
-                    {
-                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
-                        {
-                            oryginal = d;
-                            break;
-                        }
-                    }
+                    dynamic? oryginal = DynamicPropertyHelper.FindById(dokumentySprzedazy, request.OriginalDocumentId.Value);
 
                     if (oryginal == null)
                     {
@@ -3398,15 +3350,7 @@ public class DocumentsController : ControllerBase
                         return (false, false, null, "Failed to get DokumentyZakupu manager", new List<string>());
                     }
 
-                    dynamic? oryginal = null;
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentyZakupu))
-                    {
-                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
-                        {
-                            oryginal = d;
-                            break;
-                        }
-                    }
+                    dynamic? oryginal = DynamicPropertyHelper.FindById(dokumentyZakupu, request.OriginalDocumentId.Value);
 
                     if (oryginal == null)
                     {
@@ -4195,15 +4139,7 @@ public class DocumentsController : ControllerBase
                         return (false, false, null, "Failed to get DokumentySprzedazy manager", new List<string>());
                     }
 
-                    dynamic? paragon = null;
-                    foreach (var d in DynamicPropertyHelper.SafeGetAll((object)dokumentySprzedazy))
-                    {
-                        if (DynamicPropertyHelper.GetId(d) == request.OriginalDocumentId.Value)
-                        {
-                            paragon = d;
-                            break;
-                        }
-                    }
+                    dynamic? paragon = DynamicPropertyHelper.FindById(dokumentySprzedazy, request.OriginalDocumentId.Value);
 
                     if (paragon == null)
                     {
@@ -4548,15 +4484,7 @@ public class DocumentsController : ControllerBase
 
                 foreach (int orderId in request.OrderIds)
                 {
-                    dynamic? order = null;
-                    foreach (var zk in DynamicPropertyHelper.SafeGetAll((object)zamowieniaManager))
-                    {
-                        if (DynamicPropertyHelper.GetId(zk) == orderId)
-                        {
-                            order = zk;
-                            break;
-                        }
-                    }
+                    dynamic? order = DynamicPropertyHelper.FindById(zamowieniaManager, orderId);
 
                     if (order == null)
                     {
