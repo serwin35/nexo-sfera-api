@@ -405,15 +405,37 @@ public static class PriceListWriter
         if (productIds.Count > MaxItems) errors.Add($"productIds: at most {MaxItems} ids per request, got {productIds.Count}.");
         if (productIds.Any(id => id <= 0)) errors.Add("productIds: every id must be a positive Nexo product id.");
         if (productIds.Distinct().Count() != productIds.Count) errors.Add("productIds: every product must be listed once.");
+        if (request?.Mode is { } mode && !CostModes.Contains(mode.Trim(), StringComparer.OrdinalIgnoreCase))
+        {
+            errors.Add($"mode: must be one of {string.Join(", ", CostModes)}.");
+        }
+
+        if (NormalizeCostMode(request?.Mode) == CostModeFull && request?.LockPrices == false)
+        {
+            errors.Add("lockPrices: mode full recalculates the position from the base price, which keeps the sales price only when it is locked.");
+        }
+
         return errors;
     }
 
+    private const string CostModeFull = "full";
+    private const string CostModeEstimate = "estimate";
+    private const string CostModeCalculation = "calculation";
+
+    /// <summary>Modes of <see cref="RecalculateCosts"/>; the first is the default.</summary>
+    public static readonly IReadOnlyList<string> CostModes = new[] { CostModeFull, CostModeEstimate, CostModeCalculation };
+
+    private static string NormalizeCostMode(string? mode) =>
+        string.IsNullOrWhiteSpace(mode) ? CostModeFull : mode.Trim().ToLowerInvariant();
+
     /// <summary>
-    /// Refreshes the calculation price (cost) of the main positions of <c>request.ProductIds</c> in price list
-    /// <paramref name="priceListId"/> from the price list defaults (<c>ICennikPozycje.AktualizujCeneKalkulacyjna</c>);
-    /// Nexo recalculates margin, markup and profit and keeps the sales price. For a kit the cost is the sum of its
-    /// components, so this is the step that follows a change of the components. With <c>LockPrices</c> the sales prices
-    /// are locked (<c>UstawBlokadeCen</c>). Returns errors (and saves nothing) for a closed price list, a missing
+    /// Refreshes the cost of the main positions of <c>request.ProductIds</c> in price list <paramref name="priceListId"/>
+    /// and keeps their sales prices; Nexo recalculates margin, markup and profit. With <c>LockPrices</c> the sales prices
+    /// are locked first (<c>UstawBlokadeCen</c>). Modes: <c>full</c> recalculates the whole position from its base price
+    /// (<c>AktualizujPozycjeCennika</c>; a kit's base price is the value of its components), <c>estimate</c> switches on
+    /// <c>SzacujKosztKompletuZeSkladnikow</c> for kits and recalculates the estimated cost
+    /// (<c>PrzeliczSzacunkowyKoszt</c>), <c>calculation</c> only recalculates the calculation price from the current base
+    /// price (<c>AktualizujCeneKalkulacyjna</c>, which does not refresh the base price). Returns errors (and saves nothing) for a closed price list, a missing
     /// product or main position, a position priced from its kit components, a sales price that Nexo would change, or a
     /// refused save. With <c>DryRun</c> nothing is saved. Call <see cref="ValidateRecalculateCosts"/> first.
     /// </summary>
@@ -472,11 +494,44 @@ public static class PriceListWriter
             PriceGross = p.CenaBrutto,
             OldBasePrice = p.CenaBazowa,
             OldCalculationPrice = p.CenaKalkulacyjna,
+            OldEstimatedCost = p.SzacowanyKoszt,
             OldMargin = SdkMember.Read(() => (decimal?)p.Marza, null),
             OldProfit = p.Zysk,
         }).ToList();
 
-        cennikBo.Pozycje.AktualizujCeneKalkulacyjna(targets);
+        if (request.LockPrices)
+        {
+            // Before the refresh: a locked position keeps its sales price when Nexo recalculates it from the base price.
+            cennikBo.Pozycje.UstawBlokadeCen(true, targets);
+        }
+
+        switch (NormalizeCostMode(request.Mode))
+        {
+            case CostModeEstimate:
+                foreach (var position in targets.Where(p => p.CzyKomplet && !p.SzacujKosztKompletuZeSkladnikow))
+                {
+                    position.RozpocznijEdycje();
+                    try
+                    {
+                        position.SzacujKosztKompletuZeSkladnikow = true;
+                    }
+                    finally
+                    {
+                        if (!position.ZakonczEdycje()) outcome.Errors.Add($"{Describe(position)}: Nexo rejected the cost estimation switch.");
+                    }
+                }
+
+                if (outcome.Errors.Count > 0) return outcome;
+                foreach (var position in targets) position.PrzeliczSzacunkowyKoszt();
+                cennikBo.Pozycje.AktualizujCeneKalkulacyjna(targets);
+                break;
+            case CostModeCalculation:
+                cennikBo.Pozycje.AktualizujCeneKalkulacyjna(targets);
+                break;
+            default:
+                cennikBo.Pozycje.AktualizujPozycjeCennika(targets);
+                break;
+        }
 
         for (var i = 0; i < targets.Count; i++)
         {
@@ -489,11 +544,6 @@ public static class PriceListWriter
         }
 
         if (outcome.Errors.Count > 0) return outcome;
-
-        if (request.LockPrices)
-        {
-            cennikBo.Pozycje.UstawBlokadeCen(true, targets);
-        }
 
         if (!request.DryRun && !cennikBo.Zapisz())
         {
@@ -508,6 +558,7 @@ public static class PriceListWriter
             var position = targets[i];
             change.BasePrice = position.CenaBazowa;
             change.CalculationPrice = position.CenaKalkulacyjna;
+            change.EstimatedCost = position.SzacowanyKoszt;
             change.Margin = SdkMember.Read(() => (decimal?)position.Marza, null);
             change.Profit = position.Zysk;
             change.PriceLocked = request.LockPrices;

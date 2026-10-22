@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - recalculate-costs did not refresh the base price
+- In the first version, `POST .../items/recalculate-costs` ran only `AktualizujCeneKalkulacyjna`.
+  - That method recalculates the calculation price from the current base price and leaves the base price as it is.
+  - So a kit with base price 0 stayed at 0: the dry run on DMSUMDP04282_0108 returned cost 0, where the components
+    give 12.34.
+- New `mode` parameter:
+  - `full` (default): locks the sales prices first (`UstawBlokadeCen`), then recalculates the whole position from the
+    base price (`AktualizujPozycjeCennika`). It needs `lockPrices`.
+  - `estimate`: switches on `SzacujKosztKompletuZeSkladnikow` for kits, then runs `PrzeliczSzacunkowyKoszt` and
+    `AktualizujCeneKalkulacyjna`.
+  - `calculation`: the previous behaviour.
+- The sales price guard is unchanged: if a sales price would change, nothing is saved.
+- The response now also has `oldEstimatedCost` / `estimatedCost`.
+
 ### Added (2026-10-22) - refresh the cost of price list positions and keep the sales price
 - `POST /api/dictionary/price-lists/by-id/{id}/items/recalculate-costs` with `productIds` (1-200), `lockPrices`
   (default true) and `dryRun`.
