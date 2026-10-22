@@ -101,7 +101,8 @@ public static class DiscountReader
             Name = row.Name,
             Type = isPercent ? DiscountType.Percentage : DiscountType.Amount,
             Kind = kind.ToString(),
-            PercentValue = isPercent ? row.Percent : null,
+            // Nexo keeps the percentage as a fraction ("Standardowy 5%" has Procent = 0.05); the API reports percent (5).
+            PercentValue = isPercent && row.Percent.HasValue ? row.Percent.Value * 100m : null,
             AmountValue = isPercent ? null : row.Amount,
             CurrencySymbol = row.Currency,
             IsActive = true,

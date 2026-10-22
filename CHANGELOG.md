@@ -16,8 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The new typed `DiscountReader` runs two SQL queries per page (discounts, then their contractors):
   - `name` from `Nazwa`;
   - the new `kind` (`RodzajRabatu`: Procentowy, Kwotowy, KwotowyOdWartosci, ProcentowyOdWartosci);
-  - `type` (Percentage / Amount), with `percentValue` from `Procent` or `amountValue` from `Kwota`, and
-    `currencySymbol`;
+  - `type` (Percentage / Amount), with `amountValue` from `Kwota`, `percentValue` from `Procent`, and
+    `currencySymbol`. Nexo keeps `Procent` as a fraction ("Standardowy 5%" is 0.05), and `percentValue` reports it in
+    percent (5), which is what the WolfFire `PriceResolver` expects;
   - `subjects` from `Podmioty`, now on list rows too.
 - A Nexo discount has no symbol, validity period, priority or activity flag. `symbol`, `validFrom` / `validTo` and
   `priority` stay null, and `isActive` is true (the recycle bin is never listed). `activeOnly` and `validAt` filter
