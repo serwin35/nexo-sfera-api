@@ -164,10 +164,7 @@ public static class PriceListWriter
 
         if (edited.Any(e => e.Change.Status == Updated) && !cennikBo.Zapisz())
         {
-            var text = cennikBo.PodajBledy()?.ToString();
-            outcome.Errors.AddRange((text ?? string.Empty)
-                .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Distinct());
+            outcome.Errors.AddRange(SaveErrors(cennikBo));
             if (outcome.Errors.Count == 0) outcome.Errors.Add("Nexo refused to save the price list.");
             return outcome;
         }
@@ -181,5 +178,51 @@ public static class PriceListWriter
         }
 
         return outcome;
+    }
+
+    /// <summary>
+    /// Validation errors of a business object after a failed <c>Zapisz()</c>: <c>InvalidData[].Errors</c> plus the
+    /// <c>PodajBledy()</c> text. <c>PodajBledy</c> is not part of the compiled <c>ICennik</c> interface, so both are read
+    /// late-bound, best effort, as in the other controllers.
+    /// </summary>
+    private static List<string> SaveErrors(dynamic businessObject)
+    {
+        var errors = new List<string>();
+        try
+        {
+            var invalidData = DynamicPropertyHelper.GetProperty(businessObject, "InvalidData");
+            if (invalidData != null)
+            {
+                foreach (var entity in invalidData)
+                {
+                    var entityErrors = DynamicPropertyHelper.GetProperty(entity, "Errors");
+                    if (entityErrors == null) continue;
+                    foreach (var error in entityErrors)
+                    {
+                        string? text = error?.ToString();
+                        if (!string.IsNullOrWhiteSpace(text) && !errors.Contains(text.Trim())) errors.Add(text.Trim());
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // best effort
+        }
+
+        try
+        {
+            string? text = businessObject.PodajBledy()?.ToString();
+            foreach (var line in (text ?? string.Empty).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+            {
+                if (!errors.Contains(line)) errors.Add(line);
+            }
+        }
+        catch
+        {
+            // PodajBledy not available on this object
+        }
+
+        return errors;
     }
 }
