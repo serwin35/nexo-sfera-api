@@ -11,6 +11,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
   now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
 
+### Added (2026-10-22) - price change and conditional price write
+- **`POST /api/dictionary/price-lists/by-id/{id}/reprice`** runs Nexo's price change (Subiekt: Przecena,
+  `ICennik.Przecen`) on the positions of 1-200 products: `kind` (`decreasePercent` / `increasePercent` /
+  `decreaseAmount` / `increaseAmount`), `value` (percent as a fraction, 0.10 = 10%), optional `roundingFunction` (the
+  names positions report, e.g. `WyrownywanieDoJednostek`), optional signed `priceCorrection` (-0.01 for .99 endings),
+  `resetDefaultDiscount`, `mainOnly` (quantity tiers are repriced by default). All-or-nothing: a closed price list, an
+  unknown product, a product without a position, a kit position priced from its components or any position Nexo cannot
+  reprice returns 400 and nothing is saved. The response lists every position (`isMain`, `minQuantity`, old and new
+  prices, `calculationParameter`, `status`).
+- **`PUT /api/dictionary/price-lists/by-id/{id}/items` conditional write:** an item may carry `expectedPriceGross`
+  and/or `expectedPriceNet`, the price the client last read. When the current price differs (after rounding to the
+  currency precision), nothing is saved and the request returns **409** with one message per product. Items without
+  expected prices behave as before. This is the precondition WolfFire's price push (F4b) waits for.
+
+### Fixed (2026-10-22) - price write ignored a rejected position edit
+- `PUT /api/dictionary/price-lists/by-id/{id}/items` ignored the result of `ZakonczEdycje()`. When Nexo rejected a
+  position edit the other edits were still saved and the item was reported as `updated`. A rejected edit now returns
+  400 and nothing is saved.
+- Price list save errors were always empty, so a refused save only said "Nexo refused to save the price list". The
+  late-bound reader looked up `Errors` on the entities, which implement `ITypedDataErrorInfo` explicitly, and called the
+  `PodajBledy` extension method through `dynamic`, which never binds. New `SdkErrors` reads the typed
+  `IObiektBiznesowy.Bledy` first. The other controllers still use their own late-bound readers.
+
 ### Added (2026-10-22) - price list price write
 - **`PUT /api/dictionary/price-lists/by-id/{id}/items`** sets the gross or net price of main price list positions:
   `{"items": [{"productId": 105003, "priceGross": 38.00}]}`, 1-200 items, exactly one of `priceGross` / `priceNet` per
