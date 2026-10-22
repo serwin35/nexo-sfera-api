@@ -120,7 +120,8 @@ public static class VariantCreator
             foreach (var given in variant.Values)
             {
                 var name = given.Property.Trim();
-                var property = properties.FirstOrDefault(p => string.Equals(p.Wlasciwosc.Nazwa, name, StringComparison.OrdinalIgnoreCase));
+                var property = properties.FirstOrDefault(p => string.Equals(p.Wlasciwosc.Nazwa, name, StringComparison.OrdinalIgnoreCase))
+                               ?? properties.FirstOrDefault(p => string.Equals(p.Wlasciwosc.Symbol, name, StringComparison.OrdinalIgnoreCase));
                 if (property == null)
                 {
                     result.Errors.Add($"variants[{i}]: the model has no property '{name}' (it has: {string.Join(", ", properties.Select(p => p.Wlasciwosc.Nazwa))}).");

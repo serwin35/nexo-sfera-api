@@ -63,7 +63,7 @@ public class CreateVariantRequest
 /// <summary>Value of one model property for a new variant.</summary>
 public class VariantPropertyValueRequest
 {
-    /// <summary>Property name, e.g. "Kolor".</summary>
+    /// <summary>Property name or symbol, e.g. "Kolor" or "RM" (the symbol variant names show).</summary>
     [Required]
     [MaxLength(100)]
     public string Property { get; set; } = string.Empty;
