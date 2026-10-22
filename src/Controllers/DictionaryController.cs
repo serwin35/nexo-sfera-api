@@ -761,6 +761,103 @@ public class DictionaryController : ControllerBase
     }
 
     /// <summary>
+    /// Create an additional price list that supplements a main price list
+    /// </summary>
+    /// <remarks>
+    /// Creates a price list linked to the main price list <c>mainPriceListId</c> (SDK: <c>ICenniki.Utworz()</c>,
+    /// <c>ICennik.UstawJakoDodatkowy</c>), as in Subiekt "Dodaj cennik dodatkowy". <c>productIds</c> (0-200) get positions
+    /// with the main price list's calculation parameters (<c>DodajIPrzepiszParametryPozycjiZGlownego</c>), so they start
+    /// at the main prices; change them with <c>PUT .../items</c> or <c>POST .../reprice</c>.
+    ///
+    /// The price list is created as defined (draft), which takes no part in pricing. <c>approve: true</c> approves it on
+    /// creation as the API operator; otherwise approve it later with <c>PUT .../status</c> or in Subiekt. Main price lists
+    /// (a new price level) are not created here.
+    ///
+    /// All-or-nothing: an unknown or closed main price list, an unknown product, a product without a main position in the
+    /// main price list, or a refused save return 400, and nothing is created.
+    ///
+    /// Example: <c>{"title": "Promocja listopad", "mainPriceListId": 1, "productIds": [105003, 105004]}</c>
+    /// </remarks>
+    /// <param name="request">Title, main price list and products</param>
+    [HttpPost("price-lists")]
+    [ProducesResponseType(typeof(ApiResponse<PriceListDto>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> CreatePriceList([FromBody] CreatePriceListRequest request)
+    {
+        var errors = PriceListCreator.ValidateCreate(request);
+        if (errors.Count > 0)
+            return BadRequest(ApiResponse<object>.Error("Invalid price list", errors));
+
+        try
+        {
+            var (outcome, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var sfera = _sferaService.GetSfera();
+                var created = PriceListCreator.Create(sfera, _sferaService.GetCurrentOperatorLogin(), request);
+                return (created, created.PriceListId is int newId ? PriceListReader.GetPriceList(sfera, newId) : null);
+            });
+
+            if (outcome.Errors.Count > 0 || outcome.PriceListId == null)
+                return BadRequest(ApiResponse<object>.Error("Price list not created", outcome.Errors));
+
+            _logger.LogInformation("Created price list {PriceListId} supplementing {MainPriceListId} with {Positions} positions (approved: {Approved})",
+                outcome.PriceListId, request.MainPriceListId, outcome.PositionCount, request.Approve);
+            return CreatedAtAction(nameof(GetPriceListById), new { id = outcome.PriceListId },
+                ApiResponse<PriceListDto?>.Ok(dto, $"Price list created with {outcome.PositionCount} positions"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating a price list supplementing {MainPriceListId}", request.MainPriceListId);
+            return StatusCode(500, ApiResponse<object>.Error("Error creating the price list"));
+        }
+    }
+
+    /// <summary>
+    /// Change the status of an additional price list
+    /// </summary>
+    /// <remarks>
+    /// <c>defined</c> (takes no part in pricing), <c>approved</c> (used for pricing) or <c>closed</c>, set as the API
+    /// operator (SDK: <c>ICennik.UstawStatus</c>, which also stamps the approval or closing date). Main price lists are
+    /// refused with 400. The current status saves nothing. The response is the price list header.
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    /// <param name="request">The new status</param>
+    [HttpPut("price-lists/by-id/{id:int}/status")]
+    [ProducesResponseType(typeof(ApiResponse<PriceListDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPriceListStatus(int id, [FromBody] SetPriceListStatusRequest request)
+    {
+        var errors = PriceListCreator.ValidateStatus(request);
+        if (errors.Count > 0)
+            return BadRequest(ApiResponse<object>.Error("Invalid price list status", errors));
+
+        try
+        {
+            var (outcome, dto) = await _sferaService.ExecuteWithLockAsync(() =>
+            {
+                var sfera = _sferaService.GetSfera();
+                var result = PriceListCreator.SetStatus(sfera, _sferaService.GetCurrentOperatorLogin(), id, request.Status!);
+                return (result, result.PriceListFound && result.Errors.Count == 0 ? PriceListReader.GetPriceList(sfera, id) : null);
+            });
+
+            if (!outcome.PriceListFound)
+                return NotFound(ApiResponse<object>.Error($"Price list {id} not found"));
+
+            if (outcome.Errors.Count > 0)
+                return BadRequest(ApiResponse<object>.Error("Price list status not changed", outcome.Errors));
+
+            _logger.LogInformation("Price list {PriceListId} status {Status} ({Result})", id, request.Status, outcome.Changed ? "updated" : "unchanged");
+            return Ok(ApiResponse<PriceListDto?>.Ok(dto, outcome.Changed ? "Status changed" : "Status unchanged"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing the status of price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error changing the price list status"));
+        }
+    }
+
+    /// <summary>
     /// Get price list positions by price list id (read through <c>ICennik.Pozycje</c>).
     /// </summary>
     /// <remarks>
