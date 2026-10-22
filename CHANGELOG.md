@@ -23,9 +23,72 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The product detail has `kindName` and real `createdAt` / `modifiedAt` (local time, as for documents).
 - `sortBy` other than `modified_asc` / `modified_desc`, and `page` / `pageSize` below 1, return 400.
 
+### Fixed (2026-10-22) - contractor group membership
+- Group membership is `Podmiot.Grupy` (a contractor belongs to any number of groups). The endpoints read and wrote
+  `Podmiot.Grupa`, which does not exist:
+  - `GET /api/contractor-groups/{id}/contractors` always returned an empty list, so the WolfFire group sync assigned no
+    contractors;
+  - member counts (`includeContractorCount`, `contractorCount` in the group detail) were always 0;
+  - adding a member failed, and removing one always answered "not in this group".
+- All of them now go through the typed `ContractorGroupMembers`:
+  - the member list is one SQL query with paging, ordered by short name;
+  - counts are one SQL query for all groups;
+  - add and remove edit `Podmiot.Grupy` and keep the contractor's other groups.
+- Behaviour changes:
+  - adding a contractor that is already in the group answers 200 without saving;
+  - `pageSize` above 500 or `page` below 1 returns 400;
+  - the bulk add lists every contractor that was not added in `errors` (the count in `data` is unchanged in meaning).
+- Members of subgroups are not included. The group hierarchy (`Grupa.KategoriaNadrzedna`) is not read yet.
+
+### Fixed (2026-10-22) - kit components could not be added or removed
+- **`POST /api/products/{id}/components`** and **`DELETE /api/products/{id}/components/{componentProductId}`** failed
+  with 500 `'AsortymentKartotekowyBO' does not contain a definition for 'Dodaj'`. The business object implements the
+  components interface explicitly, so the `dynamic` call never found `Dodaj`/`Usun`. Both now go through the typed
+  `IAsortyment.Skladniki` (`ISkladnikiKompletu.Dodaj(symbol, quantity, unit)` / `Usun(productId)`).
+
+### Added (2026-10-22) - fixed price for kits priced from components
+- **`PUT /api/dictionary/price-lists/by-id/{id}/items`:** kit positions whose price is the sum of their components
+  (`WyliczCeneKompletuZeSkladnikow`) are still refused by default. With `disableKitComponentPricing: true` on the item the
+  flag is switched off and the sent price becomes the fixed kit price; the result reports `kitComponentPricingDisabled`.
+
+### Fixed (2026-10-22) - stale SDK DLLs after a build against the same nexo version
+- **SDK sync:** when the runtime `InsERT.Moria.Sfera.dll` matched the nexo deployment, the synchronizer only added
+  missing DLLs and never replaced existing ones. MSBuild copies the dependency closure found in `src\lib\nexo-sdk`, and
+  earlier runs leave files behind, so `bin` could mix SDK 62 Sfera with modules from an older SDK. Sfera then refused the
+  up-to-date database with "baza zawiera oczekujące aktualizacje". With `PreferDeploymentBinaries` (the default), a hash
+  match now re-aligns every DLL that differs from the deployment, the same way as after a version change. Identical
+  files are skipped.
+- **SDK sync, related directories:** the fill of DLLs missing from the deployment searched every nexo deployment and
+  `.zip-cache` of every version (and Program Files) and copied any missing file, including InsERT modules from other
+  versions (seen on 2026-10-22: `InsERT.Mox.VMPackage.55.0.1.8249.dll` from a 2025 deployment). InsERT assemblies are
+  now taken only from the selected deployment; third-party DLLs are still filled from anywhere.
+
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
   now read late-bound and best effort (`InvalidData[].Errors` + `PodajBledy()`), the same way as in the other controllers.
+
+### Added (2026-10-22) - price change and conditional price write
+- **`POST /api/dictionary/price-lists/by-id/{id}/reprice`** runs Nexo's price change (Subiekt: Przecena,
+  `ICennik.Przecen`) on the positions of 1-200 products: `kind` (`decreasePercent` / `increasePercent` /
+  `decreaseAmount` / `increaseAmount`), `value` (percent as a fraction, 0.10 = 10%), optional `roundingFunction` (the
+  names positions report, e.g. `WyrownywanieDoJednostek`), optional signed `priceCorrection` (-0.01 for .99 endings),
+  `resetDefaultDiscount`, `mainOnly` (quantity tiers are repriced by default). All-or-nothing: a closed price list, an
+  unknown product, a product without a position, a kit position priced from its components or any position Nexo cannot
+  reprice returns 400 and nothing is saved. The response lists every position (`isMain`, `minQuantity`, old and new
+  prices, `calculationParameter`, `status`).
+- **`PUT /api/dictionary/price-lists/by-id/{id}/items` conditional write:** an item may carry `expectedPriceGross`
+  and/or `expectedPriceNet`, the price the client last read. When the current price differs (after rounding to the
+  currency precision), nothing is saved and the request returns **409** with one message per product. Items without
+  expected prices behave as before. This is the precondition WolfFire's price push (F4b) waits for.
+
+### Fixed (2026-10-22) - price write ignored a rejected position edit
+- `PUT /api/dictionary/price-lists/by-id/{id}/items` ignored the result of `ZakonczEdycje()`. When Nexo rejected a
+  position edit the other edits were still saved and the item was reported as `updated`. A rejected edit now returns
+  400 and nothing is saved.
+- Price list save errors were always empty, so a refused save only said "Nexo refused to save the price list". The
+  late-bound reader looked up `Errors` on the entities, which implement `ITypedDataErrorInfo` explicitly, and called the
+  `PodajBledy` extension method through `dynamic`, which never binds. New `SdkErrors` reads the typed
+  `IObiektBiznesowy.Bledy` first. The other controllers still use their own late-bound readers.
 
 ### Added (2026-10-22) - price list price write
 - **`PUT /api/dictionary/price-lists/by-id/{id}/items`** sets the gross or net price of main price list positions:
@@ -39,10 +102,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`updated` / `unchanged`) per product.
 - The `priceNet` refusal of `PUT /api/products/{id}` now points to this endpoint.
 
+### Added (2026-10-22) - additional price lists and their status
+- **`POST /api/dictionary/price-lists`** creates an additional price list supplementing a main one (Subiekt: "Dodaj
+  cennik dodatkowy"; SDK `ICenniki.Utworz()` + `ICennik.UstawJakoDodatkowy`, as in the SDK sample
+  `ObslugaCennikow.DodawanieCennikaDodatkowego`): `title`, optional `subtitle` / `description`, `mainPriceListId`,
+  optional `productIds` (0-200; positions get the main price list's calculation parameters through
+  `DodajIPrzepiszParametryPozycjiZGlownego`, so they start at the main prices) and `approve`. The new price list is
+  **defined** (a draft that takes no part in pricing) unless `approve: true`. Returns 201 with the price list header.
+  All-or-nothing: an unknown, non-main or closed main price list, an unknown product, a product without a main position
+  in the main price list, or a refused save returns 400 and nothing is created. Main price lists (a new price level)
+  are not created through the API.
+- **`PUT /api/dictionary/price-lists/by-id/{id}/status`** sets `defined` / `approved` / `closed` on an additional price
+  list (`ICennik.UstawStatus`). Main price lists are refused with 400. The status is set as the Nexo user the API is
+  logged in as (`Uzytkownik.Login` = the API operator); when no such user exists the request returns 400.
+
 ### Added (2026-10-22) - product group change
 - **`PUT /api/products/{id}` `groupId`** moves the product to an existing product group (`Asortyment.Grupa`, ids from
   `GET /api/product-groups`). An unknown group returns 400 (`groupId: product group 123 not found`). The change is
   reported in `fieldResults` with the old and new group names.
+
+### Fixed (2026-10-22) - product create and delete are typed
+- **`POST /api/products`** set every field on a `dynamic` and failed with 500 for `ean` (`Asortyment.EAN`), `pkWiU`
+  (`PKWIU`), `weight` (`Masa`), `volume` (`Objetosc`) and `priceNet` (`CenaNetto`), none of which exist. It silently
+  ignored `type`, `saleUnit`, `purchaseUnit` and `vatRate`, and applied `templateSymbol` only when it happened to equal
+  a template's default product symbol. It is now typed and all-or-nothing (new `ProductCreator`), following the SDK
+  sample `ObslugaKartotek`: `IAsortymenty.Utworz()` + `WypelnijNaPodstawieSzablonu`. The kind, base unit and VAT come
+  from `templateId` (new), the legacy `templateSymbol` (must match exactly one template) or the default template of
+  `type` (Goods / Service / Set = kit; default Goods, Material refused). `symbol` is optional (omitted:
+  `AutoSymbol()`). New `baseUnit` (dictionary unit instead of the template's, `UstawPodstawowaJednostkeMiary`),
+  `groupId` and `components` (kit only, typed `IAsortyment.Skladniki.Dodaj`). `vatRate` (a symbol as products report
+  it) sets the sales and purchase VAT rate. `name`, `description`, `ean`, `pkWiU`, `weight`, `volume`, `groupId` and
+  `symbol` go through the same `ProductWriter` as `PUT /api/products/{id}` (duplicate symbol and barcode checks
+  included). `saleUnit` / `purchaseUnit` must be the base unit, `priceNet` returns 400. Any problem returns 400 with
+  "field: reason" and nothing is created; save errors are read typed (`SdkErrors`, `IObiektBiznesowy.Bledy`) instead
+  of the late-bound reader, which always came back empty. `saleUnit`, `vatRate` and `type` lost their implicit
+  defaults ("szt.", "23%", Goods), which were never applied.
+- **`DELETE /api/products/{id}`** loaded every product to find one and called `Usun()` on a `dynamic`. It now looks the
+  product up by id, deletes it through the typed business object and says whether Nexo kept it in the recycle bin
+  ("Product moved to the recycle bin" / "Product deleted"). A product already in the recycle bin returns 200 instead of
+  404, so a retried DELETE is not reported as a missing product. Nexo's refusal reasons are returned with the 400.
 
 ### Fixed (2026-10-22) - product group id
 - **Products, `groupId`** was always `null`: it was read from `Grupa_Id`, which `Asortyment` does not have. It now
@@ -56,6 +154,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   comma). The limits are now parsed in the invariant culture (`ParseLimitsInInvariantCulture`). No other decimal
   `Range` uses string limits.
   
+### Documentation (2026-10-22) - SDK coverage and roadmap
+- New `docs/SDK-COVERAGE.md`: per area (products, groups, contractors, price lists, sales/purchase and warehouse
+  documents, orders, line editing, settlements, KSeF, assembly, stocktaking) what SDK 62 offers (verified members), what
+  the bridge exposes and whether it works, and what WolfFire uses. Ends with a prioritized roadmap. Cross-cutting
+  findings: save errors were never returned (explicit `ITypedDataErrorInfo`), `dynamic` calls on explicit interface
+  members, members that do not exist, false 200s and full-table scans under the SDK lock.
+
 ### Changed (2026-10-22) - SDK 62.0.0.9537
 - **SDK reference bumped to nexo 62.0.0.9537** (README, `scripts/setup-sdk.ps1`, local-SDK fallback in `build.yml` and
   `release.yml`). Reviewed `ZmianyAPI_61.1.1_62.0.0.txt` and `ZmianyModeluDanych_61.1.1_62.0.0.txt`, and diffed the

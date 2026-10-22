@@ -3,11 +3,16 @@ using NexoSferaApi.Models.Dto;
 
 namespace NexoSferaApi.Models.Requests;
 
+/// <summary>
+/// New product card (<c>POST /api/products</c>). The kind, base unit and VAT rate come from the template (<c>templateId</c>,
+/// or the default template of <c>type</c>); every other field is optional. All-or-nothing: any field that cannot be applied
+/// returns 400 and nothing is created.
+/// </summary>
 public class CreateProductRequest
 {
-    [Required]
+    /// <summary>Symbol (<c>Asortyment.Symbol</c>), unique, no whitespace. Omitted: Nexo numbers it (<c>AutoSymbol</c>).</summary>
     [MaxLength(50)]
-    public string Symbol { get; set; } = string.Empty;
+    public string? Symbol { get; set; }
 
     [Required]
     [MaxLength(200)]
@@ -16,33 +21,72 @@ public class CreateProductRequest
     [MaxLength(2000)]
     public string? Description { get; set; }
 
+    /// <summary>Primary barcode of the base unit. A code of another product is refused.</summary>
     [MaxLength(20)]
     public string? EAN { get; set; }
 
     [MaxLength(15)]
     public string? PKWiU { get; set; }
 
-    public ProductType Type { get; set; } = ProductType.Goods;
+    /// <summary>
+    /// Goods, Service or Set (kit): picks the default Nexo template of that kind when no template is given, and must match
+    /// the kind of the given template. Omitted: Goods. Material is refused (use <c>templateId</c>).
+    /// </summary>
+    public ProductType? Type { get; set; }
 
+    /// <summary>Symbol of a unit from the units dictionary to use as the base unit instead of the template's.</summary>
     [MaxLength(10)]
-    public string SaleUnit { get; set; } = "szt.";
+    public string? BaseUnit { get; set; }
 
+    /// <summary>A new product has one unit: when sent, this must be the base unit. Add units after creating the product.</summary>
+    [MaxLength(10)]
+    public string? SaleUnit { get; set; }
+
+    /// <summary>Like <see cref="SaleUnit"/>.</summary>
     [MaxLength(10)]
     public string? PurchaseUnit { get; set; }
 
+    /// <summary>Refused with 400: Nexo keeps sales prices in price lists.</summary>
     [Range(0, double.MaxValue)]
     public decimal? PriceNet { get; set; }
 
+    /// <summary>
+    /// VAT rate symbol as products report it in <c>vatRate</c> (<c>StawkaVat.Symbol</c>), set as both the sales and the
+    /// purchase VAT rate. Omitted: the template's.
+    /// </summary>
     [MaxLength(5)]
-    public string VatRate { get; set; } = "23%";
+    public string? VatRate { get; set; }
 
+    /// <summary>Gross weight of one base unit in kilograms.</summary>
     [Range(0, double.MaxValue)]
     public decimal? Weight { get; set; }
 
+    /// <summary>Volume of one base unit, in the base unit's volume unit (which the template must set).</summary>
     [Range(0, double.MaxValue)]
     public decimal? Volume { get; set; }
 
+    /// <summary>Product group id (<c>GrupaAsortymentu</c>), as listed by <c>GET /api/product-groups</c>.</summary>
+    public int? GroupId { get; set; }
+
+    /// <summary>Product template id (<c>SzablonAsortymentu.Id</c>), as listed by <c>GET /api/product-templates</c>.</summary>
+    public int? TemplateId { get; set; }
+
+    /// <summary>Legacy: the default product symbol of a template (<c>SzablonAsortymentu.Symbol</c>); must match one template.</summary>
     public string? TemplateSymbol { get; set; }
+
+    /// <summary>Kit components (only for a kit, at most 100). Quantities are in the component's base unit unless <c>unitSymbol</c>.</summary>
+    public List<CreateProductComponentRequest>? Components { get; set; }
+}
+
+/// <summary>One component of a new kit (SDK: <c>ISkladnikiKompletu.Dodaj(id, ilosc, jednostka)</c>).</summary>
+public class CreateProductComponentRequest
+{
+    public int ProductId { get; set; }
+
+    public decimal Quantity { get; set; }
+
+    [MaxLength(10)]
+    public string? UnitSymbol { get; set; }
 }
 
 /// <summary>
