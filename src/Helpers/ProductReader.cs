@@ -107,6 +107,8 @@ public static class ProductReader
         var model = SdkMember.Read(() => asortyment.Model, null);
         dto.ModelId = model == null ? null : SdkMember.Read<int?>(() => model.Id, null);
         dto.IsVariant = model != null;
+        dto.VariantProperties = VariantProperties(asortyment);
+        dto.Suppliers = Suppliers(asortyment);
 
         var header = SdkMember.Read(() => asortyment.Naglowek, null);
         if (header != null)
@@ -116,6 +118,39 @@ public static class ProductReader
         }
 
         EnrichUnits(dto.Units, asortyment);
+    }
+
+    /// <summary>Value of each property of a variant (<c>Asortyment.WlasciwosciAsortymentu</c>), in model order.</summary>
+    public static List<ProductVariantPropertyDto> VariantProperties(Asortyment asortyment) =>
+        SdkMember.Read(() => asortyment.WlasciwosciAsortymentu
+            .Where(w => w.Wlasciwosc != null)
+            .OrderBy(w => w.LP ?? int.MaxValue)
+            .Select(w => new ProductVariantPropertyDto
+            {
+                Property = w.Wlasciwosc.Nazwa,
+                Value = string.Join(", ", w.CechyAsortymentu.Select(c => c.Nazwa)),
+            })
+            .ToList(), new List<ProductVariantPropertyDto>());
+
+    /// <summary>Suppliers of the product (<c>AsortymentExtensions.Dostawcy</c>), primary first.</summary>
+    public static List<ProductSupplierDto> Suppliers(Asortyment asortyment)
+    {
+        var primary = SdkMember.Read(() => asortyment.DostawcaPodstawowy(), null);
+        return SdkMember.Read(() => asortyment.Dostawcy()
+            .Where(d => d.Podmiot != null)
+            .Select(d => new ProductSupplierDto
+            {
+                ContractorId = d.Podmiot.Id,
+                ContractorSymbol = SdkMember.Text(() => d.Podmiot.Sygnatura == null ? null : d.Podmiot.Sygnatura.PelnaSygnatura),
+                ContractorName = SdkMember.Text(() => d.Podmiot.NazwaSkrocona),
+                IsPrimary = primary != null && ReferenceEquals(d, primary),
+                SupplierProductSymbol = string.IsNullOrWhiteSpace(d.Symbol) ? null : d.Symbol,
+                DeclaredPrice = d.CenaDeklarowana,
+                DeclaredPriceIsGross = d.CenaBrutto,
+            })
+            .OrderByDescending(d => d.IsPrimary)
+            .ThenBy(d => d.ContractorName)
+            .ToList(), new List<ProductSupplierDto>());
     }
 
     /// <summary>Every product kind of the database by id (a small dictionary, read once per request).</summary>

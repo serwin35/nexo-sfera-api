@@ -60,6 +60,12 @@ public class ProductDto
     public int? ParentProductId { get; set; }
     public int? ModelId { get; set; }
     public bool IsVariant { get; set; }
+    /// <summary>Value of each model property on a variant, in model order (e.g. Kolor: Czarny, Rozmiar: S). Empty otherwise.</summary>
+    public List<ProductVariantPropertyDto> VariantProperties { get; set; } = new();
+
+    // Suppliers
+    /// <summary>Suppliers of the product; the primary one has <c>isPrimary</c>.</summary>
+    public List<ProductSupplierDto> Suppliers { get; set; } = new();
 
     // Type and classification
     public ProductType Type { get; set; }
@@ -351,4 +357,52 @@ public class VariantPropertyChangeDto
     public string Value { get; set; } = string.Empty;
     public string? OldName { get; set; }
     public string? Name { get; set; }
+}
+
+/// <summary>Value of one model property on a variant (<c>Asortyment.WlasciwosciAsortymentu</c>), e.g. Kolor: Czarny.</summary>
+public class ProductVariantPropertyDto
+{
+    public string Property { get; set; } = string.Empty;
+    public string? Value { get; set; }
+}
+
+/// <summary>A supplier of the product (<c>Asortyment.Dostawcy()</c>, <c>DaneAsortymentuDlaPodmiotu</c>).</summary>
+public class ProductSupplierDto
+{
+    public int ContractorId { get; set; }
+    public string? ContractorSymbol { get; set; }
+    public string? ContractorName { get; set; }
+    public bool IsPrimary { get; set; }
+    /// <summary>The supplier's own code of the product (<c>DaneAsortymentuDlaPodmiotu.Symbol</c>).</summary>
+    public string? SupplierProductSymbol { get; set; }
+    /// <summary>Declared purchase price (<c>CenaDeklarowana</c>); gross when <see cref="DeclaredPriceIsGross"/>.</summary>
+    public decimal? DeclaredPrice { get; set; }
+    public bool DeclaredPriceIsGross { get; set; }
+}
+
+/// <summary>One variant of <c>POST /api/products/{id}/variants</c>: created, planned (dry run) or already existing.</summary>
+public class CreatedVariantDto
+{
+    /// <summary>
+    /// created, planned (dry run), exists (the model already has a variant with these values), failed, or skipped (not
+    /// attempted after a refused variant).
+    /// </summary>
+    public string Status { get; set; } = string.Empty;
+    public int? ProductId { get; set; }
+    public string? Symbol { get; set; }
+    public string? Name { get; set; }
+    public List<ProductVariantPropertyDto> Values { get; set; } = new();
+    public int ComponentCount { get; set; }
+    public List<string> Errors { get; set; } = new();
+}
+
+/// <summary>Result of <c>POST /api/products/{id}/variants</c>.</summary>
+public class CreateVariantsResultDto
+{
+    public int TemplateProductId { get; set; }
+    public string? TemplateSymbol { get; set; }
+    public int ModelId { get; set; }
+    public string? ModelName { get; set; }
+    public bool DryRun { get; set; }
+    public List<CreatedVariantDto> Variants { get; set; } = new();
 }
