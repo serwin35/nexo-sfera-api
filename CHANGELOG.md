@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - contractor create
+- `POST /api/customers` always ended with 500. It created the card with the generic `Utworz()` and assigned members that
+  do not exist on `Podmiot`: `Symbol`, `NazwaPelna`, `REGON`, `AdresGlowny`, `Kontakty.DodajEmail`. It also wrote the
+  wrong `Typ` values (0/1 instead of `TypObiektu`). The address, e-mail, phone and bank account were dropped silently.
+- The endpoint is now typed (`CustomerCreator`), following the SDK sample `ImportEksportPracownikow`:
+  - the card is created with `UtworzFirme()` or `UtworzOsobe()`; a person needs the new `firstName` and `lastName`;
+  - symbol through `Sygnatura.PelnaSygnatura`, or `AutoSymbol()` when it is omitted (`symbol` is no longer required);
+  - NIP (Polish check digit validated), EU VAT number (`NIPUE` with `PodatnikUE`), REGON;
+  - primary address through `DodajAdres(TypyAdresu.DaneDomyslne.Glowny)` with the country from the dictionary;
+  - e-mail, phone and website as primary contacts of the default kinds;
+  - `notes`, `isActive`, `isOneTime`, `isEuTaxpayer`, `documentBlock`, and the new `groupIds` (`Podmiot.Grupy`);
+  - everything is saved with one `Zapisz()`.
+- Responses:
+  - 400 lists one message per invalid field. A refused save carries the Nexo errors, read typed through `SdkErrors`.
+  - 409 when the symbol or NIP already belongs to a contractor, with that contractor in `data`. A retried request never
+    creates a second card.
+  - Fields the endpoint does not write (bank account, payment terms, credit limits, SUN, VAT flags other than EU, message)
+    return 400 when set; before, they were dropped.
+    
 ### Fixed (2026-10-22) - customer order (ZK) create
 - `POST /api/customer-orders` is typed (`CustomerOrderCreator`). The late-bound version:
   - failed with 500 whenever `issueDate` was sent: it set `Dokument.DataWystawienia`, which does not exist; the date is
