@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - refused saves report their errors
+- The save error readers of the 13 write controllers read `InvalidData[].Errors` / `MemberErrors` late-bound. Nexo
+  entities implement those members explicitly (`ITypedDataErrorInfo`), so the reads found nothing, and a refused
+  `Zapisz()` returned 400 with an empty `errors` list.
+- The readers now take the errors typed first, through `IObiektBiznesowy.Bledy` (`SdkErrors`, the same helper as #36 and
+  #38), and keep the old read as a fallback.
+- Affected: customers, customer orders, documents, warehouse documents, offers, orders, payments, products, product
+  groups, attributes and templates, contractor groups, KSeF and assembly.
+  
 ### Changed (2026-10-22) - document delta loads only the changed documents
 - `GET /api/documents?modifiedSince=…` loads only the documents changed since then: header or settlement change time, the
   same condition as before, in one SQL query. Before, it loaded every document of the database on the SDK thread and
