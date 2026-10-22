@@ -90,6 +90,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - The other product lookups are left to #38, and the ZK create lookups to #46; both rewrite them typed.
 - The WolfFire product detail refresh calls `GET /api/products/{id}` once per product, so each call no longer reads the
   whole catalogue.
+### Changed (2026-10-22) - document delta loads only the changed documents
+- `GET /api/documents?modifiedSince=…` loads only the documents changed since then: header or settlement change time, the
+  same condition as before, in one SQL query. Before, it loaded every document of the database on the SDK thread and
+  then kept the changed ones. The other filters and the mapping run on those entities unchanged, so the result is the
+  same.
+- With `sortBy=modified_*`, a delta reads the stamps of the listed documents only (up to 2000 ids), instead of every
+  document.
+- Lists without `modifiedSince`, such as the nightly full pass, still scan; replacing that scan needs every list filter
+  as SQL.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
