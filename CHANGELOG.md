@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - refresh the cost of price list positions and keep the sales price
+- `POST /api/dictionary/price-lists/by-id/{id}/items/recalculate-costs` with `productIds` (1-200), `lockPrices`
+  (default true) and `dryRun`.
+  - It runs `ICennikPozycje.AktualizujCeneKalkulacyjna` on the main positions. The base and calculation price come
+    from the price list defaults, which for a kit is the sum of its components. Nexo then recalculates the margin,
+    markup and profit, and the sales price stays.
+  - `lockPrices` locks the sales prices (`UstawBlokadeCen`), so a later cost change moves the margin and not the price.
+- Why: a kit's cost is refreshed only when the price list is updated. After its components change, or for a new kit,
+  the price list keeps the old cost or 0, and the margin looks like 100%.
+  - On 2026-10-22: 36 new DMSUMDP04282 cards had cost 0.
+  - 11 sand DMSUMDP02063 cards had 3.27 instead of 10.15.
+- All-or-nothing, with one `ICennik.Zapisz()`. Nothing is saved, and the request returns 400, when:
+  - the price list is closed;
+  - a product or its single main position is missing;
+  - a kit position is priced from its components (`WyliczCeneKompletuZeSkladnikow`);
+  - Nexo would change a sales price.
+
 ### Fixed (2026-10-22) - discounts were never returned
 - `GET /api/discounts`, `/{id}` and `/for-contractor/{id}` read the discount (`Rabat`) through members it does not have:
   `Aktywny`, `OdDaty` / `DoDaty`, `Symbol`, `Opis`, `Priorytet`, `ProcentRabatu`, `KwotaRabatu`. As a result:

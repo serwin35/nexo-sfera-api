@@ -1030,6 +1030,58 @@ public class DictionaryController : ControllerBase
         }
     }
 
+    /// <summary>
+    /// Refresh the cost (calculation price) of main price list positions and keep their sales prices
+    /// </summary>
+    /// <remarks>
+    /// Runs <c>ICennikPozycje.AktualizujCeneKalkulacyjna</c> on the main positions of the given products: the base and
+    /// calculation price are recalculated from the price list defaults (for a kit: the components), and Nexo
+    /// recalculates margin, markup and profit from them. The sales price stays; if Nexo would change it, nothing is saved.
+    /// Use it after a change of kit components or purchase prices, so the margin between cost and sales price is current.
+    /// <c>lockPrices</c> (default true) locks the sales prices (<c>UstawBlokadeCen</c>), so later cost changes move the
+    /// margin and not the price. <c>dryRun</c> returns the new costs and margins without saving.
+    ///
+    /// All-or-nothing: a closed price list, unknown products, products without one main position, or kit positions
+    /// priced from their components return 400, and nothing is saved. Otherwise all positions are saved with one
+    /// <c>ICennik.Zapisz()</c>.
+    ///
+    /// Example: <c>{"productIds": [106974, 106975], "lockPrices": true, "dryRun": true}</c>
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    /// <param name="request">Products, price lock and dry run</param>
+    [HttpPost("price-lists/by-id/{id:int}/items/recalculate-costs")]
+    [ProducesResponseType(typeof(ApiResponse<List<PriceListCostChangeDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecalculatePriceListCosts(int id, [FromBody] RecalculatePriceListCostsRequest request)
+    {
+        var errors = PriceListWriter.ValidateRecalculateCosts(request);
+        if (errors.Count > 0)
+            return BadRequest(ApiResponse<object>.Error("Invalid cost refresh request", errors));
+
+        try
+        {
+            var outcome = await _sferaService.ExecuteWithLockAsync(() =>
+                PriceListWriter.RecalculateCosts(_sferaService.GetSfera(), id, request));
+
+            if (!outcome.PriceListFound)
+                return NotFound(ApiResponse<object>.Error($"Price list {id} not found"));
+
+            if (outcome.Errors.Count > 0)
+                return BadRequest(ApiResponse<object>.Error("Costs not saved", outcome.Errors));
+
+            _logger.LogInformation("Recalculated costs of {Updated} of {Total} positions in price list {PriceListId} (dry run {DryRun}, lock {Lock})",
+                outcome.Changes.Count(c => c.Status == PriceListWriter.Updated), outcome.Changes.Count, id, request.DryRun, request.LockPrices);
+            return Ok(ApiResponse<List<PriceListCostChangeDto>>.Ok(outcome.Changes,
+                request.DryRun ? "Dry run: nothing was saved" : "Costs saved"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error recalculating costs in price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error recalculating the costs"));
+        }
+    }
+
     /// <summary>Parses "1,2,3" (commas, semicolons or spaces) into distinct positive ids, at most <see cref="PriceListReader.MaxProductIds"/>.</summary>
     private static bool TryParseProductIds(string? raw, out List<int>? ids, out string? error)
     {
