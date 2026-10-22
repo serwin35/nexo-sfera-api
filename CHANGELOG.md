@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-22) - product kind and primary supplier through PUT /api/products/{id}
+- `type` (Goods, Service or Set) sets the card to the default Nexo kind of that type
+  (`RodzajeAsortymentu().DaneDomyslne`). A kit that still has components cannot change; Material is refused.
+- `supplierId` adds the contractor as a supplier (`IAsortyment.Dostawcy.Dodaj`) and makes it the primary supplier.
+- Why: the Coyote CY variants of FLRA 340 (PMTPROD01391_CY12–CY18) were generated in Subiekt as kits, without a
+  supplier. They must be goods from [PMT] PROMOEFEKT like the other FLRA colours, and the owner cannot change the kind in
+  Subiekt.
+
 ### Added (2026-10-22) - variant properties: allowed values and the value of a variant
 - `GET /api/product-properties`: every variant property (`Wlasciwosc`, e.g. "Kolor", "RM") with its allowed values
   (`Wlasciwosc.CechyAsortymentu`).

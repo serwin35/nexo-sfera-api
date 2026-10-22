@@ -92,9 +92,19 @@ public static class ProductWriter
             errors.Add("groupId: must be a positive product group id.");
         }
 
+        if (request.Type == ProductType.Material)
+        {
+            errors.Add("type: Material is not a Nexo product kind; use Goods, Service or Set.");
+        }
+
+        if (request.SupplierId is <= 0)
+        {
+            errors.Add("supplierId: must be a positive contractor id.");
+        }
+
         if (!HasAnyWritableField(request) && errors.Count == 0)
         {
-            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume, groupId, recordPrice.");
+            errors.Add("No fields to update. Writable fields: symbol, name, description, ean (+ eanUnitSymbol), pkWiU, weight, volume, groupId, recordPrice, type, supplierId.");
         }
 
         return errors;
@@ -157,12 +167,23 @@ public static class ProductWriter
             ApplyRecordPrice(dane, request.RecordPrice.Value, outcome);
         }
 
+        if (request.Type.HasValue)
+        {
+            ApplyType(sfera, dane, request.Type.Value, outcome);
+        }
+
+        if (request.SupplierId.HasValue)
+        {
+            ApplySupplier(sfera, product, request.SupplierId.Value, outcome);
+        }
+
         return outcome;
     }
 
     private static bool HasAnyWritableField(UpdateProductRequest request) =>
         request.Symbol != null || request.Name != null || request.Description != null || request.EAN != null || request.PKWiU != null
-        || request.Weight.HasValue || request.Volume.HasValue || request.GroupId.HasValue || request.RecordPrice.HasValue;
+        || request.Weight.HasValue || request.Volume.HasValue || request.GroupId.HasValue || request.RecordPrice.HasValue
+        || request.Type.HasValue || request.SupplierId.HasValue;
 
     private static void SetText(Outcome outcome, string field, Func<string?> get, Action<string> set, string value)
     {
@@ -349,6 +370,76 @@ public static class ProductWriter
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
         {
             outcome.Errors.Add($"weight: Nexo rejected the value ({ex.Message}).");
+        }
+    }
+
+    /// <summary>Kind → the default Nexo kind of the type; a kit keeps its kind while it still has components.</summary>
+    private static void ApplyType(Uchwyt sfera, Asortyment dane, ProductType type, Outcome outcome)
+    {
+        var current = ProductReader.KindOf(dane.Rodzaj).Type;
+        if (current == type)
+        {
+            outcome.Fields.Add(Result("type", Unchanged, current.ToString(), type.ToString()));
+            return;
+        }
+
+        if (type != ProductType.Set && dane.SkladnikiKompletu.Any())
+        {
+            outcome.Errors.Add($"type: the kit still has {dane.SkladnikiKompletu.Count} components; remove them before changing it to {type}.");
+            return;
+        }
+
+        var defaults = sfera.RodzajeAsortymentu().DaneDomyslne;
+        var kind = type switch
+        {
+            ProductType.Service => defaults.Usluga,
+            ProductType.Set => defaults.Komplet,
+            _ => defaults.Towar,
+        };
+        if (kind == null)
+        {
+            outcome.Errors.Add($"type: Nexo has no default kind for {type}.");
+            return;
+        }
+
+        try
+        {
+            dane.Rodzaj = kind;
+            outcome.Fields.Add(Result("type", Updated, current.ToString(), type.ToString()));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            outcome.Errors.Add($"type: Nexo rejected the kind change ({ex.Message}).");
+        }
+    }
+
+    /// <summary>Primary supplier → <c>IAsortyment.Dostawcy</c>: added when the contractor is not a supplier yet, then made primary.</summary>
+    private static void ApplySupplier(Uchwyt sfera, IAsortyment product, int supplierId, Outcome outcome)
+    {
+        var podmiot = sfera.Podmioty().Dane.Wszystkie().FirstOrDefault(p => p.Id == supplierId);
+        if (podmiot == null)
+        {
+            outcome.Errors.Add($"supplierId: contractor {supplierId} not found.");
+            return;
+        }
+
+        var suppliers = product.Dostawcy;
+        var primary = suppliers.Podstawowy;
+        if (primary?.Podmiot?.Id == supplierId)
+        {
+            outcome.Fields.Add(Result("supplierId", Unchanged, supplierId.ToString(), supplierId.ToString()));
+            return;
+        }
+
+        try
+        {
+            // A contractor that is already a (non-primary) supplier makes Nexo refuse the save; the error says so.
+            suppliers.Podstawowy = suppliers.Dodaj(podmiot, null, default);
+            outcome.Fields.Add(Result("supplierId", Updated, primary?.Podmiot?.Id.ToString(), supplierId.ToString()));
+        }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException)
+        {
+            outcome.Errors.Add($"supplierId: Nexo rejected the supplier ({ex.Message}).");
         }
     }
 
