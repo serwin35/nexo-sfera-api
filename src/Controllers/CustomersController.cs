@@ -276,15 +276,7 @@ public class CustomersController : ControllerBase
                     return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -362,15 +354,7 @@ public class CustomersController : ControllerBase
                     return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -479,15 +463,7 @@ public class CustomersController : ControllerBase
                 }
 
                 // First find the entity
-                dynamic? podmiotDane = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiotDane = p;
-                        break;
-                    }
-                }
+                dynamic? podmiotDane = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiotDane == null)
                 {
@@ -642,15 +618,7 @@ public class CustomersController : ControllerBase
                     return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -788,15 +756,7 @@ public class CustomersController : ControllerBase
                     return (Status: 500, Data: (object)new { Error = "Failed to get Podmioty manager" });
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -1093,15 +1053,7 @@ public class CustomersController : ControllerBase
                     return (Found: false, ManagerMissing: true, Dto: (CustomerDto?)null);
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -1375,15 +1327,7 @@ public class CustomersController : ControllerBase
                     return (false, null, "Failed to get Podmioty manager", new List<string>(), 500);
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -1486,15 +1430,7 @@ public class CustomersController : ControllerBase
                     return (false, "Failed to get Podmioty manager", new List<string>(), 500);
                 }
 
-                dynamic? podmiot = null;
-                foreach (var p in DynamicPropertyHelper.SafeGetAll((object)podmioty))
-                {
-                    if (DynamicPropertyHelper.GetId(p) == id)
-                    {
-                        podmiot = p;
-                        break;
-                    }
-                }
+                dynamic? podmiot = DynamicPropertyHelper.FindById(podmioty, id);
 
                 if (podmiot == null)
                 {
@@ -1718,6 +1654,14 @@ public class CustomersController : ControllerBase
 
     private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
+        // Typed first: the entity errors are explicit interface members (ITypedDataErrorInfo), which the late-bound read
+        // below cannot see, so it returned no errors for a refused save.
+        if ((object?)obiekt is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy businessObject)
+        {
+            var typed = SdkErrors.Of(businessObject);
+            if (typed.Count > 0) return typed;
+        }
+
         var errors = new List<string>();
         try
         {

@@ -435,6 +435,29 @@ public static class PriceListReader
         id.HasValue && RoundingFunctionNames.Value.TryGetValue(id.Value, out var name) ? name : null;
 
     /// <summary>
+    /// Rounding function id by the name positions report in <c>roundingFunction</c> (e.g. <c>WyrownywanieDoJednostek</c>),
+    /// case-insensitive.
+    /// </summary>
+    internal static bool TryGetRoundingFunctionId(string name, out Guid id)
+    {
+        foreach (var (functionId, functionName) in RoundingFunctionNames.Value)
+        {
+            if (string.Equals(functionName, name, StringComparison.OrdinalIgnoreCase))
+            {
+                id = functionId;
+                return true;
+            }
+        }
+
+        id = Guid.Empty;
+        return false;
+    }
+
+    /// <summary>Names accepted by <see cref="TryGetRoundingFunctionId"/>, sorted.</summary>
+    internal static IReadOnlyList<string> RoundingFunctionNameList() =>
+        RoundingFunctionNames.Value.Values.OrderBy(n => n, StringComparer.Ordinal).ToList();
+
+    /// <summary>
     /// Maps the <c>public static readonly Guid</c> identifiers of an SDK constants class to their names
     /// (prefix/suffix stripped), e.g. <c>FunkcjaWyliczaniaCenyBazowejWgCenyEwidencyjnej_ID</c> → <c>WgCenyEwidencyjnej</c>.
     /// </summary>

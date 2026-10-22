@@ -50,12 +50,23 @@ public static class DocumentReader
 
     /// <summary>Ids of documents changed at or after <paramref name="since"/>: the document itself or its settlement.</summary>
     public static HashSet<int> ModifiedSince(Uchwyt sfera, DateTimeOffset since) =>
-        sfera.Dokumenty().Dane.Wszystkie()
-            .Where(d => (d.Naglowek != null && d.Naglowek.Zmieniono >= since)
-                        || (d.Rozrachunek != null && d.Rozrachunek.Naglowek != null && d.Rozrachunek.Naglowek.Zmieniono >= since))
+        Changed(sfera, since)
             .Select(d => d.Id)
             .ToList()
             .ToHashSet();
+
+    /// <summary>
+    /// The documents changed at or after <paramref name="since"/> (same condition as <see cref="ModifiedSince"/>), loaded in
+    /// one SQL query. These are the same entities <c>Dokumenty().Dane.Wszystkie()</c> returns, so the in-memory list filters
+    /// and the list mapping work on them unchanged.
+    /// </summary>
+    public static List<Dokument> ChangedDocuments(Uchwyt sfera, DateTimeOffset since) =>
+        Changed(sfera, since).ToList();
+
+    private static IQueryable<Dokument> Changed(Uchwyt sfera, DateTimeOffset since) =>
+        sfera.Dokumenty().Dane.Wszystkie()
+            .Where(d => (d.Naglowek != null && d.Naglowek.Zmieniono >= since)
+                        || (d.Rozrachunek != null && d.Rozrachunek.Naglowek != null && d.Rozrachunek.Naglowek.Zmieniono >= since));
 
     /// <summary>Ids of cancelled (invalidated) documents.</summary>
     public static HashSet<int> CanceledIds(Uchwyt sfera) =>
