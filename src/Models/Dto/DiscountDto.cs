@@ -10,6 +10,8 @@ public class DiscountDto
     public string? Name { get; set; }
     public string? Description { get; set; }
     public DiscountType Type { get; set; }
+    /// <summary>Nexo kind (<c>RodzajRabatu</c>): Procentowy, Kwotowy, KwotowyOdWartosci or ProcentowyOdWartosci.</summary>
+    public string? Kind { get; set; }
     public decimal? PercentValue { get; set; }
     public decimal? AmountValue { get; set; }
     public string? CurrencySymbol { get; set; }
