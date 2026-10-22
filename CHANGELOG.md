@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - kit components could not be added or removed
+- **`POST /api/products/{id}/components`** and **`DELETE /api/products/{id}/components/{componentProductId}`** failed
+  with 500 `'AsortymentKartotekowyBO' does not contain a definition for 'Dodaj'`. The business object implements the
+  components interface explicitly, so the `dynamic` call never found `Dodaj`/`Usun`. Both now go through the typed
+  `IAsortyment.Skladniki` (`ISkladnikiKompletu.Dodaj(symbol, quantity, unit)` / `Usun(productId)`).
+
+### Added (2026-10-22) - fixed price for kits priced from components
+- **`PUT /api/dictionary/price-lists/by-id/{id}/items`:** kit positions whose price is the sum of their components
+  (`WyliczCeneKompletuZeSkladnikow`) are still refused by default. With `disableKitComponentPricing: true` on the item the
+  flag is switched off and the sent price becomes the fixed kit price; the result reports `kitComponentPricingDisabled`.
 ### Fixed (2026-10-22) - stale SDK DLLs after a build against the same nexo version
 - **SDK sync:** when the runtime `InsERT.Moria.Sfera.dll` matched the nexo deployment, the synchronizer only added
   missing DLLs and never replaced existing ones. MSBuild copies the dependency closure found in `src\lib\nexo-sdk`, and

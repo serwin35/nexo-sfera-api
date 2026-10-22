@@ -113,10 +113,10 @@ public static class PriceListWriter
                 continue;
             }
 
-            if (main[0].WyliczCeneKompletuZeSkladnikow == true)
+            if (main[0].WyliczCeneKompletuZeSkladnikow == true && !item.DisableKitComponentPricing)
             {
-                outcome.Errors.Add($"product {item.ProductId}: the price is calculated from kit components " +
-                                   "(WyliczCeneKompletuZeSkladnikow); switch that off in Subiekt first.");
+                outcome.Errors.Add($"product {item.ProductId}: the price is the sum of the kit components " +
+                                   "(WyliczCeneKompletuZeSkladnikow); send disableKitComponentPricing: true to set a fixed price.");
                 continue;
             }
 
@@ -139,7 +139,8 @@ public static class PriceListWriter
 
             var gross = item.PriceGross.HasValue ? Math.Round(item.PriceGross.Value, precision, MidpointRounding.AwayFromZero) : (decimal?)null;
             var net = item.PriceNet.HasValue ? Math.Round(item.PriceNet.Value, precision, MidpointRounding.AwayFromZero) : (decimal?)null;
-            if (gross == position.CenaBrutto || net == position.CenaNetto)
+            var switchOffKitPricing = item.DisableKitComponentPricing && position.WyliczCeneKompletuZeSkladnikow == true;
+            if (!switchOffKitPricing && (gross == position.CenaBrutto || net == position.CenaNetto))
             {
                 change.Status = Unchanged;
             }
@@ -148,6 +149,12 @@ public static class PriceListWriter
                 position.RozpocznijEdycje();
                 try
                 {
+                    if (switchOffKitPricing)
+                    {
+                        position.WyliczCeneKompletuZeSkladnikow = false;
+                        change.KitComponentPricingDisabled = true;
+                    }
+
                     if (gross.HasValue) position.CenaBrutto = gross.Value;
                     else position.CenaNetto = net!.Value;
                 }

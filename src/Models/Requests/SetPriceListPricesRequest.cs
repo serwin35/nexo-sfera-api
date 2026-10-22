@@ -21,4 +21,10 @@ public class PriceListPositionPriceRequest
 
     /// <summary>Net price (<c>CenaNetto</c>). Exactly one of priceGross / priceNet is required.</summary>
     public decimal? PriceNet { get; set; }
+
+    /// <summary>
+    /// Kit positions priced as the sum of their components (<c>WyliczCeneKompletuZeSkladnikow</c>) are refused unless
+    /// this is <c>true</c>; then the flag is switched off and the given price becomes the fixed kit price.
+    /// </summary>
+    public bool DisableKitComponentPricing { get; set; }
 }
