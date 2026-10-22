@@ -149,6 +149,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     creates a second card.
   - Fields the endpoint does not write (bank account, payment terms, credit limits, SUN, VAT flags other than EU, message)
     return 400 when set; before, they were dropped.
+### Fixed (2026-10-22) - discounts were never returned
+- `GET /api/discounts`, `/{id}` and `/for-contractor/{id}` read the discount (`Rabat`) through members it does not have:
+  `Aktywny`, `OdDaty` / `DoDaty`, `Symbol`, `Opis`, `Priorytet`, `ProcentRabatu`, `KwotaRabatu`. As a result:
+  - the default `activeOnly=true` filtered every discount out;
+  - without it, mapping threw ("Cannot perform runtime binding on a null reference");
+  - the list never carried `subjects`, which the WolfFire discount sync needs to link a discount to contractors.
+- The new typed `DiscountReader` runs two SQL queries per page (discounts, then their contractors):
+  - `name` from `Nazwa`;
+  - the new `kind` (`RodzajRabatu`: Procentowy, Kwotowy, KwotowyOdWartosci, ProcentowyOdWartosci);
+  - `type` (Percentage / Amount), with `amountValue` from `Kwota`, `percentValue` from `Procent`, and
+    `currencySymbol`. Nexo keeps `Procent` as a fraction ("Standardowy 5%" is 0.05), and `percentValue` reports it in
+    percent (5), which is what the WolfFire `PriceResolver` expects;
+  - `subjects` from `Podmioty`, now on list rows too.
+- A Nexo discount has no symbol, validity period, priority or activity flag. `symbol`, `validFrom` / `validTo` and
+  `priority` stay null, and `isActive` is true (the recycle bin is never listed). `activeOnly` and `validAt` filter
+  nothing. `by-symbol` is unchanged and still finds nothing, because there is no symbol.
+- `pageSize` above 500 or `page` below 1 return 400.
 
 ### Fixed (2026-10-22) - price list write did not build
 - `PriceListWriter` called `ICennik.PodajBledy()`, which is not part of the compiled interface (CS1061). Save errors are
