@@ -416,7 +416,7 @@ public static class PriceListWriter
     /// (<see cref="SdkErrors"/>), then <c>InvalidData[].Errors</c> plus the <c>PodajBledy()</c> text. <c>PodajBledy</c> is not part of the compiled <c>ICennik</c> interface, so both are read
     /// late-bound, best effort, as in the other controllers.
     /// </summary>
-    private static List<string> SaveErrors(dynamic businessObject)
+    internal static List<string> SaveErrors(dynamic businessObject)
     {
         var errors = new List<string>();
         errors.AddRange(SdkErrors.Of((InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy)businessObject));

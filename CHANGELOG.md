@@ -68,6 +68,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`updated` / `unchanged`) per product.
 - The `priceNet` refusal of `PUT /api/products/{id}` now points to this endpoint.
 
+### Added (2026-10-22) - additional price lists and their status
+- **`POST /api/dictionary/price-lists`** creates an additional price list supplementing a main one (Subiekt: "Dodaj
+  cennik dodatkowy"; SDK `ICenniki.Utworz()` + `ICennik.UstawJakoDodatkowy`, as in the SDK sample
+  `ObslugaCennikow.DodawanieCennikaDodatkowego`): `title`, optional `subtitle` / `description`, `mainPriceListId`,
+  optional `productIds` (0-200; positions get the main price list's calculation parameters through
+  `DodajIPrzepiszParametryPozycjiZGlownego`, so they start at the main prices) and `approve`. The new price list is
+  **defined** (a draft that takes no part in pricing) unless `approve: true`. Returns 201 with the price list header.
+  All-or-nothing: an unknown, non-main or closed main price list, an unknown product, a product without a main position
+  in the main price list, or a refused save returns 400 and nothing is created. Main price lists (a new price level)
+  are not created through the API.
+- **`PUT /api/dictionary/price-lists/by-id/{id}/status`** sets `defined` / `approved` / `closed` on an additional price
+  list (`ICennik.UstawStatus`). Main price lists are refused with 400. The status is set as the Nexo user the API is
+  logged in as (`Uzytkownik.Login` = the API operator); when no such user exists the request returns 400.
+
 ### Added (2026-10-22) - product group change
 - **`PUT /api/products/{id}` `groupId`** moves the product to an existing product group (`Asortyment.Grupa`, ids from
   `GET /api/product-groups`). An unknown group returns 400 (`groupId: product group 123 not found`). The change is
