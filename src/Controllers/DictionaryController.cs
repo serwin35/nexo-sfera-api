@@ -838,6 +838,11 @@ public class DictionaryController : ControllerBase
     /// All-or-nothing: unknown products, a missing or ambiguous main position, or a kit position priced from its
     /// components (<c>WyliczCeneKompletuZeSkladnikow</c>) return 400 before anything is edited, and every edit is saved
     /// with one <c>ICennik.Zapisz()</c>. Prices are rounded to the currency precision. 1-200 items per request.
+    ///
+    /// Conditional write: an item may carry <c>expectedPriceGross</c> and/or <c>expectedPriceNet</c>, the price the client
+    /// last read. When any of them differs from the current price, nothing is saved and the request returns 409 with one
+    /// message per changed product. Example:
+    /// <c>{"items": [{"productId": 105003, "priceGross": 38.00, "expectedPriceGross": 39.99}]}</c>
     /// </remarks>
     /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
     /// <param name="request">Products and their new prices</param>
@@ -845,6 +850,7 @@ public class DictionaryController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse<List<PriceListPriceChangeDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> SetPriceListPrices(int id, [FromBody] SetPriceListPricesRequest request)
     {
         var errors = PriceListWriter.Validate(request);
@@ -862,6 +868,9 @@ public class DictionaryController : ControllerBase
             if (outcome.Errors.Count > 0)
                 return BadRequest(ApiResponse<object>.Error("Prices not saved", outcome.Errors));
 
+            if (outcome.Conflicts.Count > 0)
+                return Conflict(ApiResponse<object>.Error("Prices not saved: the current price differs from the expected price", outcome.Conflicts));
+
             _logger.LogInformation("Set {Updated} of {Total} prices in price list {PriceListId}",
                 outcome.Changes.Count(c => c.Status == PriceListWriter.Updated), outcome.Changes.Count, id);
             return Ok(ApiResponse<List<PriceListPriceChangeDto>>.Ok(outcome.Changes, "Prices saved"));
@@ -870,6 +879,57 @@ public class DictionaryController : ControllerBase
         {
             _logger.LogError(ex, "Error setting prices in price list {PriceListId}", id);
             return StatusCode(500, ApiResponse<object>.Error("Error saving price list prices"));
+        }
+    }
+
+    /// <summary>
+    /// Price change (Subiekt: Przecena) of price list positions
+    /// </summary>
+    /// <remarks>
+    /// Runs Nexo's price change (<c>ICennik.Przecen</c>) on the positions of the given products: a percent or amount
+    /// decrease or increase (<c>kind</c>, <c>value</c>; percent as a fraction, 0.10 = 10%), an optional rounding function
+    /// (<c>roundingFunction</c>, the names positions report, e.g. <c>WyrownywanieDoJednostek</c>) and an optional signed
+    /// correction after rounding (<c>priceCorrection</c>, e.g. -0.01 for .99 endings). Quantity tiers are repriced too
+    /// unless <c>mainOnly</c>. Nexo recalculates the calculation parameter as after a price change in Subiekt.
+    ///
+    /// All-or-nothing: a closed price list, unknown products, products without a position, kit positions priced from
+    /// their components, or any position Nexo cannot reprice return 400, and nothing is saved. Otherwise all positions are
+    /// saved with one <c>ICennik.Zapisz()</c>. The response lists every position with its old and new prices.
+    ///
+    /// Example: <c>{"productIds": [105003, 105004], "kind": "decreasePercent", "value": 0.10,
+    /// "roundingFunction": "WyrownywanieDoJednostek", "priceCorrection": -0.01}</c>
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    /// <param name="request">Products and the price change</param>
+    [HttpPost("price-lists/by-id/{id:int}/reprice")]
+    [ProducesResponseType(typeof(ApiResponse<List<PriceListRepriceChangeDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RepricePriceList(int id, [FromBody] RepricePriceListRequest request)
+    {
+        var errors = PriceListWriter.ValidateReprice(request);
+        if (errors.Count > 0)
+            return BadRequest(ApiResponse<object>.Error("Invalid price change request", errors));
+
+        try
+        {
+            var outcome = await _sferaService.ExecuteWithLockAsync(() =>
+                PriceListWriter.Reprice(_sferaService.GetSfera(), id, request));
+
+            if (!outcome.PriceListFound)
+                return NotFound(ApiResponse<object>.Error($"Price list {id} not found"));
+
+            if (outcome.Errors.Count > 0)
+                return BadRequest(ApiResponse<object>.Error("Price change not saved", outcome.Errors));
+
+            _logger.LogInformation("Repriced {Updated} of {Total} positions in price list {PriceListId} ({Kind} {Value})",
+                outcome.Changes.Count(c => c.Status == PriceListWriter.Updated), outcome.Changes.Count, id, request.Kind, request.Value);
+            return Ok(ApiResponse<List<PriceListRepriceChangeDto>>.Ok(outcome.Changes, "Price change saved"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error repricing price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error saving the price change"));
         }
     }
 
