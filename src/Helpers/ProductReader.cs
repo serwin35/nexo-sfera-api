@@ -135,7 +135,8 @@ public static class ProductReader
     /// <summary>Suppliers of the product (<c>AsortymentExtensions.Dostawcy</c>), primary first.</summary>
     public static List<ProductSupplierDto> Suppliers(Asortyment asortyment)
     {
-        var primary = SdkMember.Read(() => asortyment.DostawcaPodstawowy(), null);
+        var primary = SdkMember.Read(() => asortyment.DostawcaPodstawowy() ?? asortyment.DaneAsortymentuDostawcyPodstawowego, null);
+        var primaryId = primary == null ? (int?)null : SdkMember.Read<int?>(() => primary.Id, null);
         return SdkMember.Read(() => asortyment.Dostawcy()
             .Where(d => d.Podmiot != null)
             .Select(d => new ProductSupplierDto
@@ -143,7 +144,7 @@ public static class ProductReader
                 ContractorId = d.Podmiot.Id,
                 ContractorSymbol = SdkMember.Text(() => d.Podmiot.Sygnatura == null ? null : d.Podmiot.Sygnatura.PelnaSygnatura),
                 ContractorName = SdkMember.Text(() => d.Podmiot.NazwaSkrocona),
-                IsPrimary = primary != null && ReferenceEquals(d, primary),
+                IsPrimary = primaryId.HasValue && d.Id == primaryId.Value,
                 SupplierProductSymbol = string.IsNullOrWhiteSpace(d.Symbol) ? null : d.Symbol,
                 DeclaredPrice = d.CenaDeklarowana,
                 DeclaredPriceIsGross = d.CenaBrutto,

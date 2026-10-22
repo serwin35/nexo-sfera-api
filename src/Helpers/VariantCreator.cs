@@ -91,13 +91,11 @@ public static class VariantCreator
         }
 
         var properties = model.WlasciwosciModelu.Where(w => w.Wlasciwosc != null).OrderBy(w => w.LP).ToList();
-        var siblings = model.Asortymenty.Where(a => !a.IsInRecycleBin).ToList();
+        var siblings = model.Asortymenty.Where(a => ProductReader.IsActive(a)).ToList();
         var existing = new Dictionary<string, Asortyment>(StringComparer.Ordinal);
         foreach (var sibling in siblings)
         {
-            existing.TryAdd(Key(sibling.WlasciwosciAsortymentu
-                .Where(w => w.Wlasciwosc != null)
-                .Select(w => (w.Wlasciwosc.Nazwa, string.Join(", ", w.CechyAsortymentu.Select(c => c.Nazwa))))), sibling);
+            existing.TryAdd(Key(ProductReader.VariantProperties(sibling).Select(v => (v.Property, v.Value ?? string.Empty))), sibling);
         }
 
         outcome.Result = new CreateVariantsResultDto

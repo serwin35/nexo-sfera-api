@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-22) - kind change refused up front, primary supplier flag, variant errors
+- `PUT /api/products/{id}` with `type` now returns 400 before touching Nexo. Nexo refuses to change the kind of an
+  existing card ("Nie można zmieniać rodzaju asortymentu w kartotece"; seen on `PMTPROD01391_CY13`), so the write from
+  #53 could never succeed. The message says how to recreate the card.
+- `suppliers[].isPrimary` compares the primary supplier by id (`DostawcaPodstawowy()`, then
+  `DaneAsortymentuDostawcyPodstawowego`). The reference comparison reported PROMOEFEKT on `PMTPROD01391_0113` as not
+  primary.
+- A 500 from the variant property endpoints now carries the exception and its root cause, as the other controllers do.
+  The first dry run of `POST /api/products/{id}/variants` returned a bare "Error creating the variants".
+
 ### Added (2026-10-22) - new model variants through POST /api/products/{id}/variants
 - `{id}` is an existing variant of the model. Each new variant is filled from it (`IAsortyment.WypelnijNaPodstawie`:
   kind, group, units, VAT, suppliers, model) and gets:
