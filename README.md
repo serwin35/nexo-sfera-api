@@ -259,7 +259,7 @@ Pełny, zawsze aktualny katalog **354 endpointów** znajdziesz w **Swagger UI** 
 | **Majątek** | `fixed-assets` (środki trwałe), `fleet` (pojazdy) |
 | **CRM i serwis** | `activities` (działania CRM), `service-orders` (zlecenia serwisowe), `comments`, `calendars`, `attachments` |
 | **E-commerce i logistyka** | `ecommerce` (integracje, oferty internetowe, paczki), `couriers` |
-| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje, poziomy cen, cenniki — pozycje cennika po id: `price-lists/by-id/{id}/items`), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
+| **Słowniki i konfiguracja** | `dictionary` (VAT, jm, waluty, kursy, formy płatności, kraje, poziomy cen, cenniki — pozycje cennika po id: `price-lists/by-id/{id}/items`, zapis cen z warunkiem `expectedPrice*`, przecena `price-lists/by-id/{id}/reprice`), `configurations`, `system-parameters`, `settings`, `organization`, `permissions`, `devices`, `print` |
 | **System** | `health`, `system` (firma, operator, licencja), `audit-trail`, `reports`, `office-clients`, `diagnostics` (tylko do debugowania) |
 
 ## 🐘 Integracja z Laravel
@@ -310,7 +310,7 @@ curl -X POST http://localhost:5000/api/customers \
     "symbol": "KLIENT001",
     "shortName": "Firma ABC",
     "fullName": "Firma ABC Sp. z o.o.",
-    "nip": "1234567890",
+    "nip": "1111111111",
     "email": "kontakt@firmaabc.pl",
     "phone": "123456789",
     "type": 0,
@@ -322,6 +322,14 @@ curl -X POST http://localhost:5000/api/customers \
     }
   }'
 ```
+
+- Osoba: `"type": 1` z `firstName` i `lastName` (bez `fullName` i `regon`).
+- Bez `symbol`: nexo nada kolejny symbol automatyczny.
+- `groupIds`: grupy kontrahentów z `GET /api/contractor-groups`.
+- `201`: utworzona kartoteka.
+- `400`: błędne pola albo odmowa zapisu w nexo, po jednym komunikacie na problem; nic nie jest zapisywane.
+- `409`: symbol lub NIP ma już inny kontrahent; nic nie jest zapisywane, a `data` to ten kontrahent.
+- Pola, których endpoint nie zapisuje (rachunek bankowy, terminy płatności, limity kredytu, SUN, …), dają `400`, gdy są ustawione.
 
 ### Utworzenie faktury sprzedaży
 
@@ -416,6 +424,10 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
   (`StanRealizacjiZamowienia`, `IloscDoRealizacji`, `Rezerwacja`) + wartości w jednostce bazowej.
 - `GET /api/documents?modifiedSince=2026-10-09T00:00:00%2B02:00&sortBy=modified_asc`: tylko dokumenty zmienione (nagłówek
   lub rozrachunek) od podanego czasu; lista ma `isCanceled`, `createdAt`, `modifiedAt`, `settlementModifiedAt`.
+- `GET /api/products?modifiedSince=2026-10-22T00:00:00%2B02:00&sortBy=modified_asc`: tylko towary ze zmienioną kartoteką
+  (`Naglowek.Zmieniono`) od podanego czasu. Ceny w cennikach, stany i przeniesienie do kosza nie zmieniają kartoteki, więc
+  okresowy pełny przelot listy zostaje. Lista i szczegóły mają `type` (z rodzaju nexo; filtr `type` działa), `kindName`,
+  `isVariant`, `modelId` (id karty modelu `Asortyment.Model`), `createdAt`, `modifiedAt`.
 - `POST /api/payments/*` z niepustym `documentIdsToSettle` → `400` (rozliczanie nie jest obsługiwane).
 - Cache danych SDK między żądaniami tylko przez `ISferaService.GetTenantState` (per baza + operator + magazyn + oddział).
 
@@ -437,6 +449,18 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
 
 Lista rozrachunków: `GET /api/payments/receivables?type=Receivable&status=Unsettled&overdue=true`,
 per dokument: `GET /api/payments/receivables/by-document/{documentId}`.
+
+Stan rozliczenia wielu dokumentów jednym zapytaniem SQL (windykacja, wiekowanie, KPI):
+`GET /api/documents/settlements?symbols=FS,KFS&type=Receivable&overdue=true&sortBy=due_date&pageSize=500`.
+
+- Filtry: `symbols`, `ids` (do 200), `customerId`, `type`, `status` (jak w `receivables`), `open`, `overdue`,
+  `dateFrom`/`dateTo` (wystawienie), `dueDateFrom`/`dueDateTo` (termin rozrachunku), `modifiedSince`, `isCanceled`,
+  `includeWithoutSettlement`.
+- Sortowanie: `sortBy` = `id` | `due_date` | `issue_date` | `issue_date_desc`. `pageSize` do 1000.
+- Pozycja zawiera dokument (numer, kontrahent, brutto, `amountToPay`) i jego rozrachunek: `amount`, `remainingAmount`,
+  `paidAmount`, `unsettledAmount`, `currency`, `dueDate`, `nextDueDate`, `overdueAmount`, `daysOverdue`,
+  `installmentCount`, `isSettled`, `isOverdue`, `settlementModifiedAt`.
+- Przeterminowanie liczy się per rata harmonogramu (`Rozrachunek.Pozycje`) względem daty hosta mostu.
 
 ### Odbiór faktur z KSeF (bufor) i import do Subiekta
 

@@ -122,15 +122,7 @@ public class ProductTemplatesController : ControllerBase
                 var szablony = _sferaService.GetManager("SzablonyAsortymentu");
                 if (szablony == null) return (found: false, managerNull: true, dto: (ProductTemplateDto?)null);
 
-                dynamic? szablon = null;
-                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-                {
-                    if (DynamicPropertyHelper.GetId(s) == id)
-                    {
-                        szablon = s;
-                        break;
-                    }
-                }
+                dynamic? szablon = DynamicPropertyHelper.FindById(szablony, id);
 
                 if (szablon == null) return (found: false, managerNull: false, dto: (ProductTemplateDto?)null);
 
@@ -379,15 +371,7 @@ public class ProductTemplatesController : ControllerBase
                 var szablony = _sferaService.GetManager("SzablonyAsortymentu");
                 if (szablony == null) return (status: "managerNull", dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
 
-                dynamic? szablonDane = null;
-                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-                {
-                    if (DynamicPropertyHelper.GetId(s) == id)
-                    {
-                        szablonDane = s;
-                        break;
-                    }
-                }
+                dynamic? szablonDane = DynamicPropertyHelper.FindById(szablony, id);
 
                 if (szablonDane == null) return (status: "notFound", dto: (ProductTemplateDto?)null, errors: (List<string>?)null);
 
@@ -517,15 +501,7 @@ public class ProductTemplatesController : ControllerBase
                 var szablony = _sferaService.GetManager("SzablonyAsortymentu");
                 if (szablony == null) return (status: "managerNull", errors: (List<string>?)null);
 
-                dynamic? szablonDane = null;
-                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-                {
-                    if (DynamicPropertyHelper.GetId(s) == id)
-                    {
-                        szablonDane = s;
-                        break;
-                    }
-                }
+                dynamic? szablonDane = DynamicPropertyHelper.FindById(szablony, id);
 
                 if (szablonDane == null) return (status: "notFound", errors: (List<string>?)null);
 
@@ -577,15 +553,7 @@ public class ProductTemplatesController : ControllerBase
                 var szablony = _sferaService.GetManager("SzablonyAsortymentu");
                 if (szablony == null) return (status: "szablonyNull", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
 
-                dynamic? szablonDane = null;
-                foreach (var s in DynamicPropertyHelper.SafeGetAll((object)szablony))
-                {
-                    if (DynamicPropertyHelper.GetId(s) == id)
-                    {
-                        szablonDane = s;
-                        break;
-                    }
-                }
+                dynamic? szablonDane = DynamicPropertyHelper.FindById(szablony, id);
 
                 if (szablonDane == null) return (status: "templateNotFound", productId: 0, dto: (ProductDto?)null, errors: (List<string>?)null);
 
@@ -826,6 +794,14 @@ public class ProductTemplatesController : ControllerBase
 
     private static List<string> GetBusinessObjectErrors(dynamic obiekt)
     {
+        // Typed first: the entity errors are explicit interface members (ITypedDataErrorInfo), which the late-bound read
+        // below cannot see, so it returned no errors for a refused save.
+        if ((object?)obiekt is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy businessObject)
+        {
+            var typed = SdkErrors.Of(businessObject);
+            if (typed.Count > 0) return typed;
+        }
+
         var errors = new List<string>();
         try
         {

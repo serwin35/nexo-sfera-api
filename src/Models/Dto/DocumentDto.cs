@@ -342,6 +342,57 @@ public class DocumentSettlementDto
 }
 
 /// <summary>
+/// Item of <c>GET /api/documents/settlements</c>: a document and the state of its settlement (Dokument.Rozrachunek,
+/// at most one per document). Settlement fields are null when <see cref="HasSettlement"/> is false.
+/// </summary>
+public class DocumentSettlementStateDto
+{
+    public int DocumentId { get; set; }
+    public string Symbol { get; set; } = string.Empty;
+    public string? Number { get; set; }
+    public string? ExternalNumber { get; set; }
+    public DateTime? IssueDate { get; set; }
+    public int? CustomerId { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerNIP { get; set; }
+
+    /// <summary>Gross value of the document (Wartosc.BruttoPoRabacie) and the amount due at issue time (KwotaDoZaplaty).</summary>
+    public decimal TotalGross { get; set; }
+    public decimal AmountToPay { get; set; }
+    public string? DocumentCurrency { get; set; }
+    public bool? IsCanceled { get; set; }
+
+    public bool HasSettlement { get; set; }
+    public int? SettlementId { get; set; }
+    /// <summary>"Receivable" (należność) or "Payable" (zobowiązanie). SDK: Rozrachunek.Typ.</summary>
+    public string? Type { get; set; }
+    /// <summary>Settlement amount (Kwota), in <see cref="Currency"/>.</summary>
+    public decimal? Amount { get; set; }
+    /// <summary>Amount still to be paid, counting preliminary settlement sessions (KwotaPozostala).</summary>
+    public decimal? RemainingAmount { get; set; }
+    /// <summary>Amount not settled, without preliminary sessions (KwotaNierozliczona).</summary>
+    public decimal? UnsettledAmount { get; set; }
+    /// <summary>Amount - RemainingAmount.</summary>
+    public decimal? PaidAmount { get; set; }
+    public string? Currency { get; set; }
+    /// <summary>Due date of the settlement (Rozrachunek.TerminPlatnosci).</summary>
+    public DateTime? DueDate { get; set; }
+    /// <summary>Earliest due date among the open instalments (Rozrachunek.Pozycje), null when nothing remains.</summary>
+    public DateTime? NextDueDate { get; set; }
+    /// <summary>Remaining amount of the instalments that are past their due date.</summary>
+    public decimal? OverdueAmount { get; set; }
+    /// <summary>Days since the earliest open instalment became due (0 when nothing is overdue).</summary>
+    public int? DaysOverdue { get; set; }
+    /// <summary>Number of instalments of the settlement (payment schedule positions).</summary>
+    public int? InstallmentCount { get; set; }
+    public DateTime? LastSettlementDate { get; set; }
+    public bool? IsSettled { get; set; }
+    public bool? IsOverdue { get; set; }
+    /// <summary>Rozrachunek.Naglowek.Zmieniono: last change of the settlement, e.g. a payment.</summary>
+    public DateTimeOffset? SettlementModifiedAt { get; set; }
+}
+
+/// <summary>
 /// Payment declared on a document. SDK: PlatnoscDokumentu (Dokument.PlatnosciDokumentow).
 /// </summary>
 public class DocumentPaymentDto

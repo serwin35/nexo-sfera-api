@@ -5,16 +5,31 @@ namespace NexoSferaApi.Models.Requests;
 
 public class CreateCustomerRequest
 {
-    [Required]
+    /// <summary>
+    /// Contractor symbol (<c>Podmiot.Sygnatura</c>), unique. Empty: Nexo assigns the next automatic symbol (<c>AutoSymbol()</c>).
+    /// </summary>
     [MaxLength(20)]
-    public string Symbol { get; set; } = string.Empty;
+    public string? Symbol { get; set; }
 
+    /// <summary>Short name (<c>Podmiot.NazwaSkrocona</c>, 1-128 characters).</summary>
     [Required]
     [MaxLength(200)]
     public string ShortName { get; set; } = string.Empty;
 
-    [MaxLength(500)]
+    /// <summary>Full company name (<c>Firma.Nazwa</c>, up to 512 characters); defaults to the short name. Companies only.</summary>
+    [MaxLength(512)]
     public string? FullName { get; set; }
+
+    /// <summary>First name (<c>Osoba.Imie</c>, 1-32 characters). Required for a person, not allowed for a company.</summary>
+    [MaxLength(32)]
+    public string? FirstName { get; set; }
+
+    /// <summary>Last name (<c>Osoba.Nazwisko</c>, 1-64 characters). Required for a person, not allowed for a company.</summary>
+    [MaxLength(64)]
+    public string? LastName { get; set; }
+
+    /// <summary>Contractor groups the new contractor joins (ids from <c>GET /api/contractor-groups</c>).</summary>
+    public List<int>? GroupIds { get; set; }
 
     [MaxLength(13)]
     public string? NIP { get; set; }

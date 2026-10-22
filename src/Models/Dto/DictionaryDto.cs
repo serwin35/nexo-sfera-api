@@ -341,6 +341,16 @@ public class PriceListPositionDto
     public int? ManufacturerId { get; set; }
 }
 
+/// <summary>One position changed by <c>POST /api/dictionary/price-lists/by-id/{id}/reprice</c>.</summary>
+public class PriceListRepriceChangeDto : PriceListPriceChangeDto
+{
+    /// <summary><c>true</c> for the main position, <c>false</c> for a quantity tier.</summary>
+    public bool IsMain { get; set; }
+
+    /// <summary>Minimum quantity of a quantity tier (0 for the main position).</summary>
+    public decimal MinQuantity { get; set; }
+}
+
 /// <summary>
 /// Price change of one main price list position, returned by <c>PUT /api/dictionary/price-lists/by-id/{id}/items</c>.
 /// </summary>
@@ -361,6 +371,9 @@ public class PriceListPriceChangeDto
 
     /// <summary>Calculation parameter after the save (markup / margin / profit recalculated by Nexo).</summary>
     public decimal CalculationParameter { get; set; }
+
+    /// <summary><c>true</c> when this request switched off <c>WyliczCeneKompletuZeSkladnikow</c> for the kit position.</summary>
+    public bool KitComponentPricingDisabled { get; set; }
 }
 
 /// <summary>
