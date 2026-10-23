@@ -411,6 +411,19 @@ public class PriceListCostChangeDto
 
     /// <summary><c>true</c> when the request locked the sales price of the position.</summary>
     public bool PriceLocked { get; set; }
+
+    /// <summary>With <c>recordPriceFromComponents</c>: the kit's registry price before and after (the sum of its components).</summary>
+    public decimal? OldRecordPrice { get; set; }
+    public decimal? RecordPrice { get; set; }
+
+    /// <summary>
+    /// With <c>recordPriceFromComponents</c>: the margin the new registry price gives at the current net price, as a fraction
+    /// (0.35 = 35%). In a dry run the registry price is not saved, so this is the projection, not Nexo's margin.
+    /// </summary>
+    public decimal? ProjectedMargin { get; set; }
+
+    /// <summary>Why a kit was <c>skipped</c> (status) and left out of the refresh.</summary>
+    public string? Reason { get; set; }
 }
 
 /// <summary>

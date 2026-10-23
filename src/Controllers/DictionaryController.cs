@@ -1046,9 +1046,19 @@ public class DictionaryController : ControllerBase
     /// <c>ICennik.Zapisz()</c>.
     ///
     /// Example: <c>{"productIds": [106974, 106975], "lockPrices": true, "dryRun": true}</c>
+    ///
+    /// Kit cost from components: with <c>recordPriceFromComponents</c> each kit's registry price
+    /// (<c>CenaEwidencyjna</c>) is first set to the sum of quantity x registry price of its components. A kit's base price
+    /// is its own registry price, so with <c>mode</c> <c>calculation</c> the cost and margin then follow the components.
+    /// <c>componentProductIds</c> adds every kit that contains one of those components, e.g. after a purchase price change
+    /// of a blank garment. A kit with a component counted in another unit than its base unit, or without a registry price,
+    /// is refused, or left out as <c>skipped</c> with <c>skipIncompleteKits</c>. Positions are checked before any card is
+    /// saved; in a dry run no card is saved and <c>projectedMargin</c> shows the margin the new registry price gives.
+    ///
+    /// Example: <c>{"componentProductIds": [100523], "recordPriceFromComponents": true, "skipIncompleteKits": true, "mode": "calculation", "dryRun": true}</c>
     /// </remarks>
     /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
-    /// <param name="request">Products, price lock and dry run</param>
+    /// <param name="request">Products or components, kit registry prices, price lock and dry run</param>
     [HttpPost("price-lists/by-id/{id:int}/items/recalculate-costs")]
     [ProducesResponseType(typeof(ApiResponse<List<PriceListCostChangeDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
