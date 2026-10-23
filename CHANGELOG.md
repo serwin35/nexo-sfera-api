@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-23) - kit cost from components in POST .../items/recalculate-costs
+- `recordPriceFromComponents` sets each kit's registry price (`Asortyment.CenaEwidencyjna`) to the sum of quantity x
+  registry price of its components (rounded to 2), before the price list refresh. A kit's base price is its registry
+  price, so with `mode: calculation` the cost and margin follow the components. This replaces the client-side scripts.
+- `componentProductIds` adds every kit that contains one of the given components (one SQL query). Example: all
+  embroidered T-shirts after the blank T-shirt got a new purchase price.
+- A kit is refused, or reported as `skipped` with `skipIncompleteKits`, when:
+  - a component is counted in a unit other than its base unit;
+  - a component has no registry price.
+  
+  In both cases the sum would understate the cost and give a false margin.
+- Order: price list positions are checked first, then the kit cards are saved, and then the price list is opened again
+  and refreshed, so it reads the new base prices. A refused card stops the request; the cards saved before it are named.
+- Each change reports `oldRecordPrice`, `recordPrice` and `projectedMargin`, which is the margin at the current net
+  price. In a dry run no card is saved.
+- Why: the Codex catalogue report of 22.10 found 105 kits with cost 0, 79 with cost at or above the net price and 50
+  with a margin below 20%. A component price change must move every affected kit's cost without a script.
+
 ### Fixed (2026-10-22) - variant number is LpWariantu
 - The variant creator and mover set `Asortyment.Numer`. That is not the variant number: it is empty on every variant,
   and Nexo cleared it on save. The variant number is `LpWariantu`, which Nexo assigns itself when a card is created in

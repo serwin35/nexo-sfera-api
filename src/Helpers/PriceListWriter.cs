@@ -29,6 +29,7 @@ public static class PriceListWriter
 {
     public const string Updated = "updated";
     public const string Unchanged = "unchanged";
+    public const string Skipped = "skipped";
 
     /// <summary>Maximum number of items in one request.</summary>
     public const int MaxItems = PriceListReader.MaxProductIds;
@@ -395,16 +396,22 @@ public static class PriceListWriter
     public static List<string> ValidateRecalculateCosts(RecalculatePriceListCostsRequest? request)
     {
         var errors = new List<string>();
-        var productIds = request?.ProductIds;
-        if (productIds == null || productIds.Count == 0)
+        var productIds = request?.ProductIds ?? new List<int>();
+        var componentIds = request?.ComponentProductIds ?? new List<int>();
+        if (productIds.Count == 0 && componentIds.Count == 0)
         {
-            errors.Add("productIds: at least one product id is required.");
+            errors.Add("productIds: at least one product id (or a componentProductIds entry) is required.");
             return errors;
         }
 
         if (productIds.Count > MaxItems) errors.Add($"productIds: at most {MaxItems} ids per request, got {productIds.Count}.");
         if (productIds.Any(id => id <= 0)) errors.Add("productIds: every id must be a positive Nexo product id.");
         if (productIds.Distinct().Count() != productIds.Count) errors.Add("productIds: every product must be listed once.");
+        if (componentIds.Count > MaxItems) errors.Add($"componentProductIds: at most {MaxItems} ids per request, got {componentIds.Count}.");
+        if (componentIds.Any(id => id <= 0)) errors.Add("componentProductIds: every id must be a positive Nexo product id.");
+        if (componentIds.Distinct().Count() != componentIds.Count) errors.Add("componentProductIds: every product must be listed once.");
+        if (request?.SkipIncompleteKits == true && request.RecordPriceFromComponents != true)
+            errors.Add("skipIncompleteKits: only applies together with recordPriceFromComponents.");
         if (request?.Mode is { } mode && !CostModes.Contains(mode.Trim(), StringComparer.OrdinalIgnoreCase))
         {
             errors.Add($"mode: must be one of {string.Join(", ", CostModes)}.");
@@ -451,38 +458,60 @@ public static class PriceListWriter
             return outcome;
         }
 
-        var products = PriceListReader.LoadProducts(sfera, request.ProductIds);
+        var productIds = ResolveCostProductIds(sfera, request, outcome.Errors);
+        if (outcome.Errors.Count > 0) return outcome;
 
-        using ICennik cennikBo = sfera.Cenniki().Znajdz(cennik);
-        var targets = new List<IUproszczonaPozycjaCennika>();
-
-        foreach (var productId in request.ProductIds)
+        Dictionary<int, KitRecordPrice>? recordPrices = null;
+        var skipped = new List<PriceListCostChangeDto>();
+        if (request.RecordPriceFromComponents)
         {
-            if (!products.TryGetValue(productId, out var asortyment))
+            recordPrices = KitRecordPrices(sfera, productIds);
+            foreach (var kit in recordPrices.Values.Where(k => k.Reason != null))
             {
-                outcome.Errors.Add($"product {productId}: not found.");
-                continue;
+                if (!request.SkipIncompleteKits)
+                {
+                    outcome.Errors.Add($"product {kit.ProductId} ({kit.Symbol}): {kit.Reason}; send skipIncompleteKits to leave it out.");
+                    continue;
+                }
+
+                skipped.Add(new PriceListCostChangeDto
+                {
+                    ProductId = kit.ProductId,
+                    ProductSymbol = kit.Symbol,
+                    Status = Skipped,
+                    OldRecordPrice = kit.OldRecordPrice,
+                    Reason = kit.Reason,
+                });
+                productIds.Remove(kit.ProductId);
             }
 
-            var main = (cennikBo.Pozycje.ZnajdzPozycjeCennika(asortyment) ?? Enumerable.Empty<IUproszczonaPozycjaCennika>())
-                .Where(p => p.Glowna)
-                .ToList();
-            if (main.Count != 1)
+            if (outcome.Errors.Count > 0) return outcome;
+            if (productIds.Count == 0)
             {
-                outcome.Errors.Add($"product {productId}: expected one main position in price list {priceListId}, found {main.Count}.");
-                continue;
+                outcome.Changes.AddRange(skipped);
+                return outcome;
             }
-
-            if (main[0].WyliczCeneKompletuZeSkladnikow)
-            {
-                // The sales price follows the components there, so a fixed price with a margin does not apply.
-                outcome.Errors.Add($"product {productId}: the price is calculated from kit components " +
-                                   "(WyliczCeneKompletuZeSkladnikow); set a fixed price first (disableKitComponentPricing).");
-                continue;
-            }
-
-            targets.Add(main[0]);
         }
+
+        var products = PriceListReader.LoadProducts(sfera, productIds);
+
+        // Every position is checked before a kit card is saved, so a refused request changes nothing.
+        using (ICennik check = sfera.Cenniki().Znajdz(cennik))
+        {
+            ResolveCostTargets(check, products, productIds, priceListId, outcome.Errors);
+        }
+
+        if (outcome.Errors.Count > 0) return outcome;
+
+        if (recordPrices != null && !request.DryRun)
+        {
+            SaveKitRecordPrices(sfera, recordPrices.Values.Where(k => k.Reason == null && productIds.Contains(k.ProductId)).ToList(), outcome.Errors);
+            if (outcome.Errors.Count > 0) return outcome;
+        }
+
+        // Opened after the kit cards are saved: a kit's base price is read from its registry price.
+        using ICennik cennikBo = sfera.Cenniki().Znajdz(cennik);
+        var targets = ResolveCostTargets(cennikBo, products, productIds, priceListId, outcome.Errors);
 
         if (outcome.Errors.Count > 0) return outcome;
 
@@ -565,10 +594,159 @@ public static class PriceListWriter
             change.Status = change.CalculationPrice == change.OldCalculationPrice && change.BasePrice == change.OldBasePrice
                 ? Unchanged
                 : Updated;
+            if (recordPrices != null && recordPrices.TryGetValue(change.ProductId, out var kit) && kit.RecordPrice.HasValue)
+            {
+                change.OldRecordPrice = kit.OldRecordPrice;
+                change.RecordPrice = kit.RecordPrice;
+                change.ProjectedMargin = change.PriceNet > 0
+                    ? Math.Round((change.PriceNet - kit.RecordPrice.Value) / change.PriceNet, 4, MidpointRounding.AwayFromZero)
+                    : null;
+                if (kit.RecordPrice != kit.OldRecordPrice) change.Status = Updated;
+            }
+
             outcome.Changes.Add(change);
         }
 
+        outcome.Changes.AddRange(skipped);
         return outcome;
+    }
+
+    /// <summary>A kit's registry price computed from its components, or the reason it cannot be.</summary>
+    private sealed record KitRecordPrice(int ProductId, string? Symbol, decimal OldRecordPrice, decimal? RecordPrice, string? Reason);
+
+    /// <summary>
+    /// <c>ProductIds</c> plus every kit containing one of <c>ComponentProductIds</c> (one SQL query), in request order.
+    /// More than <see cref="MaxItems"/> products, or components no kit contains, is an error.
+    /// </summary>
+    private static List<int> ResolveCostProductIds(Uchwyt sfera, RecalculatePriceListCostsRequest request, List<string> errors)
+    {
+        var ids = new List<int>(request.ProductIds ?? new List<int>());
+        var componentIds = request.ComponentProductIds ?? new List<int>();
+        if (componentIds.Count > 0)
+        {
+            var kits = sfera.Asortymenty().Dane.Wszystkie()
+                .Where(a => a.SkladnikiKompletu.Any(s => componentIds.Contains(s.Skladnik.Id)))
+                .Select(a => a.Id)
+                .OrderBy(id => id)
+                .ToList();
+            if (kits.Count == 0) errors.Add("componentProductIds: no kit contains these components.");
+            ids.AddRange(kits.Where(id => !ids.Contains(id)));
+        }
+
+        if (ids.Count > MaxItems)
+            errors.Add($"products: {ids.Count} to refresh (productIds and the kits of componentProductIds), at most {MaxItems} per request.");
+        return ids;
+    }
+
+    /// <summary>
+    /// The registry price of each kit among <paramref name="productIds"/>: the sum of quantity x registry price of its
+    /// components, rounded to 2 decimals (SQL projection, no lazy loading). Products without components are not listed.
+    /// A component counted in another unit than its base unit, or without a registry price, makes the kit incomplete.
+    /// </summary>
+    private static Dictionary<int, KitRecordPrice> KitRecordPrices(Uchwyt sfera, List<int> productIds)
+    {
+        var rows = sfera.Asortymenty().Dane.Wszystkie()
+            .Where(a => productIds.Contains(a.Id) && a.SkladnikiKompletu.Any())
+            .Select(a => new
+            {
+                a.Id,
+                a.Symbol,
+                a.CenaEwidencyjna,
+                Components = a.SkladnikiKompletu.Select(s => new
+                {
+                    s.Ilosc,
+                    Symbol = s.Skladnik.Symbol,
+                    RecordPrice = s.Skladnik.CenaEwidencyjna,
+                    UnitId = s.JednostkaMiaryAsortymentu == null ? (int?)null : s.JednostkaMiaryAsortymentu.Id,
+                    BaseUnitId = s.Skladnik.PodstawowaJednostkaMiaryAsortymentu == null ? (int?)null : s.Skladnik.PodstawowaJednostkaMiaryAsortymentu.Id,
+                }),
+            })
+            .ToList();
+
+        var result = new Dictionary<int, KitRecordPrice>();
+        foreach (var row in rows)
+        {
+            var components = row.Components.ToList();
+            var otherUnit = components.FirstOrDefault(c => c.UnitId != null && c.BaseUnitId != null && c.UnitId != c.BaseUnitId);
+            var unpriced = components.FirstOrDefault(c => c.RecordPrice <= 0m);
+            string? reason = otherUnit != null
+                ? $"component {otherUnit.Symbol} is counted in a unit other than its base unit, so its cost is not computed here"
+                : unpriced != null
+                    ? $"component {unpriced.Symbol} has no registry price, so the sum would understate the cost"
+                    : null;
+            var recordPrice = reason == null
+                ? Math.Round(components.Sum(c => c.Ilosc * c.RecordPrice), 2, MidpointRounding.AwayFromZero)
+                : (decimal?)null;
+            result[row.Id] = new KitRecordPrice(row.Id, row.Symbol, row.CenaEwidencyjna, recordPrice, reason);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Saves the computed registry price on each kit card that changes (<c>IAsortyment</c>, one save per card). Stops at
+    /// the first card Nexo refuses; the cards saved before it are named in the error.
+    /// </summary>
+    private static void SaveKitRecordPrices(Uchwyt sfera, List<KitRecordPrice> kits, List<string> errors)
+    {
+        var asortymenty = sfera.Asortymenty();
+        var saved = new List<string>();
+        foreach (var kit in kits.Where(k => k.RecordPrice.HasValue && k.RecordPrice != k.OldRecordPrice))
+        {
+            var entity = asortymenty.Dane.Wszystkie().First(a => a.Id == kit.ProductId);
+            using var product = asortymenty.Znajdz(entity);
+            product.Dane.CenaEwidencyjna = kit.RecordPrice!.Value;
+            if (product.Zapisz())
+            {
+                saved.Add(kit.Symbol ?? kit.ProductId.ToString());
+                continue;
+            }
+
+            var sdkErrors = SdkErrors.Of(product);
+            errors.Add($"product {kit.ProductId} ({kit.Symbol}): Nexo refused the registry price {Format(kit.RecordPrice!.Value)} " +
+                       $"({(sdkErrors.Count > 0 ? string.Join("; ", sdkErrors) : "no details")}). The price list was not changed" +
+                       (saved.Count > 0 ? $"; registry prices already saved: {string.Join(", ", saved)}." : "."));
+            return;
+        }
+    }
+
+    /// <summary>
+    /// The main position of each product in the price list, or an error for a missing product, a product without exactly
+    /// one main position, or a position priced from its kit components.
+    /// </summary>
+    private static List<IUproszczonaPozycjaCennika> ResolveCostTargets(
+        ICennik cennikBo, Dictionary<int, Asortyment> products, List<int> productIds, int priceListId, List<string> errors)
+    {
+        var targets = new List<IUproszczonaPozycjaCennika>();
+        foreach (var productId in productIds)
+        {
+            if (!products.TryGetValue(productId, out var asortyment))
+            {
+                errors.Add($"product {productId}: not found.");
+                continue;
+            }
+
+            var main = (cennikBo.Pozycje.ZnajdzPozycjeCennika(asortyment) ?? Enumerable.Empty<IUproszczonaPozycjaCennika>())
+                .Where(p => p.Glowna)
+                .ToList();
+            if (main.Count != 1)
+            {
+                errors.Add($"product {productId}: expected one main position in price list {priceListId}, found {main.Count}.");
+                continue;
+            }
+
+            if (main[0].WyliczCeneKompletuZeSkladnikow)
+            {
+                // The sales price follows the components there, so a fixed price with a margin does not apply.
+                errors.Add($"product {productId}: the price is calculated from kit components " +
+                           "(WyliczCeneKompletuZeSkladnikow); set a fixed price first (disableKitComponentPricing).");
+                continue;
+            }
+
+            targets.Add(main[0]);
+        }
+
+        return targets;
     }
 
     /// <summary>A conflict message when an expected price differs from the current price, otherwise <c>null</c>.</summary>
