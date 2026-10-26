@@ -1,3 +1,7 @@
+Warning: truncated output (original token count: 37195)
+Total output lines: 3290
+
+Paperclip: GitHub capability_missing; continuing without managed credentials.
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NexoSferaApi.Filters;
@@ -45,10 +49,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error getting EF6 config diagnostics");
+            _logger.LogError("Error getting EF6 config diagnostics (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error getting EF6 diagnostics",
-                new List<string> { ex.Message }));
+                new List<string> { "Diagnostic operation failed." }));
         }
     }
 
@@ -222,7 +226,7 @@ public class DiagnosticsController : ControllerBase
                         }
                         catch (Exception ex)
                         {
-                            results["IdWInstancji_GetInt32Error"] = ex.Message;
+                            results["IdWInstancji_GetInt32Error"] = "Diagnostic operation failed.";
                         }
                     }
                     else
@@ -272,7 +276,7 @@ public class DiagnosticsController : ControllerBase
             }
             catch (Exception sysEx)
             {
-                results["SystemDataSqlClient_Error"] = sysEx.Message;
+                results["SystemDataSqlClient_Error"] = "Diagnostic operation failed.";
             }
 
             results["Diagnosis"] = "Compare Microsoft.Data.SqlClient vs System.Data.SqlClient results. " +
@@ -283,10 +287,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error investigating TransakcjaVAT schema");
+            _logger.LogError("Error investigating TransakcjaVAT schema (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error investigating TransakcjaVAT schema",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -488,10 +492,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking SDK v59 schema");
+            _logger.LogError("Error checking SDK v59 schema (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error checking SDK v59 schema",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -609,7 +613,7 @@ public class DiagnosticsController : ControllerBase
                             }
                             catch (Exception ex)
                             {
-                                ((Dictionary<string, object?>)rowData[reader.GetName(i)]!)["GetBooleanError"] = ex.Message;
+                                ((Dictionary<string, object?>)rowData[reader.GetName(i)]!)["GetBooleanError"] = "Diagnostic operation failed.";
                             }
                         }
                     }
@@ -628,10 +632,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error testing BIT type mapping");
+            _logger.LogError("Error testing BIT type mapping (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error testing BIT type mapping",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -670,8 +674,8 @@ public class DiagnosticsController : ControllerBase
             {
                 providerComparison["Microsoft.Data.SqlClient"] = new Dictionary<string, object?>
                 {
-                    ["Error"] = ex.Message,
-                    ["InnerError"] = ex.InnerException?.Message
+                    ["Error"] = "Diagnostic operation failed.",
+                    ["InnerError"] = "Diagnostic operation failed."
                 };
             }
 
@@ -700,8 +704,8 @@ public class DiagnosticsController : ControllerBase
             {
                 providerComparison["System.Data.SqlClient"] = new Dictionary<string, object?>
                 {
-                    ["Error"] = ex.Message,
-                    ["InnerError"] = ex.InnerException?.Message
+                    ["Error"] = "Diagnostic operation failed.",
+                    ["InnerError"] = "Diagnostic operation failed."
                 };
             }
 
@@ -748,10 +752,10 @@ public class DiagnosticsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error tracing TransakcjaVAT reader");
+            _logger.LogError("Error tracing TransakcjaVAT reader (exception type: {ExceptionType})", ex.GetType().Name);
             return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
                 "Error tracing TransakcjaVAT reader",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
+                new List<string> { "Diagnostic operation failed.", "Diagnostic operation failed." }));
         }
     }
 
@@ -881,1564 +885,7 @@ public class DiagnosticsController : ControllerBase
                     var value = reader.IsDBNull(i) ? null : reader.GetValue(i);
                     sampleValues[name] = new Dictionary<string, object?>
                     {
-                        ["Ordinal"] = i,
-                        ["IsNull"] = reader.IsDBNull(i),
-                        ["Value"] = value?.ToString(),
-                        ["ActualClrType"] = value?.GetType().FullName,
-                        ["IsByteArray"] = value is byte[]
-                    };
-                }
-            }
-            results["CriticalColumnValues"] = sampleValues;
-        }
-        else
-        {
-            results["CriticalColumnValues"] = "No data in TransakcjeVAT table";
-        }
-
-        return results;
-    }
-
-    /// <summary>
-    /// Examine the SDK's EF6 model metadata for TransakcjaVAT entity.
-    /// This shows what columns/properties EF6 expects and can help diagnose ordinal mismatches.
-    /// Uses reflection to examine the compiled EF6 model inside the SDK DLLs.
-    /// </summary>
-    [HttpGet("examine-ef6-model")]
-    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<Dictionary<string, object?>>> ExamineEf6Model()
-    {
-        var results = new Dictionary<string, object?>();
-
-        try
-        {
-            // Find TransakcjaVAT type in loaded assemblies
-            var transakcjaVatType = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a =>
-                {
-                    try { return a.GetTypes(); }
-                    catch { return Array.Empty<Type>(); }
-                })
-                .FirstOrDefault(t => t.Name == "TransakcjaVAT" && t.Namespace?.Contains("ModelDanych") == true);
-
-            if (transakcjaVatType == null)
-            {
-                results["Error"] = "TransakcjaVAT type not found in loaded assemblies";
-
-                // List assemblies that might contain it
-                var modelAssemblies = AppDomain.CurrentDomain.GetAssemblies()
-                    .Where(a => a.GetName().Name?.Contains("ModelDanych") == true)
-                    .Select(a => a.FullName)
-                    .ToList();
-                results["ModelDanychAssemblies"] = modelAssemblies;
-
-                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-            }
-
-            results["TypeFound"] = transakcjaVatType.FullName;
-            results["Assembly"] = transakcjaVatType.Assembly.FullName;
-
-            // Get all properties with their types
-            var properties = transakcjaVatType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Select((p, index) => new Dictionary<string, object?>
-                {
-                    ["Index"] = index,
-                    ["Name"] = p.Name,
-                    ["PropertyType"] = p.PropertyType.Name,
-                    ["FullType"] = p.PropertyType.FullName,
-                    ["CanRead"] = p.CanRead,
-                    ["CanWrite"] = p.CanWrite
-                })
-                .ToList();
-
-            results["Properties"] = properties;
-            results["PropertyCount"] = properties.Count;
-
-            // Find IdWInstancji and TimeStamp properties
-            var idWInstancji = properties.FirstOrDefault(p => p["Name"]?.ToString() == "IdWInstancji");
-            var timeStamp = properties.FirstOrDefault(p => p["Name"]?.ToString() == "TimeStamp");
-            var wystepowanie = properties.FirstOrDefault(p => p["Name"]?.ToString() == "WystepowanieFakturKsef");
-
-            results["IdWInstancji_Property"] = idWInstancji;
-            results["TimeStamp_Property"] = timeStamp;
-            results["WystepowanieFakturKsef_Property"] = wystepowanie;
-
-            // Check for EF6 metadata attributes
-            var customAttributes = transakcjaVatType.CustomAttributes
-                .Select(a => new Dictionary<string, object?>
-                {
-                    ["AttributeType"] = a.AttributeType.Name,
-                    ["FullType"] = a.AttributeType.FullName
-                })
-                .ToList();
-
-            results["CustomAttributes"] = customAttributes;
-
-            // Try to get EF6's ObjectContext or DbContext if available
-            try
-            {
-                var ef6CoreAssembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == "InsERT.Mox.EntityFramework.Core");
-
-                if (ef6CoreAssembly != null)
-                {
-                    results["EF6CoreAssembly"] = ef6CoreAssembly.FullName;
-
-                    // List types that might be DbContext or ObjectContext
-                    var contextTypes = ef6CoreAssembly.GetTypes()
-                        .Where(t => t.Name.Contains("Context") || t.Name.Contains("Model"))
-                        .Select(t => t.FullName)
-                        .Take(20)
-                        .ToList();
-                    results["ContextTypes"] = contextTypes;
-                }
-            }
-            catch (Exception ex)
-            {
-                results["EF6CoreError"] = ex.Message;
-            }
-
-            // Check if there's a ModelDanychContainer type (EF6 ObjectContext)
-            var containerType = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a =>
-                {
-                    try { return a.GetTypes(); }
-                    catch { return Array.Empty<Type>(); }
-                })
-                .FirstOrDefault(t => t.Name == "ModelDanychContainer");
-
-            if (containerType != null)
-            {
-                results["ModelDanychContainer"] = containerType.FullName;
-                results["ContainerAssembly"] = containerType.Assembly.GetName().Name;
-
-                // Get DbSet/ObjectSet properties to see entity sets
-                var entitySets = containerType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                    .Where(p => p.PropertyType.IsGenericType &&
-                               (p.PropertyType.Name.Contains("ObjectSet") ||
-                                p.PropertyType.Name.Contains("DbSet")))
-                    .Select(p => new Dictionary<string, object?>
-                    {
-                        ["Name"] = p.Name,
-                        ["PropertyType"] = p.PropertyType.Name,
-                        ["EntityType"] = p.PropertyType.GenericTypeArguments.FirstOrDefault()?.Name
-                    })
-                    .Take(30)
-                    .ToList();
-
-                results["EntitySets"] = entitySets;
-            }
-
-            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error examining EF6 model");
-            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
-                "Error examining EF6 model",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
-        }
-    }
-
-    /// <summary>
-    /// Analyze the TransakcjaVAT column order mismatch between database and SDK model.
-    /// This is the root cause of the "IdWInstancji could not be set to Byte[]" error.
-    /// Also provides SQL script to fix the column order if needed.
-    /// </summary>
-    [HttpGet("transakcja-vat-column-mismatch")]
-    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> AnalyzeTransakcjaVatColumnMismatch()
-    {
-        var results = new Dictionary<string, object?>();
-
-        try
-        {
-            // Get SDK model property order for critical columns
-            var transakcjaVatType = AppDomain.CurrentDomain.GetAssemblies()
-                .SelectMany(a =>
-                {
-                    try { return a.GetTypes(); }
-                    catch { return Array.Empty<Type>(); }
-                })
-                .FirstOrDefault(t => t.Name == "TransakcjaVAT" && t.Namespace?.Contains("ModelDanych") == true);
-
-            if (transakcjaVatType == null)
-            {
-                results["Error"] = "TransakcjaVAT type not found in loaded assemblies";
-                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-            }
-
-            // Get properties that are mapped to database columns (exclude navigation properties and computed)
-            var dbMappedProperties = transakcjaVatType.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                .Where(p => !p.PropertyType.IsGenericType ||
-                           p.PropertyType.GetGenericTypeDefinition() != typeof(ICollection<>))
-                .Where(p => p.Name != "EntityState" && p.Name != "EntityKey" && p.Name != "HasPersistentId" && p.Name != "IsInRecycleBin")
-                .Select((p, index) => new { Property = p, Index = index })
-                .ToList();
-
-            // Find critical columns in SDK model
-            var sdkWystepowanie = dbMappedProperties.FirstOrDefault(p => p.Property.Name == "WystepowanieFakturKsef");
-            var sdkIdWInstancji = dbMappedProperties.FirstOrDefault(p => p.Property.Name == "IdWInstancji");
-            var sdkTimeStamp = dbMappedProperties.FirstOrDefault(p => p.Property.Name == "TimeStamp");
-
-            results["SDK_Model_Order"] = new Dictionary<string, object?>
-            {
-                ["WystepowanieFakturKsef_Index"] = sdkWystepowanie?.Index,
-                ["IdWInstancji_Index"] = sdkIdWInstancji?.Index,
-                ["TimeStamp_Index"] = sdkTimeStamp?.Index,
-                ["Note"] = "Index is the property declaration order in the SDK DLL"
-            };
-
-            // Get database column order
-            var connectionString = _sferaService.GetConnectionString();
-            if (string.IsNullOrEmpty(connectionString))
-            {
-                results["Error"] = "Connection string not available";
-                return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-            }
-
-            await using var connection = new SqlConnection(connectionString);
-            await connection.OpenAsync();
-
-            const string query = @"
-                SELECT ORDINAL_POSITION - 1 as ZeroBasedOrdinal, COLUMN_NAME, DATA_TYPE
-                FROM INFORMATION_SCHEMA.COLUMNS
-                WHERE TABLE_SCHEMA = 'ModelDanychContainer' AND TABLE_NAME = 'TransakcjeVAT'
-                  AND COLUMN_NAME IN ('WystepowanieFakturKsef', 'IdWInstancji', 'TimeStamp')
-                ORDER BY ORDINAL_POSITION";
-
-            var dbColumns = new Dictionary<string, int>();
-            await using (var cmd = new SqlCommand(query, connection))
-            await using (var reader = await cmd.ExecuteReaderAsync())
-            {
-                while (await reader.ReadAsync())
-                {
-                    var ordinal = reader.GetInt32(0);
-                    var columnName = reader.GetString(1);
-                    dbColumns[columnName] = ordinal;
-                }
-            }
-
-            results["Database_Column_Order"] = new Dictionary<string, object?>
-            {
-                ["WystepowanieFakturKsef_Ordinal"] = dbColumns.GetValueOrDefault("WystepowanieFakturKsef", -1),
-                ["IdWInstancji_Ordinal"] = dbColumns.GetValueOrDefault("IdWInstancji", -1),
-                ["TimeStamp_Ordinal"] = dbColumns.GetValueOrDefault("TimeStamp", -1),
-                ["Note"] = "Ordinal is the 0-based column position in the database table"
-            };
-
-            // Analyze mismatch
-            var mismatchAnalysis = new List<string>();
-            var hasMismatch = false;
-
-            // The SDK property order shows: WystepowanieFakturKsef(27), IdWInstancji(28), TimeStamp(29)
-            // If database has: IdWInstancji(27), TimeStamp(28), WystepowanieFakturKsef(32)
-            // Then when EF6 reads ordinal 28 expecting IdWInstancji, it gets TimeStamp instead!
-
-            if (dbColumns.TryGetValue("WystepowanieFakturKsef", out var dbWyst) &&
-                dbColumns.TryGetValue("IdWInstancji", out var dbIdW) &&
-                dbColumns.TryGetValue("TimeStamp", out var dbTs))
-            {
-                // Check if WystepowanieFakturKsef comes BEFORE IdWInstancji and TimeStamp in database
-                if (dbWyst > dbIdW || dbWyst > dbTs)
-                {
-                    hasMismatch = true;
-                    mismatchAnalysis.Add($"CRITICAL MISMATCH: Database has WystepowanieFakturKsef at ordinal {dbWyst}, " +
-                        $"but SDK expects it BEFORE IdWInstancji({dbIdW}) and TimeStamp({dbTs})");
-                    mismatchAnalysis.Add($"When EF6 reads ordinal {dbIdW + 1} expecting IdWInstancji, it gets TimeStamp (Byte[]) instead!");
-                    mismatchAnalysis.Add("This causes: 'The IdWInstancji property on TransakcjaVAT could not be set to a Byte[] value'");
-                }
-
-                // Check if IdWInstancji comes before TimeStamp
-                if (dbIdW > dbTs)
-                {
-                    hasMismatch = true;
-                    mismatchAnalysis.Add($"Database has IdWInstancji({dbIdW}) AFTER TimeStamp({dbTs}) - possible ordinal confusion");
-                }
-            }
-
-            if (!hasMismatch)
-            {
-                mismatchAnalysis.Add("No obvious column order mismatch detected for critical columns");
-            }
-
-            results["Mismatch_Analysis"] = mismatchAnalysis;
-            results["Has_Critical_Mismatch"] = hasMismatch;
-
-            // Provide SQL fix suggestion
-            if (hasMismatch)
-            {
-                results["SOLUTION"] = new Dictionary<string, object?>
-                {
-                    ["Description"] = "The WystepowanieFakturKsef column was added at the end of the table during database migration, " +
-                        "but the SDK expects it in a different position. SQL Server does not support column reordering directly.",
-                    ["Option1"] = "Contact InsERT support about database schema compatibility with SDK v59",
-                    ["Option2"] = "Recreate the TransakcjeVAT table with correct column order (RISKY - requires data migration)",
-                    ["Option3_SQL_Workaround"] = @"
--- EXPERIMENTAL: Create a view with reordered columns that EF6 could use
--- This might work if SDK uses views instead of direct table access
--- DO NOT RUN WITHOUT BACKUP AND TESTING!
-
-/*
-CREATE VIEW [ModelDanychContainer].[TransakcjeVAT_FixedOrder] AS
-SELECT
-    [Id], [PanstwoKonsumpcji_Id], [Nazwa], [Dotyczy], [OstrzezenieBrakNIP],
-    [OstrzezenieBrakNIPUE], [MiesiacNaliczenia], [TworzZapisPowiazany], [Symbol],
-    [PowiazanyTypNIP], [CzyZmodyfikowano], [RodzajZakupu], [RodzajOdliczeniaZakupu],
-    [Aktywna], [CelZakupu], [PokazOknoZapisuPodczasAktualizacji],
-    [DataWystawieniaZapisuSkojarzonego], [DataSprzedazyOtrzymaniaZapisuSkojarzonego],
-    [DataZakonczeniaDostawyZapisuSkojarzonego], [RodzajDatyMiesiacaNaliczenia],
-    [GrupyTowarowIUslugJPK], [ProceduryJPK], [TypDokumentuJPK], [DotyczyEwidencjiVATOSS],
-    [DomyslnieWidocznePolskieStawkiVAT], [StatusKsiegowyZapisuSkojarzonego],
-    [OstrzezenieBrakSME],
-    -- Reordered: WystepowanieFakturKsef moved BEFORE IdWInstancji and TimeStamp
-    [WystepowanieFakturKsef],
-    [IdWInstancji],
-    [TimeStamp],
-    [TransakcjaPowiazana_Id], [RejestrTransakcjiPowiazanej_Id], [Instancja_Id]
-FROM [ModelDanychContainer].[TransakcjeVAT]
-*/
-"
-                };
-            }
-
-            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error analyzing TransakcjaVAT column mismatch");
-            return StatusCode(500, ApiResponse<Dictionary<string, object?>>.Error(
-                "Error analyzing column mismatch",
-                new List<string> { ex.Message, ex.InnerException?.Message ?? "" }));
-        }
-    }
-
-    /// <summary>
-    /// Get comprehensive SDK structure - all assemblies, types, managers, and schemas
-    /// This is the main diagnostic endpoint for understanding Sfera integration capabilities
-    /// </summary>
-    [HttpGet("sdk-structure")]
-    [ProducesResponseType(typeof(ApiResponse<SdkStructureResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<SdkStructureResponse>>> GetSdkStructure(
-        [FromQuery] bool includeProperties = true,
-        [FromQuery] bool includeMethods = true,
-        [FromQuery] bool includeManagerSchemas = true,
-        [FromQuery] int maxEntitiesPerManager = 1)
-    {
-        try
-        {
-            var response = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var sfera = _sferaService.GetSfera();
-                var sdkResponse = new SdkStructureResponse();
-
-                // 1. Discover all InsERT assemblies
-                sdkResponse.Assemblies = DiscoverInsertAssemblies();
-
-                // 2. Analyze Sfera (Uchwyt) object
-                sdkResponse.SferaObject = AnalyzeSferaObject(sfera, includeProperties, includeMethods);
-
-                // 3. Get available managers and their schemas
-                sdkResponse.Managers = DiscoverManagers(includeManagerSchemas, maxEntitiesPerManager);
-
-                // 4. Discover available services/interfaces
-                sdkResponse.AvailableServices = DiscoverAvailableServices();
-
-                // 5. Get extension method namespaces
-                sdkResponse.ExtensionNamespaces = new List<string>
-                {
-                    "InsERT.Moria.Asortymenty",
-                    "InsERT.Moria.Klienci",
-                    "InsERT.Moria.Dokumenty",
-                    "InsERT.Moria.Logistyka"
-                };
-
-                return sdkResponse;
-            });
-
-            return Ok(ApiResponse<SdkStructureResponse>.Ok(response));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting SDK structure");
-            return StatusCode(500, ApiResponse<SdkStructureResponse>.Error(
-                "Error analyzing SDK structure",
-                new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Get detailed information about a specific manager
-    /// </summary>
-    [HttpGet("manager/{managerName}")]
-    [ProducesResponseType(typeof(ApiResponse<ManagerDetailResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<ManagerDetailResponse>>> GetManagerDetails(
-        string managerName,
-        [FromQuery] int sampleEntities = 3)
-    {
-        try
-        {
-            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var manager = _sferaService.GetManager(managerName);
-                if (manager == null)
-                {
-                    return (Found: false, Response: (ManagerDetailResponse?)null);
-                }
-
-                var response = new ManagerDetailResponse
-                {
-                    Name = managerName,
-                    ManagerType = ((object)manager).GetType().FullName,
-                    Properties = new List<PropertyInfo_>(),
-                    Methods = new List<MethodInfo_>(),
-                    EntitySchema = new EntitySchema(),
-                    SampleEntities = new List<Dictionary<string, object?>>()
-                };
-
-                // Analyze manager object
-                var managerType = ((object)manager).GetType();
-
-                foreach (var prop in managerType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                {
-                    response.Properties.Add(new PropertyInfo_
-                    {
-                        Name = prop.Name,
-                        Type = prop.PropertyType.Name,
-                        CanRead = prop.CanRead,
-                        CanWrite = prop.CanWrite
-                    });
-                }
-
-                foreach (var method in managerType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-                {
-                    if (method.IsSpecialName) continue;
-                    response.Methods.Add(new MethodInfo_
-                    {
-                        Name = method.Name,
-                        ReturnType = method.ReturnType.Name,
-                        Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
-                    });
-                }
-
-                // Get entity schema from first entity
-                try
-                {
-                    var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
-                    if (dane != null)
-                    {
-                        dynamic? wszystkie = dane.Wszystkie();
-                        if (wszystkie != null)
-                        {
-                            int count = 0;
-                            foreach (var entity in wszystkie)
-                            {
-                                if (count == 0)
-                                {
-                                    // Get schema from first entity
-                                    response.EntitySchema = GetEntitySchema(entity);
-                                }
-
-                                if (count < sampleEntities)
-                                {
-                                    // Get sample entity data
-                                    response.SampleEntities.Add(GetEntityData(entity, response.EntitySchema));
-                                }
-                                count++;
-
-                                if (count >= sampleEntities) break;
-                            }
-                            response.TotalEntityCount = count;
-
-                            // Get actual count
-                            try
-                            {
-                                int totalCount = 0;
-                                foreach (var _ in wszystkie)
-                                {
-                                    totalCount++;
-                                }
-                                response.TotalEntityCount = totalCount;
-                            }
-                            catch { }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    response.SchemaError = ex.Message;
-                }
-
-                return (Found: true, Response: (ManagerDetailResponse?)response);
-            });
-
-            if (!lockResult.Found)
-            {
-                return NotFound(ApiResponse<ManagerDetailResponse>.Error($"Manager '{managerName}' not found"));
-            }
-
-            return Ok(ApiResponse<ManagerDetailResponse>.Ok(lockResult.Response!));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting manager details for {ManagerName}", managerName);
-            return StatusCode(500, ApiResponse<ManagerDetailResponse>.Error(
-                $"Error analyzing manager '{managerName}'",
-                new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Explore an entity by ID from a specific manager
-    /// </summary>
-    [HttpGet("manager/{managerName}/entity/{id}")]
-    [ProducesResponseType(typeof(ApiResponse<EntityExplorerResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<EntityExplorerResponse>>> ExploreEntity(
-        string managerName,
-        int id,
-        [FromQuery] bool deep = false)
-    {
-        try
-        {
-            var lockResult = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var manager = _sferaService.GetManager(managerName);
-                if (manager == null)
-                {
-                    return (Status: 404, ManagerMissing: true, EntityMissing: false, Response: (EntityExplorerResponse?)null);
-                }
-
-                dynamic? entity = null;
-                var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
-                if (dane != null)
-                {
-                    // Try Znajdz method first
-                    try
-                    {
-                        entity = dane.Znajdz(id);
-                    }
-                    catch
-                    {
-                        // Fallback to iteration
-                        dynamic? wszystkie = dane.Wszystkie();
-                        if (wszystkie != null)
-                        {
-                            foreach (var e in wszystkie)
-                            {
-                                if (DynamicPropertyHelper.GetId(e) == id)
-                                {
-                                    entity = e;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (entity == null)
-                {
-                    return (Status: 404, ManagerMissing: false, EntityMissing: true, Response: (EntityExplorerResponse?)null);
-                }
-
-                var response = new EntityExplorerResponse
-                {
-                    ManagerName = managerName,
-                    EntityId = id,
-                    EntityType = ((object)entity).GetType().FullName,
-                    Schema = GetEntitySchema(entity),
-                    Data = new Dictionary<string, object?>(),
-                    NestedObjects = new Dictionary<string, object?>(),
-                    Collections = new Dictionary<string, List<Dictionary<string, object?>>>()
-                };
-
-                // Get all property values
-                var entityType = ((object)entity).GetType();
-                foreach (var prop in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                {
-                    try
-                    {
-                        var value = prop.GetValue(entity);
-
-                        if (value == null)
-                        {
-                            response.Data[prop.Name] = null;
-                        }
-                        else if (IsSimpleType(prop.PropertyType))
-                        {
-                            response.Data[prop.Name] = value;
-                        }
-                        else if (deep)
-                        {
-                            // Handle complex types and collections
-                            if (IsCollection(prop.PropertyType))
-                            {
-                                var items = new List<Dictionary<string, object?>>();
-                                try
-                                {
-                                    foreach (var item in (dynamic)value)
-                                    {
-                                        var itemData = new Dictionary<string, object?>();
-                                        var itemType = ((object)item).GetType();
-                                        foreach (var itemProp in itemType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                                        {
-                                            try
-                                            {
-                                                if (IsSimpleType(itemProp.PropertyType))
-                                                {
-                                                    itemData[itemProp.Name] = itemProp.GetValue(item);
-                                                }
-                                            }
-                                            catch { }
-                                        }
-                                        if (itemData.Any())
-                                            items.Add(itemData);
-                                        if (items.Count >= 5) break;
-                                    }
-                                }
-                                catch { }
-                                if (items.Any())
-                                    response.Collections[prop.Name] = items;
-                            }
-                            else
-                            {
-                                // Nested object
-                                var nestedData = new Dictionary<string, object?>();
-                                var nestedType = value.GetType();
-                                foreach (var nestedProp in nestedType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                                {
-                                    try
-                                    {
-                                        if (IsSimpleType(nestedProp.PropertyType))
-                                        {
-                                            nestedData[nestedProp.Name] = nestedProp.GetValue(value);
-                                        }
-                                    }
-                                    catch { }
-                                }
-                                if (nestedData.Any())
-                                    response.NestedObjects[prop.Name] = nestedData;
-                            }
-                        }
-                        else
-                        {
-                            response.Data[prop.Name] = $"[{prop.PropertyType.Name}]";
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        response.Data[prop.Name] = $"[Error: {ex.Message}]";
-                    }
-                }
-
-                return (Status: 200, ManagerMissing: false, EntityMissing: false, Response: (EntityExplorerResponse?)response);
-            });
-
-            if (lockResult.ManagerMissing)
-            {
-                return NotFound(ApiResponse<EntityExplorerResponse>.Error($"Manager '{managerName}' not found"));
-            }
-
-            if (lockResult.EntityMissing)
-            {
-                return NotFound(ApiResponse<EntityExplorerResponse>.Error($"Entity with ID {id} not found in {managerName}"));
-            }
-
-            return Ok(ApiResponse<EntityExplorerResponse>.Ok(lockResult.Response!));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error exploring entity {Id} in {ManagerName}", id, managerName);
-            return StatusCode(500, ApiResponse<EntityExplorerResponse>.Error(
-                $"Error exploring entity",
-                new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Discover available types/interfaces that can be retrieved via PodajObiektTypu
-    /// </summary>
-    [HttpGet("services")]
-    [ProducesResponseType(typeof(ApiResponse<List<ServiceInfo>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<List<ServiceInfo>>> GetAvailableServices()
-    {
-        try
-        {
-            var services = DiscoverAvailableServices();
-            return Ok(ApiResponse<List<ServiceInfo>>.Ok(services));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error discovering services");
-            return StatusCode(500, ApiResponse<List<ServiceInfo>>.Error(
-                "Error discovering services",
-                new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Try to instantiate a service by type name
-    /// </summary>
-    [HttpGet("services/try/{typeName}")]
-    [ProducesResponseType(typeof(ApiResponse<ServiceInstanceResponse>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<ServiceInstanceResponse>>> TryGetService(string typeName)
-    {
-        try
-        {
-            var response = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var sfera = _sferaService.GetSfera();
-                var serviceResponse = new ServiceInstanceResponse { TypeName = typeName };
-
-                // Find the type
-                Type? serviceType = null;
-                foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-                {
-                    try
-                    {
-                        serviceType = asm.GetType(typeName);
-                        if (serviceType != null)
-                        {
-                            serviceResponse.AssemblyName = asm.GetName().Name;
-                            break;
-                        }
-                    }
-                    catch { }
-                }
-
-                if (serviceType == null)
-                {
-                    serviceResponse.Success = false;
-                    serviceResponse.Error = "Type not found in any loaded assembly";
-                    return serviceResponse;
-                }
-
-                serviceResponse.TypeFound = true;
-                serviceResponse.IsInterface = serviceType.IsInterface;
-                serviceResponse.BaseType = serviceType.BaseType?.Name;
-
-                // Try to get instance via PodajObiektTypu
-                try
-                {
-                    var sferaType = sfera.GetType();
-                    MethodInfo? genericMethod = null;
-                    foreach (var m in sferaType.GetMethods())
-                    {
-                        if (m.Name == "PodajObiektTypu" && m.IsGenericMethod && m.GetParameters().Length == 0)
-                        {
-                            genericMethod = m;
-                            break;
-                        }
-                    }
-
-                    if (genericMethod != null)
-                    {
-                        var concreteMethod = genericMethod.MakeGenericMethod(serviceType);
-                        var instance = concreteMethod.Invoke(sfera, null);
-
-                        if (instance != null)
-                        {
-                            serviceResponse.Success = true;
-                            serviceResponse.InstanceType = instance.GetType().FullName;
-                            serviceResponse.Methods = new List<MethodInfo_>();
-                            serviceResponse.Properties = new List<PropertyInfo_>();
-
-                            var instanceType = instance.GetType();
-                            foreach (var prop in instanceType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-                            {
-                                serviceResponse.Properties.Add(new PropertyInfo_
-                                {
-                                    Name = prop.Name,
-                                    Type = prop.PropertyType.Name,
-                                    CanRead = prop.CanRead,
-                                    CanWrite = prop.CanWrite
-                                });
-                            }
-
-                            foreach (var method in instanceType.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-                            {
-                                if (method.IsSpecialName) continue;
-                                serviceResponse.Methods.Add(new MethodInfo_
-                                {
-                                    Name = method.Name,
-                                    ReturnType = method.ReturnType.Name,
-                                    Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList()
-                                });
-                            }
-                        }
-                        else
-                        {
-                            serviceResponse.Success = false;
-                            serviceResponse.Error = "PodajObiektTypu returned null";
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    serviceResponse.Success = false;
-                    serviceResponse.Error = ex.InnerException?.Message ?? ex.Message;
-                }
-
-                return serviceResponse;
-            });
-
-            return Ok(ApiResponse<ServiceInstanceResponse>.Ok(response));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error trying service {TypeName}", typeName);
-            return StatusCode(500, ApiResponse<ServiceInstanceResponse>.Error(
-                $"Error trying service '{typeName}'",
-                new List<string> { ex.Message }));
-        }
-    }
-
-    #region Helper Methods
-
-    private List<AssemblyInfo> DiscoverInsertAssemblies()
-    {
-        var assemblies = new List<AssemblyInfo>();
-
-        foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-        {
-            try
-            {
-                var name = asm.GetName().Name ?? "";
-                if (name.StartsWith("InsERT") || name.Contains("Moria") || name.Contains("Mox"))
-                {
-                    var info = new AssemblyInfo
-                    {
-                        Name = name,
-                        Version = asm.GetName().Version?.ToString(),
-                        PublicTypes = new List<string>(),
-                        Interfaces = new List<string>()
-                    };
-
-                    try
-                    {
-                        foreach (var type in asm.GetExportedTypes())
-                        {
-                            if (type.IsInterface)
-                            {
-                                info.Interfaces.Add(type.FullName ?? type.Name);
-                            }
-                            else if (type.IsPublic && !type.IsAbstract)
-                            {
-                                info.PublicTypes.Add(type.FullName ?? type.Name);
-                            }
-                        }
-                    }
-                    catch { }
-
-                    assemblies.Add(info);
-                }
-            }
-            catch { }
-        }
-
-        return assemblies.OrderBy(a => a.Name).ToList();
-    }
-
-    private SferaObjectInfo AnalyzeSferaObject(dynamic sfera, bool includeProperties, bool includeMethods)
-    {
-        var info = new SferaObjectInfo
-        {
-            Type = ((object)sfera).GetType().FullName,
-            Properties = new List<PropertyInfo_>(),
-            Methods = new List<MethodInfo_>(),
-            ExtensionMethods = new List<string>()
-        };
-
-        var sferaType = ((object)sfera).GetType();
-
-        if (includeProperties)
-        {
-            foreach (var prop in sferaType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-            {
-                info.Properties.Add(new PropertyInfo_
-                {
-                    Name = prop.Name,
-                    Type = prop.PropertyType.Name,
-                    CanRead = prop.CanRead,
-                    CanWrite = prop.CanWrite
-                });
-            }
-        }
-
-        if (includeMethods)
-        {
-            foreach (var method in sferaType.GetMethods(BindingFlags.Public | BindingFlags.Instance))
-            {
-                if (method.IsSpecialName) continue;
-                if (method.DeclaringType == typeof(object)) continue;
-
-                info.Methods.Add(new MethodInfo_
-                {
-                    Name = method.Name,
-                    ReturnType = method.ReturnType.Name,
-                    Parameters = method.GetParameters().Select(p => $"{p.ParameterType.Name} {p.Name}").ToList(),
-                    IsGeneric = method.IsGenericMethod
-                });
-            }
-        }
-
-        // Known extension methods
-        info.ExtensionMethods = new List<string>
-        {
-            "Asortymenty()", "SzablonyAsortymentu()",
-            "Podmioty()",
-            "Dokumenty()", "DokumentySprzedazy()", "DokumentyZakupu()", "DokumentyElektroniczne()",
-            "KorektyDokumentowSprzedazy()", "KorektyDokumentowZakupu()",
-            "Magazyny()", "WydaniaZewnetrzne()", "PrzyjeciaZewnetrzne()", "WydaniaMiedzymagazynowe()",
-            "RozchodyWewnetrzne()", "ZamowieniaOdKlientow()", "ZamowieniaDoDostawcow()", "Oferty()"
-        };
-
-        return info;
-    }
-
-    private List<ManagerInfo> DiscoverManagers(bool includeSchemas, int maxEntities)
-    {
-        var managers = new List<ManagerInfo>();
-        var managerNames = new[]
-        {
-            "Asortymenty", "SzablonyAsortymentu",
-            "Podmioty",
-            "Dokumenty", "DokumentySprzedazy", "DokumentyZakupu", "DokumentyElektroniczne",
-            "KorektyDokumentowSprzedazy", "KorektyDokumentowZakupu",
-            "Magazyny", "WydaniaZewnetrzne", "PrzyjeciaZewnetrzne", "WydaniaMiedzymagazynowe",
-            "RozchodyWewnetrzne", "ZamowieniaOdKlientow", "ZamowieniaDoDostawcow", "Oferty"
-        };
-
-        foreach (var name in managerNames)
-        {
-            var info = new ManagerInfo { Name = name };
-
-            try
-            {
-                var manager = _sferaService.GetManager(name);
-                if (manager != null)
-                {
-                    info.Available = true;
-                    info.ManagerType = ((object)manager).GetType().FullName;
-
-                    if (includeSchemas)
-                    {
-                        try
-                        {
-                            var dane = DynamicPropertyHelper.GetProperty(manager, "Dane");
-                            if (dane != null)
-                            {
-                                dynamic? wszystkie = dane.Wszystkie();
-                                if (wszystkie != null)
-                                {
-                                    int count = 0;
-                                    foreach (var entity in wszystkie)
-                                    {
-                                        if (count == 0)
-                                        {
-                                            info.EntitySchema = GetEntitySchema(entity);
-                                            info.EntityType = ((object)entity).GetType().FullName;
-                                        }
-                                        count++;
-                                        if (count > 1000) break; // Cap counting at 1000
-                                    }
-                                    info.EntityCount = count > 1000 ? "1000+" : count.ToString();
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            info.SchemaError = ex.Message;
-                        }
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                info.Available = false;
-                info.Error = ex.Message;
-            }
-
-            managers.Add(info);
-        }
-
-        return managers;
-    }
-
-    private List<ServiceInfo> DiscoverAvailableServices()
-    {
-        var services = new List<ServiceInfo>();
-
-        // Known service interfaces
-        var knownServices = new[]
-        {
-            "InsERT.Moria.EgzekutorMagazynowy.IMagazynier",
-            "InsERT.Moria.Sfera.IKontekstPracy",
-            "InsERT.Moria.Sfera.IInformacjeOFirmie",
-            "InsERT.Moria.Sfera.IOperator",
-            "InsERT.Moria.Konfiguracja.IKonfiguracja",
-            "InsERT.Moria.Cenniki.ICennikiManager",
-            "InsERT.Moria.Cenniki.IPolitykaCenowa",
-            "InsERT.Moria.Rabaty.IRabatyManager",
-            "InsERT.Moria.Slowniki.ISlowniki",
-            "InsERT.Moria.Waluty.IKursyWalut",
-            "InsERT.Moria.ModelDanych.IDaneWydrukow",
-            "InsERT.Moria.Stawki.IStawkiVAT",
-            "InsERT.Moria.Jednostki.IJednostki",
-            "InsERT.Moria.Ksef.IKsefService",
-            "InsERT.Moria.Ksef.IKonfiguratorKsef"
-        };
-
-        foreach (var typeName in knownServices)
-        {
-            var info = new ServiceInfo { TypeName = typeName };
-
-            // Check if type exists
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                try
-                {
-                    var type = asm.GetType(typeName);
-                    if (type != null)
-                    {
-                        info.Found = true;
-                        info.AssemblyName = asm.GetName().Name;
-                        info.IsInterface = type.IsInterface;
-
-                        // List interface members
-                        if (type.IsInterface)
-                        {
-                            info.Members = type.GetMembers(BindingFlags.Public | BindingFlags.Instance)
-                                .Where(m => m.MemberType == MemberTypes.Method || m.MemberType == MemberTypes.Property)
-                                .Select(m => m.MemberType == MemberTypes.Method
-                                    ? $"{((MethodInfo)m).ReturnType.Name} {m.Name}()"
-                                    : $"{((PropertyInfo)m).PropertyType.Name} {m.Name}")
-                                .Take(20)
-                                .ToList();
-                        }
-                        break;
-                    }
-                }
-                catch { }
-            }
-
-            services.Add(info);
-        }
-
-        return services;
-    }
-
-    private EntitySchema GetEntitySchema(dynamic entity)
-    {
-        var schema = new EntitySchema
-        {
-            Properties = new List<PropertySchemaInfo>()
-        };
-
-        var entityType = ((object)entity).GetType();
-        schema.TypeName = entityType.FullName;
-
-        foreach (var prop in entityType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
-        {
-            var propInfo = new PropertySchemaInfo
-            {
-                Name = prop.Name,
-                Type = prop.PropertyType.Name,
-                FullType = prop.PropertyType.FullName,
-                IsCollection = IsCollection(prop.PropertyType),
-                IsComplex = !IsSimpleType(prop.PropertyType) && !IsCollection(prop.PropertyType)
-            };
-            schema.Properties.Add(propInfo);
-        }
-
-        return schema;
-    }
-
-    private Dictionary<string, object?> GetEntityData(dynamic entity, EntitySchema schema)
-    {
-        var data = new Dictionary<string, object?>();
-        var entityType = ((object)entity).GetType();
-
-        foreach (var propSchema in schema.Properties)
-        {
-            try
-            {
-                if (propSchema.Name == null) continue;
-                var prop = entityType.GetProperty(propSchema.Name);
-                if (prop != null)
-                {
-                    var value = prop.GetValue(entity);
-                    if (value == null)
-                    {
-                        data[propSchema.Name] = null;
-                    }
-                    else if (IsSimpleType(prop.PropertyType))
-                    {
-                        data[propSchema.Name] = value;
-                    }
-                    else if (propSchema.IsCollection)
-                    {
-                        data[propSchema.Name] = $"[Collection]";
-                    }
-                    else
-                    {
-                        data[propSchema.Name] = $"[{prop.PropertyType.Name}]";
-                    }
-                }
-            }
-            catch
-            {
-                if (propSchema.Name != null)
-                    data[propSchema.Name] = "[Error]";
-            }
-        }
-
-        return data;
-    }
-
-    private static bool IsSimpleType(Type type)
-    {
-        var underlyingType = Nullable.GetUnderlyingType(type) ?? type;
-        return underlyingType.IsPrimitive
-            || underlyingType == typeof(string)
-            || underlyingType == typeof(decimal)
-            || underlyingType == typeof(DateTime)
-            || underlyingType == typeof(DateTimeOffset)
-            || underlyingType == typeof(TimeSpan)
-            || underlyingType == typeof(Guid)
-            || underlyingType.IsEnum;
-    }
-
-    private static bool IsCollection(Type type)
-    {
-        return type != typeof(string) &&
-               typeof(System.Collections.IEnumerable).IsAssignableFrom(type);
-    }
-
-    #endregion
-
-    /// <summary>
-    /// Test PZ (Przyjęcie Zewnętrzne) document creation to diagnose TransakcjaVAT EF6 errors
-    /// This endpoint attempts document creation without saving to identify where errors occur
-    /// </summary>
-    [HttpGet("test-pz-creation")]
-    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreation()
-    {
-        var results = new Dictionary<string, object?>();
-
-        try
-        {
-            var testResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
-            {
-                var stepResults = new Dictionary<string, object?>();
-
-                // Step 1: Get PrzyjeciaZewnetrzne manager
-                stepResults["Step1_GetManager"] = "Starting...";
-                try
-                {
-                    var przyjecia = _sferaService.GetManager("PrzyjeciaZewnetrzne");
-                    stepResults["Step1_GetManager"] = przyjecia != null ? "SUCCESS" : "NULL_MANAGER";
-                    stepResults["ManagerType"] = przyjecia?.GetType().FullName;
-
-                    if (przyjecia == null)
-                    {
-                        stepResults["Error"] = "Could not get PrzyjeciaZewnetrzne manager";
-                        return stepResults;
-                    }
-
-                    // Step 2: Get PZ configuration
-                    stepResults["Step2_GetConfig"] = "Starting...";
-                    try
-                    {
-                        var konfiguracje = _sferaService.GetManager("Konfiguracje");
-                        if (konfiguracje?.DaneDomyslne != null)
-                        {
-                            var pzConfig = konfiguracje.DaneDomyslne.PrzyjecieZewnetrzne;
-                            stepResults["Step2_GetConfig"] = pzConfig != null ? "SUCCESS" : "NULL_CONFIG";
-                            stepResults["ConfigSymbol"] = pzConfig?.Symbol?.ToString();
-                            stepResults["ConfigId"] = pzConfig?.Id?.ToString();
-
-                            // Check if config has financial aspect
-                            try
-                            {
-                                stepResults["ConfigPosiadaAspektFinansowy"] = pzConfig?.PosiadaAspektFinansowy?.ToString();
-                            }
-                            catch { stepResults["ConfigPosiadaAspektFinansowy"] = "CANNOT_READ"; }
-                        }
-                    }
-                    catch (Exception configEx)
-                    {
-                        stepResults["Step2_GetConfig"] = "ERROR: " + configEx.Message;
-                    }
-
-                    // Step 3: Try to create PZ using Utworz(Konfiguracja)
-                    stepResults["Step3_CreateWithConfig"] = "Starting...";
-                    try
-                    {
-                        var konfiguracje = _sferaService.GetManager("Konfiguracje");
-                        var pzConfig = konfiguracje?.DaneDomyslne?.PrzyjecieZewnetrzne;
-                        if (pzConfig != null)
-                        {
-                            using (var pz = przyjecia.Utworz(pzConfig))
-                            {
-                                stepResults["Step3_CreateWithConfig"] = "SUCCESS";
-                                stepResults["DocumentType"] = pz?.GetType().FullName;
-
-                                // Step 4: Try to set PosiadaAspektFinansowy
-                                stepResults["Step4_SetAspektFinansowy"] = "Starting...";
-                                try
-                                {
-                                    pz.Dane.PosiadaAspektFinansowy = false;
-                                    stepResults["Step4_SetAspektFinansowy"] = "SUCCESS";
-                                }
-                                catch (Exception setEx)
-                                {
-                                    stepResults["Step4_SetAspektFinansowy"] = "ERROR: " + setEx.Message;
-                                }
-
-                                // Step 5: Try to reserve number (this might trigger VAT loading)
-                                stepResults["Step5_ReserveNumber"] = "Starting...";
-                                try
-                                {
-                                    pz.ZarezerwujNumer();
-                                    var numberPreview = pz.PodajPodgladNumeru()?.ToString();
-                                    stepResults["Step5_ReserveNumber"] = "SUCCESS";
-                                    stepResults["ReservedNumber"] = numberPreview;
-                                }
-                                catch (Exception numEx)
-                                {
-                                    stepResults["Step5_ReserveNumber"] = "ERROR: " + numEx.Message;
-                                    if (numEx.ToString().Contains("TransakcjaVAT"))
-                                    {
-                                        stepResults["TransakcjaVAT_Error"] = true;
-                                        stepResults["TransakcjaVAT_FullError"] = numEx.ToString().Substring(0, Math.Min(2000, numEx.ToString().Length));
-                                    }
-                                }
-
-                                // Don't save - just testing creation
-                                stepResults["TestComplete"] = true;
-                            }
-                        }
-                        else
-                        {
-                            stepResults["Step3_CreateWithConfig"] = "SKIPPED - no config";
-                        }
-                    }
-                    catch (Exception createEx)
-                    {
-                        stepResults["Step3_CreateWithConfig"] = "ERROR: " + createEx.Message;
-                        if (createEx.ToString().Contains("TransakcjaVAT") || createEx.ToString().Contains("IdWInstancji"))
-                        {
-                            stepResults["TransakcjaVAT_Error"] = true;
-                            stepResults["TransakcjaVAT_FullError"] = createEx.ToString().Substring(0, Math.Min(2000, createEx.ToString().Length));
-                        }
-
-                        // Step 3b: Fallback to UtworzPrzyjecieZewnetrzne
-                        stepResults["Step3b_FallbackCreate"] = "Starting...";
-                        try
-                        {
-                            using (var pz = przyjecia.UtworzPrzyjecieZewnetrzne())
-                            {
-                                stepResults["Step3b_FallbackCreate"] = "SUCCESS";
-                                stepResults["FallbackDocumentType"] = pz?.GetType().FullName;
-                            }
-                        }
-                        catch (Exception fallbackEx)
-                        {
-                            stepResults["Step3b_FallbackCreate"] = "ERROR: " + fallbackEx.Message;
-                            if (fallbackEx.ToString().Contains("TransakcjaVAT"))
-                            {
-                                stepResults["FallbackTransakcjaVAT_Error"] = true;
-                            }
-                        }
-                    }
-                }
-                catch (Exception managerEx)
-                {
-                    stepResults["Step1_GetManager"] = "ERROR: " + managerEx.Message;
-                }
-
-                return stepResults;
-            });
-
-            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(testResult));
-        }
-        catch (Exception ex)
-        {
-            results["OuterError"] = ex.Message;
-            results["OuterStackTrace"] = ex.StackTrace?.Substring(0, Math.Min(1000, ex.StackTrace?.Length ?? 0));
-            if (ex.ToString().Contains("TransakcjaVAT"))
-            {
-                results["TransakcjaVAT_Error"] = true;
-            }
-            _logger.LogError(ex, "Error in TestPzCreation diagnostic");
-            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-        }
-    }
-
-    /// <summary>
-    /// List all document configurations and their financial aspect settings
-    /// This helps identify configurations that might work without triggering VAT loading
-    /// </summary>
-    [HttpGet("document-configurations")]
-    [ProducesResponseType(typeof(ApiResponse<List<Dictionary<string, object?>>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<List<Dictionary<string, object?>>>>> ListDocumentConfigurations()
-    {
-        try
-        {
-            var result = await _sferaService.ExecuteWithLockAsync<List<Dictionary<string, object?>>>(() =>
-            {
-                var configurations = new List<Dictionary<string, object?>>();
-
-                var konfiguracje = _sferaService.GetManager("Konfiguracje");
-                if (konfiguracje?.Dane != null)
-                {
-                    foreach (dynamic config in DynamicPropertyHelper.SafeGetAll((object)konfiguracje))
-                    {
-                        try
-                        {
-                            var configInfo = new Dictionary<string, object?>
-                            {
-                                ["Id"] = config.Id?.ToString(),
-                                ["Symbol"] = config.Symbol?.ToString(),
-                                ["Nazwa"] = config.Nazwa?.ToString()
-                            };
-
-                            // Try to get PosiadaAspektFinansowy
-                            try
-                            {
-                                configInfo["PosiadaAspektFinansowy"] = config.PosiadaAspektFinansowy?.ToString();
-                            }
-                            catch
-                            {
-                                configInfo["PosiadaAspektFinansowy"] = "N/A";
-                            }
-
-                            // Check if it's a PZ-related configuration
-                            string symbol = config.Symbol?.ToString() ?? "";
-                            string nazwa = config.Nazwa?.ToString() ?? "";
-                            bool isPzRelated = symbol.Contains("PZ") || nazwa.Contains("Przyjęcie") || nazwa.Contains("przyjęcie");
-                            configInfo["IsPzRelated"] = isPzRelated;
-
-                            configurations.Add(configInfo);
-                        }
-                        catch (Exception itemEx)
-                        {
-                            configurations.Add(new Dictionary<string, object?>
-                            {
-                                ["Error"] = itemEx.Message
-                            });
-                        }
-                    }
-                }
-
-                return configurations;
-            });
-
-            // Sort to show PZ-related first
-            var sorted = result
-                .OrderByDescending(c => c.ContainsKey("IsPzRelated") && (bool)c["IsPzRelated"]!)
-                .ThenBy(c => c.ContainsKey("Symbol") ? c["Symbol"]?.ToString() : "")
-                .ToList();
-
-            return Ok(ApiResponse<List<Dictionary<string, object?>>>.Ok(sorted));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error listing document configurations");
-            return StatusCode(500, ApiResponse<List<Dictionary<string, object?>>>.Error(
-                "Error listing configurations",
-                new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Attempt to disable financial aspect for PZ configuration to work around TransakcjaVAT error
-    /// WARNING: This modifies the system configuration!
-    /// </summary>
-    [HttpPost("disable-pz-financial-aspect")]
-    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
-    public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> DisablePzFinancialAspect()
-    {
-        var results = new Dictionary<string, object?>();
-
-        try
-        {
-            var modifyResult = await _sferaService.ExecuteWithLockAsync<Dictionary<string, object?>>(() =>
-            {
-                var stepResults = new Dictionary<string, object?>();
-
-                var konfiguracje = _sferaService.GetManager("Konfiguracje");
-                if (konfiguracje == null)
-                {
-                    stepResults["Error"] = "Could not get Konfiguracje manager";
-                    return stepResults;
-                }
-
-                // Get PZ configuration
-                dynamic? pzConfig = konfiguracje.DaneDomyslne?.PrzyjecieZewnetrzne;
-                if (pzConfig == null)
-                {
-                    stepResults["Error"] = "Could not get PZ default configuration";
-                    return stepResults;
-                }
-
-                stepResults["ConfigId"] = pzConfig.Id?.ToString();
-                stepResults["ConfigSymbol"] = pzConfig.Symbol?.ToString();
-
-                try
-                {
-                    stepResults["BeforePosiadaAspektFinansowy"] = pzConfig.PosiadaAspektFinansowy?.ToString();
-                }
-                catch
-                {
-                    stepResults["BeforePosiadaAspektFinansowy"] = "CANNOT_READ";
-                }
-
-                // Try to find and modify the configuration
-                stepResults["Step1_FindConfig"] = "Starting...";
-                try
-                {
-                    Guid configId = pzConfig.Id;
-                    // Cast to avoid CS1977 - lambda cannot be used with dynamic
-                    Func<dynamic, bool> predicate = c => c.Id == configId;
-                    using (var configEdit = konfiguracje.Znajdz(predicate))
-                    {
-                        stepResults["Step1_FindConfig"] = "SUCCESS";
-                        stepResults["ConfigEditType"] = configEdit?.GetType().FullName;
-
-                        // Try to access ParametryKonfiguracji
-                        stepResults["Step2_ModifyConfig"] = "Starting...";
-                        try
-                        {
-                            // Method 1: Try ParametryKonfiguracji.PosiadaAspektFinansowy
-                            configEdit.ParametryKonfiguracji.PosiadaAspektFinansowy = false;
-                            stepResults["Step2_ModifyConfig"] = "Set via ParametryKonfiguracji";
-                        }
-                        catch (Exception paramEx)
-                        {
-                            stepResults["ParametryKonfiguracji_Error"] = paramEx.Message;
-
-                            // Method 2: Try direct property
-                            try
-                            {
-                                configEdit.Dane.PosiadaAspektFinansowy = false;
-                                stepResults["Step2_ModifyConfig"] = "Set via Dane";
-                            }
-                            catch (Exception daneEx)
-                            {
-                                stepResults["Dane_Error"] = daneEx.Message;
-                                stepResults["Step2_ModifyConfig"] = "FAILED";
-                            }
-                        }
-
-                        // Try to save
-                        stepResults["Step3_SaveConfig"] = "Starting...";
-                        try
-                        {
-                            bool saved = configEdit.Zapisz();
-                            stepResults["Step3_SaveConfig"] = saved ? "SUCCESS" : "FAILED (Zapisz returned false)";
-
-                            if (!saved)
-                            {
-                                // Try to get errors
-                                try
-                                {
-                                    var errors = new List<string>();
-                                    foreach (var error in configEdit.Bledy)
-                                    {
-                                        errors.Add(error?.ToString() ?? "Unknown error");
-                                    }
-                                    stepResults["SaveErrors"] = errors;
-                                }
-                                catch { }
-                            }
-                        }
-                        catch (Exception saveEx)
-                        {
-                            stepResults["Step3_SaveConfig"] = "ERROR: " + saveEx.Message;
-                        }
-                    }
-                }
-                catch (Exception findEx)
-                {
-                    stepResults["Step1_FindConfig"] = "ERROR: " + findEx.Message;
-
-                    // The Znajdz might trigger the same VAT error
-                    if (findEx.ToString().Contains("TransakcjaVAT"))
-                    {
-                        stepResults["TransakcjaVAT_Error_During_Find"] = true;
-                        stepResults["Recommendation"] = "Configuration modification also triggers VAT loading. " +
-                            "You need to modify the configuration directly in the database using SQL: " +
-                            "UPDATE ModelDanychContainer.Konfiguracje SET PosiadaAspektFinansowy = 0 WHERE Symbol = 'PZ'";
-                    }
-                }
-
-                // Verify the change
-                stepResults["Step4_Verify"] = "Starting...";
-                try
-                {
-                    var verifyConfig = konfiguracje.DaneDomyslne?.PrzyjecieZewnetrzne;
-                    stepResults["AfterPosiadaAspektFinansowy"] = verifyConfig?.PosiadaAspektFinansowy?.ToString();
-                    stepResults["Step4_Verify"] = "SUCCESS";
-                }
-                catch (Exception verifyEx)
-                {
-                    stepResults["Step4_Verify"] = "ERROR: " + verifyEx.Message;
-                }
-
-                return stepResults;
-            });
-
-            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(modifyResult));
-        }
-        catch (Exception ex)
-        {
-            results["OuterError"] = ex.Message;
-            _logger.LogError(ex, "Error disabling PZ financial aspect");
-            return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
-        }
-    }
-
-    /// <summary>
-    /// Get SQL command to manually disable PZ financial aspect in database
-    /// Use this if the SDK-based modification doesn't work
-    /// </summary>
-    [HttpGet("pz-financial-aspect-sql")]
-    [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<Dictionary<string, object?>>> GetPzFinancialAspectSql()
-    {
-        var result = new Dictionary<string, object?>
-        {
-            ["Description"] = "SQL commands to disable financial aspect for PZ documents. " +
-                "This will prevent VAT transaction loading during document creation. " +
-                "WARNING: This affects ALL PZ documents in the system!",
-            ["CheckCurrentState"] = @"
--- Check current PZ configuration
-SELECT Id, Symbol, Nazwa, PosiadaAspektFinansowy
-FROM ModelDanychContainer.Konfiguracje
-WHERE Symbol LIKE '%PZ%' OR Nazwa LIKE '%Przyjęcie%'
-ORDER BY Symbol",
-            ["DisableFinancialAspect"] = @"
--- Disable financial aspect for standard PZ
-UPDATE ModelDanychContainer.Konfiguracje
-SET PosiadaAspektFinansowy = 0
-WHERE Symbol = 'PZ'
-
--- Verify the change
-SELECT Id, Symbol, Nazwa, PosiadaAspektFinansowy
-FROM ModelDanychContainer.Konfiguracje
-WHERE Symbol = 'PZ'",
-            ["ReEnableFinancialAspect"] = @"
--- To re-enable financial aspect later:
-UPDATE ModelDanychContainer.Konfiguracje
-SET PosiadaAspektFinansowy = 1
-WHERE Symbol = 'PZ'",
-            ["AlternativeApproach"] = @"
--- Alternative: Create a new PZ configuration without financial aspect
--- This preserves the original PZ configuration
--- (Requires more complex SQL to copy the configuration)",
-            ["Note"] = "After running the SQL, restart the API application to clear any cached configurations."
+                        ["Ordinal"] = i…17195 tokens truncated…pplication to clear any cached configurations."
         };
 
         return Ok(ApiResponse<Dictionary<string, object?>>.Ok(result));
@@ -2576,9 +1023,8 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["Error"] = ex.Message;
-            results["StackTrace"] = ex.StackTrace?.Substring(0, Math.Min(1000, ex.StackTrace?.Length ?? 0));
-            _logger.LogError(ex, "Error exploring PZ manager methods");
+            results["Error"] = "Diagnostic operation failed.";
+            _logger.LogError("Error exploring PZ manager methods (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -2587,6 +1033,7 @@ WHERE Symbol = 'PZ'",
     /// Test PZ creation with explicit date parameters to diagnose VAT initialization issues
     /// </summary>
     [HttpPost("test-pz-creation-with-dates")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreationWithDates(
         [FromQuery] DateTime? issueDate = null,
@@ -2643,14 +1090,14 @@ WHERE Symbol = 'PZ'",
                             pz.Dane.DataWydaniaWystawienia = effectiveIssueDate;
                             stepResults["SetDataWydaniaWystawienia"] = effectiveIssueDate.ToString("o");
                         }
-                        catch (Exception ex) { stepResults["DataWydaniaWystawienia_Error"] = ex.Message; }
+                        catch (Exception ex) { stepResults["DataWydaniaWystawienia_Error"] = "Diagnostic operation failed."; }
 
                         try
                         {
                             pz.Dane.DataWprowadzenia = effectiveIssueDate;
                             stepResults["SetDataWprowadzenia"] = effectiveIssueDate.ToString("o");
                         }
-                        catch (Exception ex) { stepResults["DataWprowadzenia_Error"] = ex.Message; }
+                        catch (Exception ex) { stepResults["DataWprowadzenia_Error"] = "Diagnostic operation failed."; }
 
                         // Try setting external document date (critical for VAT)
                         try
@@ -2660,7 +1107,7 @@ WHERE Symbol = 'PZ'",
                         }
                         catch (Exception ex)
                         {
-                            stepResults["DataDokumentuZewnetrznego_Error"] = ex.Message;
+                            stepResults["DataDokumentuZewnetrznego_Error"] = "Diagnostic operation failed.";
                             // Try alternative property names
                             try
                             {
@@ -2678,7 +1125,7 @@ WHERE Symbol = 'PZ'",
                                 pz.Dane.NumerZewnetrzny = externalDocNumber;
                                 stepResults["SetNumerZewnetrzny"] = externalDocNumber;
                             }
-                            catch (Exception ex) { stepResults["NumerZewnetrzny_Error"] = ex.Message; }
+                            catch (Exception ex) { stepResults["NumerZewnetrzny_Error"] = "Diagnostic operation failed."; }
                         }
 
                         stepResults["Step2_SetDates"] = "SUCCESS";
@@ -2694,7 +1141,7 @@ WHERE Symbol = 'PZ'",
                         }
                         catch (Exception numEx)
                         {
-                            stepResults["Step3_ReserveNumber"] = "ERROR: " + numEx.Message;
+                            stepResults["Step3_ReserveNumber"] = "ERROR: " + "Diagnostic operation failed.";
                             if (numEx.ToString().Contains("TransakcjaVAT"))
                             {
                                 stepResults["TransakcjaVAT_Error"] = true;
@@ -2722,13 +1169,13 @@ WHERE Symbol = 'PZ'",
                         }
                         catch (Exception propEx)
                         {
-                            stepResults["Step4_ListDaneProperties"] = "ERROR: " + propEx.Message;
+                            stepResults["Step4_ListDaneProperties"] = "ERROR: " + "Diagnostic operation failed.";
                         }
                     }
                 }
                 catch (Exception createEx)
                 {
-                    stepResults["Step1_CreateDocument"] = "ERROR: " + createEx.Message;
+                    stepResults["Step1_CreateDocument"] = "ERROR: " + "Diagnostic operation failed.";
                     stepResults["DocumentCreated"] = false;
 
                     if (createEx.ToString().Contains("TransakcjaVAT"))
@@ -2749,12 +1196,12 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
+            results["OuterError"] = "Diagnostic operation failed.";
             if (ex.ToString().Contains("TransakcjaVAT"))
             {
                 results["TransakcjaVAT_Error"] = true;
             }
-            _logger.LogError(ex, "Error in TestPzCreationWithDates diagnostic");
+            _logger.LogError("Error in TestPzCreationWithDates diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -2764,6 +1211,7 @@ WHERE Symbol = 'PZ'",
     /// This tests: UtworzPrzyjecieZewnetrzne() vs UtworzPrzyjecieZewnetrzneVAT()
     /// </summary>
     [HttpGet("test-pz-creation-methods")]
+    [ConfigurationFlag("Diagnostics:WriteEnabled")]
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, object?>>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<Dictionary<string, object?>>>> TestPzCreationMethods()
     {
@@ -2800,7 +1248,7 @@ WHERE Symbol = 'PZ'",
                             catch { configInfo["PrzyjecieZewnetrzne_PosiadaAspektFinansowy"] = "Cannot read"; }
                         }
                     }
-                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzne_Error"] = ex.Message; }
+                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzne_Error"] = "Diagnostic operation failed."; }
 
                     try
                     {
@@ -2813,7 +1261,7 @@ WHERE Symbol = 'PZ'",
                             catch { configInfo["PrzyjecieZewnetrzneZVAT_PosiadaAspektFinansowy"] = "Cannot read"; }
                         }
                     }
-                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzneZVAT_Error"] = ex.Message; }
+                    catch (Exception ex) { configInfo["PrzyjecieZewnetrzneZVAT_Error"] = "Diagnostic operation failed."; }
 
                     methodResults["Configurations"] = configInfo;
                 }
@@ -2841,7 +1289,7 @@ WHERE Symbol = 'PZ'",
                                 catch { method1Result["DocumentConfigPosiadaAspektFinansowy"] = "Cannot read"; }
                             }
                         }
-                        catch (Exception ex) { method1Result["ConfigReadError"] = ex.Message; }
+                        catch (Exception ex) { method1Result["ConfigReadError"] = "Diagnostic operation failed."; }
 
                         // Try to reserve number - this may trigger VAT loading
                         try
@@ -2853,7 +1301,7 @@ WHERE Symbol = 'PZ'",
                         catch (Exception numEx)
                         {
                             method1Result["ReserveNumberSuccess"] = false;
-                            method1Result["ReserveNumberError"] = numEx.Message;
+                            method1Result["ReserveNumberError"] = "Diagnostic operation failed.";
                             if (numEx.ToString().Contains("TransakcjaVAT") || numEx.ToString().Contains("IdWInstancji"))
                             {
                                 method1Result["IsTransakcjaVATError"] = true;
@@ -2867,12 +1315,12 @@ WHERE Symbol = 'PZ'",
                 catch (Exception ex)
                 {
                     method1Result["CreateSuccess"] = false;
-                    method1Result["CreateError"] = ex.Message;
+                    method1Result["CreateError"] = "Diagnostic operation failed.";
                     if (ex.ToString().Contains("TransakcjaVAT") || ex.ToString().Contains("IdWInstancji"))
                     {
                         method1Result["IsTransakcjaVATError"] = true;
                     }
-                    _logger.LogError(ex, "UtworzPrzyjecieZewnetrzne() failed");
+                    _logger.LogError("UtworzPrzyjecieZewnetrzne() failed (exception type: {ExceptionType})", ex.GetType().Name);
                 }
 
                 // Test Method 2: UtworzPrzyjecieZewnetrzneVAT() - PZ WITH VAT
@@ -2898,7 +1346,7 @@ WHERE Symbol = 'PZ'",
                                 catch { method2Result["DocumentConfigPosiadaAspektFinansowy"] = "Cannot read"; }
                             }
                         }
-                        catch (Exception ex) { method2Result["ConfigReadError"] = ex.Message; }
+                        catch (Exception ex) { method2Result["ConfigReadError"] = "Diagnostic operation failed."; }
 
                         // Try to reserve number - this WILL likely trigger VAT loading
                         try
@@ -2910,7 +1358,7 @@ WHERE Symbol = 'PZ'",
                         catch (Exception numEx)
                         {
                             method2Result["ReserveNumberSuccess"] = false;
-                            method2Result["ReserveNumberError"] = numEx.Message;
+                            method2Result["ReserveNumberError"] = "Diagnostic operation failed.";
                             if (numEx.ToString().Contains("TransakcjaVAT") || numEx.ToString().Contains("IdWInstancji"))
                             {
                                 method2Result["IsTransakcjaVATError"] = true;
@@ -2924,12 +1372,12 @@ WHERE Symbol = 'PZ'",
                 catch (Exception ex)
                 {
                     method2Result["CreateSuccess"] = false;
-                    method2Result["CreateError"] = ex.Message;
+                    method2Result["CreateError"] = "Diagnostic operation failed.";
                     if (ex.ToString().Contains("TransakcjaVAT") || ex.ToString().Contains("IdWInstancji"))
                     {
                         method2Result["IsTransakcjaVATError"] = true;
                     }
-                    _logger.LogError(ex, "UtworzPrzyjecieZewnetrzneVAT() failed");
+                    _logger.LogError("UtworzPrzyjecieZewnetrzneVAT() failed (exception type: {ExceptionType})", ex.GetType().Name);
                 }
 
                 // Summary
@@ -2964,12 +1412,12 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
+            results["OuterError"] = "Diagnostic operation failed.";
             if (ex.ToString().Contains("TransakcjaVAT"))
             {
                 results["TransakcjaVAT_Error"] = true;
             }
-            _logger.LogError(ex, "Error in TestPzCreationMethods diagnostic");
+            _logger.LogError("Error in TestPzCreationMethods diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }
@@ -3050,14 +1498,14 @@ WHERE Symbol = 'PZ'",
                         {
                             allConfigsList.Add(new Dictionary<string, object?>
                             {
-                                ["Error"] = configEx.Message
+                                ["Error"] = "Diagnostic operation failed."
                             });
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    configs["GetAllConfigsError"] = ex.Message;
+                    configs["GetAllConfigsError"] = "Diagnostic operation failed.";
                 }
 
                 configs["TotalConfigurationsCount"] = allConfigsList.Count;
@@ -3081,7 +1529,7 @@ WHERE Symbol = 'PZ'",
                 }
                 catch (Exception ex)
                 {
-                    defaults["PrzyjecieZewnetrzne_Error"] = ex.Message;
+                    defaults["PrzyjecieZewnetrzne_Error"] = "Diagnostic operation failed.";
                 }
 
                 try
@@ -3100,7 +1548,7 @@ WHERE Symbol = 'PZ'",
                 }
                 catch (Exception ex)
                 {
-                    defaults["PrzyjecieZewnetrzneZVAT_Error"] = ex.Message;
+                    defaults["PrzyjecieZewnetrzneZVAT_Error"] = "Diagnostic operation failed.";
                 }
 
                 configs["DefaultConfigurations"] = defaults;
@@ -3141,8 +1589,8 @@ WHERE Symbol = 'PZ'",
         }
         catch (Exception ex)
         {
-            results["OuterError"] = ex.Message;
-            _logger.LogError(ex, "Error in ListPzConfigurations diagnostic");
+            results["OuterError"] = "Diagnostic operation failed.";
+            _logger.LogError("Error in ListPzConfigurations diagnostic (exception type: {ExceptionType})", ex.GetType().Name);
             return Ok(ApiResponse<Dictionary<string, object?>>.Ok(results));
         }
     }

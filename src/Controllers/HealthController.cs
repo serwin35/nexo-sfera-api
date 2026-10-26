@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.Options;
 using NexoSferaApi.Configuration;
 using NexoSferaApi.Models;
@@ -14,7 +15,7 @@ namespace NexoSferaApi.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
-[AllowAnonymous]
+[Authorize]
 [Tags("Health")]
 public class HealthController : ControllerBase
 {
@@ -33,23 +34,11 @@ public class HealthController : ControllerBase
     /// Health check endpoint
     /// </summary>
     [HttpGet]
+    [AllowAnonymous]
     public ActionResult<HealthCheckResponse> GetHealth()
     {
-        var response = new HealthCheckResponse
-        {
-            Status = "Healthy",
-            Timestamp = DateTime.UtcNow,
-            Version = "2.0.0",
-            SferaConnected = _sferaService.IsConnected
-        };
-
-        if (!_sferaService.IsConnected)
-        {
-            response.Status = "Degraded";
-            response.Message = "Sfera connection is not available";
-        }
-
-        return Ok(response);
+        var status = _sferaService.IsConnected ? "Healthy" : "Degraded";
+        return Ok(new HealthCheckResponse { Status = status });
     }
 
     /// <summary>
@@ -81,11 +70,11 @@ public class HealthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking Sfera status");
+            _logger.LogError("Sfera status check failed with exception type {ExceptionType}", ex.GetType().Name);
             return Ok(ApiResponse<SferaStatusResponse>.Ok(new SferaStatusResponse
             {
                 IsConnected = false,
-                Message = $"Error: {ex.Message}"
+                Message = "Unable to check the Sfera connection."
             }));
         }
     }
@@ -96,6 +85,7 @@ public class HealthController : ControllerBase
     /// a Database override) - other pooled company connections are unaffected.
     /// </summary>
     [HttpPost("reconnect")]
+    [EnableRateLimiting("reconnect")]
     public async Task<ActionResult<ApiResponse<bool>>> Reconnect()
     {
         try
@@ -107,8 +97,8 @@ public class HealthController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error reconnecting to Sfera");
-            return StatusCode(500, ApiResponse<bool>.Error("Failed to reconnect to Sfera", new List<string> { ex.Message }));
+            _logger.LogError("Sfera reconnect failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, ApiResponse<bool>.Error("Failed to reconnect to Sfera"));
         }
     }
 
@@ -143,10 +133,6 @@ public class HealthController : ControllerBase
 public class HealthCheckResponse
 {
     public string Status { get; set; } = "Healthy";
-    public DateTime Timestamp { get; set; }
-    public string Version { get; set; } = "1.0.0";
-    public bool SferaConnected { get; set; }
-    public string? Message { get; set; }
 }
 
 public class SferaStatusResponse

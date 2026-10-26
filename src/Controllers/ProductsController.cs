@@ -1,3 +1,7 @@
+Warning: truncated output (original token count: 23722)
+Total output lines: 1880
+
+Paperclip: GitHub capability_missing; continuing without managed credentials.
 using InsERT.Moria.Sfera;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -131,7 +135,7 @@ public class ProductsController : ControllerBase
                     }
                     catch (Exception ex)
                     {
-                        properties[prop.Name] = new { Error = ex.Message };
+                        properties[prop.Name] = new { Error = "Diagnostic operation failed." };
                     }
                 }
 
@@ -166,7 +170,8 @@ public class ProductsController : ControllerBase
         }
         catch (Exception ex)
         {
-            return StatusCode(500, new { Error = ex.Message, Stack = ex.StackTrace });
+            _logger.LogError("Product diagnostic endpoint failed with exception type {ExceptionType}", ex.GetType().Name);
+            return StatusCode(500, new { Error = "Diagnostic operation failed." });
         }
     }
 
@@ -837,276 +842,7 @@ public class ProductsController : ControllerBase
     /// </summary>
     /// <remarks>
     /// SDK: IJednostkiMiarAsortymentu.UstawPodstawowaJednostkeMiary. Nexo only swaps the base unit when the
-    /// requested dictionary unit is not already bound to this product through another converter, and may refuse
-    /// the change for products with stock movements — in both cases a 400 with the SDK errors is returned.
-    /// Existing converters of the old base unit are left untouched by Nexo.
-    /// </remarks>
-    /// <param name="id">Product ID</param>
-    /// <param name="request">New base unit</param>
-    [HttpPut("{id}/units/base")]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductUnitDto>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductUnitDto>>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductUnitDto>>), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<List<ProductUnitDto>>>> SetProductBaseUnit(int id, [FromBody] SetProductBaseUnitRequest request)
-    {
-        try
-        {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, data: (List<ProductUnitDto>?)null, error: (string?)"Failed to get Asortymenty manager", errors: (List<string>?)null);
-                }
-
-                var asortyment = DynamicPropertyHelper.FindById((object)asortymentyManager, id);
-                if (asortyment == null)
-                {
-                    return (statusCode: 404, data: (List<ProductUnitDto>?)null, error: (string?)$"Product with ID {id} not found", errors: (List<string>?)null);
-                }
-
-                var newBaseUnit = FindUnitOfMeasureBySymbol(request.UnitSymbol);
-                if (newBaseUnit == null)
-                {
-                    return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)$"Unit of measure '{request.UnitSymbol}' not found in the units dictionary", errors: (List<string>?)null);
-                }
-
-                using (var edytowanyAsortyment = asortymentyManager.Znajdz(asortyment))
-                {
-                    if (edytowanyAsortyment == null)
-                    {
-                        return (statusCode: 404, data: (List<ProductUnitDto>?)null, error: (string?)$"Product with ID {id} not found", errors: (List<string>?)null);
-                    }
-
-                    dynamic dane = edytowanyAsortyment.Dane;
-                    dynamic jednostki = edytowanyAsortyment.JednostkiMiary;
-                    var newBaseUnitId = DynamicPropertyHelper.GetId(newBaseUnit);
-
-                    var currentBase = DynamicPropertyHelper.GetProperty(dane, "PodstawowaJednostkaMiaryAsortymentu");
-                    if (currentBase != null && DynamicPropertyHelper.GetNullableInt(currentBase, "JednostkaMiary", "Id") == newBaseUnitId)
-                    {
-                        return (statusCode: 200, data: (List<ProductUnitDto>?)MapUnits(dane), error: (string?)null, errors: (List<string>?)null);
-                    }
-
-                    try
-                    {
-                        jednostki.UstawPodstawowaJednostkeMiary(newBaseUnit);
-                    }
-                    catch (Exception ex) when (ex is ArgumentException || ex is InvalidOperationException)
-                    {
-                        return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)"Nexo rejected the base unit change", errors: (List<string>?)new List<string> { ex.Message });
-                    }
-
-                    var baseAfter = DynamicPropertyHelper.GetProperty(dane, "PodstawowaJednostkaMiaryAsortymentu");
-                    if (baseAfter == null || DynamicPropertyHelper.GetNullableInt(baseAfter, "JednostkaMiary", "Id") != newBaseUnitId)
-                    {
-                        return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)$"Nexo did not change the base unit of product {id} to '{request.UnitSymbol}' (the unit is already bound through another converter of this product)", errors: (List<string>?)null);
-                    }
-
-                    if ((bool)edytowanyAsortyment.Zapisz())
-                    {
-                        return (statusCode: 200, data: (List<ProductUnitDto>?)MapUnits(dane), error: (string?)null, errors: (List<string>?)null);
-                    }
-
-                    var errors = GetBusinessObjectErrors(edytowanyAsortyment);
-                    return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)"Failed to change base unit", errors: (List<string>?)errors);
-                }
-            });
-
-            var failure = MapFailure<List<ProductUnitDto>>(result.statusCode, result.error, result.errors);
-            if (failure != null) return failure;
-
-            _logger.LogInformation("Changed base unit of product {Id} to {Unit}", id, request.UnitSymbol);
-            return Ok(ApiResponse<List<ProductUnitDto>>.Ok(result.data!, "Base unit updated successfully"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error changing base unit of product {Id}", id);
-            return StatusCode(500, ApiResponse<List<ProductUnitDto>>.Error("Error changing base unit", new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Set the default sale and/or purchase unit of a product
-    /// </summary>
-    /// <remarks>
-    /// Both units must already be assigned to the product (see POST {id}/units). Only provided fields are changed.
-    /// </remarks>
-    /// <param name="id">Product ID</param>
-    /// <param name="request">Default units</param>
-    [HttpPut("{id}/units/defaults")]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductUnitDto>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductUnitDto>>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductUnitDto>>), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<List<ProductUnitDto>>>> SetProductDefaultUnits(int id, [FromBody] SetProductDefaultUnitsRequest request)
-    {
-        if (string.IsNullOrWhiteSpace(request.SaleUnitSymbol) && string.IsNullOrWhiteSpace(request.PurchaseUnitSymbol))
-        {
-            return BadRequest(ApiResponse<List<ProductUnitDto>>.Error("Provide SaleUnitSymbol and/or PurchaseUnitSymbol"));
-        }
-
-        try
-        {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, data: (List<ProductUnitDto>?)null, error: (string?)"Failed to get Asortymenty manager", errors: (List<string>?)null);
-                }
-
-                var asortyment = DynamicPropertyHelper.FindById((object)asortymentyManager, id);
-                if (asortyment == null)
-                {
-                    return (statusCode: 404, data: (List<ProductUnitDto>?)null, error: (string?)$"Product with ID {id} not found", errors: (List<string>?)null);
-                }
-
-                using (var edytowanyAsortyment = asortymentyManager.Znajdz(asortyment))
-                {
-                    if (edytowanyAsortyment == null)
-                    {
-                        return (statusCode: 404, data: (List<ProductUnitDto>?)null, error: (string?)$"Product with ID {id} not found", errors: (List<string>?)null);
-                    }
-
-                    dynamic dane = edytowanyAsortyment.Dane;
-
-                    if (!string.IsNullOrWhiteSpace(request.SaleUnitSymbol))
-                    {
-                        var saleUnit = ResolveProductUnit(dane, request.SaleUnitSymbol);
-                        if (saleUnit == null)
-                        {
-                            return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)$"Unit '{request.SaleUnitSymbol}' is not assigned to product {id}; add it first", errors: (List<string>?)null);
-                        }
-                        dane.JednostkaSprzedazy = saleUnit;
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(request.PurchaseUnitSymbol))
-                    {
-                        var purchaseUnit = ResolveProductUnit(dane, request.PurchaseUnitSymbol);
-                        if (purchaseUnit == null)
-                        {
-                            return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)$"Unit '{request.PurchaseUnitSymbol}' is not assigned to product {id}; add it first", errors: (List<string>?)null);
-                        }
-                        dane.JednostkaZakupu = purchaseUnit;
-                    }
-
-                    if ((bool)edytowanyAsortyment.Zapisz())
-                    {
-                        return (statusCode: 200, data: (List<ProductUnitDto>?)MapUnits(dane), error: (string?)null, errors: (List<string>?)null);
-                    }
-
-                    var errors = GetBusinessObjectErrors(edytowanyAsortyment);
-                    return (statusCode: 400, data: (List<ProductUnitDto>?)null, error: (string?)"Failed to update default units", errors: (List<string>?)errors);
-                }
-            });
-
-            var failure = MapFailure<List<ProductUnitDto>>(result.statusCode, result.error, result.errors);
-            if (failure != null) return failure;
-
-            _logger.LogInformation("Updated default units of product {Id}", id);
-            return Ok(ApiResponse<List<ProductUnitDto>>.Ok(result.data!, "Default units updated successfully"));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating default units of product {Id}", id);
-            return StatusCode(500, ApiResponse<List<ProductUnitDto>>.Error("Error updating default units", new List<string> { ex.Message }));
-        }
-    }
-
-    #endregion
-
-    #region Kit components
-
-    /// <summary>
-    /// Get the components of a kit (komplet) product
-    /// </summary>
-    /// <remarks>Returns an empty list for products that are not kits.</remarks>
-    /// <param name="id">Product ID</param>
-    [HttpGet("{id}/components")]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductComponentDto>>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductComponentDto>>), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<List<ProductComponentDto>>>> GetProductComponents(int id)
-    {
-        try
-        {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, data: (List<ProductComponentDto>?)null, error: (string?)"Failed to get Asortymenty manager", errors: (List<string>?)null);
-                }
-
-                var asortyment = DynamicPropertyHelper.FindById((object)asortymentyManager, id);
-                if (asortyment == null)
-                {
-                    return (statusCode: 404, data: (List<ProductComponentDto>?)null, error: (string?)$"Product with ID {id} not found", errors: (List<string>?)null);
-                }
-
-                return (statusCode: 200, data: (List<ProductComponentDto>?)MapComponents(asortyment), error: (string?)null, errors: (List<string>?)null);
-            });
-
-            var failure = MapFailure<List<ProductComponentDto>>(result.statusCode, result.error, result.errors);
-            if (failure != null) return failure;
-
-            return Ok(ApiResponse<List<ProductComponentDto>>.Ok(result.data!));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting components of product {Id}", id);
-            return StatusCode(500, ApiResponse<List<ProductComponentDto>>.Error("Error retrieving product components", new List<string> { ex.Message }));
-        }
-    }
-
-    /// <summary>
-    /// Add a component to a kit (komplet) product
-    /// </summary>
-    /// <remarks>
-    /// SDK: ISkladnikiKompletu.Dodaj(symbol, quantity, unitSymbol). The product must be a kit (400 otherwise).
-    /// The component is identified by ComponentProductId or ComponentSymbol; UnitSymbol defaults to the
-    /// component's base unit.
-    /// </remarks>
-    /// <param name="id">Kit product ID</param>
-    /// <param name="request">Component to add</param>
-    [HttpPost("{id}/components")]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductComponentDto>>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductComponentDto>>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductComponentDto>>), StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<ApiResponse<List<ProductComponentDto>>>> AddProductComponent(int id, [FromBody] AddProductComponentRequest request)
-    {
-        if (request.ComponentProductId == null && string.IsNullOrWhiteSpace(request.ComponentSymbol))
-        {
-            return BadRequest(ApiResponse<List<ProductComponentDto>>.Error("Provide ComponentProductId or ComponentSymbol"));
-        }
-
-        try
-        {
-            var result = await _sferaService.ExecuteWithLockAsync(() =>
-            {
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, data: (List<ProductComponentDto>?)null, error: (string?)"Failed to get Asortymenty manager", errors: (List<string>?)null);
-                }
-
-                var asortyment = DynamicPropertyHelper.FindById((object)asortymentyManager, id);
-                if (asortyment == null)
-                {
-                    return (statusCode: 404, data: (List<ProductComponentDto>?)null, error: (string?)$"Product with ID {id} not found", errors: (List<string>?)null);
-                }
-
-                if (!IsKitProduct(asortyment))
-                {
-                    return (statusCode: 400, data: (List<ProductComponentDto>?)null, error: (string?)$"Product {id} is not a kit (komplet); components can only be added to kits", errors: (List<string>?)null);
-                }
-
-                var component = request.ComponentProductId.HasValue
-                    ? DynamicPropertyHelper.FindById((object)asortymentyManager, request.ComponentProductId.Value)
-                    : FindProductEntityBySymbol(asortymentyManager, request.ComponentSymbol!);
-                if (component == null)
-                {
-                    var componentRef = request.ComponentProductId.HasValue ? $"ID {request.ComponentProductId.Value}" : $"symbol '{request.ComponentSymbol}'";
-                    return (statusCode: 400, data: (List<ProductComponentDto>?)null, error: (string?)$"Component product with {componentRef} not found", errors: (List<string>?)null);
+    /// requested dictionary unit is not already bound to this product through another converter, and may refuse…3722 tokens truncated…or: (string?)$"Component product with {componentRef} not found", errors: (List<string>?)null);
                 }
 
                 var componentId = DynamicPropertyHelper.GetId(component);

@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Runtime.Loader;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 using ModelContextProtocol.AspNetCore;
 using NexoSferaApi.Configuration;
 using NexoSferaApi.Services;
@@ -56,11 +58,14 @@ catch (Exception ex)
     Console.Error.WriteLine($"[SDK Sync] Non-fatal error: {ex.Message}");
 }
 
-// Initialize Entity Framework 6 for .NET 8 compatibility
-// Must be called before any EF6/Sfera operations
-EF6Initializer.Initialize();
-
 var builder = WebApplication.CreateBuilder(args);
+
+// Initialize Entity Framework 6 for .NET 8 compatibility before any Sfera operations.
+// HTTP contract tests replace the Sfera service and do not load the vendor SDK.
+if (!builder.Environment.IsEnvironment("Testing"))
+{
+    EF6Initializer.Initialize();
+}
 
 // Add environment variables as configuration source with custom prefix mapping
 builder.Configuration
@@ -212,6 +217,20 @@ builder.Services.AddAuthentication(ApiKeyAuthenticationDefaults.AuthenticationSc
 
 builder.Services.AddAuthorization();
 
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("reconnect", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = 2,
+            Window = TimeSpan.FromMinutes(1),
+            QueueLimit = 0,
+            AutoReplenishment = true
+        }));
+});
+
 // Multi-company Sfera access:
 // - SferaConnectionPool keeps one SDK connection (own STA thread) per Nexo database
 // - SferaServiceRouter resolves the tenant (database/operator/context) from the API key
@@ -247,7 +266,40 @@ var app = builder.Build();
 // Add error handling middleware first
 app.UseErrorHandling();
 
-// Enable Swagger in all environments (protected by auth in production)
+app.UseHttpsRedirection();
+
+app.UseRouting();
+app.UseCors("AllowAll");
+app.UseAuthentication();
+
+// Keep the API map and root redirect hidden unless explicitly enabled and authenticated.
+app.Use(async (context, next) =>
+{
+    var requestPath = context.Request.Path;
+    var isSwaggerRequest = requestPath == "/" || requestPath.StartsWithSegments("/swagger");
+
+    if (isSwaggerRequest)
+    {
+        if (!app.Configuration.GetValue<bool>("Swagger:Enabled"))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return;
+        }
+
+        if (context.User.Identity?.IsAuthenticated != true)
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return;
+        }
+    }
+
+    await next();
+});
+
+app.UseAuthorization();
+app.UseRateLimiter();
+
+// Swagger is gated above because it is served by middleware rather than an authorized endpoint.
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -260,14 +312,8 @@ app.UseSwaggerUI(c =>
     c.ShowExtensions();
 });
 
-// Redirect root to Swagger
+// Redirect root to Swagger; the access gate above applies to this route as well.
 app.MapGet("/", () => Results.Redirect("/swagger")).ExcludeFromDescription();
-
-app.UseHttpsRedirection();
-app.UseCors("AllowAll");
-
-app.UseAuthentication();
-app.UseAuthorization();
 
 app.MapControllers();
 
@@ -328,4 +374,8 @@ static void MapEnvironmentToConfiguration(ConfigurationManager config)
             }
         }
     }
+}
+
+public partial class Program
+{
 }
