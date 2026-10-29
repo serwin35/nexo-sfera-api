@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-29) - PUT /api/dictionary/price-lists/by-id/{id}/items/price-lock
+- Locks or unlocks the price on documents (`CenaSztywnaNaDokumencie`) of main price list positions through
+  `ICennikPozycje.UstawBlokadeCen`: `{"productIds": [...], "locked": false, "dryRun": true}`. All-or-nothing, 1-200
+  products, positions that already have the requested lock come back `unchanged`, and a sales price change refuses the save.
+- Why: the bridge could switch the lock on (`lockPrices` in the cost refresh), but not off. Offers could not discount
+  the embroidered sweatshirts the 22.10 cost refresh had locked.
+
+### Changed (2026-10-29) - recalculate-costs no longer locks prices by default
+- `lockPrices` now defaults to false, and mode `full` no longer requires it. `UstawBlokadeCen` is the price lock on
+  documents, not a recalculation lock: it blocked price changes and discounts on offer, order and invoice lines. The
+  sales price is kept by the existing check that refuses the save when Nexo would change it.
+- `priceLocked` in the response reports the position's lock after the refresh, not the request flag.
+
 ### Added (2026-10-23) - kit cost from components in POST .../items/recalculate-costs
 - `recordPriceFromComponents` sets each kit's registry price (`Asortyment.CenaEwidencyjna`) to the sum of quantity x
   registry price of its components (rounded to 2), before the price list refresh. A kit's base price is its registry

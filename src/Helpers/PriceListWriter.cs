@@ -11,8 +11,9 @@ namespace NexoSferaApi.Helpers;
 /// <summary>
 /// Typed write paths of price list positions through the price list business object (<c>ICenniki.Znajdz(Cennik)</c>):
 /// <c>PUT /api/dictionary/price-lists/by-id/{id}/items</c> sets the gross or net price of main positions
-/// (<c>ICennik.Pozycje</c>), <c>POST .../reprice</c> runs Nexo's price change (<c>ICennik.Przecen</c>), and
-/// <c>POST .../items/recalculate-costs</c> refreshes the cost of positions and keeps their sales prices.
+/// (<c>ICennik.Pozycje</c>), <c>POST .../reprice</c> runs Nexo's price change (<c>ICennik.Przecen</c>),
+/// <c>POST .../items/recalculate-costs</c> refreshes the cost of positions and keeps their sales prices, and
+/// <c>PUT .../items/price-lock</c> switches the price lock on documents (<c>ICennikPozycje.UstawBlokadeCen</c>).
 /// </summary>
 /// <remarks>
 /// <para>
@@ -58,6 +59,14 @@ public static class PriceListWriter
     {
         public bool PriceListFound { get; init; } = true;
         public List<PriceListCostChangeDto> Changes { get; } = new();
+        public List<string> Errors { get; } = new();
+    }
+
+    /// <summary>Result of <see cref="SetPriceLock"/>.</summary>
+    public sealed class PriceLockOutcome
+    {
+        public bool PriceListFound { get; init; } = true;
+        public List<PriceListPriceLockChangeDto> Changes { get; } = new();
         public List<string> Errors { get; } = new();
     }
 
@@ -417,11 +426,6 @@ public static class PriceListWriter
             errors.Add($"mode: must be one of {string.Join(", ", CostModes)}.");
         }
 
-        if (NormalizeCostMode(request?.Mode) == CostModeFull && request?.LockPrices == false)
-        {
-            errors.Add("lockPrices: mode full recalculates the position from the base price, which keeps the sales price only when it is locked.");
-        }
-
         return errors;
     }
 
@@ -437,8 +441,8 @@ public static class PriceListWriter
 
     /// <summary>
     /// Refreshes the cost of the main positions of <c>request.ProductIds</c> in price list <paramref name="priceListId"/>
-    /// and keeps their sales prices; Nexo recalculates margin, markup and profit. With <c>LockPrices</c> the sales prices
-    /// are locked first (<c>UstawBlokadeCen</c>). Modes: <c>full</c> recalculates the whole position from its base price
+    /// and keeps their sales prices; Nexo recalculates margin, markup and profit. With <c>LockPrices</c> the price is also
+    /// locked on documents (<c>UstawBlokadeCen</c>). Modes: <c>full</c> recalculates the whole position from its base price
     /// (<c>AktualizujPozycjeCennika</c>; a kit's base price is the value of its components), <c>estimate</c> switches on
     /// <c>SzacujKosztKompletuZeSkladnikow</c> for kits and recalculates the estimated cost
     /// (<c>PrzeliczSzacunkowyKoszt</c>), <c>calculation</c> only recalculates the calculation price from the current base
@@ -530,7 +534,7 @@ public static class PriceListWriter
 
         if (request.LockPrices)
         {
-            // Before the refresh: a locked position keeps its sales price when Nexo recalculates it from the base price.
+            // Blocks price changes and discounts on document lines. The sales price is kept by the check below, not by this.
             cennikBo.Pozycje.UstawBlokadeCen(true, targets);
         }
 
@@ -590,7 +594,7 @@ public static class PriceListWriter
             change.EstimatedCost = position.SzacowanyKoszt;
             change.Margin = SdkMember.Read(() => (decimal?)position.Marza, null);
             change.Profit = position.Zysk;
-            change.PriceLocked = request.LockPrices;
+            change.PriceLocked = position.CenaSztywnaNaDokumencie;
             change.Status = change.CalculationPrice == change.OldCalculationPrice && change.BasePrice == change.OldBasePrice
                 ? Unchanged
                 : Updated;
@@ -718,6 +722,27 @@ public static class PriceListWriter
         ICennik cennikBo, Dictionary<int, Asortyment> products, List<int> productIds, int priceListId, List<string> errors)
     {
         var targets = new List<IUproszczonaPozycjaCennika>();
+        foreach (var position in ResolveMainPositions(cennikBo, products, productIds, priceListId, errors))
+        {
+            if (position.WyliczCeneKompletuZeSkladnikow)
+            {
+                // The sales price follows the components there, so a fixed price with a margin does not apply.
+                errors.Add($"product {position.IdAsortymentu}: the price is calculated from kit components " +
+                           "(WyliczCeneKompletuZeSkladnikow); set a fixed price first (disableKitComponentPricing).");
+                continue;
+            }
+
+            targets.Add(position);
+        }
+
+        return targets;
+    }
+
+    /// <summary>The single main position of each product in request order; a missing product or position is an error.</summary>
+    private static List<IUproszczonaPozycjaCennika> ResolveMainPositions(
+        ICennik cennikBo, Dictionary<int, Asortyment> products, List<int> productIds, int priceListId, List<string> errors)
+    {
+        var positions = new List<IUproszczonaPozycjaCennika>();
         foreach (var productId in productIds)
         {
             if (!products.TryGetValue(productId, out var asortyment))
@@ -735,18 +760,94 @@ public static class PriceListWriter
                 continue;
             }
 
-            if (main[0].WyliczCeneKompletuZeSkladnikow)
-            {
-                // The sales price follows the components there, so a fixed price with a margin does not apply.
-                errors.Add($"product {productId}: the price is calculated from kit components " +
-                           "(WyliczCeneKompletuZeSkladnikow); set a fixed price first (disableKitComponentPricing).");
-                continue;
-            }
-
-            targets.Add(main[0]);
+            positions.Add(main[0]);
         }
 
-        return targets;
+        return positions;
+    }
+
+    /// <summary>Validation of a price lock request that needs no SDK access, one message per problem.</summary>
+    public static List<string> ValidatePriceLock(SetPriceListPriceLockRequest? request)
+    {
+        var errors = new List<string>();
+        var productIds = request?.ProductIds ?? new List<int>();
+        if (productIds.Count == 0) errors.Add("productIds: at least one product id is required.");
+        if (productIds.Count > MaxItems) errors.Add($"productIds: at most {MaxItems} ids per request, got {productIds.Count}.");
+        if (productIds.Any(id => id <= 0)) errors.Add("productIds: every id must be a positive Nexo product id.");
+        if (productIds.Distinct().Count() != productIds.Count) errors.Add("productIds: every product must be listed once.");
+        if (request?.Locked == null) errors.Add("locked: required, true locks the price on documents and false unlocks it.");
+        return errors;
+    }
+
+    /// <summary>
+    /// Switches the price lock on documents (<c>CenaSztywnaNaDokumencie</c>) of the main positions of
+    /// <c>request.ProductIds</c> in price list <paramref name="priceListId"/> through <c>ICennikPozycje.UstawBlokadeCen</c>.
+    /// Positions that already have the requested lock are reported as <c>unchanged</c>. Returns errors (and saves nothing)
+    /// for a closed price list, a missing product or main position, a position Nexo did not switch, a sales price that
+    /// would change, or a refused save. With <c>DryRun</c> nothing is saved. Call <see cref="ValidatePriceLock"/> first.
+    /// </summary>
+    public static PriceLockOutcome SetPriceLock(Uchwyt sfera, int priceListId, SetPriceListPriceLockRequest request)
+    {
+        var cennik = sfera.Cenniki().Dane.Wszystkie().FirstOrDefault(c => c.Id == priceListId);
+        if (cennik == null) return new PriceLockOutcome { PriceListFound = false };
+
+        var outcome = new PriceLockOutcome();
+        if (cennik.Status == (int)StatusCennika.Zamkniety)
+        {
+            outcome.Errors.Add($"price list {priceListId}: the price list is closed.");
+            return outcome;
+        }
+
+        var locked = request.Locked!.Value;
+        var products = PriceListReader.LoadProducts(sfera, request.ProductIds);
+
+        using ICennik cennikBo = sfera.Cenniki().Znajdz(cennik);
+        var targets = ResolveMainPositions(cennikBo, products, request.ProductIds, priceListId, outcome.Errors);
+        if (outcome.Errors.Count > 0) return outcome;
+
+        var changes = targets.Select(p => new PriceListPriceLockChangeDto
+        {
+            ProductId = p.IdAsortymentu,
+            ProductSymbol = SdkMember.Read(() => p.SymbolAsortymentu, null),
+            Status = p.CenaSztywnaNaDokumencie == locked ? Unchanged : Updated,
+            OldLocked = p.CenaSztywnaNaDokumencie,
+            Locked = locked,
+            PriceNet = p.CenaNetto,
+            PriceGross = p.CenaBrutto,
+        }).ToList();
+
+        var switched = targets.Where(p => p.CenaSztywnaNaDokumencie != locked).ToList();
+        if (switched.Count > 0)
+        {
+            cennikBo.Pozycje.UstawBlokadeCen(locked, switched);
+
+            for (var i = 0; i < targets.Count; i++)
+            {
+                if (targets[i].CenaSztywnaNaDokumencie != locked)
+                {
+                    outcome.Errors.Add($"{Describe(targets[i])}: Nexo did not switch the price lock; nothing was saved.");
+                }
+
+                if (targets[i].CenaNetto != changes[i].PriceNet || targets[i].CenaBrutto != changes[i].PriceGross)
+                {
+                    // Nothing is saved: disposing the business object discards the switch.
+                    outcome.Errors.Add($"{Describe(targets[i])}: Nexo would change the sales price from {Format(changes[i].PriceGross)} " +
+                                       $"to {Format(targets[i].CenaBrutto)} gross; nothing was saved.");
+                }
+            }
+
+            if (outcome.Errors.Count > 0) return outcome;
+
+            if (!request.DryRun && !cennikBo.Zapisz())
+            {
+                outcome.Errors.AddRange(SaveErrors(cennikBo));
+                if (outcome.Errors.Count == 0) outcome.Errors.Add("Nexo refused to save the price list.");
+                return outcome;
+            }
+        }
+
+        outcome.Changes.AddRange(changes);
+        return outcome;
     }
 
     /// <summary>A conflict message when an expected price differs from the current price, otherwise <c>null</c>.</summary>

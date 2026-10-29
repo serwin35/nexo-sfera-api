@@ -1038,14 +1038,15 @@ public class DictionaryController : ControllerBase
     /// calculation price are recalculated from the price list defaults (for a kit: the components), and Nexo
     /// recalculates margin, markup and profit from them. The sales price stays; if Nexo would change it, nothing is saved.
     /// Use it after a change of kit components or purchase prices, so the margin between cost and sales price is current.
-    /// <c>lockPrices</c> (default true) locks the sales prices (<c>UstawBlokadeCen</c>), so later cost changes move the
-    /// margin and not the price. <c>dryRun</c> returns the new costs and margins without saving.
+    /// <c>lockPrices</c> (default false) also locks the price on documents (<c>UstawBlokadeCen</c>), which blocks price
+    /// changes and discounts on offer, order and invoice lines; <c>PUT .../items/price-lock</c> unlocks it.
+    /// <c>dryRun</c> returns the new costs and margins without saving.
     ///
     /// All-or-nothing: a closed price list, unknown products, products without one main position, or kit positions
     /// priced from their components return 400, and nothing is saved. Otherwise all positions are saved with one
     /// <c>ICennik.Zapisz()</c>.
     ///
-    /// Example: <c>{"productIds": [106974, 106975], "lockPrices": true, "dryRun": true}</c>
+    /// Example: <c>{"productIds": [106974, 106975], "mode": "calculation", "dryRun": true}</c>
     ///
     /// Kit cost from components: with <c>recordPriceFromComponents</c> each kit's registry price
     /// (<c>CenaEwidencyjna</c>) is first set to the sum of quantity x registry price of its components. A kit's base price
@@ -1089,6 +1090,56 @@ public class DictionaryController : ControllerBase
         {
             _logger.LogError(ex, "Error recalculating costs in price list {PriceListId}", id);
             return StatusCode(500, ApiResponse<object>.Error("Error recalculating the costs"));
+        }
+    }
+
+    /// <summary>
+    /// Lock or unlock the price on documents for main price list positions
+    /// </summary>
+    /// <remarks>
+    /// Switches <c>CenaSztywnaNaDokumencie</c> (Subiekt: price lock on documents) of the main positions of the given
+    /// products through <c>ICennikPozycje.UstawBlokadeCen</c>. While a position is locked, the price of an offer, order or
+    /// invoice line taken from this price list cannot be changed or discounted. The sales price does not change; if Nexo
+    /// would change it, nothing is saved. Positions that already have the requested lock are reported as
+    /// <c>unchanged</c>.
+    ///
+    /// All-or-nothing: a closed price list, unknown products or products without one main position return 400, and
+    /// nothing is saved. Otherwise all positions are saved with one <c>ICennik.Zapisz()</c>. 1-200 products per request.
+    ///
+    /// Example: <c>{"productIds": [106974, 106975], "locked": false, "dryRun": true}</c>
+    /// </remarks>
+    /// <param name="id">Nexo price list id (<c>Cennik.Id</c>)</param>
+    /// <param name="request">Products, the lock state and dry run</param>
+    [HttpPut("price-lists/by-id/{id:int}/items/price-lock")]
+    [ProducesResponseType(typeof(ApiResponse<List<PriceListPriceLockChangeDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SetPriceListPriceLock(int id, [FromBody] SetPriceListPriceLockRequest request)
+    {
+        var errors = PriceListWriter.ValidatePriceLock(request);
+        if (errors.Count > 0)
+            return BadRequest(ApiResponse<object>.Error("Invalid price lock request", errors));
+
+        try
+        {
+            var outcome = await _sferaService.ExecuteWithLockAsync(() =>
+                PriceListWriter.SetPriceLock(_sferaService.GetSfera(), id, request));
+
+            if (!outcome.PriceListFound)
+                return NotFound(ApiResponse<object>.Error($"Price list {id} not found"));
+
+            if (outcome.Errors.Count > 0)
+                return BadRequest(ApiResponse<object>.Error("Price lock not saved", outcome.Errors));
+
+            _logger.LogInformation("Set the price lock to {Locked} on {Updated} of {Total} positions in price list {PriceListId} (dry run {DryRun})",
+                request.Locked, outcome.Changes.Count(c => c.Status == PriceListWriter.Updated), outcome.Changes.Count, id, request.DryRun);
+            return Ok(ApiResponse<List<PriceListPriceLockChangeDto>>.Ok(outcome.Changes,
+                request.DryRun ? "Dry run: nothing was saved" : "Price lock saved"));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting the price lock in price list {PriceListId}", id);
+            return StatusCode(500, ApiResponse<object>.Error("Error setting the price lock"));
         }
     }
 

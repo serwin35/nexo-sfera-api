@@ -30,17 +30,19 @@ public class RecalculatePriceListCostsRequest
     public bool SkipIncompleteKits { get; set; }
 
     /// <summary>
-    /// Lock the sales price of the positions (<c>ICennikPozycje.UstawBlokadeCen</c>), so a later cost change moves the
-    /// margin and not the price. Default: true.
+    /// Also lock the price on documents (<c>ICennikPozycje.UstawBlokadeCen</c>, <c>CenaSztywnaNaDokumencie</c>): offer,
+    /// order and invoice lines from this price list can then not change or discount the price. Not needed to keep the
+    /// sales price, the refresh refuses any change of it anyway. Default: false. Unlock with
+    /// <c>PUT .../items/price-lock</c>.
     /// </summary>
-    public bool LockPrices { get; set; } = true;
+    public bool LockPrices { get; set; }
 
     /// <summary>Compute and return the new costs and margins without saving anything.</summary>
     public bool DryRun { get; set; }
 
     /// <summary>
-    /// <c>full</c> (default): recalculate the whole position from its base price (<c>AktualizujPozycjeCennika</c>);
-    /// needs <c>lockPrices</c>. <c>estimate</c>: estimate a kit's cost as the sum of its components' costs
+    /// <c>full</c> (default): recalculate the whole position from its base price (<c>AktualizujPozycjeCennika</c>).
+    /// <c>estimate</c>: estimate a kit's cost as the sum of its components' costs
     /// (<c>SzacujKosztKompletuZeSkladnikow</c>, <c>PrzeliczSzacunkowyKoszt</c>). <c>calculation</c>: only recalculate the
     /// calculation price from the current base price (<c>AktualizujCeneKalkulacyjna</c>).
     /// </summary>
