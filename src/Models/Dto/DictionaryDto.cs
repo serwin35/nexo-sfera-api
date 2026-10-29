@@ -409,7 +409,10 @@ public class PriceListCostChangeDto
     public decimal OldProfit { get; set; }
     public decimal Profit { get; set; }
 
-    /// <summary><c>true</c> when the request locked the sales price of the position.</summary>
+    /// <summary>
+    /// The price lock on documents (<c>CenaSztywnaNaDokumencie</c>) after the refresh; <c>true</c> blocks price changes
+    /// and discounts on document lines.
+    /// </summary>
     public bool PriceLocked { get; set; }
 
     /// <summary>With <c>recordPriceFromComponents</c>: the kit's registry price before and after (the sum of its components).</summary>
@@ -424,6 +427,26 @@ public class PriceListCostChangeDto
 
     /// <summary>Why a kit was <c>skipped</c> (status) and left out of the refresh.</summary>
     public string? Reason { get; set; }
+}
+
+/// <summary>
+/// Price lock change of one main price list position, returned by
+/// <c>PUT /api/dictionary/price-lists/by-id/{id}/items/price-lock</c>. The sales price does not change.
+/// </summary>
+public class PriceListPriceLockChangeDto
+{
+    public int ProductId { get; set; }
+    public string? ProductSymbol { get; set; }
+
+    /// <summary><c>updated</c>, or <c>unchanged</c> when the position already had the requested lock.</summary>
+    public string Status { get; set; } = string.Empty;
+
+    /// <summary>The price lock on documents (<c>CenaSztywnaNaDokumencie</c>) before and after.</summary>
+    public bool OldLocked { get; set; }
+    public bool Locked { get; set; }
+
+    public decimal PriceNet { get; set; }
+    public decimal PriceGross { get; set; }
 }
 
 /// <summary>
