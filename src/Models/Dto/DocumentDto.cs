@@ -168,6 +168,12 @@ public class DocumentDto
     // Related documents
     public List<RelatedDocumentDto>? RelatedDocuments { get; set; }
 
+    /// <summary>
+    /// Document corrected by this one (SDK: Dokument.DokumentKorygowany). Set only for correction documents (FSK, FZK,
+    /// PAK); null for every other symbol. A correction whose corrected document is unknown has the object with null fields.
+    /// </summary>
+    public DocumentCorrectionRefDto? Correction { get; set; }
+
     // Timestamps
     /// <summary>Naglowek.Utworzono (local time).</summary>
     public DateTime? CreatedAt { get; set; }
@@ -225,6 +231,17 @@ public class KsefStatusDto
     /// Seller NIP from e-invoice (SDK 60.0.0: DokumentElektroniczny.NIPSprzedawcy)
     /// </summary>
     public string? SellerNIP { get; set; }
+}
+
+/// <summary>
+/// Reference from a correction to the document it corrects (same fields as <see cref="CorrectionDto"/>).
+/// </summary>
+public class DocumentCorrectionRefDto
+{
+    /// <summary>Id of the corrected document (SDK: DokumentKorygowany.Id); for a correction of a correction, the previous correction.</summary>
+    public int? OriginalDocumentId { get; set; }
+    /// <summary>Full number of the corrected document (SDK: DokumentKorygowany.NumerWewnetrzny.PelnaSygnatura).</summary>
+    public string? OriginalDocumentNumber { get; set; }
 }
 
 /// <summary>
