@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-10-31) - corrected document in GET /api/documents/{id}
+- `DocumentDto.correction` (`originalDocumentId`, `originalDocumentNumber`) from `Dokument.DokumentKorygowany`, the same
+  reads as the correction creation endpoints. Set for FSK, FZK and PAK; `null` for every other symbol, which skip the
+  lookup. A correction without a known corrected document returns the object with null fields. Also in
+  `GET /api/documents/by-number/{number}`. Lists are unchanged.
+- Why: WolfFire could not link a purchase invoice correction (FZK) to its invoice, so the purchase price history could
+  not tell the corrected price from a separate purchase (COD-1928). The name differs on purpose from the four fields
+  WolfFire guesses today, so this release does not link sales corrections to commissions before WolfFire decides to.
+
 ### Added (2026-10-29) - PUT /api/dictionary/price-lists/by-id/{id}/items/price-lock
 - Locks or unlocks the price on documents (`CenaSztywnaNaDokumencie`) of main price list positions through
   `ICennikPozycje.UstawBlokadeCen`: `{"productIds": [...], "locked": false, "dryRun": true}`. All-or-nothing, 1-200

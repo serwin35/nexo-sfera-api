@@ -6039,6 +6039,27 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    /// <summary>Symbols of correction documents, the only ones that carry Dokument.DokumentKorygowany.</summary>
+    private static readonly HashSet<string> CorrectionSymbols = new(StringComparer.OrdinalIgnoreCase) { "FSK", "FZK", "PAK" };
+
+    /// <summary>
+    /// Corrected document of a correction (same reads as <see cref="MapPurchaseCorrectionToDto"/>). Other documents skip the
+    /// lookup, so the detail sync of FS and FZ does no extra work under the SDK lock.
+    /// </summary>
+    private static DocumentCorrectionRefDto? MapCorrectionRef(dynamic dokument, string symbol)
+    {
+        if (!CorrectionSymbols.Contains(symbol))
+        {
+            return null;
+        }
+
+        return new DocumentCorrectionRefDto
+        {
+            OriginalDocumentId = DynamicPropertyHelper.GetNullableInt(dokument, "DokumentKorygowany", "Id"),
+            OriginalDocumentNumber = DynamicPropertyHelper.GetNestedString(dokument, "DokumentKorygowany", "NumerWewnetrzny", "PelnaSygnatura"),
+        };
+    }
+
     private static DocumentDto MapDocumentToDto(dynamic dokument)
     {
         try
@@ -6173,6 +6194,8 @@ public class DocumentsController : ControllerBase
 
             // Calculate total costs
             dto.GoodsCost = dto.GoodsCostBook + dto.GoodsCostWarehouse;
+
+            dto.Correction = MapCorrectionRef(dokument, dto.Symbol);
 
             // Map items if available
             var pozycje = DynamicPropertyHelper.GetProperty(dokument, "Pozycje");
