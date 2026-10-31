@@ -169,8 +169,8 @@ public class DocumentDto
     public List<RelatedDocumentDto>? RelatedDocuments { get; set; }
 
     /// <summary>
-    /// Document corrected by this one (SDK: Dokument.DokumentKorygowany). Set only for correction documents (FSK, FZK,
-    /// PAK); null for every other symbol. A correction whose corrected document is unknown has the object with null fields.
+    /// Document corrected by this one (SDK: Dokument.DokumentKorygowany). Set only for invoice corrections (Symbol KFS,
+    /// KFZ); null for every other symbol. A correction whose corrected document is unknown has the object with null fields.
     /// </summary>
     public DocumentCorrectionRefDto? Correction { get; set; }
 

@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-10-31) - corrected document for real correction symbols
+- `DocumentDto.correction` is now set for `Symbol` KFS and KFZ. The first release checked FSK, FZK and PAK, the names of
+  the document type dictionary, while `Dokument.Symbol` of a correction is KFS or KFZ (SDK `TypDokumentu`), so every
+  correction returned `correction: null`. PAK is dropped: a receipt return is a separate document type (`ZW`).
+- Why: WolfFire links a purchase invoice correction to its invoice only through this field (COD-1928).
+
 ### Added (2026-10-31) - corrected document in GET /api/documents/{id}
 - `DocumentDto.correction` (`originalDocumentId`, `originalDocumentNumber`) from `Dokument.DokumentKorygowany`, the same
-  reads as the correction creation endpoints. Set for FSK, FZK and PAK; `null` for every other symbol, which skip the
+  reads as the correction creation endpoints. Set for KFS and KFZ (see the fix above); `null` for every other symbol, which skip the
   lookup. A correction without a known corrected document returns the object with null fields. Also in
   `GET /api/documents/by-number/{number}`. Lists are unchanged.
 - Why: WolfFire could not link a purchase invoice correction (FZK) to its invoice, so the purchase price history could
