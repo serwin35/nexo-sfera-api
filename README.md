@@ -426,8 +426,9 @@ curl -X POST http://localhost:5000/api/assembly/from-order-line -H "Content-Type
   (`StanRealizacjiZamowienia`, `IloscDoRealizacji`, `Rezerwacja`) + wartości w jednostce bazowej.
 - `GET /api/documents?modifiedSince=2026-10-09T00:00:00%2B02:00&sortBy=modified_asc`: tylko dokumenty zmienione (nagłówek
   lub rozrachunek) od podanego czasu; lista ma `isCanceled`, `createdAt`, `modifiedAt`, `settlementModifiedAt`.
-- `GET /api/documents/{id}` korekty (FSK, FZK, PAK) ma `correction.originalDocumentId` i `correction.originalDocumentNumber`
-  (`DokumentKorygowany`; przy korekcie korekty: poprzednia korekta). Pozostałe dokumenty mają `correction: null`.
+- `GET /api/documents/{id}` korekty faktury (`symbol` KFS albo KFZ) ma `correction.originalDocumentId`
+  i `correction.originalDocumentNumber` (`DokumentKorygowany`; przy korekcie korekty: poprzednia korekta, a bez znanego
+  dokumentu korygowanego obiekt z polami `null`). Pozostałe dokumenty mają `correction: null`.
 - `GET /api/products?modifiedSince=2026-10-22T00:00:00%2B02:00&sortBy=modified_asc`: tylko towary ze zmienioną kartoteką
   (`Naglowek.Zmieniono`) od podanego czasu. Ceny w cennikach, stany i przeniesienie do kosza nie zmieniają kartoteki, więc
   okresowy pełny przelot listy zostaje. Lista i szczegóły mają `type` (z rodzaju nexo; filtr `type` działa), `kindName`,

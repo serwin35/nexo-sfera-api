@@ -6039,8 +6039,11 @@ public class DocumentsController : ControllerBase
         }
     }
 
-    /// <summary>Symbols of correction documents, the only ones that carry Dokument.DokumentKorygowany.</summary>
-    private static readonly HashSet<string> CorrectionSymbols = new(StringComparer.OrdinalIgnoreCase) { "FSK", "FZK", "PAK" };
+    /// <summary>
+    /// Symbols of correction documents, the only ones that carry Dokument.DokumentKorygowany. These are the values of
+    /// Dokument.Symbol (SDK TypDokumentu: KFS 512, KFZ 2048), not the FSK/FZK names of the document type dictionary.
+    /// </summary>
+    private static readonly HashSet<string> CorrectionSymbols = new(StringComparer.OrdinalIgnoreCase) { "KFS", "KFZ" };
 
     /// <summary>
     /// Corrected document of a correction (same reads as <see cref="MapPurchaseCorrectionToDto"/>). Other documents skip the
