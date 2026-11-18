@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-11-19) - a refused FS/PA save is final
+- `POST /api/documents/sales-invoice` and `POST /api/documents/receipt` no longer try other saves after `Zapisz()`
+  refuses the document. `ZapiszBezWalidacji()`, `Zatwierdz()` + `Zapisz()`, `ZapiszZatwierdzone()` and the reflection
+  `ObjectContext.SaveChanges()` are gone. The request returns 400 with the validation errors, and nothing is saved.
+- A receipt whose `Zapisz()` throws returns the validation messages of the business object (`SdkErrors`) instead of the
+  exception text; the exception stays in the log.
+- Why: a fiscal document saved past its validation (a number Nexo refused, no buyer, broken totals) is worse than no
+  document. The fallbacks broke the rule that fiscal writes are all-or-nothing and never retry. A guard test keeps them out.
+
 ### Added (2026-11-19) - documentNumber on POST /api/documents/sales-invoice and /receipt
 - `documentNumber` (int, 1 or more) states the number of the invoice or receipt in its series instead of the next free
   one: typed Nexo manual numbering (`IObiektNumerowany.ZarezerwujNumer(int)`, after the dates are set). Takes precedence
