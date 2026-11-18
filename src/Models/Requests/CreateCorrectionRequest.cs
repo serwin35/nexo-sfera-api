@@ -182,6 +182,18 @@ public class CreateReceiptRequest
     /// If false (default): number is assigned automatically during Zapisz() - no gaps in numbering.
     /// </summary>
     public bool ReserveNumber { get; set; } = false;
+
+    /// <summary>
+    /// Number of the document in its series, stated outright instead of the next free one (Nexo manual numbering,
+    /// <c>IObiektNumerowany.ZarezerwujNumer(int)</c>). Used by historical imports to fill a gap with the number the
+    /// customer got. Only <c>POST /api/documents/sales-invoice</c> and <c>POST /api/documents/receipt</c> apply it
+    /// (see <c>GET /api/documents/capabilities</c>); every other endpoint refuses it with 400. Needs <c>issueDate</c>,
+    /// because the series follows the date. The request fails with 400, and nothing is saved, when the series does not
+    /// allow manual numbers, Nexo refuses the number (taken, breaks the date order) or reserves a different one.
+    /// Takes precedence over <c>reserveNumber</c>.
+    /// </summary>
+    [Range(1, int.MaxValue)]
+    public int? DocumentNumber { get; set; }
 }
 
 public enum ReceiptType

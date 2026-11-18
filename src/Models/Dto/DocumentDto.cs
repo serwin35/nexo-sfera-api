@@ -432,3 +432,14 @@ public class DocumentPaymentDto
     /// <summary>"Cash" | "Transfer". SDK: RodzajZaplaty (0/1).</summary>
     public string? SettlementKind { get; set; }
 }
+
+/// <summary>
+/// What the document write endpoints of this bridge apply (<c>GET /api/documents/capabilities</c>).
+/// </summary>
+public class DocumentCapabilitiesDto
+{
+    /// <summary>
+    /// Endpoints, relative to <c>/api/documents</c>, that apply <c>documentNumber</c> (a number stated outright).
+    /// </summary>
+    public IReadOnlyList<string> ExplicitDocumentNumber { get; set; } = Array.Empty<string>();
+}

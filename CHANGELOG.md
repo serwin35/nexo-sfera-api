@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-11-19) - documentNumber on POST /api/documents/sales-invoice and /receipt
+- `documentNumber` (int, 1 or more) states the number of the invoice or receipt in its series instead of the next free
+  one: typed Nexo manual numbering (`IObiektNumerowany.ZarezerwujNumer(int)`, after the dates are set). Takes precedence
+  over `reserveNumber` and needs `issueDate`, because the series follows the date.
+- Fails loudly, nothing is saved: 400 when the series does not allow manual numbers
+  (`IZrodloNumerow.MoznaNadacNumerRecznie`), when Nexo refuses the number (a `NumeracjaException` message comes back, any
+  other failure only in the log), reports reservation warnings, reserves a different number, or (receipt) moves the
+  issue date while reserving. A number that is reserved but not saved is given back (`ZwolnijNumer`), so a refused save
+  leaves no hole.
+- With a stated number a refused `Zapisz()` returns its errors: the fallback saves (`ZapiszBezWalidacji`,
+  `Zatwierdz` + `Zapisz`, `ZapiszZatwierdzone`, `ObjectContext.SaveChanges`) are skipped, because they could keep a number
+  Nexo refused. Requests without `documentNumber` behave as before.
+- `customer-order`, `purchase-invoice` and `vat-margin-invoice` refuse `documentNumber` with 400 instead of ignoring it.
+- `GET /api/documents/capabilities` returns `{"explicitDocumentNumber": ["sales-invoice", "receipt"]}`. Clients send
+  `documentNumber` only when the bridge lists the endpoint; an older bridge answers 404 and has silently ignored the field.
+- Why: the ILUO → Nexo transfer must fill numbering gaps with the number the customer got (FS 24 and 27 of June 2024,
+  below FS 28 that Nexo already has). Before this change the field was ignored and such a document took the next free
+  number.
+
+### Fixed (2026-11-19) - test project compiles
+- `ApiSecurityTests` imports `Microsoft.AspNetCore.Http` (`DefaultHttpContext`, `StatusCodes`); the test project
+  references `InsERT.Moria.API` for the numbering fakes.
+
 ### Fixed (2026-10-31) - corrected document for real correction symbols
 - `DocumentDto.correction` is now set for `Symbol` KFS and KFZ. The first release checked FSK, FZK and PAK, the names of
   the document type dictionary, while `Dokument.Symbol` of a correction is KFS or KFZ (SDK `TypDokumentu`), so every
