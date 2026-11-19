@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-11-19) - save guard: SaveChanges in any form, FS/PA/RW save exceptions found by place
+- `FiscalSaveGuardTests` forbids `SaveChanges…` in any form. `SaveChangesAsync().Wait()` passed the old `SaveChanges(`
+  check. A method group, `nameof` and a name for reflection count too.
+- In the FS, PA and RW write paths, the guard now finds the save exception by its place, not by its name. These paths are:
+  - REST `sales-invoice`, `receipt`, `warehouse-documents/rw` and `rw/from-order`;
+  - MCP `CreateSalesInvoice` and `CreateReceipt`.
+- The rule for those paths:
+  - The catch variables of the innermost `try` around `Zapisz()` may reach only log statements, whatever their names.
+  - Copies of the exception are followed (`saveException = ex`, `inner = ex.InnerException`).
+  - A `throw` in that catch counts too: the outer catches return `ex.Message`.
+  - A `Zapisz()` outside a `try` fails the test, and so does a renamed path.
+  - Why: the name rule (`save…Ex`) missed `detailErrors.Add(ex.Message)` in the FS catch.
+- `logger.` (MCP tools, helpers) now counts as a log statement, like `_logger.`.
+- MCP `CreateSalesInvoice` / `CreateReceipt` and `POST /api/warehouse-documents/rw/from-order` no longer return the
+  exception text of a save that threw; the text stays in the log. Instead:
+  - when Nexo has validation messages, they return those (REST: 400);
+  - otherwise they return "… save failed; the bridge log has the details" (REST: 500).
+- Targets SDK 62.0.0.9537; no SDK or package changes.
 ### Notes (2026-11-19) - Nexo 62.0.3 not supported yet
 - The bridge targets **SDK 62.0.0.9537**, matching production Nexo 62.0.0. **Nexo 62.0.3 is not supported yet**: an upgrade
   needs an SDK swap and a contract run on Windows first. With `PreferDeploymentBinaries=true` the bridge loads the DLLs of
