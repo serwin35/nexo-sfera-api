@@ -1179,7 +1179,17 @@ public class WarehouseDocumentsController : ControllerBase
                     catch (Exception fillEx)
                     {
                         _logger.LogError(fillEx, "RW from order {OrderId}: WypelnijNaPodstawieZK failed", request.OrderId);
-                        return ("badRequest", null, $"Cannot realize order into RW: {fillEx.Message}", new List<string> { fillEx.Message });
+                        // As the save path: validation messages of the RW go back (400), a failure without them is a
+                        // 500, and the exception text stays in the log.
+                        var fillErrors = ((object)rw) is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy fillObject
+                            ? SdkErrors.Of(fillObject)
+                            : new List<string>();
+                        if (fillErrors.Count > 0)
+                        {
+                            return ("badRequest", null, "Cannot realize order into RW", fillErrors);
+                        }
+
+                        return ("error", null, "Cannot realize order into RW; the bridge log has the details", new List<string>());
                     }
 
                     if (!string.IsNullOrEmpty(request.Notes))
@@ -1250,7 +1260,8 @@ public class WarehouseDocumentsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating RW from customer order {OrderId}", request.OrderId);
-            return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error("Error creating RW from customer order", new List<string> { ex.Message }));
+            return StatusCode(500, ApiResponse<WarehouseDocumentDto>.Error(
+                "Error creating RW from customer order; the bridge log has the details", new List<string>()));
         }
     }
 

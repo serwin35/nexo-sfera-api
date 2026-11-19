@@ -249,6 +249,21 @@ SDK Sfery działa na **jednym dedykowanym wątku STA** — wszystkie operacje SD
 - `GET /api/health` — status API (anonimowy)
 - `GET /api/health/sfera` — status połączenia ze Sferą (wymaga klucza API)
 - `POST /api/health/reconnect` — pełna rekonekcja (wymaga klucza API; limit 2 żądań/minutę na adres IP)
+- `GET /api/health/version` — działający build: commit i czas builda (UTC, wpisane przy budowaniu), SDK Nexo mostu
+  i zainstalowane Nexo (wymaga klucza API)
+- `GET /api/health/sdk-version-check` — porównanie DLL-i SDK mostu z instalacją Nexo (wymaga klucza API)
+
+### Wersja na hoście i aktualizacja Nexo
+
+Wersję mostu i Nexo na hoście sprawdzisz bez logowania na serwer: `GET /api/health/version` (`commit`, `dirty: true`,
+gdy checkout miał niezatwierdzone zmiany, `sdkVersion`, `installedNexoVersion`) i `GET /api/health/sdk-version-check`.
+Aktualizacja Nexo (np. do 62.0.3) idzie tylko w tej kolejności:
+
+1. nowe SDK do `docs/nexoSDK_<wersja>/` i build mostu na nim;
+2. testy kontraktowe na Windows (`dotnet test tests/NexoSferaApi.Tests`);
+3. aktualizacja Nexo na hoście mostu;
+4. restart mostu (przy `PreferDeploymentBinaries=true` ładuje przy starcie DLL-e z instalacji Nexo) i sprawdzenie
+   `GET /api/health/version`.
 
 ## 📡 Moduły API
 

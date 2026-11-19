@@ -119,6 +119,36 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
+    /// The running build: git commit and UTC build time baked in at build, the Nexo SDK the bridge loaded and the
+    /// installed Nexo version. Read-only; "unknown" for what the build could not record.
+    /// </summary>
+    [HttpGet("version")]
+    public ActionResult<ApiResponse<BridgeVersionResponse>> GetVersion()
+    {
+        var build = BuildInfo.Read(typeof(HealthController).Assembly);
+        string installed;
+        try
+        {
+            installed = NexoSdkSynchronizer.CheckVersions(_settings.NexoInstallPath, AppContext.BaseDirectory).InstalledVersion
+                        ?? BuildInfo.Unknown;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not read the installed Nexo version");
+            installed = BuildInfo.Unknown;
+        }
+
+        return Ok(ApiResponse<BridgeVersionResponse>.Ok(new BridgeVersionResponse
+        {
+            Commit = build.Commit,
+            Dirty = build.Dirty,
+            BuiltAtUtc = build.BuiltAtUtc,
+            SdkVersion = BuildInfo.VersionOf(typeof(InsERT.Moria.Sfera.Uchwyt).Assembly),
+            InstalledNexoVersion = installed,
+        }));
+    }
+
+    /// <summary>
     /// Live check comparing current SDK version with nexo installation version.
     /// Reports whether a restart is needed to pick up updated DLLs.
     /// </summary>
@@ -128,6 +158,22 @@ public class HealthController : ControllerBase
         var result = NexoSdkSynchronizer.CheckVersions(_settings.NexoInstallPath, AppContext.BaseDirectory);
         return Ok(ApiResponse<SdkSyncResult>.Ok(result));
     }
+}
+
+public class BridgeVersionResponse
+{
+    /// <summary>Git commit the bridge was built from, or "unknown".</summary>
+    public string Commit { get; set; } = BuildInfo.Unknown;
+
+    /// <summary>The checkout had uncommitted changes to tracked files at build; null when unknown.</summary>
+    public bool? Dirty { get; set; }
+
+    public string BuiltAtUtc { get; set; } = BuildInfo.Unknown;
+
+    /// <summary>Nexo SDK the bridge runs on (InsERT.Moria.Sfera informational version).</summary>
+    public string SdkVersion { get; set; } = BuildInfo.Unknown;
+
+    public string InstalledNexoVersion { get; set; } = BuildInfo.Unknown;
 }
 
 public class HealthCheckResponse
