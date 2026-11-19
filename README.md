@@ -19,6 +19,11 @@ Rozwijane przez **[DMservice](https://dmservice.pl)** | 📧 mateusz.serwinowski
 > 🚀 **Swagger UI:** dostępny po włączeniu flagi `Swagger:Enabled` i uwierzytelnieniu kluczem API.
 > 🔑 Autoryzacja kluczem API — patrz [Autentykacja](#-autentykacja)
 > 📦 Wersja SDK: **nexo 62.0.0.9537** (`docs/nexoSDK_62.0.0.9537/`)
+>
+> ⚠️ **Nexo 62.0.3 nie jest jeszcze obsługiwane.** Most jest budowany i sprawdzany na SDK 62.0.0.9537 (produkcja: Nexo 62.0.0).
+> Aktualizacja wymaga najpierw podmiany SDK i przebiegu testów kontraktowych na Windows. Nie aktualizuj Nexo na hoście mostu
+> przed tym krokiem: przy `PreferDeploymentBinaries=true` most ładuje przy starcie DLL-e z instalacji Nexo, więc dostałby
+> binaria 62.0.3 pod kod zbudowany na 62.0.0.
 
 ---
 
