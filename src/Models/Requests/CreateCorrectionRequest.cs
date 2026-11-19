@@ -42,11 +42,11 @@ public class CreateCorrectionRequest
     public DateTime? IssueDate { get; set; }
 
     /// <summary>
-    /// Reason for correction
+    /// Reason for correction. Optional: a correction of an existing document (<c>originalDocumentId</c>) refuses a
+    /// non-empty reason until it can be applied, so a required reason would refuse every such request.
     /// </summary>
-    [Required]
     [MaxLength(2000)]
-    public string CorrectionReason { get; set; } = string.Empty;
+    public string? CorrectionReason { get; set; }
 
     /// <summary>
     /// Additional notes
