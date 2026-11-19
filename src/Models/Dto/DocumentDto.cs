@@ -162,6 +162,10 @@ public class DocumentDto
     public string? Notes { get; set; }
     public string? InternalNotes { get; set; }
 
+    // Form of the invoice, Dokument.FormaFaktury: "Papierowa", "KSEF", "KSEFOffline", "KSEFAwaryjna"; null when
+    // unavailable. The KSeF status name (KSeFExtensions.StatusKSeF) is in ksefStatus.status.
+    public string? InvoiceForm { get; set; }
+
     // Items
     public List<DocumentItemDto> Items { get; set; } = new();
 
@@ -220,6 +224,10 @@ public class PaymentBreakdownDto
 /// </summary>
 public class KsefStatusDto
 {
+    /// <summary>
+    /// The KSeF status of the document (<c>KSeFExtensions.StatusKSeF</c>), e.g. <c>DoWyslania</c>,
+    /// <c>NiePodlegaWysylce</c>, <c>PrzyjetoWKsef</c>.
+    /// </summary>
     public string? Status { get; set; }
     public string? KsefNumber { get; set; }
     public DateTime? SendDate { get; set; }
@@ -442,4 +450,9 @@ public class DocumentCapabilitiesDto
     /// Endpoints, relative to <c>/api/documents</c>, that apply <c>documentNumber</c> (a number stated outright).
     /// </summary>
     public IReadOnlyList<string> ExplicitDocumentNumber { get; set; } = Array.Empty<string>();
+
+    /// <summary>
+    /// Endpoints, relative to <c>/api/documents</c>, that apply <c>invoiceForm</c> (paper / KSeF form of an invoice).
+    /// </summary>
+    public IReadOnlyList<string> InvoiceForm { get; set; } = Array.Empty<string>();
 }

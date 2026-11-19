@@ -48,9 +48,12 @@ public sealed class DocumentNumberFieldFilter : IAsyncResourceFilter, IOrderedFi
     }
 
     /// <summary>True when the JSON object has a top-level <c>documentNumber</c> (any letter case).</summary>
-    public static bool HasDocumentNumberField(string? body)
+    public static bool HasDocumentNumberField(string? body) => HasTopLevelField(body, ExplicitDocumentNumber.Field);
+
+    /// <summary>True when the JSON object has the top-level property <paramref name="field"/> (any letter case).</summary>
+    public static bool HasTopLevelField(string? body, string field)
     {
-        if (string.IsNullOrEmpty(body) || body.IndexOf(ExplicitDocumentNumber.Field, StringComparison.OrdinalIgnoreCase) < 0)
+        if (string.IsNullOrEmpty(body) || body.IndexOf(field, StringComparison.OrdinalIgnoreCase) < 0)
         {
             return false;
         }
@@ -60,7 +63,7 @@ public sealed class DocumentNumberFieldFilter : IAsyncResourceFilter, IOrderedFi
             using var document = JsonDocument.Parse(body);
             return document.RootElement.ValueKind == JsonValueKind.Object
                 && document.RootElement.EnumerateObject()
-                    .Any(property => property.Name.Equals(ExplicitDocumentNumber.Field, StringComparison.OrdinalIgnoreCase));
+                    .Any(property => property.Name.Equals(field, StringComparison.OrdinalIgnoreCase));
         }
         catch (JsonException)
         {
@@ -68,10 +71,10 @@ public sealed class DocumentNumberFieldFilter : IAsyncResourceFilter, IOrderedFi
         }
     }
 
-    private static bool IsWrite(string method) =>
+    internal static bool IsWrite(string method) =>
         HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method);
 
-    private static bool IsJson(string? contentType) =>
+    internal static bool IsJson(string? contentType) =>
         !string.IsNullOrEmpty(contentType)
         && (contentType.StartsWith("application/json", StringComparison.OrdinalIgnoreCase)
             || contentType.Split(';')[0].Trim().EndsWith("+json", StringComparison.OrdinalIgnoreCase));

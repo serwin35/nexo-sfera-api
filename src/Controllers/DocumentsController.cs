@@ -773,7 +773,8 @@ public class DocumentsController : ControllerBase
     {
         return Ok(ApiResponse<DocumentCapabilitiesDto>.Ok(new DocumentCapabilitiesDto
         {
-            ExplicitDocumentNumber = ExplicitDocumentNumber.SupportedEndpoints
+            ExplicitDocumentNumber = ExplicitDocumentNumber.SupportedEndpoints,
+            InvoiceForm = InvoiceForm.SupportedEndpoints
         }));
     }
 
@@ -1169,10 +1170,16 @@ public class DocumentsController : ControllerBase
     /// </remarks>
     [HttpPost("sales-invoice")]
     [AppliesDocumentNumber]
+    [AppliesInvoiceForm]
     public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateSalesInvoice([FromBody] CreateDocumentRequest request)
     {
         try
         {
+            if (InvoiceForm.CheckRequest(request.InvoiceForm) is { } formError)
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(formError, new List<string> { formError }));
+            }
+
             if (request.DocumentNumber.HasValue && !request.IssueDate.HasValue)
             {
                 return BadRequest(ApiResponse<DocumentDto>.Error(ExplicitDocumentNumber.NeedsIssueDate, new List<string> { ExplicitDocumentNumber.NeedsIssueDate }));
@@ -2590,6 +2597,17 @@ public class DocumentsController : ControllerBase
                             // This code attempted to change status AFTER adding items, which does not work.
                             // Historical status is now set BEFORE adding items (see line ~885).
                             */
+
+                    // The form of the invoice (paper / KSeF), last before the save: setting the buyer may set a default.
+                    // A refusal returns before Zapisz(); disposing explicitNumber gives a stated number back.
+                    if (request.InvoiceForm != null)
+                    {
+                        string? formRefusal = InvoiceForm.Apply((InsERT.Moria.ModelDanych.Dokument)dane, request.InvoiceForm);
+                        if (formRefusal != null)
+                        {
+                            return (false, null, formRefusal, new List<string> { formRefusal });
+                        }
+                    }
 
                     _logger.LogInformation("[FS-v2] Calling Zapisz()...");
 
@@ -6161,6 +6179,7 @@ public class DocumentsController : ControllerBase
             // isCanceled and timestamps from StatusDokumentu.Uniewazniony / Naglowek (Anulowany, DataUtworzenia and
             // DataModyfikacji do not exist on Dokument).
             DocumentReader.EnrichDetail(dto, (object)dokument);
+            InvoiceForm.Fill(dto, (object)dokument);
             return dto;
         }
         catch
@@ -6333,6 +6352,7 @@ public class DocumentsController : ControllerBase
             }
 
             ApplyPaymentInfo(dto, dokument);
+            InvoiceForm.Fill(dto, (object)dokument);
             return dto;
         }
         catch

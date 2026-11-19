@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-11-19) - invoiceForm on sales-invoice (paper / KSeF form)
+- `POST /api/documents/sales-invoice` takes an optional `invoiceForm`: `Papierowa` (a paper invoice, not sent to KSeF) or
+  `KSEF`, case-insensitive. Applied to `Dokument.FormaFaktury` (SDK 62.0.0.9537: `byte?` of `FormaFaktury`) right before
+  `Zapisz()` and read back. 400, nothing saved and a stated number given back, when the value is another one, when
+  `KSeFExtensions.OkreslaFormeFaktury` is false, or when Nexo keeps another form. Not set: no change.
+- `GET /api/documents/capabilities` lists it: `"invoiceForm": ["sales-invoice"]` (`explicitDocumentNumber` unchanged).
+- Every other endpoint refuses a top-level `invoiceForm` with 400 (`InvoiceFormFieldFilter`, like `documentNumber`).
+- Document responses (`POST` FS, `GET /api/documents/{id}`) carry `invoiceForm` and the KSeF status name
+  (`KSeFExtensions.StatusKSeF`) in the existing `ksefStatus.status`; read-only, null when unavailable.
+
 ### Fixed (2026-11-19) - correctionReason is optional
 - `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
   non-empty reason it cannot apply yet, so model validation refused every such request first ("The CorrectionReason field

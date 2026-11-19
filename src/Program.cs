@@ -77,7 +77,12 @@ MapEnvironmentToConfiguration(builder.Configuration);
 
 // Add services to the container
 // documentNumber only on the actions that apply it (AppliesDocumentNumber); everywhere else 400, never ignored.
-builder.Services.AddControllers(options => options.Filters.Add(new NexoSferaApi.Filters.DocumentNumberFieldFilter()));
+builder.Services.AddControllers(options =>
+{
+    options.Filters.Add(new NexoSferaApi.Filters.DocumentNumberFieldFilter());
+    // invoiceForm likewise: only sales-invoice applies it (AppliesInvoiceForm).
+    options.Filters.Add(new NexoSferaApi.Filters.InvoiceFormFieldFilter());
+});
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddEndpointsApiExplorer();
 
