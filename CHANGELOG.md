@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-11-19) - save failures: guard tests, RW leak, transient errors as 500
+- `FiscalSaveGuardTests` now forbids every save past the validation:
+  - `.Zatwierdz(` (the `Zatwierdz()` + `Zapisz()` retry) and `SaveChanges(` in any form;
+  - the text of a save exception (`save…Ex.Message`, `?.Message`, `.ToString()`) outside a `_logger.` statement.
+  - Scope: Controllers, Helpers, Services and Mcp. A self-test feeds it the review's mutants.
+- RW (`WarehouseDocumentsController`) no longer returns the save exception and its stack trace (`saveEx.ToString()`). It
+  returns the validation messages instead.
+- A save that throws without validation messages (SQL timeout, deadlock) returns 500 instead of 400 for FS, PA and RW, so
+  a client can tell a transient failure from a refusal.
+- `PeriodMismatch` checks the issue date's period in every form first, so "number/month/year" with a number of 1000 or
+  more ("FS 1234/06/2024") is not read as the year 1234. A mismatch counts only for years 2000-2099.
+
 ### Added (2026-11-19) - documentNumber refused where it is not applied
 - A global resource filter (`DocumentNumberFieldFilter`) refuses a POST/PUT/PATCH JSON body with a top-level
   `documentNumber` (any letter case) on every action without `[AppliesDocumentNumber]` with 400: model binding would

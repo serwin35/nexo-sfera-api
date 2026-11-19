@@ -2884,6 +2884,13 @@ public class DocumentsController : ControllerBase
                                 _logger.LogDebug("[FS-v2] WalidujDane (post-save) failed: {Msg}", vex.Message);
                             }
 
+                            if (errors.Count == 0 && saveException != null)
+                            {
+                                // Thrown without validation messages (SQL timeout, deadlock): an empty list maps to 500,
+                                // so the client can tell a transient failure from a refusal.
+                                return (false, null, "Sales invoice save failed; the bridge log has the details", new List<string>());
+                            }
+
                             if (errors.Count == 0)
                             {
                                 _logger.LogWarning("[FS-v2] No errors found but Zapisz() returned false. Document may have validation issues not exposed via standard properties.");
@@ -3840,12 +3847,9 @@ public class DocumentsController : ControllerBase
                     var saveErrors = ((object)paragon) is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy receiptObject
                         ? SdkErrors.Of(receiptObject)
                         : new List<string>();
-                    if (saveErrors.Count == 0)
-                    {
-                        saveErrors.Add("Receipt save failed; the bridge log has the details");
-                    }
-
-                    return (false, null, "Failed to create receipt", saveErrors);
+                    // No validation messages (SQL timeout, deadlock): an empty list maps to 500, not 400, so the
+                    // client can tell a transient failure from a refusal.
+                    return (false, null, saveErrors.Count == 0 ? "Receipt save failed; the bridge log has the details" : "Failed to create receipt", saveErrors);
                 }
 
                 if (isSaved)

@@ -217,7 +217,10 @@ public sealed class ExplicitDocumentNumber : IDisposable
     /// of <paramref name="issueDate"/>; null when it matches or the preview shows no period.
     /// </summary>
     /// <remarks>
-    /// Looked up in order: yyyy/MM, MM/yyyy, yy/MM, then a lone year. A month outside 1-12 does not count as a period.
+    /// The period of the issue date in any of these forms (yyyy/MM, MM/yyyy, yy/MM) settles it first, so a sequence
+    /// number of 1000 or more in "number/month/year" ("FS 1234/06/2024") is not read as a year. Otherwise the first
+    /// plausible period (year 2000-2099, month 1-12) found in the order yyyy/MM, MM/yyyy, yy/MM decides, then a lone
+    /// year. DMservice numbers read year/month/number ("FS 2024/06/24").
     /// </remarks>
     public static string? PeriodMismatch(string? preview, DateTime issueDate)
     {
@@ -226,26 +229,23 @@ public sealed class ExplicitDocumentNumber : IDisposable
             return null;
         }
 
-        foreach (var pattern in new[] { YearMonth, MonthYear, ShortYearMonth })
+        var periods = new[] { YearMonth, MonthYear, ShortYearMonth }
+            .SelectMany(pattern => pattern.Matches(preview).Cast<Match>())
+            .Select(match => (year: int.Parse(match.Groups["year"].Value, CultureInfo.InvariantCulture),
+                              month: int.Parse(match.Groups["month"].Value, CultureInfo.InvariantCulture)))
+            .Select(period => (year: period.year < 100 ? period.year + 2000 : period.year, period.month))
+            .Where(period => period.month is >= 1 and <= 12 && period.year is >= 2000 and <= 2099)
+            .ToList();
+
+        if (periods.Any(period => period.year == issueDate.Year && period.month == issueDate.Month))
         {
-            foreach (Match match in pattern.Matches(preview))
-            {
-                var year = int.Parse(match.Groups["year"].Value, CultureInfo.InvariantCulture);
-                var month = int.Parse(match.Groups["month"].Value, CultureInfo.InvariantCulture);
-                if (month is < 1 or > 12)
-                {
-                    continue;
-                }
+            return null;
+        }
 
-                if (year < 100)
-                {
-                    year += 2000;
-                }
-
-                return year == issueDate.Year && month == issueDate.Month
-                    ? null
-                    : $"the number {preview.Trim()} belongs to {year:D4}-{month:D2}, the issue date to {issueDate:yyyy-MM}";
-            }
+        if (periods.Count > 0)
+        {
+            var (year, month) = periods[0];
+            return $"the number {preview.Trim()} belongs to {year:D4}-{month:D2}, the issue date to {issueDate:yyyy-MM}";
         }
 
         var lone = YearOnly.Match(preview);
