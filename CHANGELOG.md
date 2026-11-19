@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Notes (2026-11-19) - Nexo 62.0.3 not supported yet
+- The bridge targets **SDK 62.0.0.9537**, matching production Nexo 62.0.0. **Nexo 62.0.3 is not supported yet**: an upgrade
+  needs an SDK swap and a contract run on Windows first. With `PreferDeploymentBinaries=true` the bridge loads the DLLs of
+  the Nexo installation at start, so upgrading Nexo on the bridge host before that would run 62.0.3 binaries under code
+  built on 62.0.0. No SDK or package reference changes in these releases.
 ### Fixed (2026-11-19) - correctionReason is optional
 - `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
   non-empty reason it cannot apply yet, so model validation refused every such request first ("The CorrectionReason field
