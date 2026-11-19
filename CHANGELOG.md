@@ -21,6 +21,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Document responses (`POST` FS, `GET /api/documents/{id}`) carry `invoiceForm` and the KSeF status name
   (`KSeFExtensions.StatusKSeF`) in the existing `ksefStatus.status`; read-only, null when unavailable.
 
+### Fixed (2026-11-19) - typed correction contract; GET /api/health/version
+- A correction of an existing document (`originalDocumentId`) now refuses by name the fields the corrected document sets
+  and the typed path would ignore: `customerId`, `customerNIP`, `warehouseSymbol`, `originalDocumentNumber`,
+  `reserveNumber`. A stated `items[].productId` must be the product of the position (`AsortymentAktualny.Id`).
+- The old dynamic path (no `originalDocumentId`) and `purchase-invoice-correction` refuse an empty `correctionReason`
+  with 400 in the handler, as the request model did before #67 ("The CorrectionReason field is required.").
+- A test that every optional reference property of the correction requests is nullable (`NullabilityInfoContext`): MVC
+  treats a non-nullable one as required, which `Validator.TryValidateObject` does not show.
+- `GET /api/health/version`: the git commit, dirty flag and UTC build time baked in at build (`AssemblyMetadata`, csproj
+  target `BakeBuildInfo`; "unknown" without git), the SDK the bridge runs on and the installed Nexo version.
+- README: where to see the versions on the host and the order of a Nexo upgrade (SDK → contract tests → Nexo → restart).
+- RW from a customer order (`POST /api/warehouse-documents/rw/from-order`) no longer returns exception text: a failed
+  `WypelnijNaPodstawieZK` returns the RW's validation messages (400) or a neutral 500, and the outer catch of that
+  endpoint no longer lists `ex.Message`; the text stays in the log (review of #68).
+
+### Fixed (2026-11-19) - save guard: SaveChanges in any form, FS/PA/RW save exceptions found by place
+- `FiscalSaveGuardTests` forbids `SaveChanges…` in any form. `SaveChangesAsync().Wait()` passed the old `SaveChanges(`
+  check. A method group, `nameof` and a name for reflection count too.
+- In the FS, PA and RW write paths, the guard now finds the save exception by its place, not by its name. These paths are:
+  - REST `sales-invoice`, `receipt`, `warehouse-documents/rw` and `rw/from-order`;
+  - MCP `CreateSalesInvoice` and `CreateReceipt`.
+- The rule for those paths:
+  - The catch variables of the innermost `try` around `Zapisz()` may reach only log statements, whatever their names.
+  - Copies of the exception are followed (`saveException = ex`, `inner = ex.InnerException`).
+  - A `throw` in that catch counts too: the outer catches return `ex.Message`.
+  - A `Zapisz()` outside a `try` fails the test, and so does a renamed path.
+  - Why: the name rule (`save…Ex`) missed `detailErrors.Add(ex.Message)` in the FS catch.
+- `logger.` (MCP tools, helpers) now counts as a log statement, like `_logger.`.
+- MCP `CreateSalesInvoice` / `CreateReceipt` and `POST /api/warehouse-documents/rw/from-order` no longer return the
+  exception text of a save that threw; the text stays in the log. Instead:
+  - when Nexo has validation messages, they return those (REST: 400);
+  - otherwise they return "… save failed; the bridge log has the details" (REST: 500).
+- Targets SDK 62.0.0.9537; no SDK or package changes.
+### Notes (2026-11-19) - Nexo 62.0.3 not supported yet
+- The bridge targets **SDK 62.0.0.9537**, matching production Nexo 62.0.0. **Nexo 62.0.3 is not supported yet**: an upgrade
+  needs an SDK swap and a contract run on Windows first. With `PreferDeploymentBinaries=true` the bridge loads the DLLs of
+  the Nexo installation at start, so upgrading Nexo on the bridge host before that would run 62.0.3 binaries under code
+  built on 62.0.0. No SDK or package reference changes in these releases.
 ### Fixed (2026-11-19) - correctionReason is optional
 - `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
   non-empty reason it cannot apply yet, so model validation refused every such request first ("The CorrectionReason field

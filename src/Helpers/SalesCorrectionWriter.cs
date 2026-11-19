@@ -13,7 +13,8 @@ namespace NexoSferaApi.Helpers;
 /// <para>
 /// All-or-nothing, fails loudly: every line names a position of the corrected document and Nexo must accept every
 /// line, the issue date must stay where it was set, and a refused <c>Zapisz()</c> returns its validation errors. A field
-/// this path cannot apply (correction reason, unit, price) is refused with its name, never ignored.
+/// this path cannot apply (correction reason, unit, price, buyer, warehouse, document number, number reservation) is
+/// refused with its name, never ignored; a stated product (symbol or id) must be the product of the position.
 /// </para>
 /// <para>
 /// A line states the quantity change (<c>quantityCorrection</c>); the quantity after the correction is the original
@@ -30,8 +31,18 @@ public static class SalesCorrectionWriter
         ReceiptReturn,
     }
 
-    /// <summary>A position of the corrected document.</summary>
-    public sealed record OriginalLine(int Id, decimal Quantity, string? Symbol);
+    /// <summary>A position of the corrected document; <paramref name="ProductId"/> is its <c>AsortymentAktualny.Id</c>.</summary>
+    public sealed record OriginalLine(int Id, decimal Quantity, string? Symbol, int? ProductId = null);
+
+    /// <summary>
+    /// The old dynamic path (no <c>originalDocumentId</c>) needs a reason, as the request model required one before it
+    /// became optional for the typed path (#67). Returns the error, or null when the request may go on.
+    /// </summary>
+    public static string? MissingReason(CreateCorrectionRequest request) =>
+        string.IsNullOrWhiteSpace(request.CorrectionReason) ? ReasonRequired : null;
+
+    /// <summary>The model's own wording before #67, so clients keep seeing the same refusal.</summary>
+    public const string ReasonRequired = "The CorrectionReason field is required.";
 
     /// <summary>A position to correct and its quantity after the correction.</summary>
     public sealed record PlannedLine(int OriginalPositionId, decimal QuantityAfter);
@@ -59,6 +70,33 @@ public static class SalesCorrectionWriter
         if (!string.IsNullOrWhiteSpace(request.CorrectionReason))
         {
             errors.Add("correctionReason: not applied to a correction of an existing document yet; leave it empty");
+        }
+
+        // The corrected document fixes these; a value here would be ignored, so it is refused by name.
+        const string ignored = "not applied to a correction of an existing document; the corrected document sets it";
+        if (!string.IsNullOrWhiteSpace(request.OriginalDocumentNumber))
+        {
+            errors.Add($"originalDocumentNumber: {ignored} (originalDocumentId names it)");
+        }
+
+        if (request.CustomerId.HasValue)
+        {
+            errors.Add($"customerId: {ignored}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.CustomerNIP))
+        {
+            errors.Add($"customerNIP: {ignored}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.WarehouseSymbol))
+        {
+            errors.Add($"warehouseSymbol: {ignored}");
+        }
+
+        if (request.ReserveNumber)
+        {
+            errors.Add("reserveNumber: not applied to a correction of an existing document; Nexo numbers it on save");
         }
 
         if (request.Items == null || request.Items.Count == 0)
@@ -130,6 +168,13 @@ public static class SalesCorrectionWriter
                 continue;
             }
 
+            if (item.ProductId.HasValue && item.ProductId != original.ProductId)
+            {
+                errors.Add($"items[{i}].productId {item.ProductId} differs from position {original.Id} " +
+                           $"({(original.ProductId.HasValue ? $"product {original.ProductId}" : "no product")})");
+                continue;
+            }
+
             var after = original.Quantity + item.QuantityCorrection;
             if (after < 0)
             {
@@ -162,7 +207,7 @@ public static class SalesCorrectionWriter
         }
 
         var originals = original.Pozycje
-            .Select(p => new OriginalLine(p.Id, p.Ilosc, p.AsortymentAktualny?.Symbol))
+            .Select(p => new OriginalLine(p.Id, p.Ilosc, p.AsortymentAktualny?.Symbol, p.AsortymentAktualny?.Id))
             .ToList();
         var (plan, planErrors) = Plan(originals, request.Items);
         if (planErrors.Count > 0)

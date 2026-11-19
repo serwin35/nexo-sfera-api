@@ -3213,6 +3213,11 @@ public class DocumentsController : ControllerBase
             return await CreateTypedSalesCorrection(request, SalesCorrectionWriter.Kind.InvoiceCorrection);
         }
 
+        if (SalesCorrectionWriter.MissingReason(request) is { } missingReason)
+        {
+            return BadRequest(ApiResponse<CorrectionDto>.Error(missingReason, new List<string> { missingReason }));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
@@ -3326,6 +3331,12 @@ public class DocumentsController : ControllerBase
     [HttpPost("purchase-invoice-correction")]
     public async Task<ActionResult<ApiResponse<CorrectionDto>>> CreatePurchaseInvoiceCorrection([FromBody] CreateCorrectionRequest request)
     {
+        // The request model required a reason before #67; this endpoint has no typed path, so it still does.
+        if (SalesCorrectionWriter.MissingReason(request) is { } missingReason)
+        {
+            return BadRequest(ApiResponse<CorrectionDto>.Error(missingReason, new List<string> { missingReason }));
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
@@ -4041,6 +4052,11 @@ public class DocumentsController : ControllerBase
         if (request.OriginalDocumentId.HasValue)
         {
             return await CreateTypedSalesCorrection(request, SalesCorrectionWriter.Kind.ReceiptReturn);
+        }
+
+        if (SalesCorrectionWriter.MissingReason(request) is { } missingReason)
+        {
+            return BadRequest(ApiResponse<CorrectionDto>.Error(missingReason, new List<string> { missingReason }));
         }
 
         try
