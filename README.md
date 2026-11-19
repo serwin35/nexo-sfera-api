@@ -590,6 +590,25 @@ faktura.Zapisz();
 
 API pomija walidację stanów dla produktów typu **usługa** (`Rodzaj_Id = 1`) — usługi można dodawać do dokumentów sprzedaży bez sprawdzania stanów. Walidacja działa normalnie dla towarów (0), kompletów (2) i materiałów (3).
 
+### Stan na dzień i podgląd numeru (tylko odczyt)
+
+Trzy odczyty, które niczego nie zapisują ani nie rezerwują (wymagają klucza API):
+
+- `GET /api/inventory/stock-at-date?symbol=SYM&warehouse=MG&date=2024-06-11`: stan karty na dzień z
+  `IMagazynier`. Pola: `iloscWolnaD`, `iloscWolnaEndOfDay`, `iloscDostepnaD`, a obok `iloscDostepnaToday`, czyli
+  wartość, którą kontrola stanu sprawdza przed zapisem. Błędy: 404 dla nieznanej karty albo magazynu, 400 dla złej
+  daty. Tło: [docs/stock-at-date.md](docs/stock-at-date.md).
+- `GET /api/inventory/free-quantity?productId=1&warehouseSymbol=MG&date=2024-06-11`: `IloscWolna` przez typowane
+  przeciążenie. Bez `date` liczy „na dowolny dzień”, z `date` do końca dnia. `source` mówi, skąd liczba; błąd to 500,
+  nigdy podstawiona wartość.
+- `GET /api/documents/next-number?type=KFS&date=2024-02-29&originalDocumentId=123`: numer, jaki Nexo nada
+  następnemu dokumentowi typu FS, PA, KFS, ZW, RW lub PW w dniu `date`.
+  - Most czyta go z `IZrodloNumerow.PodajPrzewidywanyNumer` na dokumencie utworzonym tylko w pamięci, którego nie
+    zapisuje i któremu nie rezerwuje numeru.
+  - Dla FS, PA, RW i PW `warehouse` (domyślnie MG) ustawia magazyn tak jak endpointy tworzące.
+  - Dla KFS i ZW `originalDocumentId` tworzy korektę tak jak ścieżka korekty typowanej.
+  - Odpowiedź: `fullNumber`, `sequence` i `basis`.
+
 ### Statusy dokumentów w odpowiedziach
 
 ```json

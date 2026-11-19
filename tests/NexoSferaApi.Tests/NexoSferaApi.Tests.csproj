@@ -33,5 +33,22 @@
       <HintPath>$(NexoSdkPath)/InsERT.Moria.API.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <!-- Real entities (DokumentDS, Asortyment, Magazyn) and business-object interfaces in StockAtDateAndNextNumberTests. -->
+    <Reference Include="InsERT.Moria.ModelDanych">
+      <HintPath>$(NexoSdkPath)/InsERT.Moria.ModelDanych.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Mox.Core">
+      <HintPath>$(NexoSdkPath)/InsERT.Mox.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFrameworkSupport">
+      <HintPath>$(NexoSdkPath)/InsERT.Mox.EntityFrameworkSupport.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="InsERT.Mox.EntityFramework.Core">
+      <HintPath>$(NexoSdkPath)/InsERT.Mox.EntityFramework.Core.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 </Project>
