@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   typed, takes an optional `date`, reports `source`, and a failure is a 500 (details in the log, no exception text in
   the response).
 - `docs/stock-at-date.md`: the stock-at-date findings and the host checks. The stock pre-check itself is unchanged.
+### Added (2026-11-19) - invoiceForm on sales-invoice (paper / KSeF form)
+- `POST /api/documents/sales-invoice` takes an optional `invoiceForm`: `Papierowa` (a paper invoice, not sent to KSeF) or
+  `KSEF`, case-insensitive. Applied to `Dokument.FormaFaktury` (SDK 62.0.0.9537: `byte?` of `FormaFaktury`) right before
+  `Zapisz()` and read back. 400, nothing saved and a stated number given back, when the value is another one, when
+  `KSeFExtensions.OkreslaFormeFaktury` is false, or when Nexo keeps another form. Not set: no change.
+- `GET /api/documents/capabilities` lists it: `"invoiceForm": ["sales-invoice"]` (`explicitDocumentNumber` unchanged).
+- Every other endpoint refuses a top-level `invoiceForm` value with 400 (`InvoiceFormFieldFilter`, like `documentNumber`);
+  an explicit `"invoiceForm": null` asks for nothing and passes everywhere.
+- A KFS made from a paper FS (`sales-invoice-correction` with `originalDocumentId`) is set to `Papierowa` before `Zapisz()`,
+  guarded by `OkreslaFormeFaktury` and read back; a refusal or another form refuses the correction. The SDK docs do not say
+  that `UtworzKorekteFakturySprzedazy(DokumentDS)` carries `FormaFaktury` over. A ZW (receipt return) is left as it is.
+- Document responses (`POST` FS, `GET /api/documents/{id}`) carry `invoiceForm` and the KSeF status name
+  (`KSeFExtensions.StatusKSeF`) in the existing `ksefStatus.status`; read-only, null when unavailable.
 
 ### Fixed (2026-11-19) - typed correction contract; GET /api/health/version
 - A correction of an existing document (`originalDocumentId`) now refuses by name the fields the corrected document sets

@@ -369,6 +369,15 @@ curl -X POST http://localhost:5000/api/documents/sales-invoice \
   }'
 ```
 
+**Forma faktury (`invoiceForm`)** - tylko `POST /api/documents/sales-invoice` (`GET /api/documents/capabilities` → `invoiceForm`):
+`"Papierowa"` (faktura papierowa, niepodlegająca wysyłce do KSeF) albo `"KSEF"`, bez względu na wielkość liter. Most ustawia
+`Dokument.FormaFaktury` tuż przed `Zapisz()` i odczytuje ją z powrotem; gdy faktura nie przyjmuje formy (`OkreslaFormeFaktury`
+= false) albo Nexo zostawia inną, zwraca 400 i nic nie zapisuje (numer podany wprost wraca do serii). Bez pola - forma domyślna
+Nexo. Inne endpointy odmawiają wartości pola (400); jawne `"invoiceForm": null` nie prosi o nic i przechodzi wszędzie. KFS do
+papierowej FS (korekta istniejącego dokumentu) dostaje `Papierowa` w ten sam sposób. Odpowiedź z dokumentem (`POST` FS, `GET /api/documents/{id}`) podaje `invoiceForm`
+i nazwę statusu KSeF w `ksefStatus.status` (np. `DoWyslania`, `NiePodlegaWysylce`). Dla importu historycznych FS (migracja
+ILUO), żeby nie trafiły do kolejki wysyłki KSeF w Subiekcie.
+
 ### Utworzenie paragonu
 
 ```bash
