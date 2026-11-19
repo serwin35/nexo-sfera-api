@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json;
+using InsERT.Mox.ObiektyBiznesowe;
 using ModelContextProtocol.Server;
 using NexoSferaApi.Helpers;
 using NexoSferaApi.Services;
@@ -247,8 +248,19 @@ public class DocumentTools(ISferaService sferaService, ILogger<DocumentTools> lo
                 // Recalculate
                 try { faktura.Przelicz(); } catch { }
 
-                // Save
-                if ((bool)faktura.Zapisz())
+                // Save; a save that throws stays in the log (see SaveFailed)
+                bool saved;
+                try
+                {
+                    saved = (bool)faktura.Zapisz();
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "MCP CreateSalesInvoice: Zapisz() threw");
+                    return SaveFailed("Sales invoice", (object)faktura);
+                }
+
+                if (saved)
                 {
                     var result = new
                     {
@@ -310,7 +322,18 @@ public class DocumentTools(ISferaService sferaService, ILogger<DocumentTools> lo
 
                 try { paragon.Przelicz(); } catch { }
 
-                if ((bool)paragon.Zapisz())
+                bool saved;
+                try
+                {
+                    saved = (bool)paragon.Zapisz();
+                }
+                catch (Exception saveEx)
+                {
+                    logger.LogError(saveEx, "MCP CreateReceipt: Zapisz() threw");
+                    return SaveFailed("Receipt", (object)paragon);
+                }
+
+                if (saved)
                 {
                     var result = new
                     {
@@ -546,6 +569,17 @@ public class DocumentTools(ISferaService sferaService, ILogger<DocumentTools> lo
                 logger.LogWarning(ex, "MCP: Failed to add item {Symbol}", item.ProductSymbol);
             }
         }
+    }
+
+    /// <summary>
+    /// Answer to a save that threw: the validation messages of the document when Nexo has any, otherwise a pointer to
+    /// the bridge log. The exception text (SDK internals, SQL) stays in the log.
+    /// </summary>
+    private static string SaveFailed(string document, object businessObject)
+    {
+        var errors = businessObject is IObiektBiznesowy typed ? SdkErrors.Of(typed) : new List<string>();
+        return McpToolHelper.Error($"{document} save failed; the bridge log has the details",
+            errors.Count > 0 ? string.Join("; ", errors) : null);
     }
 
     private static List<string> CollectErrors(dynamic document)
