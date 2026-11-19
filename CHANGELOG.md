@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed (2026-11-19) - typed correction of an existing FS / PA (sales-invoice-correction, receipt-return)
+- With `originalDocumentId`, `POST /api/documents/sales-invoice-correction` (KFS of an FS) and `POST /api/documents/receipt-return`
+  (ZW of a PA) run a typed path: `IKorektyDokumentowSprzedazy.UtworzKorekteFakturySprzedazy` / `UtworzZwrotDoParagonu`, then
+  `IPozycjeKorektDokumentu.SprobujKorygowacPozycjeWedlugId` per line, all or nothing.
+- A line names a position of the corrected document (`originalPositionId`, required) and its change (`quantityCorrection`);
+  the quantity after the correction must not go below zero, and a stated `productSymbol` must be the product of that position.
+- Fails loudly with the reasons (400), nothing saved:
+  - a line Nexo does not accept (its `Komunikat`);
+  - a moved issue date;
+  - a refused `Zapisz()` (validation errors);
+  - an original document of the other type.
+  - Fields this path cannot apply yet are refused by name: `correctionReason`, `priceNetCorrection`, `unit`, `itemCorrectionReason`.
+- `issueDate` is now applied to a receipt return (it was ignored, so the ZW took today's date and number), and `notes` are kept
+  on both corrections (they were dropped without a word).
+- Without `originalDocumentId` both endpoints behave as before.
+- Why: the ILUO transfer must recreate 10 KFS and 12 ZPA (D7). ILUO keeps a correction line as the state after the correction,
+  linked to the corrected position, and every one of them returns whole lines. The old dynamic path swallowed failed lines
+  (`catch {}`), added receipt-return lines at the product's default price and skipped the corrected positions.
+
 ### Added (2026-11-19) - documentNumber refused where it is not applied
 - A global resource filter (`DocumentNumberFieldFilter`) refuses a POST/PUT/PATCH JSON body with a top-level
   `documentNumber` (any letter case) on every action without `[AppliesDocumentNumber]` with 400: model binding would

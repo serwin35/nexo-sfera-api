@@ -3183,6 +3183,11 @@ public class DocumentsController : ControllerBase
     [HttpPost("sales-invoice-correction")]
     public async Task<ActionResult<ApiResponse<CorrectionDto>>> CreateSalesInvoiceCorrection([FromBody] CreateCorrectionRequest request)
     {
+        if (request.OriginalDocumentId.HasValue)
+        {
+            return await CreateTypedSalesCorrection(request, SalesCorrectionWriter.Kind.InvoiceCorrection);
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
@@ -4011,6 +4016,11 @@ public class DocumentsController : ControllerBase
     [HttpPost("receipt-return")]
     public async Task<ActionResult<ApiResponse<CorrectionDto>>> CreateReceiptReturn([FromBody] CreateCorrectionRequest request)
     {
+        if (request.OriginalDocumentId.HasValue)
+        {
+            return await CreateTypedSalesCorrection(request, SalesCorrectionWriter.Kind.ReceiptReturn);
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, bool NotFound, CorrectionDto? Data, string Message, List<string> Errors)>(() =>
@@ -5867,6 +5877,47 @@ public class DocumentsController : ControllerBase
             IsPaid = outstanding <= 0,
             IsOverdue = dueDate.HasValue && dueDate.Value < DateTime.Today && outstanding > 0
         };
+    }
+
+    /// <summary>
+    /// Correction of an existing FS (KFS) or PA (ZW) through the typed <see cref="SalesCorrectionWriter"/>: every line
+    /// names a position of the corrected document, the request is all-or-nothing and a refusal comes back with its reasons.
+    /// </summary>
+    private async Task<ActionResult<ApiResponse<CorrectionDto>>> CreateTypedSalesCorrection(CreateCorrectionRequest request,
+        SalesCorrectionWriter.Kind kind)
+    {
+        var requestErrors = SalesCorrectionWriter.CheckRequest(request);
+        if (requestErrors.Count > 0)
+        {
+            return BadRequest(ApiResponse<CorrectionDto>.Error("The correction request cannot be applied", requestErrors));
+        }
+
+        try
+        {
+            var (outcome, dto) = await _sferaService.ExecuteWithLockAsync<(SalesCorrectionWriter.Outcome Outcome, CorrectionDto? Dto)>(() =>
+            {
+                var created = SalesCorrectionWriter.Create(_sferaService.GetSfera(), kind, request, _logger);
+                // Mapped on the SDK thread: the entity reads lazily.
+                return (created, created.Success ? MapCorrectionToDto(created.Document!) : null);
+            });
+
+            if (outcome.NotFound)
+            {
+                return NotFound(ApiResponse<CorrectionDto>.Error(outcome.Message));
+            }
+
+            if (!outcome.Success || dto == null)
+            {
+                return BadRequest(ApiResponse<CorrectionDto>.Error(outcome.Message, outcome.Errors));
+            }
+
+            return CreatedAtAction(nameof(GetDocument), new { id = dto.Id }, ApiResponse<CorrectionDto>.Ok(dto, outcome.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating a {Kind} of document {OriginalId}", kind, request.OriginalDocumentId);
+            return StatusCode(500, ApiResponse<CorrectionDto>.Error("Error creating the correction"));
+        }
     }
 
     private static CorrectionDto MapCorrectionToDto(dynamic dokument)
