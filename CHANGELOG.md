@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   needs an SDK swap and a contract run on Windows first. With `PreferDeploymentBinaries=true` the bridge loads the DLLs of
   the Nexo installation at start, so upgrading Nexo on the bridge host before that would run 62.0.3 binaries under code
   built on 62.0.0. No SDK or package reference changes in these releases.
+### Fixed (2026-11-19) - correctionReason is optional
+- `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
+  non-empty reason it cannot apply yet, so model validation refused every such request first ("The CorrectionReason field
+  is required"). Found on the deployed bridge with a request that is refused before any write. The reason is now optional;
+  the old dynamic path still applies it when given.
 
 ### Changed (2026-11-19) - typed correction of an existing FS / PA (sales-invoice-correction, receipt-return)
 - With `originalDocumentId`, `POST /api/documents/sales-invoice-correction` (KFS of an FS) and `POST /api/documents/receipt-return`

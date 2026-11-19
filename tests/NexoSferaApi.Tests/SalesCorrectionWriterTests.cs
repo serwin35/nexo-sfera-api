@@ -109,6 +109,21 @@ public sealed class SalesCorrectionWriterTests
         Assert.Empty(SalesCorrectionWriter.CheckRequest(Request(Line(74166, -1m), Line(74167, -4m))));
     }
 
+    [Fact]
+    public void ARequestWithoutAReasonPassesModelValidation()
+    {
+        // Model validation runs before the action: a required reason refused every correction of an existing document,
+        // since that path refuses a non-empty reason (found on the deployed bridge, 2026-11-19).
+        var request = Request(Line(74166, -1m));
+        var results = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+
+        var valid = System.ComponentModel.DataAnnotations.Validator.TryValidateObject(
+            request, new System.ComponentModel.DataAnnotations.ValidationContext(request), results, validateAllProperties: true);
+
+        Assert.True(valid, string.Join("; ", results.Select(r => r.ErrorMessage)));
+        Assert.Empty(SalesCorrectionWriter.CheckRequest(request));
+    }
+
     [Theory]
     [InlineData(SalesCorrectionWriter.Kind.InvoiceCorrection, "FS")]
     [InlineData(SalesCorrectionWriter.Kind.ReceiptReturn, "PA")]
