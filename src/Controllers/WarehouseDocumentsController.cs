@@ -1200,7 +1200,28 @@ public class WarehouseDocumentsController : ControllerBase
                         _logger.LogDebug("RW from order: Przelicz() failed: {Msg}", (object)recalcEx.Message);
                     }
 
-                    if ((bool)rw.Zapisz())
+                    bool saved;
+                    try
+                    {
+                        saved = (bool)rw.Zapisz();
+                    }
+                    catch (Exception saveEx)
+                    {
+                        _logger.LogError(saveEx, "RW from customer order {OrderId}: Zapisz() threw exception", request.OrderId);
+                        // As in CreateRW: validation messages go back (400), a failure without them is a 500, and the
+                        // exception text stays in the log.
+                        var saveErrors = ((object)rw) is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy rwObject
+                            ? SdkErrors.Of(rwObject)
+                            : new List<string>();
+                        if (saveErrors.Count > 0)
+                        {
+                            return ("badRequest", null, "Failed to create RW from customer order", saveErrors);
+                        }
+
+                        return ("error", null, "RW save failed; the bridge log has the details", new List<string>());
+                    }
+
+                    if (saved)
                     {
                         _logger.LogInformation("Created RW {Number} from customer order {OrderId} ({Lines} lines)",
                             (string?)rw.PodajPodgladNumeru()?.ToString() ?? "", request.OrderId, selected.Count);
