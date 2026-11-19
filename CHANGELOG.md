@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `GET /api/health/version`: the git commit, dirty flag and UTC build time baked in at build (`AssemblyMetadata`, csproj
   target `BakeBuildInfo`; "unknown" without git), the SDK the bridge runs on and the installed Nexo version.
 - README: where to see the versions on the host and the order of a Nexo upgrade (SDK → contract tests → Nexo → restart).
+- RW from a customer order (`POST /api/warehouse-documents/rw/from-order`) no longer returns exception text: a failed
+  `WypelnijNaPodstawieZK` returns the RW's validation messages (400) or a neutral 500, and the outer catch of that
+  endpoint no longer lists `ex.Message`; the text stays in the log (review of #68).
 
 ### Fixed (2026-11-19) - correctionReason is optional
 - `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
