@@ -747,6 +747,22 @@ public class DocumentsController : ControllerBase
     }
 
     /// <summary>
+    /// What the document write endpoints of this bridge apply, so clients do not send a field an older bridge would ignore.
+    /// </summary>
+    /// <remarks>
+    /// <c>explicitDocumentNumber</c> lists the endpoints (relative to <c>/api/documents</c>) that apply <c>documentNumber</c>.
+    /// A bridge without this endpoint (404) applies it nowhere.
+    /// </remarks>
+    [HttpGet("capabilities")]
+    public ActionResult<ApiResponse<DocumentCapabilitiesDto>> GetCapabilities()
+    {
+        return Ok(ApiResponse<DocumentCapabilitiesDto>.Ok(new DocumentCapabilitiesDto
+        {
+            ExplicitDocumentNumber = ExplicitDocumentNumber.SupportedEndpoints
+        }));
+    }
+
+    /// <summary>
     /// Get document by ID
     /// </summary>
     [HttpGet("{id}")]
@@ -1141,6 +1157,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            if (request.DocumentNumber.HasValue && !request.IssueDate.HasValue)
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(ExplicitDocumentNumber.NeedsIssueDate, new List<string> { ExplicitDocumentNumber.NeedsIssueDate }));
+            }
+
             // Validate stock availability for outgoing sales document
             if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
             {
@@ -1325,6 +1346,9 @@ public class DocumentsController : ControllerBase
 
                 using (var faktura = dokumentySprzedazy.UtworzFaktureSprzedazy())
                 {
+                    // Disposed before the invoice: gives a stated number back when the invoice is not saved.
+                    using var explicitNumber = new ExplicitDocumentNumber(_logger, "FS-v2");
+
                     dynamic dane = faktura.Dane;
 
                     // Set customer using SDK pattern: PodmiotyDokumentu.UstawNabywceWedlug...
@@ -1733,7 +1757,15 @@ public class DocumentsController : ControllerBase
 
                     // Reserve number AFTER setting date (number depends on date!)
                     // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
-                    if (request.ReserveNumber)
+                    if (request.DocumentNumber.HasValue)
+                    {
+                        string? numberError = explicitNumber.Reserve((object)faktura, request.DocumentNumber.Value);
+                        if (numberError != null)
+                        {
+                            return (false, null, numberError, new List<string> { numberError });
+                        }
+                    }
+                    else if (request.ReserveNumber)
                     {
                         faktura.ZarezerwujNumer();
                         _logger.LogInformation("[FS-v2] Reserved sales invoice number: {Number}", (string?)faktura.PodajPodgladNumeru()?.ToString() ?? "");
@@ -2651,7 +2683,12 @@ public class DocumentsController : ControllerBase
                     catch { }
 
                     // If Zapisz() failed, try alternative save methods
-                    if (!isSaved && saveException == null)
+                    if (!isSaved && saveException == null && explicitNumber.IsReserved)
+                    {
+                        // A stated number never goes through saves without validation: they could keep a number Nexo refused.
+                        _logger.LogWarning("[FS-v2] Zapisz() returned false for stated number {Number}; no alternative saves", explicitNumber.Number);
+                    }
+                    else if (!isSaved && saveException == null)
                     {
                         _logger.LogWarning("[FS-v2] Zapisz() returned false, trying alternative save methods...");
 
@@ -2767,6 +2804,7 @@ public class DocumentsController : ControllerBase
 
                     if (isSaved)
                     {
+                        explicitNumber.MarkSaved();
                         string docNumber = faktura.PodajPodgladNumeru()?.ToString() ?? "";
                         int docId = (int)faktura.Dokument.Id;
                         _logger.LogInformation("[FS-v2] Created sales invoice {Number}, Id={Id}", docNumber, docId);
@@ -2982,6 +3020,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            if (request.DocumentNumber.HasValue)
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(ExplicitDocumentNumber.Unsupported, new List<string> { ExplicitDocumentNumber.Unsupported }));
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -3109,6 +3152,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            if (request.DocumentNumber.HasValue)
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(ExplicitDocumentNumber.Unsupported, new List<string> { ExplicitDocumentNumber.Unsupported }));
+            }
+
             // Use thread-safe execution - EF6 is NOT thread-safe
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
@@ -3457,6 +3505,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            if (request.DocumentNumber.HasValue && !request.IssueDate.HasValue)
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(ExplicitDocumentNumber.NeedsIssueDate, new List<string> { ExplicitDocumentNumber.NeedsIssueDate }));
+            }
+
             // Validate stock availability for outgoing receipt
             if (request.Items != null && request.Items.Any() && !string.IsNullOrEmpty(request.WarehouseSymbol))
             {
@@ -3492,6 +3545,9 @@ public class DocumentsController : ControllerBase
                 };
 
                 dynamic dane = paragon.Dane;
+
+                // Gives a stated number back when the receipt is not saved.
+                using var explicitNumber = new ExplicitDocumentNumber(_logger, "PA");
 
                 // Set customer for named receipts
                 if (request.Type == ReceiptType.Named)
@@ -3601,7 +3657,15 @@ public class DocumentsController : ControllerBase
 
                 // CRITICAL: Reserve number AFTER setting dates - number depends on date
                 // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
-                if (request.ReserveNumber)
+                if (request.DocumentNumber.HasValue)
+                {
+                    string? numberError = explicitNumber.Reserve((object)paragon, request.DocumentNumber.Value);
+                    if (numberError != null)
+                    {
+                        return (false, null, numberError, new List<string> { numberError });
+                    }
+                }
+                else if (request.ReserveNumber)
                 {
                     paragon.ZarezerwujNumer();
                     _logger.LogInformation("[PA] Reserved receipt number: {Number}", (string?)paragon.PodajPodgladNumeru()?.ToString() ?? "");
@@ -3629,6 +3693,13 @@ public class DocumentsController : ControllerBase
                         // If date was reset to current date, try to set it again
                         if (dateAfterReserve.HasValue && dateAfterReserve.Value.Date != request.IssueDate.Value.Date)
                         {
+                            if (explicitNumber.IsReserved)
+                            {
+                                // The stated number belongs to the series of the requested date; restoring the date would not move it.
+                                string dateError = $"{ExplicitDocumentNumber.Field} {explicitNumber.Number}: Nexo moved the issue date to {dateAfterReserve.Value:yyyy-MM-dd} while reserving the number";
+                                return (false, null, dateError, new List<string> { dateError });
+                            }
+
                             _logger.LogWarning("[PA] Date changed from {Requested} to {Actual} after ZarezerwujNumer! Attempting to restore...",
                                 (object)request.IssueDate.Value.ToString("yyyy-MM-dd"), (object)dateAfterReserve.Value.ToString("yyyy-MM-dd"));
 
@@ -3845,7 +3916,12 @@ public class DocumentsController : ControllerBase
 
                 // If Zapisz() failed, try alternative save methods (like sales invoice does)
                 bool isSaved = saveResult;
-                if (!isSaved && saveException == null)
+                if (!isSaved && saveException == null && explicitNumber.IsReserved)
+                {
+                    // A stated number never goes through saves without validation: they could keep a number Nexo refused.
+                    _logger.LogWarning("[PA] Zapisz() returned false for stated number {Number}; no alternative saves", explicitNumber.Number);
+                }
+                else if (!isSaved && saveException == null)
                 {
                     _logger.LogWarning("[PA] Zapisz() returned false, trying alternative save methods...");
 
@@ -3966,6 +4042,7 @@ public class DocumentsController : ControllerBase
 
                 if (isSaved)
                 {
+                    explicitNumber.MarkSaved();
                     string docNumber = paragon.PodajPodgladNumeru()?.ToString() ?? "";
                     int docId = (int)paragon.Dokument.Id;
                     _logger.LogInformation("[PA] Created receipt {Number}, Id={Id}", docNumber, docId);
@@ -4339,6 +4416,11 @@ public class DocumentsController : ControllerBase
     {
         try
         {
+            if (request.DocumentNumber.HasValue)
+            {
+                return BadRequest(ApiResponse<DocumentDto>.Error(ExplicitDocumentNumber.Unsupported, new List<string> { ExplicitDocumentNumber.Unsupported }));
+            }
+
             var result = await _sferaService.ExecuteWithLockAsync<(bool Success, DocumentDto? Data, string Message, List<string> Errors)>(() =>
             {
                 var dokumentySprzedazy = _sferaService.GetManager("DokumentySprzedazy");

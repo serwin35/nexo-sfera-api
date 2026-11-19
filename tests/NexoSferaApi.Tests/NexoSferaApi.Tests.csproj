@@ -18,7 +18,20 @@
     </PackageReference>
   </ItemGroup>
 
+  <PropertyGroup>
+    <!-- The same SDK the bridge builds against: src/lib/nexo-sdk, or -p:NexoSdkPath=... -->
+    <NexoSdkPath Condition="'$(NexoSdkPath)' == ''">../../src/lib/nexo-sdk</NexoSdkPath>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/NexoSferaApi.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Test fakes implement the SDK numbering interfaces (ExplicitDocumentNumberTests). -->
+    <Reference Include="InsERT.Moria.API">
+      <HintPath>$(NexoSdkPath)/InsERT.Moria.API.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
   </ItemGroup>
 </Project>
