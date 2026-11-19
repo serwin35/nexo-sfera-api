@@ -51,7 +51,15 @@ public sealed class DocumentNumberFieldFilter : IAsyncResourceFilter, IOrderedFi
     public static bool HasDocumentNumberField(string? body) => HasTopLevelField(body, ExplicitDocumentNumber.Field);
 
     /// <summary>True when the JSON object has the top-level property <paramref name="field"/> (any letter case).</summary>
-    public static bool HasTopLevelField(string? body, string field)
+    public static bool HasTopLevelField(string? body, string field) => HasTopLevelField(body, field, nullCounts: true);
+
+    /// <summary>
+    /// True when the JSON object has the top-level property <paramref name="field"/> with a value other than
+    /// <c>null</c>: an explicit null asks for nothing, so it is not refused.
+    /// </summary>
+    public static bool HasTopLevelValue(string? body, string field) => HasTopLevelField(body, field, nullCounts: false);
+
+    private static bool HasTopLevelField(string? body, string field, bool nullCounts)
     {
         if (string.IsNullOrEmpty(body) || body.IndexOf(field, StringComparison.OrdinalIgnoreCase) < 0)
         {
@@ -63,7 +71,8 @@ public sealed class DocumentNumberFieldFilter : IAsyncResourceFilter, IOrderedFi
             using var document = JsonDocument.Parse(body);
             return document.RootElement.ValueKind == JsonValueKind.Object
                 && document.RootElement.EnumerateObject()
-                    .Any(property => property.Name.Equals(field, StringComparison.OrdinalIgnoreCase));
+                    .Any(property => property.Name.Equals(field, StringComparison.OrdinalIgnoreCase)
+                        && (nullCounts || property.Value.ValueKind != JsonValueKind.Null));
         }
         catch (JsonException)
         {

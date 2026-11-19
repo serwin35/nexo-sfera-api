@@ -123,14 +123,33 @@ public sealed class InvoiceFormTests
 
     [Theory]
     [InlineData("{\"invoiceForm\":\"Papierowa\"}", true)]
-    [InlineData("{\"type\":1,\"InvoiceForm\":null}", true)]
+    [InlineData("{\"type\":1,\"InvoiceForm\":\"KSEF\"}", true)]
+    [InlineData("{\"invoiceForm\":\"\"}", true)]
+    [InlineData("{\"type\":1,\"InvoiceForm\":null}", false)]
     [InlineData("{\"items\":[{\"invoiceForm\":\"KSEF\"}]}", false)]
     [InlineData("{\"defaultInvoiceForm\":\"KSEF\"}", false)]
     [InlineData("{\"type\":1}", false)]
     [InlineData(null, false)]
-    public void FindsATopLevelInvoiceFormOnly(string? body, bool expected)
+    public void RefusesATopLevelInvoiceFormValueOnly(string? body, bool expected)
     {
-        Assert.Equal(expected, DocumentNumberFieldFilter.HasTopLevelField(body, InvoiceForm.Field));
+        Assert.Equal(expected, DocumentNumberFieldFilter.HasTopLevelValue(body, InvoiceForm.Field));
+    }
+
+    [Fact]
+    public void TheDocumentNumberCheckStillCountsANull()
+    {
+        // documentNumber keeps its #64 rule; only invoiceForm lets an explicit null through.
+        Assert.True(DocumentNumberFieldFilter.HasDocumentNumberField("{\"documentNumber\":null}"));
+    }
+
+    [Theory]
+    [InlineData((byte)0, "Papierowa")]
+    [InlineData((byte)1, null)]
+    [InlineData((byte)2, null)]
+    [InlineData(null, null)]
+    public void AnInvoiceCorrectionOfAPaperInvoiceStaysPaper(byte? correctedForm, string? carried)
+    {
+        Assert.Equal(carried, InvoiceForm.CarriedToCorrection(correctedForm));
     }
 }
 
@@ -166,6 +185,20 @@ public sealed class InvoiceFormContractTests(NexoApiFactory factory) : IClassFix
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("invoiceForm is supported only by POST /api/documents/sales-invoice", json);
+    }
+
+    [Theory]
+    [InlineData("/api/documents/sales-invoice", "{\"type\":1,\"invoiceForm\":null,\"documentNumber\":24," + ItemsJson + "}")]
+    [InlineData("/api/documents/receipt", "{\"type\":0,\"invoiceForm\":null,\"documentNumber\":24," + ItemsJson + "}")]
+    public async Task AnExplicitNullFormIsNotRefused(string path, string body)
+    {
+        // Refused for the missing issueDate (before the SDK), not for invoiceForm: null asks for no form.
+        var response = await PostAsync(path, body);
+        var json = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains("documentNumber needs issueDate", json);
+        Assert.DoesNotContain("invoiceForm", json);
     }
 
     [Fact]

@@ -70,6 +70,14 @@ public static class InvoiceForm
         return kept == wanted ? null : $"{Field}: Nexo kept {Name(kept) ?? "no form"}";
     }
 
+    /// <summary>
+    /// The form a correction (KFS) must take from the invoice it corrects: <c>Papierowa</c> when that invoice is paper,
+    /// so the correction stays out of the KSeF send queue too; otherwise null (Nexo's default). The SDK 62.0.0.9537 docs
+    /// do not say that <c>UtworzKorekteFakturySprzedazy(DokumentDS)</c> carries <c>FormaFaktury</c> over.
+    /// </summary>
+    public static string? CarriedToCorrection(byte? correctedForm) =>
+        correctedForm == (byte)FormaFaktury.Papierowa ? FormaFaktury.Papierowa.ToString() : null;
+
     /// <summary>The name of a stored form ("Papierowa", "KSEF", "KSEFOffline", "KSEFAwaryjna"), or null.</summary>
     public static string? Name(byte? stored) =>
         stored.HasValue && Enum.IsDefined(typeof(FormaFaktury), stored.Value)
