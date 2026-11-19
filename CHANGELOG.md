@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-11-19) - documentNumber refused where it is not applied
+- A global resource filter (`DocumentNumberFieldFilter`) refuses a POST/PUT/PATCH JSON body with a top-level
+  `documentNumber` (any letter case) on every action without `[AppliesDocumentNumber]` with 400: model binding would
+  drop the field and the document would take the next free number. Only `sales-invoice` and `receipt` carry the
+  attribute. The body is buffered and parsed only when its text contains `documentNumber`; nested fields and
+  look-alikes (`relatedDocumentNumber`) do not count. It runs after authorization and the configuration-flag filters.
+- Making another endpoint apply the field takes the request property, the code applying it, the attribute on the
+  action, and the entry in `ExplicitDocumentNumber.SupportedEndpoints`.
+
+### Fixed (2026-11-19) - stated numbers: date and period checks
+- Sales invoices with `documentNumber` now refuse (400, the number is given back) when reserving the number moved the
+  issue date, like receipts.
+- The receipt check never ran: it read the date through a `dynamic` call, so `.HasValue` threw and the surrounding catch
+  swallowed it. Both paths now read the date through a typed helper.
+- `ExplicitDocumentNumber.Reserve` checks the period in the reserved number (yyyy/MM, MM/yyyy, yy/MM or a lone year in
+  the preview) against the issue date and refuses a number from another month.
+
 ### Fixed (2026-11-19) - a refused FS/PA save is final
 - `POST /api/documents/sales-invoice` and `POST /api/documents/receipt` no longer try other saves after `Zapisz()`
   refuses the document. `ZapiszBezWalidacji()`, `Zatwierdz()` + `Zapisz()`, `ZapiszZatwierdzone()` and the reflection

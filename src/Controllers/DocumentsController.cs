@@ -746,6 +746,21 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    /// <summary>Issue date the document data shows now. Typed on purpose: a <c>dynamic</c> argument makes the result dynamic.</summary>
+    private static DateTime? ReadIssueDate(object dane) =>
+        DynamicPropertyHelper.GetDateTime(dane, "DataWydaniaWystawienia")
+        ?? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia")
+        ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
+
+    /// <summary>The error when reserving a stated number moved the issue date away from the requested one; else null.</summary>
+    private static string? IssueDateMoved(ExplicitDocumentNumber explicitNumber, object dane, DateTime requested)
+    {
+        var current = ReadIssueDate(dane);
+        return current.HasValue && current.Value.Date != requested.Date
+            ? $"{ExplicitDocumentNumber.Field} {explicitNumber.Number}: Nexo moved the issue date to {current.Value:yyyy-MM-dd} while reserving the number"
+            : null;
+    }
+
     /// <summary>
     /// What the document write endpoints of this bridge apply, so clients do not send a field an older bridge would ignore.
     /// </summary>
@@ -1153,6 +1168,7 @@ public class DocumentsController : ControllerBase
     /// 4. Call Zapisz() to save
     /// </remarks>
     [HttpPost("sales-invoice")]
+    [AppliesDocumentNumber]
     public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateSalesInvoice([FromBody] CreateDocumentRequest request)
     {
         try
@@ -1759,10 +1775,18 @@ public class DocumentsController : ControllerBase
                     // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
                     if (request.DocumentNumber.HasValue)
                     {
-                        string? numberError = explicitNumber.Reserve((object)faktura, request.DocumentNumber.Value);
+                        string? numberError = explicitNumber.Reserve((object)faktura, request.DocumentNumber.Value, request.IssueDate);
                         if (numberError != null)
                         {
                             return (false, null, numberError, new List<string> { numberError });
+                        }
+
+                        // The stated number belongs to the series of the requested date: the reservation must not have
+                        // moved the date (the guard gives the number back on dispose).
+                        string? dateError = IssueDateMoved(explicitNumber, (object)dane, request.IssueDate!.Value);
+                        if (dateError != null)
+                        {
+                            return (false, null, dateError, new List<string> { dateError });
                         }
                     }
                     else if (request.ReserveNumber)
@@ -3388,6 +3412,7 @@ public class DocumentsController : ControllerBase
     /// 4. Call Zapisz() to save
     /// </remarks>
     [HttpPost("receipt")]
+    [AppliesDocumentNumber]
     public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateReceipt([FromBody] CreateReceiptRequest request)
     {
         try
@@ -3546,10 +3571,17 @@ public class DocumentsController : ControllerBase
                 // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
                 if (request.DocumentNumber.HasValue)
                 {
-                    string? numberError = explicitNumber.Reserve((object)paragon, request.DocumentNumber.Value);
+                    string? numberError = explicitNumber.Reserve((object)paragon, request.DocumentNumber.Value, request.IssueDate);
                     if (numberError != null)
                     {
                         return (false, null, numberError, new List<string> { numberError });
+                    }
+
+                    // The date check further down binds dynamically and swallows its own errors; this one is typed.
+                    string? dateError = IssueDateMoved(explicitNumber, (object)dane, request.IssueDate!.Value);
+                    if (dateError != null)
+                    {
+                        return (false, null, dateError, new List<string> { dateError });
                     }
                 }
                 else if (request.ReserveNumber)
@@ -3580,13 +3612,6 @@ public class DocumentsController : ControllerBase
                         // If date was reset to current date, try to set it again
                         if (dateAfterReserve.HasValue && dateAfterReserve.Value.Date != request.IssueDate.Value.Date)
                         {
-                            if (explicitNumber.IsReserved)
-                            {
-                                // The stated number belongs to the series of the requested date; restoring the date would not move it.
-                                string dateError = $"{ExplicitDocumentNumber.Field} {explicitNumber.Number}: Nexo moved the issue date to {dateAfterReserve.Value:yyyy-MM-dd} while reserving the number";
-                                return (false, null, dateError, new List<string> { dateError });
-                            }
-
                             _logger.LogWarning("[PA] Date changed from {Requested} to {Actual} after ZarezerwujNumer! Attempting to restore...",
                                 (object)request.IssueDate.Value.ToString("yyyy-MM-dd"), (object)dateAfterReserve.Value.ToString("yyyy-MM-dd"));
 

@@ -76,7 +76,8 @@ builder.Configuration
 MapEnvironmentToConfiguration(builder.Configuration);
 
 // Add services to the container
-builder.Services.AddControllers();
+// documentNumber only on the actions that apply it (AppliesDocumentNumber); everywhere else 400, never ignored.
+builder.Services.AddControllers(options => options.Filters.Add(new NexoSferaApi.Filters.DocumentNumberFieldFilter()));
 builder.Services.AddRouting(options => options.LowercaseUrls = true);
 builder.Services.AddEndpointsApiExplorer();
 

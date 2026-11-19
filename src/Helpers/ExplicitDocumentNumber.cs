@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 using InsERT.Moria.Numeracja;
 
 namespace NexoSferaApi.Helpers;
@@ -62,8 +63,9 @@ public sealed class ExplicitDocumentNumber : IDisposable
     /// <summary>
     /// Reserves <paramref name="number"/> in the series of <paramref name="document"/>.
     /// Returns null when the number is reserved, or the error for the client (nothing is reserved then).
+    /// With <paramref name="issueDate"/>, the period in the reserved number (year and month) must be the issue date's.
     /// </summary>
-    public string? Reserve(object document, int number)
+    public string? Reserve(object document, int number, DateTime? issueDate = null)
     {
         if (_document != null)
         {
@@ -154,6 +156,14 @@ public sealed class ExplicitDocumentNumber : IDisposable
             return $"{Field} {number}: Nexo reserved {preview ?? "no number"} instead";
         }
 
+        var period = issueDate.HasValue ? PeriodMismatch(preview, issueDate.Value) : null;
+        if (period != null)
+        {
+            _logger.LogError("[{Tag}] Number {Preview} is not in the period of {IssueDate:yyyy-MM-dd}", _tag, preview, issueDate);
+            TryRelease(numbered, number);
+            return $"{Field} {number}: {period}";
+        }
+
         _document = numbered;
         Number = number;
         _logger.LogInformation("[{Tag}] Reserved stated number {Number}: {Preview}", _tag, number, preview);
@@ -195,6 +205,56 @@ public sealed class ExplicitDocumentNumber : IDisposable
         }
 
         _document = null;
+    }
+
+    private static readonly Regex YearMonth = new(@"(?<!\d)(?<year>\d{4})/(?<month>\d{1,2})(?!\d)", RegexOptions.CultureInvariant);
+    private static readonly Regex MonthYear = new(@"(?<!\d)(?<month>\d{1,2})/(?<year>\d{4})(?!\d)", RegexOptions.CultureInvariant);
+    private static readonly Regex ShortYearMonth = new(@"(?<!\d)(?<year>\d{2})/(?<month>\d{1,2})(?!\d)", RegexOptions.CultureInvariant);
+    private static readonly Regex YearOnly = new(@"(?<!\d)(?<year>(19|20)\d{2})(?!\d)", RegexOptions.CultureInvariant);
+
+    /// <summary>
+    /// The error when the period in a number preview ("FS 2024/06/24", "FS 24/06/2024", "FS 24/06/7") is not the one
+    /// of <paramref name="issueDate"/>; null when it matches or the preview shows no period.
+    /// </summary>
+    /// <remarks>
+    /// Looked up in order: yyyy/MM, MM/yyyy, yy/MM, then a lone year. A month outside 1-12 does not count as a period.
+    /// </remarks>
+    public static string? PeriodMismatch(string? preview, DateTime issueDate)
+    {
+        if (string.IsNullOrWhiteSpace(preview))
+        {
+            return null;
+        }
+
+        foreach (var pattern in new[] { YearMonth, MonthYear, ShortYearMonth })
+        {
+            foreach (Match match in pattern.Matches(preview))
+            {
+                var year = int.Parse(match.Groups["year"].Value, CultureInfo.InvariantCulture);
+                var month = int.Parse(match.Groups["month"].Value, CultureInfo.InvariantCulture);
+                if (month is < 1 or > 12)
+                {
+                    continue;
+                }
+
+                if (year < 100)
+                {
+                    year += 2000;
+                }
+
+                return year == issueDate.Year && month == issueDate.Month
+                    ? null
+                    : $"the number {preview.Trim()} belongs to {year:D4}-{month:D2}, the issue date to {issueDate:yyyy-MM}";
+            }
+        }
+
+        var lone = YearOnly.Match(preview);
+        if (lone.Success && int.Parse(lone.Groups["year"].Value, CultureInfo.InvariantCulture) != issueDate.Year)
+        {
+            return $"the number {preview.Trim()} belongs to {lone.Groups["year"].Value}, the issue date to {issueDate:yyyy}";
+        }
+
+        return null;
     }
 
     /// <summary>Digits of <see cref="PodgladNumeru.Numer"/> as a number ("00024" → 24); null when it has none.</summary>
