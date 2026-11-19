@@ -249,6 +249,18 @@ public static class SalesCorrectionWriter
             errors.Add($"issueDate: Nexo moved the issue date to {dane.DataWydaniaWystawienia:yyyy-MM-dd}");
         }
 
+        // A KFS of a paper (non-KSeF) invoice stays paper: the SDK does not document that a correction takes the form of
+        // the corrected invoice, so it is set here, guarded and read back like invoiceForm on sales-invoice.
+        string? carriedForm = kind == Kind.InvoiceCorrection ? InvoiceForm.CarriedToCorrection(original.FormaFaktury) : null;
+        if (carriedForm != null)
+        {
+            string? formError = InvoiceForm.Apply(dane, carriedForm);
+            if (formError != null)
+            {
+                errors.Add(formError);
+            }
+        }
+
         if (errors.Count > 0)
         {
             var refused = new Outcome { Message = $"The {tag} was not saved" };

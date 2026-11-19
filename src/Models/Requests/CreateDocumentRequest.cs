@@ -81,6 +81,14 @@ public class CreateDocumentRequest
     public int? DocumentNumber { get; set; }
 
     /// <summary>
+    /// Form of the invoice, only on <c>POST /api/documents/sales-invoice</c> (see <c>GET /api/documents/capabilities</c>):
+    /// <c>Papierowa</c> (a paper invoice, not sent to KSeF) or <c>KSEF</c>, case-insensitive. Applied to
+    /// <c>Dokument.FormaFaktury</c> before the save; 400 and nothing saved when the invoice cannot take a form or Nexo
+    /// keeps another one. Not set: Nexo's default. Every other endpoint refuses the field with 400.
+    /// </summary>
+    public string? InvoiceForm { get; set; }
+
+    /// <summary>
     /// Whether to calculate document prices from gross (brutto) values.
     /// If true: prices are calculated starting from gross values (priceGross in items).
     /// If false (default): prices are calculated starting from net values (priceNet in items).
