@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - when Nexo has validation messages, they return those (REST: 400);
   - otherwise they return "… save failed; the bridge log has the details" (REST: 500).
 - Targets SDK 62.0.0.9537; no SDK or package changes.
+### Fixed (2026-11-19) - correctionReason is optional
+- `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
+  non-empty reason it cannot apply yet, so model validation refused every such request first ("The CorrectionReason field
+  is required"). Found on the deployed bridge with a request that is refused before any write. The reason is now optional;
+  the old dynamic path still applies it when given.
 
 ### Changed (2026-11-19) - typed correction of an existing FS / PA (sales-invoice-correction, receipt-return)
 - With `originalDocumentId`, `POST /api/documents/sales-invoice-correction` (KFS of an FS) and `POST /api/documents/receipt-return`
