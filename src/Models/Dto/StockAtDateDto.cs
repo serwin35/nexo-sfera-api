@@ -28,11 +28,10 @@ public class NextNumberDto
     public string Type { get; set; } = string.Empty;
     public string Date { get; set; } = string.Empty;
     public string? WarehouseSymbol { get; set; }
-    public int? OriginalDocumentId { get; set; }
     /// <summary>The predicted full number, e.g. "KFS 2024/02/2".</summary>
     public string FullNumber { get; set; } = string.Empty;
     /// <summary>The sequence of that number, e.g. 2.</summary>
     public int Sequence { get; set; }
-    /// <summary>What the preview was read from (a new document, or a correction of which document).</summary>
+    /// <summary>What the preview stands on; for KFS / ZW it says the number is an approximation.</summary>
     public string Basis { get; set; } = string.Empty;
 }

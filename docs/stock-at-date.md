@@ -87,3 +87,12 @@ Wariant (b), czyli pominięcie kontroli i zdanie się na Nexo, odpada z dwóch p
 `GET /api/inventory/free-quantity` wołał `IloscWolna(produkt, magazyn)` z dwoma argumentami. W SDK 62 takiego
 przeciążenia nie ma: wyjątek był połykany, a endpoint po cichu zwracał dzisiejszą sumę `StanyMagazynowe`. Teraz woła
 typowane `IloscWolna(DateTime?, Asortyment, Magazyn)`, a błąd to 500 bez podstawionej wartości.
+
+## Podgląd numeru korekty (`GET /api/documents/next-number`)
+
+- **Jak powstaje podgląd:** KFS i ZW są pokazywane bez dokumentu korygowanego (`UtworzKorekteFakturySprzedazy()`,
+  `UtworzZwrotDoParagonu()`). Korekta zbudowana z prawdziwego dokumentu wczytałaby jego pozycje i uruchomiła zdarzenia
+  `UstawianieDokumentuKorygowanego` / `UstawionoDokumentKorygowany` na wątku SDK, a SDK nie daje gwarancji, że to bez
+  skutków.
+- **Wynik:** seria wynika z daty i magazynu (`warehouse`), więc numer korekty to przybliżenie, co mówi pole `basis`.
+- **Zabezpieczenie:** migrator i tak sprawdza faktyczny numer po zapisie (`_verify` w `correction_transfer`).

@@ -18,6 +18,13 @@ namespace NexoSferaApi.Helpers;
 /// gets the issue date (and warehouse) the way that endpoint sets them, and is asked for the predicted number.
 /// </para>
 /// <para>
+/// A correction (KFS, ZW) is previewed without its original (<c>UtworzKorekteFakturySprzedazy()</c>,
+/// <c>UtworzZwrotDoParagonu()</c>): building one from a real document would load its lines and fire the correction
+/// events (<c>UstawianieDokumentuKorygowanego</c>, <c>UstawionoDokumentKorygowany</c>) on the SDK thread. The series then
+/// comes from the date and the warehouse, so the number is an approximation; the migrator checks the saved number
+/// anyway.
+/// </para>
+/// <para>
 /// Nothing is reserved or saved: this class never calls <c>ZarezerwujNumer</c>, <c>Zarezerwuj</c>,
 /// <c>ZatwierdzRezerwacje</c> or <c>Zapisz</c> (a unit test reads this file for them), a new document has no reserved
 /// number until <c>ZarezerwujNumer</c> or <c>Zapisz</c> (its preview shows "Auto" until then, per
@@ -29,8 +36,11 @@ public static class NextNumberPreview
 {
     public static readonly IReadOnlyList<string> Types = new[] { "FS", "PA", "KFS", "ZW", "RW", "PW" };
 
-    /// <summary>Types numbered per warehouse: their create endpoints set <c>Dokument.Magazyn</c> before the number.</summary>
-    private static readonly HashSet<string> WarehouseTypes = new(StringComparer.Ordinal) { "FS", "PA", "RW", "PW" };
+    /// <summary>
+    /// Types that get the warehouse before the number: the create endpoints of FS, PA, RW, PW set <c>Dokument.Magazyn</c>;
+    /// a correction would take it from its original, which the preview does not load, so it gets the one asked for.
+    /// </summary>
+    private static readonly HashSet<string> WarehouseTypes = new(StringComparer.Ordinal) { "FS", "PA", "RW", "PW", "KFS", "ZW" };
 
     /// <summary>Types whose create endpoints also set <c>DataWprowadzenia</c>; the typed correction path does not.</summary>
     private static readonly HashSet<string> EntryDateTypes = new(StringComparer.Ordinal) { "FS", "PA", "RW", "PW" };
@@ -48,17 +58,16 @@ public static class NextNumberPreview
 
     public static bool IsCorrection(string type) => type is "KFS" or "ZW";
 
-    /// <summary>The symbol of the document a correction type corrects.</summary>
-    public static string CorrectedSymbol(string type) => type == "ZW" ? "PA" : "FS";
+    /// <summary>What the preview stands on, said in the answer: a correction's number is an approximation.</summary>
+    public static string BasisFor(string type, string? warehouse) => IsCorrection(type)
+        ? $"przybliżenie: korekta bez dokumentu korygowanego, seria z daty i magazynu {warehouse ?? "(brak)"}"
+        : "nowy dokument z konfiguracji domyślnej";
 
     /// <summary>Reads the predicted number; the document is created in memory and disposed, never reserved or saved.</summary>
-    public static Outcome Read(Uchwyt sfera, string type, DateTime day, Magazyn? magazyn, DokumentDS? original)
+    public static Outcome Read(Uchwyt sfera, string type, DateTime day, Magazyn? magazyn)
     {
-        var basis = IsCorrection(type)
-            ? original != null ? $"korekta dokumentu {original.Id}" : "korekta bez dokumentu korygowanego"
-            : "nowy dokument z konfiguracji domyślnej";
-        using var document = Create(sfera, type, original);
-        return Predict(document, type, day, magazyn, basis);
+        using var document = Create(sfera, type);
+        return Predict(document, type, day, magazyn, BasisFor(type, magazyn?.Symbol));
     }
 
     /// <summary>
@@ -103,7 +112,7 @@ public static class NextNumberPreview
         return period == null ? new Outcome(full, sequence, basis, null) : new Outcome(full, sequence, basis, $"{type}: {period}");
     }
 
-    private static IDisposable Create(Uchwyt sfera, string type, DokumentDS? original)
+    private static IDisposable Create(Uchwyt sfera, string type)
     {
         switch (type)
         {
@@ -112,13 +121,9 @@ public static class NextNumberPreview
             case "PA":
                 return sfera.DokumentySprzedazy().UtworzParagon();
             case "KFS":
-                return original != null
-                    ? sfera.KorektyDokumentowSprzedazy().UtworzKorekteFakturySprzedazy(original)
-                    : sfera.KorektyDokumentowSprzedazy().UtworzKorekteFakturySprzedazy();
+                return sfera.KorektyDokumentowSprzedazy().UtworzKorekteFakturySprzedazy();
             case "ZW":
-                return original != null
-                    ? sfera.KorektyDokumentowSprzedazy().UtworzZwrotDoParagonu(original)
-                    : sfera.KorektyDokumentowSprzedazy().UtworzZwrotDoParagonu();
+                return sfera.KorektyDokumentowSprzedazy().UtworzZwrotDoParagonu();
             case "RW":
             {
                 var konfiguracja = sfera.Konfiguracje().DaneDomyslne.RozchodWewnetrzny;

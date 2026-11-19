@@ -610,12 +610,13 @@ Trzy odczyty, które niczego nie zapisują ani nie rezerwują (wymagają klucza 
 - `GET /api/inventory/free-quantity?productId=1&warehouseSymbol=MG&date=2024-06-11`: `IloscWolna` przez typowane
   przeciążenie. Bez `date` liczy „na dowolny dzień”, z `date` do końca dnia. `source` mówi, skąd liczba; błąd to 500,
   nigdy podstawiona wartość.
-- `GET /api/documents/next-number?type=KFS&date=2024-02-29&originalDocumentId=123`: numer, jaki Nexo nada
+- `GET /api/documents/next-number?type=KFS&date=2024-02-29&warehouse=MG`: numer, jaki Nexo nada
   następnemu dokumentowi typu FS, PA, KFS, ZW, RW lub PW w dniu `date`.
   - Most czyta go z `IZrodloNumerow.PodajPrzewidywanyNumer` na dokumencie utworzonym tylko w pamięci, którego nie
     zapisuje i któremu nie rezerwuje numeru.
-  - Dla FS, PA, RW i PW `warehouse` (domyślnie MG) ustawia magazyn tak jak endpointy tworzące.
-  - Dla KFS i ZW `originalDocumentId` tworzy korektę tak jak ścieżka korekty typowanej.
+  - `warehouse` (domyślnie MG) ustawia magazyn przed numerem, tak jak endpointy tworzące.
+  - KFS i ZW to **przybliżenie**: korekta powstaje bez dokumentu korygowanego (most nie ładuje prawdziwego dokumentu
+    ani nie uruchamia zdarzeń korekty), więc seria wynika z daty i magazynu, a `basis` to mówi.
   - Odpowiedź: `fullNumber`, `sequence` i `basis`.
 
 ### Statusy dokumentów w odpowiedziach

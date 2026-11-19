@@ -92,13 +92,15 @@ public sealed class NextNumberPreviewTests
     }
 
     [Fact]
-    public void ACorrectionTypeNamesTheTypeItCorrects()
+    public void ACorrectionsNumberIsSaidToBeAnApproximation()
     {
         Assert.True(NextNumberPreview.IsCorrection("KFS"));
         Assert.True(NextNumberPreview.IsCorrection("ZW"));
         Assert.False(NextNumberPreview.IsCorrection("FS"));
-        Assert.Equal("FS", NextNumberPreview.CorrectedSymbol("KFS"));
-        Assert.Equal("PA", NextNumberPreview.CorrectedSymbol("ZW"));
+        Assert.Equal("przybliżenie: korekta bez dokumentu korygowanego, seria z daty i magazynu MG",
+            NextNumberPreview.BasisFor("KFS", "MG"));
+        Assert.StartsWith("przybliżenie:", NextNumberPreview.BasisFor("ZW", "MG"));
+        Assert.Equal("nowy dokument z konfiguracji domyślnej", NextNumberPreview.BasisFor("FS", "MG"));
     }
 
     [Fact]
@@ -139,16 +141,21 @@ public sealed class NextNumberPreviewTests
     }
 
     [Fact]
-    public void ACorrectionKeepsTheEntryDateAndWarehouseOfItsOriginal()
+    public void ACorrectionGetsTheWarehouseAskedForButNotTheEntryDate()
     {
-        // The typed correction path sets only the issue date; the preview does the same.
-        var (document, state) = Document(new PodgladNumeru("FS 2024/02/", "2", '\0', string.Empty, string.Empty));
+        // No original is loaded, so the warehouse comes from the request; the typed correction path sets only the
+        // issue date, and so does the preview.
+        var (document, state) = Document(new PodgladNumeru("KFS 2024/02/", "2", '\0', string.Empty, string.Empty));
         var entry = state.Data.DataWprowadzenia;
+        var magazyn = new Magazyn();
 
-        NextNumberPreview.Predict(document, "KFS", new DateTime(2024, 2, 29), new Magazyn(), "korekta");
+        var outcome = NextNumberPreview.Predict(document, "KFS", new DateTime(2024, 2, 29), magazyn, "przybliżenie");
 
+        Assert.Null(outcome.Error);
+        Assert.Equal(2, outcome.Sequence);
+        Assert.Equal(new DateTime(2024, 2, 29), state.Data.DataWydaniaWystawienia);
         Assert.Equal(entry, state.Data.DataWprowadzenia);
-        Assert.Null(state.Data.Magazyn);
+        Assert.Same(magazyn, state.Data.Magazyn);
     }
 
     [Fact]
@@ -159,10 +166,14 @@ public sealed class NextNumberPreviewTests
         {
             var code = string.Join("\n", File.ReadAllLines(Path.Combine(SourceRoot(), file))
                 .Where(line => !line.TrimStart().StartsWith("//", StringComparison.Ordinal)));
-            foreach (var forbidden in new[] { "Zarezerwuj", "Zatwierdz", "Zapisz", "ZwolnijNumer", "SaveChanges" })
+            foreach (var forbidden in new[] { "Zarezerwuj", "Zatwierdz", "Zapisz", "ZwolnijNumer", "SaveChanges",
+                         "originalDocumentId", "DokumentySprzedazy().Dane" })
             {
                 Assert.False(code.Contains(forbidden, StringComparison.Ordinal), $"{file} mentions {forbidden}");
             }
+
+            // A correction is never built from a real document: only the creators without an argument.
+            Assert.DoesNotMatch(@"Utworz(KorekteFakturySprzedazy|ZwrotDoParagonu)\s*\(\s*[^)\s]", code);
         }
     }
 
@@ -255,7 +266,6 @@ public sealed class StockAtDateAndNextNumberContractTests(NexoApiFactory factory
     [InlineData("/api/inventory/free-quantity?productId=1&date=11.06.2024", "date must be yyyy-MM-dd")]
     [InlineData("/api/documents/next-number?type=WZ&date=2024-06-11", "type must be one of")]
     [InlineData("/api/documents/next-number?type=KFS", "date is required as yyyy-MM-dd")]
-    [InlineData("/api/documents/next-number?type=FS&date=2024-06-11&originalDocumentId=5", "originalDocumentId applies only to KFS and ZW")]
     public async Task BadInputIsRefusedWithItsReason(string url, string reason)
     {
         var response = await _client.GetAsync(url);

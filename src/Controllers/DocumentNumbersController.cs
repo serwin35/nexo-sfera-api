@@ -1,7 +1,6 @@
 using System.Globalization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using InsERT.Moria.ModelDanych;
 using InsERT.Moria.Sfera;
 using NexoSferaApi.Helpers;
 using NexoSferaApi.Models.Dto;
@@ -38,15 +37,14 @@ public class DocumentNumbersController : ControllerBase
     /// </summary>
     /// <param name="type">FS, PA, KFS, ZW, RW or PW.</param>
     /// <param name="date">The issue date, yyyy-MM-dd: the series follows it.</param>
-    /// <param name="warehouse">FS, PA, RW, PW: the warehouse set before the number, as the create endpoints do (default MG).</param>
-    /// <param name="originalDocumentId">KFS, ZW: the corrected FS / PA, as the typed correction path creates it.</param>
+    /// <param name="warehouse">The warehouse set before the number, as the create endpoints do (default MG); a KFS / ZW takes
+    /// it instead of its original's, which is not loaded (the number is then an approximation, see <c>basis</c>).</param>
     [HttpGet("next-number")]
     [ProducesResponseType(typeof(ApiResponse<NextNumberDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<NextNumberDto>>> GetNextNumber(
         [FromQuery] string? type,
         [FromQuery] string? date,
-        [FromQuery] string? warehouse,
-        [FromQuery] int? originalDocumentId)
+        [FromQuery] string? warehouse)
     {
         if (NextNumberPreview.CheckType(type, out var documentType) is { } typeError)
         {
@@ -58,47 +56,19 @@ public class DocumentNumbersController : ControllerBase
             return BadRequest(ApiResponse<NextNumberDto>.Error($"date is required as {StockAtDate.DateFormat}"));
         }
 
-        if (originalDocumentId.HasValue && !NextNumberPreview.IsCorrection(documentType))
-        {
-            return BadRequest(ApiResponse<NextNumberDto>.Error("originalDocumentId applies only to KFS and ZW"));
-        }
-
-        var warehouseSymbol = NextNumberPreview.IsCorrection(documentType)
-            ? null
-            : string.IsNullOrWhiteSpace(warehouse) ? StockAtDate.DefaultWarehouse : warehouse.Trim();
+        var warehouseSymbol = string.IsNullOrWhiteSpace(warehouse) ? StockAtDate.DefaultWarehouse : warehouse.Trim();
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
                 var sfera = _sferaService.GetSfera();
-                Magazyn? magazyn = null;
-                if (warehouseSymbol != null)
+                var magazyn = sfera.Magazyny().Dane.Wszystkie().FirstOrDefault(m => m.Symbol == warehouseSymbol);
+                if (magazyn == null)
                 {
-                    magazyn = sfera.Magazyny().Dane.Wszystkie().FirstOrDefault(m => m.Symbol == warehouseSymbol);
-                    if (magazyn == null)
-                    {
-                        return (status: 404, dto: (NextNumberDto?)null, error: $"Warehouse '{warehouseSymbol}' not found");
-                    }
+                    return (status: 404, dto: (NextNumberDto?)null, error: $"Warehouse '{warehouseSymbol}' not found");
                 }
 
-                DokumentDS? original = null;
-                if (originalDocumentId.HasValue)
-                {
-                    original = sfera.DokumentySprzedazy().Dane.Wszystkie().FirstOrDefault(d => d.Id == originalDocumentId.Value);
-                    if (original == null)
-                    {
-                        return (status: 404, dto: (NextNumberDto?)null, error: $"Document {originalDocumentId} not found");
-                    }
-
-                    var corrected = NextNumberPreview.CorrectedSymbol(documentType);
-                    if (!string.Equals(original.Symbol, corrected, StringComparison.OrdinalIgnoreCase))
-                    {
-                        return (status: 400, dto: (NextNumberDto?)null,
-                            error: $"originalDocumentId: document {originalDocumentId} is {original.Symbol}; a {documentType} corrects {corrected}");
-                    }
-                }
-
-                var outcome = NextNumberPreview.Read(sfera, documentType, day, magazyn, original);
+                var outcome = NextNumberPreview.Read(sfera, documentType, day, magazyn);
                 if (outcome.Error != null || outcome.Sequence == null || outcome.FullNumber == null)
                 {
                     _logger.LogWarning("Next-number preview {Type} {Date}: {Error}", documentType, day, outcome.Error);
@@ -110,7 +80,6 @@ public class DocumentNumbersController : ControllerBase
                     Type = documentType,
                     Date = day.ToString(StockAtDate.DateFormat, CultureInfo.InvariantCulture),
                     WarehouseSymbol = warehouseSymbol,
-                    OriginalDocumentId = originalDocumentId,
                     FullNumber = outcome.FullNumber,
                     Sequence = outcome.Sequence.Value,
                     Basis = outcome.Basis,
@@ -120,7 +89,6 @@ public class DocumentNumbersController : ControllerBase
             return result.status switch
             {
                 200 => Ok(ApiResponse<NextNumberDto>.Ok(result.dto!)),
-                400 => BadRequest(ApiResponse<NextNumberDto>.Error(result.error!)),
                 404 => NotFound(ApiResponse<NextNumberDto>.Error(result.error!)),
                 _ => StatusCode(500, ApiResponse<NextNumberDto>.Error(result.error!)),
             };
