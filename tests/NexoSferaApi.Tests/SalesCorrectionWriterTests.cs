@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Mvc.Testing;
 using NexoSferaApi.Helpers;
@@ -125,6 +126,82 @@ public sealed class SalesCorrectionWriterTests
     }
 
     [Theory]
+    [InlineData(typeof(CreateCorrectionRequest))]
+    [InlineData(typeof(CreateCorrectionItemRequest))]
+    public void EveryOptionalReferencePropertyIsNullable(Type model)
+    {
+        // MVC treats a non-nullable reference property as [Required] (Nullable is enabled), which DataAnnotations'
+        // Validator does not: `string CorrectionReason = string.Empty` would pass the test above and still refuse every
+        // typed correction with "The CorrectionReason field is required" (found on the deployed bridge, 2026-11-19).
+        var context = new NullabilityInfoContext();
+        var notNullable = model.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Where(p => !p.PropertyType.IsValueType && p.Name != nameof(CreateCorrectionRequest.Items))
+            .Where(p => context.Create(p) is var info &&
+                        (info.ReadState != NullabilityState.Nullable || info.WriteState != NullabilityState.Nullable))
+            .Select(p => p.Name)
+            .ToList();
+
+        Assert.Empty(notNullable);
+    }
+
+    [Fact]
+    public void FieldsTheCorrectedDocumentSetsAreRefusedByName()
+    {
+        var request = Request(Line(74166, -1m));
+        request.OriginalDocumentNumber = "PA 2024/06/10";
+        request.CustomerId = 7;
+        request.CustomerNIP = "9512473321";
+        request.WarehouseSymbol = "MG";
+        request.ReserveNumber = true;
+
+        var errors = SalesCorrectionWriter.CheckRequest(request);
+
+        foreach (var field in new[] { "originalDocumentNumber", "customerId", "customerNIP", "warehouseSymbol", "reserveNumber" })
+        {
+            Assert.Contains(errors, e => e.StartsWith(field + ":"));
+        }
+
+        Assert.Equal(5, errors.Count);
+    }
+
+    [Fact]
+    public void AStatedProductIdMustBeTheProductOfThePosition()
+    {
+        var boots = Boots with { ProductId = 501 };
+        var line = new CreateCorrectionItemRequest { OriginalPositionId = 74166, QuantityCorrection = -1m, ProductId = 502 };
+
+        var (plan, errors) = SalesCorrectionWriter.Plan(new[] { boots }, new[] { line });
+
+        Assert.Empty(plan);
+        Assert.Contains("items[0].productId 502 differs from position 74166 (product 501)", Assert.Single(errors));
+
+        line.ProductId = 501;
+        Assert.Empty(SalesCorrectionWriter.Plan(new[] { boots }, new[] { line }).Errors);
+    }
+
+    [Fact]
+    public void AStatedProductIdCannotMatchAPositionWithoutAProduct()
+    {
+        var line = new CreateCorrectionItemRequest { OriginalPositionId = 74166, QuantityCorrection = -1m, ProductId = 501 };
+
+        var (_, errors) = SalesCorrectionWriter.Plan(new[] { Boots }, new[] { line });
+
+        Assert.Contains("(no product)", Assert.Single(errors));
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("", true)]
+    [InlineData("   ", true)]
+    [InlineData("Zwrot towaru", false)]
+    public void TheOldPathStillNeedsAReason(string? reason, bool refused)
+    {
+        var request = new CreateCorrectionRequest { CorrectionReason = reason, Items = { Line(null, -1m, "SYM") } };
+
+        Assert.Equal(refused ? SalesCorrectionWriter.ReasonRequired : null, SalesCorrectionWriter.MissingReason(request));
+    }
+
+    [Theory]
     [InlineData(SalesCorrectionWriter.Kind.InvoiceCorrection, "FS")]
     [InlineData(SalesCorrectionWriter.Kind.ReceiptReturn, "PA")]
     public void EachKindCorrectsItsOwnDocumentType(SalesCorrectionWriter.Kind kind, string symbol)
@@ -149,6 +226,21 @@ public sealed class SalesCorrectionContractTests(NexoApiFactory factory) : IClas
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Contains("items[0].originalPositionId is required", body);
+    }
+
+    [Theory]
+    [InlineData("/api/documents/sales-invoice-correction")]
+    [InlineData("/api/documents/receipt-return")]
+    [InlineData("/api/documents/purchase-invoice-correction")]
+    public async Task WithoutAnOriginalDocumentTheReasonIsStillRequired(string path)
+    {
+        // The contract before #67: the old dynamic path refuses a correction without a reason before Nexo sees it.
+        var response = await _client.PostAsync(path, Json(
+            "{\"correctionReason\":\"  \",\"items\":[{\"productSymbol\":\"SYM\",\"quantityCorrection\":-1}]}"));
+        var body = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Contains(SalesCorrectionWriter.ReasonRequired, body);
     }
 
     [Theory]

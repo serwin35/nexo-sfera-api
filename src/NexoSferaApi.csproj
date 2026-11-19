@@ -38,6 +38,38 @@
     <NexoSdkPath Condition="'$(NexoSdkPath)' == ''">lib\nexo-sdk</NexoSdkPath>
   </PropertyGroup>
 
+  <!-- Build metadata for GET /api/health/version: the commit and the UTC build time, read back by Helpers/BuildInfo.
+       Without git (or outside a checkout) the values stay empty and the endpoint says "unknown". -->
+  <Target Name="BakeBuildInfo" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git rev-parse HEAD" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low" WorkingDirectory="$(MSBuildProjectDirectory)">
+      <Output TaskParameter="ConsoleOutput" PropertyName="BridgeGitCommit" />
+      <Output TaskParameter="ExitCode" PropertyName="BridgeGitExit" />
+    </Exec>
+    <Exec Command="git status --porcelain --untracked-files=no" ConsoleToMSBuild="true" IgnoreExitCode="true" StandardOutputImportance="low" StandardErrorImportance="low" WorkingDirectory="$(MSBuildProjectDirectory)" Condition="'$(BridgeGitExit)' == '0'">
+      <Output TaskParameter="ConsoleOutput" PropertyName="BridgeGitStatus" />
+    </Exec>
+    <PropertyGroup>
+      <BridgeGitCommit Condition="'$(BridgeGitExit)' != '0'"></BridgeGitCommit>
+      <BridgeGitDirty Condition="'$(BridgeGitExit)' == '0' And '$(BridgeGitStatus)' != ''">true</BridgeGitDirty>
+      <BridgeGitDirty Condition="'$(BridgeGitExit)' == '0' And '$(BridgeGitStatus)' == ''">false</BridgeGitDirty>
+      <BridgeBuildTimeUtc>$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mm:ssZ"))</BridgeBuildTimeUtc>
+    </PropertyGroup>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitCommit</_Parameter1>
+        <_Parameter2>$(BridgeGitCommit)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>GitDirty</_Parameter1>
+        <_Parameter2>$(BridgeGitDirty)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>BuildTimeUtc</_Parameter1>
+        <_Parameter2>$(BridgeBuildTimeUtc)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
   <PropertyGroup>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>

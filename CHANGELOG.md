@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-11-19) - typed correction contract; GET /api/health/version
+- A correction of an existing document (`originalDocumentId`) now refuses by name the fields the corrected document sets
+  and the typed path would ignore: `customerId`, `customerNIP`, `warehouseSymbol`, `originalDocumentNumber`,
+  `reserveNumber`. A stated `items[].productId` must be the product of the position (`AsortymentAktualny.Id`).
+- The old dynamic path (no `originalDocumentId`) and `purchase-invoice-correction` refuse an empty `correctionReason`
+  with 400 in the handler, as the request model did before #67 ("The CorrectionReason field is required.").
+- A test that every optional reference property of the correction requests is nullable (`NullabilityInfoContext`): MVC
+  treats a non-nullable one as required, which `Validator.TryValidateObject` does not show.
+- `GET /api/health/version`: the git commit, dirty flag and UTC build time baked in at build (`AssemblyMetadata`, csproj
+  target `BakeBuildInfo`; "unknown" without git), the SDK the bridge runs on and the installed Nexo version.
+- README: where to see the versions on the host and the order of a Nexo upgrade (SDK → contract tests → Nexo → restart).
+
 ### Fixed (2026-11-19) - correctionReason is optional
 - `CreateCorrectionRequest.correctionReason` was `[Required]`. The typed correction of an existing document (#65) refuses a
   non-empty reason it cannot apply yet, so model validation refused every such request first ("The CorrectionReason field
