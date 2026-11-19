@@ -1039,7 +1039,12 @@ public class WarehouseDocumentsController : ControllerBase
                     catch (Exception saveEx)
                     {
                         _logger.LogError(saveEx, "RW Zapisz() threw exception");
-                        return (false, null, $"RW save exception: {saveEx.Message}", new List<string> { saveEx.ToString() });
+                        // Validation messages go back (400); a failure without them (SQL timeout, deadlock) is a 500:
+                        // the client can tell a refusal from a transient error. The exception text stays in the log.
+                        var saveErrors = ((object)rw) is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy rwObject
+                            ? SdkErrors.Of(rwObject)
+                            : new List<string>();
+                        return (false, null, "RW save failed; the bridge log has the details", saveErrors);
                     }
                 }
             });

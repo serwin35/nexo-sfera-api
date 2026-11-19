@@ -746,6 +746,21 @@ public class DocumentsController : ControllerBase
         }
     }
 
+    /// <summary>Issue date the document data shows now. Typed on purpose: a <c>dynamic</c> argument makes the result dynamic.</summary>
+    private static DateTime? ReadIssueDate(object dane) =>
+        DynamicPropertyHelper.GetDateTime(dane, "DataWydaniaWystawienia")
+        ?? DynamicPropertyHelper.GetDateTime(dane, "DataWystawienia")
+        ?? DynamicPropertyHelper.GetDateTime(dane, "DataDokumentu");
+
+    /// <summary>The error when reserving a stated number moved the issue date away from the requested one; else null.</summary>
+    private static string? IssueDateMoved(ExplicitDocumentNumber explicitNumber, object dane, DateTime requested)
+    {
+        var current = ReadIssueDate(dane);
+        return current.HasValue && current.Value.Date != requested.Date
+            ? $"{ExplicitDocumentNumber.Field} {explicitNumber.Number}: Nexo moved the issue date to {current.Value:yyyy-MM-dd} while reserving the number"
+            : null;
+    }
+
     /// <summary>
     /// What the document write endpoints of this bridge apply, so clients do not send a field an older bridge would ignore.
     /// </summary>
@@ -1153,6 +1168,7 @@ public class DocumentsController : ControllerBase
     /// 4. Call Zapisz() to save
     /// </remarks>
     [HttpPost("sales-invoice")]
+    [AppliesDocumentNumber]
     public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateSalesInvoice([FromBody] CreateDocumentRequest request)
     {
         try
@@ -1759,10 +1775,18 @@ public class DocumentsController : ControllerBase
                     // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
                     if (request.DocumentNumber.HasValue)
                     {
-                        string? numberError = explicitNumber.Reserve((object)faktura, request.DocumentNumber.Value);
+                        string? numberError = explicitNumber.Reserve((object)faktura, request.DocumentNumber.Value, request.IssueDate);
                         if (numberError != null)
                         {
                             return (false, null, numberError, new List<string> { numberError });
+                        }
+
+                        // The stated number belongs to the series of the requested date: the reservation must not have
+                        // moved the date (the guard gives the number back on dispose).
+                        string? dateError = IssueDateMoved(explicitNumber, (object)dane, request.IssueDate!.Value);
+                        if (dateError != null)
+                        {
+                            return (false, null, dateError, new List<string> { dateError });
                         }
                     }
                     else if (request.ReserveNumber)
@@ -2682,124 +2706,11 @@ public class DocumentsController : ControllerBase
                     }
                     catch { }
 
-                    // If Zapisz() failed, try alternative save methods
-                    if (!isSaved && saveException == null && explicitNumber.IsReserved)
+                    // A refused Zapisz() is final: no save without validation and no retry. A fiscal document
+                    // saved past its validation (wrong number, buyer, totals) is worse than none.
+                    if (!isSaved && saveException == null)
                     {
-                        // A stated number never goes through saves without validation: they could keep a number Nexo refused.
-                        _logger.LogWarning("[FS-v2] Zapisz() returned false for stated number {Number}; no alternative saves", explicitNumber.Number);
-                    }
-                    else if (!isSaved && saveException == null)
-                    {
-                        _logger.LogWarning("[FS-v2] Zapisz() returned false, trying alternative save methods...");
-
-                        // Try ZapiszBezWalidacji if available
-                        try
-                        {
-                            var altResult = faktura.ZapiszBezWalidacji();
-                            _logger.LogInformation("[FS-v2] ZapiszBezWalidacji() returned: {Result}", (object)(altResult?.ToString() ?? "(null)"));
-                            if (altResult != null && (bool)altResult)
-                            {
-                                isSaved = true;
-                            }
-                        }
-                        catch (Exception altEx)
-                        {
-                            _logger.LogDebug("[FS-v2] ZapiszBezWalidacji() not available: {Msg}", altEx.Message);
-                        }
-
-                        // Try Zatwierdz + Zapisz if still not saved
-                        if (!isSaved)
-                        {
-                            try
-                            {
-                                faktura.Zatwierdz();
-                                _logger.LogInformation("[FS-v2] Zatwierdz() called, trying Zapisz() again...");
-                                var retryResult = faktura.Zapisz();
-                                _logger.LogInformation("[FS-v2] Zapisz() after Zatwierdz() returned: {Result}", (object)(retryResult?.ToString() ?? "(null)"));
-                                if (retryResult != null && (bool)retryResult)
-                                {
-                                    isSaved = true;
-                                }
-                            }
-                            catch (Exception zatwEx)
-                            {
-                                _logger.LogDebug("[FS-v2] Zatwierdz() approach failed: {Msg}", zatwEx.Message);
-                            }
-                        }
-
-                        // Try ZapiszZatwierdzone if available
-                        if (!isSaved)
-                        {
-                            try
-                            {
-                                var zzResult = faktura.ZapiszZatwierdzone();
-                                _logger.LogInformation("[FS-v2] ZapiszZatwierdzone() returned: {Result}", (object)(zzResult?.ToString() ?? "(null)"));
-                                if (zzResult != null && (bool)zzResult)
-                                {
-                                    isSaved = true;
-                                }
-                            }
-                            catch (Exception zzEx)
-                            {
-                                _logger.LogDebug("[FS-v2] ZapiszZatwierdzone() not available: {Msg}", zzEx.Message);
-                            }
-                        }
-
-                        // NEW: Try to call SaveChanges directly on ObjectContext (bypass SDK validation)
-                        if (!isSaved)
-                        {
-                            _logger.LogWarning("[FS-v2] All SDK save methods failed, attempting direct ObjectContext.SaveChanges()...");
-                            try
-                            {
-                                var dokument = faktura.Dokument;
-                                var dokType = ((object)dokument).GetType();
-
-                                // Try to find ObjectContext
-                                var contextProp = dokType.GetProperty("ObjectContext");
-                                if (contextProp != null)
-                                {
-                                    var objContext = contextProp.GetValue(dokument);
-                                    if (objContext != null)
-                                    {
-                                        var saveChangesMethod = ((object)objContext).GetType().GetMethod("SaveChanges", Type.EmptyTypes);
-                                        if (saveChangesMethod != null)
-                                        {
-                                            _logger.LogInformation("[FS-v2] Calling ObjectContext.SaveChanges() directly...");
-                                            try
-                                            {
-                                                var result = saveChangesMethod.Invoke(objContext, null);
-                                                _logger.LogInformation("[FS-v2] SaveChanges() returned: {Result}", (object)(result?.ToString() ?? "(null)"));
-
-                                                // Check if document was actually saved
-                                                var newId = faktura.Dokument.Id;
-                                                _logger.LogInformation("[FS-v2] Document Id after SaveChanges: {Id}", (object)(newId?.ToString() ?? "(null)"));
-                                                if (newId != null && (int)newId > 0)
-                                                {
-                                                    isSaved = true;
-                                                    _logger.LogInformation("[FS-v2] Direct SaveChanges() succeeded!");
-                                                }
-                                            }
-                                            catch (Exception scEx)
-                                            {
-                                                _logger.LogError(scEx, "[FS-v2] SaveChanges() threw exception: {Msg}", scEx.Message);
-
-                                                // Log inner exceptions
-                                                var inner = scEx.InnerException;
-                                                while (inner != null)
-                                                {
-                                                    _logger.LogError("[FS-v2] SaveChanges inner: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
-                                                    inner = inner.InnerException;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            catch (Exception ocEx)
-                            {
-                                _logger.LogDebug("[FS-v2] Could not access ObjectContext for direct save: {Msg}", ocEx.Message);
-                            }
-                        }
+                        _logger.LogWarning("[FS-v2] Zapisz() returned false; reporting the validation errors, no alternative saves");
                     }
 
                     if (isSaved)
@@ -2971,6 +2882,13 @@ public class DocumentsController : ControllerBase
                             catch (Exception vex)
                             {
                                 _logger.LogDebug("[FS-v2] WalidujDane (post-save) failed: {Msg}", vex.Message);
+                            }
+
+                            if (errors.Count == 0 && saveException != null)
+                            {
+                                // Thrown without validation messages (SQL timeout, deadlock): an empty list maps to 500,
+                                // so the client can tell a transient failure from a refusal.
+                                return (false, null, "Sales invoice save failed; the bridge log has the details", new List<string>());
                             }
 
                             if (errors.Count == 0)
@@ -3501,6 +3419,7 @@ public class DocumentsController : ControllerBase
     /// 4. Call Zapisz() to save
     /// </remarks>
     [HttpPost("receipt")]
+    [AppliesDocumentNumber]
     public async Task<ActionResult<ApiResponse<DocumentDto>>> CreateReceipt([FromBody] CreateReceiptRequest request)
     {
         try
@@ -3659,10 +3578,17 @@ public class DocumentsController : ControllerBase
                 // Only if ReserveNumber flag is true - otherwise number is auto-assigned during Zapisz()
                 if (request.DocumentNumber.HasValue)
                 {
-                    string? numberError = explicitNumber.Reserve((object)paragon, request.DocumentNumber.Value);
+                    string? numberError = explicitNumber.Reserve((object)paragon, request.DocumentNumber.Value, request.IssueDate);
                     if (numberError != null)
                     {
                         return (false, null, numberError, new List<string> { numberError });
+                    }
+
+                    // The date check further down binds dynamically and swallows its own errors; this one is typed.
+                    string? dateError = IssueDateMoved(explicitNumber, (object)dane, request.IssueDate!.Value);
+                    if (dateError != null)
+                    {
+                        return (false, null, dateError, new List<string> { dateError });
                     }
                 }
                 else if (request.ReserveNumber)
@@ -3693,13 +3619,6 @@ public class DocumentsController : ControllerBase
                         // If date was reset to current date, try to set it again
                         if (dateAfterReserve.HasValue && dateAfterReserve.Value.Date != request.IssueDate.Value.Date)
                         {
-                            if (explicitNumber.IsReserved)
-                            {
-                                // The stated number belongs to the series of the requested date; restoring the date would not move it.
-                                string dateError = $"{ExplicitDocumentNumber.Field} {explicitNumber.Number}: Nexo moved the issue date to {dateAfterReserve.Value:yyyy-MM-dd} while reserving the number";
-                                return (false, null, dateError, new List<string> { dateError });
-                            }
-
                             _logger.LogWarning("[PA] Date changed from {Requested} to {Actual} after ZarezerwujNumer! Attempting to restore...",
                                 (object)request.IssueDate.Value.ToString("yyyy-MM-dd"), (object)dateAfterReserve.Value.ToString("yyyy-MM-dd"));
 
@@ -3914,130 +3833,23 @@ public class DocumentsController : ControllerBase
                 }
                 catch { }
 
-                // If Zapisz() failed, try alternative save methods (like sales invoice does)
+                // A refused Zapisz() is final: no save without validation and no retry. A fiscal document
+                // saved past its validation (wrong number, buyer, totals) is worse than none.
                 bool isSaved = saveResult;
-                if (!isSaved && saveException == null && explicitNumber.IsReserved)
+                if (!isSaved && saveException == null)
                 {
-                    // A stated number never goes through saves without validation: they could keep a number Nexo refused.
-                    _logger.LogWarning("[PA] Zapisz() returned false for stated number {Number}; no alternative saves", explicitNumber.Number);
-                }
-                else if (!isSaved && saveException == null)
-                {
-                    _logger.LogWarning("[PA] Zapisz() returned false, trying alternative save methods...");
-
-                    // Try ZapiszBezWalidacji if available
-                    try
-                    {
-                        var altResult = paragon.ZapiszBezWalidacji();
-                        _logger.LogInformation("[PA] ZapiszBezWalidacji() returned: {Result}", (object)(altResult?.ToString() ?? "(null)"));
-                        if (altResult != null && (bool)altResult)
-                        {
-                            isSaved = true;
-                        }
-                    }
-                    catch (Exception altEx)
-                    {
-                        _logger.LogDebug("[PA] ZapiszBezWalidacji() not available: {Msg}", altEx.Message);
-                    }
-
-                    // Try Zatwierdz + Zapisz if still not saved
-                    if (!isSaved)
-                    {
-                        try
-                        {
-                            paragon.Zatwierdz();
-                            _logger.LogInformation("[PA] Zatwierdz() called, trying Zapisz() again...");
-                            var retryResult = paragon.Zapisz();
-                            _logger.LogInformation("[PA] Zapisz() after Zatwierdz() returned: {Result}", (object)(retryResult?.ToString() ?? "(null)"));
-                            if (retryResult != null && (bool)retryResult)
-                            {
-                                isSaved = true;
-                            }
-                        }
-                        catch (Exception zatwEx)
-                        {
-                            _logger.LogDebug("[PA] Zatwierdz() approach failed: {Msg}", zatwEx.Message);
-                        }
-                    }
-
-                    // Try ZapiszZatwierdzone if available
-                    if (!isSaved)
-                    {
-                        try
-                        {
-                            var zzResult = paragon.ZapiszZatwierdzone();
-                            _logger.LogInformation("[PA] ZapiszZatwierdzone() returned: {Result}", (object)(zzResult?.ToString() ?? "(null)"));
-                            if (zzResult != null && (bool)zzResult)
-                            {
-                                isSaved = true;
-                            }
-                        }
-                        catch (Exception zzEx)
-                        {
-                            _logger.LogDebug("[PA] ZapiszZatwierdzone() not available: {Msg}", zzEx.Message);
-                        }
-                    }
-
-                    // Try to call SaveChanges directly on ObjectContext (bypass SDK validation)
-                    if (!isSaved)
-                    {
-                        _logger.LogWarning("[PA] All SDK save methods failed, attempting direct ObjectContext.SaveChanges()...");
-                        try
-                        {
-                            var dokument = paragon.Dokument;
-                            var dokType = ((object)dokument).GetType();
-
-                            // Try to find ObjectContext
-                            var contextProp = dokType.GetProperty("ObjectContext");
-                            if (contextProp != null)
-                            {
-                                var objContext = contextProp.GetValue(dokument);
-                                if (objContext != null)
-                                {
-                                    var saveChangesMethod = ((object)objContext).GetType().GetMethod("SaveChanges", Type.EmptyTypes);
-                                    if (saveChangesMethod != null)
-                                    {
-                                        _logger.LogInformation("[PA] Calling ObjectContext.SaveChanges() directly...");
-                                        try
-                                        {
-                                            var result = saveChangesMethod.Invoke(objContext, null);
-                                            _logger.LogInformation("[PA] SaveChanges() returned: {Result}", (object)(result?.ToString() ?? "(null)"));
-
-                                            // Check if document was actually saved
-                                            var newId = paragon.Dokument.Id;
-                                            _logger.LogInformation("[PA] Document Id after SaveChanges: {Id}", (object)(newId?.ToString() ?? "(null)"));
-                                            if (newId != null && (int)newId > 0)
-                                            {
-                                                isSaved = true;
-                                                _logger.LogInformation("[PA] Direct SaveChanges() succeeded!");
-                                            }
-                                        }
-                                        catch (Exception scEx)
-                                        {
-                                            _logger.LogError(scEx, "[PA] SaveChanges() threw exception: {Msg}", scEx.Message);
-
-                                            // Log inner exceptions
-                                            var inner = scEx.InnerException;
-                                            while (inner != null)
-                                            {
-                                                _logger.LogError("[PA] SaveChanges inner: {Type}: {Msg}", (object)inner.GetType().Name, (object)inner.Message);
-                                                inner = inner.InnerException;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        catch (Exception ocEx)
-                        {
-                            _logger.LogDebug("[PA] Could not access ObjectContext for direct save: {Msg}", ocEx.Message);
-                        }
-                    }
+                    _logger.LogWarning("[PA] Zapisz() returned false; reporting the validation errors, no alternative saves");
                 }
 
                 if (saveException != null)
                 {
-                    return (false, null, $"Receipt save exception: {saveException.Message}", new List<string> { saveException.Message });
+                    // The exception is in the log above; the client gets the validation messages Nexo has, not SDK details.
+                    var saveErrors = ((object)paragon) is InsERT.Mox.ObiektyBiznesowe.IObiektBiznesowy receiptObject
+                        ? SdkErrors.Of(receiptObject)
+                        : new List<string>();
+                    // No validation messages (SQL timeout, deadlock): an empty list maps to 500, not 400, so the
+                    // client can tell a transient failure from a refusal.
+                    return (false, null, saveErrors.Count == 0 ? "Receipt save failed; the bridge log has the details" : "Failed to create receipt", saveErrors);
                 }
 
                 if (isSaved)

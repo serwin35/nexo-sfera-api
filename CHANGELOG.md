@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed (2026-11-19) - save failures: guard tests, RW leak, transient errors as 500
+- `FiscalSaveGuardTests` now forbids every save past the validation:
+  - `.Zatwierdz(` (the `Zatwierdz()` + `Zapisz()` retry) and `SaveChanges(` in any form;
+  - the text of a save exception (`save…Ex.Message`, `?.Message`, `.ToString()`) outside a `_logger.` statement.
+  - Scope: Controllers, Helpers, Services and Mcp. A self-test feeds it the review's mutants.
+- RW (`WarehouseDocumentsController`) no longer returns the save exception and its stack trace (`saveEx.ToString()`). It
+  returns the validation messages instead.
+- A save that throws without validation messages (SQL timeout, deadlock) returns 500 instead of 400 for FS, PA and RW, so
+  a client can tell a transient failure from a refusal.
+- `PeriodMismatch` checks the issue date's period in every form first, so "number/month/year" with a number of 1000 or
+  more ("FS 1234/06/2024") is not read as the year 1234. A mismatch counts only for years 2000-2099.
+
+### Added (2026-11-19) - documentNumber refused where it is not applied
+- A global resource filter (`DocumentNumberFieldFilter`) refuses a POST/PUT/PATCH JSON body with a top-level
+  `documentNumber` (any letter case) on every action without `[AppliesDocumentNumber]` with 400: model binding would
+  drop the field and the document would take the next free number. Only `sales-invoice` and `receipt` carry the
+  attribute. The body is buffered and parsed only when its text contains `documentNumber`; nested fields and
+  look-alikes (`relatedDocumentNumber`) do not count. It runs after authorization and the configuration-flag filters.
+- Making another endpoint apply the field takes the request property, the code applying it, the attribute on the
+  action, and the entry in `ExplicitDocumentNumber.SupportedEndpoints`.
+
+### Fixed (2026-11-19) - stated numbers: date and period checks
+- Sales invoices with `documentNumber` now refuse (400, the number is given back) when reserving the number moved the
+  issue date, like receipts.
+- The receipt check never ran: it read the date through a `dynamic` call, so `.HasValue` threw and the surrounding catch
+  swallowed it. Both paths now read the date through a typed helper.
+- `ExplicitDocumentNumber.Reserve` checks the period in the reserved number (yyyy/MM, MM/yyyy, yy/MM or a lone year in
+  the preview) against the issue date and refuses a number from another month.
+
+### Fixed (2026-11-19) - a refused FS/PA save is final
+- `POST /api/documents/sales-invoice` and `POST /api/documents/receipt` no longer try other saves after `Zapisz()`
+  refuses the document. `ZapiszBezWalidacji()`, `Zatwierdz()` + `Zapisz()`, `ZapiszZatwierdzone()` and the reflection
+  `ObjectContext.SaveChanges()` are gone. The request returns 400 with the validation errors, and nothing is saved.
+- A receipt whose `Zapisz()` throws returns the validation messages of the business object (`SdkErrors`) instead of the
+  exception text; the exception stays in the log.
+- Why: a fiscal document saved past its validation (a number Nexo refused, no buyer, broken totals) is worse than no
+  document. The fallbacks broke the rule that fiscal writes are all-or-nothing and never retry. A guard test keeps them out.
+
 ### Added (2026-11-19) - documentNumber on POST /api/documents/sales-invoice and /receipt
 - `documentNumber` (int, 1 or more) states the number of the invoice or receipt in its series instead of the next free
   one: typed Nexo manual numbering (`IObiektNumerowany.ZarezerwujNumer(int)`, after the dates are set). Takes precedence

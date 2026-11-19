@@ -6,6 +6,7 @@ using System.Text.Json;
 using InsERT.Moria.Numeracja;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Logging.Abstractions;
+using NexoSferaApi.Filters;
 using NexoSferaApi.Helpers;
 using Xunit;
 
@@ -100,6 +101,7 @@ public sealed class ExplicitDocumentNumberTests
         Assert.Contains("documentNumber 24", error);
         Assert.Contains("Numer 24 jest już zajęty.", error);
         Assert.False(reservation.IsReserved);
+        Assert.Equal(1, numbering.Released);
     }
 
     [Fact]
@@ -114,6 +116,76 @@ public sealed class ExplicitDocumentNumberTests
         Assert.Contains("could not be reserved", error);
         Assert.DoesNotContain("internal SDK detail", error);
         Assert.False(reservation.IsReserved);
+        Assert.Equal(1, numbering.Released);
+    }
+
+    [Fact]
+    public void KeepsANumberInThePeriodOfTheIssueDate()
+    {
+        var numbering = new FakeNumbering { PreviewNumber = "24", PreviewSuffix = "/06/2024" };
+        using var reservation = new ExplicitDocumentNumber(NullLogger.Instance, "test");
+
+        Assert.Null(reservation.Reserve(numbering.Document, 24, new DateTime(2024, 6, 11)));
+        Assert.True(reservation.IsReserved);
+    }
+
+    [Fact]
+    public void RefusesAndReleasesANumberOutsideThePeriodOfTheIssueDate()
+    {
+        var numbering = new FakeNumbering { PreviewNumber = "24", PreviewSuffix = "/06/2024" };
+        using var reservation = new ExplicitDocumentNumber(NullLogger.Instance, "test");
+
+        var error = reservation.Reserve(numbering.Document, 24, new DateTime(2024, 7, 1));
+
+        Assert.NotNull(error);
+        Assert.Contains("2024-06", error);
+        Assert.Contains("2024-07", error);
+        Assert.False(reservation.IsReserved);
+        Assert.Equal(1, numbering.Released);
+    }
+
+    [Theory]
+    [InlineData("FS 2024/06/24", null)]
+    [InlineData("FS 24/06/2024", null)]
+    [InlineData("FS 24/06/7", null)]
+    [InlineData("FS 2024/07/24", "2024-07")]
+    [InlineData("FS 2025/06/24", "2025-06")]
+    [InlineData("PA 24/05/000031", "2024-05")]
+    [InlineData("FS 24", null)]
+    [InlineData("FS 1234/06/2024", null)]
+    [InlineData("FS 1234/07/2024", "2024-07")]
+    [InlineData("FS 2024/06/2024", null)]
+    [InlineData("FS 24/2025", "2025")]
+    [InlineData("", null)]
+    [InlineData(null, null)]
+    public void ComparesThePeriodOfTheNumberWithTheIssueDate(string? preview, string? reportedPeriod)
+    {
+        var error = ExplicitDocumentNumber.PeriodMismatch(preview, new DateTime(2024, 6, 11));
+
+        if (reportedPeriod == null)
+        {
+            Assert.Null(error);
+        }
+        else
+        {
+            Assert.NotNull(error);
+            Assert.Contains($"belongs to {reportedPeriod}", error);
+        }
+    }
+
+    [Theory]
+    [InlineData("{\"documentNumber\":24}", true)]
+    [InlineData("{\"type\":1,\"DocumentNumber\":24}", true)]
+    [InlineData("{\"relatedDocumentNumber\":\"FZ 1/2024\"}", false)]
+    [InlineData("{\"items\":[{\"documentNumber\":1}]}", false)]
+    [InlineData("[{\"documentNumber\":1}]", false)]
+    [InlineData("{\"documentNumber\": 24", false)]
+    [InlineData("{\"type\":1}", false)]
+    [InlineData("", false)]
+    [InlineData(null, false)]
+    public void FindsATopLevelDocumentNumberOnly(string? body, bool expected)
+    {
+        Assert.Equal(expected, DocumentNumberFieldFilter.HasDocumentNumberField(body));
     }
 
     [Fact]
@@ -166,6 +238,7 @@ public sealed class ExplicitDocumentNumberTests
         public Exception? ReserveFailure { get; init; }
         public string? Warnings { get; init; }
         public string PreviewNumber { get; init; } = "24";
+        public string PreviewSuffix { get; init; } = "/06/2024";
         public List<int> Reserved { get; } = new();
         public int Released { get; set; }
 
@@ -208,7 +281,7 @@ public sealed class ExplicitDocumentNumberTests
                 case "SprawdzOstrzezeniaRezerwacji":
                     return state.Warnings;
                 case "PodajPodgladNumeru":
-                    return new PodgladNumeru("FS ", state.PreviewNumber, '\0', string.Empty, "/06/2024");
+                    return new PodgladNumeru("FS ", state.PreviewNumber, '\0', string.Empty, state.PreviewSuffix);
                 case "ZwolnijNumer":
                     state.Released++;
                     return null;
@@ -261,6 +334,8 @@ public sealed class ExplicitDocumentNumberContractTests(NexoApiFactory factory) 
     [InlineData("/api/documents/customer-order")]
     [InlineData("/api/documents/purchase-invoice")]
     [InlineData("/api/documents/vat-margin-invoice")]
+    [InlineData("/api/documents/sales-invoice-correction")]
+    [InlineData("/api/warehouse-documents/pz")]
     public async Task EndpointsThatCannotApplyAStatedNumberRefuseIt(string path)
     {
         var response = await PostAsync(path, "{\"type\":1,\"documentNumber\":24,\"issueDate\":\"2024-06-11\"," + ItemsJson + "}");
