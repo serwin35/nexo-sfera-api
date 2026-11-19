@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added (2026-11-20) - stock at a date, the next document number; free-quantity fixed
+- `GET /api/inventory/stock-at-date?symbol=&warehouse=&date=` (read only): `IMagazynier.IloscWolna(D)`,
+  `IloscWolna(D 23:59:59)`, `IloscDostepna(D)` and today's `StanyMagazynowe.IloscDostepna` (what the stock pre-check
+  uses) for one card; 400 for a bad date, 404 for an unknown card or warehouse. Bound to the typed overloads.
+- `GET /api/documents/next-number?type=&date=[&warehouse=]` (read only): the number Nexo would give the next FS, PA,
+  KFS, ZW, RW or PW on that day, from `IZrodloNumerow.PodajPrzewidywanyNumer` on an in-memory document that is
+  disposed unsaved; nothing is reserved. A prediction of another period, or without a number, is an error. The code
+  calls no `ZarezerwujNumer`, `Zarezerwuj`, `ZatwierdzRezerwacje` or `Zapisz` (a test reads it). A KFS / ZW is
+  previewed without its original (no real document loaded, no correction events): an approximation from the date
+  and the warehouse, which `basis` says.
+- `GET /api/inventory/free-quantity` called a 2-argument `IloscWolna` that SDK 62 does not have; the exception was
+  swallowed and today's stock came back as the free quantity. It now calls `IloscWolna(DateTime?, Asortyment, Magazyn)`
+  typed, takes an optional `date`, reports `source`, and a failure is a 500 (details in the log, no exception text in
+  the response).
+- `docs/stock-at-date.md`: the stock-at-date findings and the host checks. The stock pre-check itself is unchanged.
 ### Added (2026-11-19) - invoiceForm on sales-invoice (paper / KSeF form)
 - `POST /api/documents/sales-invoice` takes an optional `invoiceForm`: `Papierowa` (a paper invoice, not sent to KSeF) or
   `KSEF`, case-insensitive. Applied to `Dokument.FormaFaktury` (SDK 62.0.0.9537: `byte?` of `FormaFaktury`) right before

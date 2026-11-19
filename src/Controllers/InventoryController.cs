@@ -5,6 +5,9 @@ using NexoSferaApi.Models.Requests;
 using NexoSferaApi.Models.Responses;
 using NexoSferaApi.Services;
 using NexoSferaApi.Helpers;
+using InsERT.Moria.EgzekutorMagazynowy;
+using InsERT.Moria.ModelDanych;
+using InsERT.Moria.Sfera;
 
 namespace NexoSferaApi.Controllers;
 
@@ -20,10 +23,13 @@ public class InventoryController : ControllerBase
     private readonly ISferaService _sferaService;
     private readonly ILogger<InventoryController> _logger;
 
-    public InventoryController(ISferaService sferaService, ILogger<InventoryController> logger)
+    private readonly StockValidationHelper _stockHelper;
+
+    public InventoryController(ISferaService sferaService, ILogger<InventoryController> logger, StockValidationHelper stockHelper)
     {
         _sferaService = sferaService;
         _logger = logger;
+        _stockHelper = stockHelper;
     }
 
     #region Stock Levels
@@ -1550,100 +1556,69 @@ public class InventoryController : ControllerBase
     #region Free Quantity (IMagazynier)
 
     /// <summary>
-    /// Get free (available) quantity for a product via IMagazynier service
+    /// Free quantity of a product (<c>IMagazynier.IloscWolna</c>): what can be issued, in one warehouse or all.
     /// </summary>
+    /// <remarks>
+    /// Bound to the typed overload <c>IloscWolna(DateTime?, Asortyment, Magazyn)</c>. The previous 2-argument call matched
+    /// no overload in SDK 62, its exception was swallowed and today's <c>StanyMagazynowe</c> sum came back as if it were
+    /// the free quantity. Now a failure is a 500 (details in the log), never a silent substitute. Without <c>date</c>
+    /// the SDK's "na dowolny dzień" applies; with it, receipts up to the end of that day count.
+    /// </remarks>
     [HttpGet("free-quantity")]
     [ProducesResponseType(typeof(ApiResponse<FreeQuantityDto>), StatusCodes.Status200OK)]
     public async Task<ActionResult<ApiResponse<FreeQuantityDto>>> GetFreeQuantity(
         [FromQuery] int productId,
-        [FromQuery] string? warehouseSymbol)
+        [FromQuery] string? warehouseSymbol,
+        [FromQuery] string? date)
     {
+        DateTime? at = null;
+        if (!string.IsNullOrWhiteSpace(date))
+        {
+            if (!StockAtDate.TryParseDay(date, out var day))
+            {
+                return BadRequest(ApiResponse<FreeQuantityDto>.Error($"date must be {StockAtDate.DateFormat}"));
+            }
+
+            at = StockAtDate.EndOfDay(day);
+        }
+
         try
         {
             var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                // Get product
-                var asortymentyManager = _sferaService.GetManager("Asortymenty");
-                if (asortymentyManager == null)
-                {
-                    return (statusCode: 500, dto: (FreeQuantityDto?)null, error: "Failed to get Asortymenty manager");
-                }
-
-                dynamic? produkt = DynamicPropertyHelper.FindById(asortymentyManager, productId);
-
+                var sfera = _sferaService.GetSfera();
+                var produkt = sfera.Asortymenty().Dane.Wszystkie().FirstOrDefault(a => a.Id == productId);
                 if (produkt == null)
                 {
                     return (statusCode: 404, dto: (FreeQuantityDto?)null, error: $"Product with ID {productId} not found");
                 }
 
-                // Get warehouse if specified
-                dynamic? magazyn = null;
+                Magazyn? magazyn = null;
                 if (!string.IsNullOrEmpty(warehouseSymbol))
                 {
-                    var magazynyManager = _sferaService.GetManager("Magazyny");
-                    if (magazynyManager != null)
-                    {
-                        foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
-                        {
-                            if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
-                            {
-                                magazyn = m;
-                                break;
-                            }
-                        }
-                    }
-
+                    magazyn = sfera.Magazyny().Dane.Wszystkie().FirstOrDefault(m => m.Symbol == warehouseSymbol);
                     if (magazyn == null)
                     {
                         return (statusCode: 404, dto: (FreeQuantityDto?)null, error: $"Warehouse '{warehouseSymbol}' not found");
                     }
                 }
 
-                // Try to use IMagazynier.IloscWolna if available
-                decimal freeQuantity = 0;
-                try
-                {
-                    var magazynier = _sferaService.GetManagerByType("InsERT.Moria.API", "InsERT.Moria.EgzekutorMagazynowy.IMagazynier");
-                    if (magazynier != null)
-                    {
-                        if (magazyn != null)
-                        {
-                            freeQuantity = magazynier.IloscWolna(produkt, magazyn);
-                        }
-                        else
-                        {
-                            freeQuantity = magazynier.IloscWolna(produkt);
-                        }
-                    }
-                    else
-                    {
-                        // Fallback: calculate from stock levels
-                        freeQuantity = CalculateFreeQuantityFromStock(produkt, warehouseSymbol);
-                    }
-                }
-                catch
-                {
-                    // Fallback: calculate from stock levels
-                    freeQuantity = CalculateFreeQuantityFromStock(produkt, warehouseSymbol);
-                }
-
+                var magazynier = sfera.PodajObiektTypu<IMagazynier>();
                 var dto = new FreeQuantityDto
                 {
                     ProductId = productId,
-                    ProductSymbol = DynamicPropertyHelper.GetString(produkt, "Symbol"),
-                    ProductName = DynamicPropertyHelper.GetString(produkt, "Nazwa"),
+                    ProductSymbol = produkt.Symbol,
+                    ProductName = produkt.Nazwa,
                     WarehouseSymbol = warehouseSymbol,
-                    FreeQuantity = freeQuantity,
+                    Date = at.HasValue ? at.Value.ToString(StockAtDate.DateFormat, System.Globalization.CultureInfo.InvariantCulture) : null,
+                    FreeQuantity = StockAtDate.Free(magazynier, at, produkt, magazyn),
+                    Source = "IMagazynier.IloscWolna",
                     Unit = DynamicPropertyHelper.StockUnitSymbol(produkt)
                 };
 
                 return (statusCode: 200, dto: (FreeQuantityDto?)dto, error: (string?)"");
             });
 
-            if (result.statusCode == 500)
-            {
-                return StatusCode(500, ApiResponse<FreeQuantityDto>.Error(result.error ?? "Internal error"));
-            }
             if (result.statusCode == 404)
             {
                 return NotFound(ApiResponse<FreeQuantityDto>.Error(result.error ?? "Not found"));
@@ -1654,44 +1629,80 @@ public class InventoryController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting free quantity for product {ProductId}", productId);
-            return StatusCode(500, ApiResponse<FreeQuantityDto>.Error("Error retrieving free quantity", new List<string> { ex.Message }));
+            return StatusCode(500, ApiResponse<FreeQuantityDto>.Error(
+                "Free quantity could not be read; the bridge log has the details", new List<string>()));
         }
     }
 
-    private decimal CalculateFreeQuantityFromStock(dynamic produkt, string? warehouseSymbol)
+    /// <summary>
+    /// Stock of one product on a day, read only: Nexo's <c>IloscWolna</c> / <c>IloscDostepna</c> on that day next to
+    /// today's <c>StanyMagazynowe.IloscDostepna</c> that the stock pre-check uses (docs/stock-at-date.md, host check 1).
+    /// </summary>
+    [HttpGet("stock-at-date")]
+    [ProducesResponseType(typeof(ApiResponse<StockAtDateDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApiResponse<StockAtDateDto>>> GetStockAtDate(
+        [FromQuery] string? symbol,
+        [FromQuery] string? warehouse,
+        [FromQuery] string? date)
     {
-        var stany = DynamicPropertyHelper.GetCollection((object)produkt, "StanyMagazynowe");
-        decimal total = 0;
-
-        int? magazynFilterId = null;
-        if (!string.IsNullOrEmpty(warehouseSymbol))
+        if (string.IsNullOrWhiteSpace(symbol))
         {
-            var magazynyManager = _sferaService.GetManager("Magazyny");
-            if (magazynyManager != null)
+            return BadRequest(ApiResponse<StockAtDateDto>.Error("symbol is required"));
+        }
+
+        if (!StockAtDate.TryParseDay(date, out var day))
+        {
+            return BadRequest(ApiResponse<StockAtDateDto>.Error($"date is required as {StockAtDate.DateFormat}"));
+        }
+
+        var productSymbol = symbol.Trim();
+        var warehouseSymbol = string.IsNullOrWhiteSpace(warehouse) ? StockAtDate.DefaultWarehouse : warehouse.Trim();
+        try
+        {
+            var result = await _sferaService.ExecuteWithLockAsync(() =>
             {
-                foreach (var m in DynamicPropertyHelper.SafeGetAll((object)magazynyManager))
+                var sfera = _sferaService.GetSfera();
+                var asortyment = sfera.Asortymenty().Dane.Wszystkie().FirstOrDefault(a => a.Symbol == productSymbol);
+                if (asortyment == null)
                 {
-                    if (DynamicPropertyHelper.GetString(m, "Symbol") == warehouseSymbol)
-                    {
-                        magazynFilterId = DynamicPropertyHelper.GetId(m);
-                        break;
-                    }
+                    return (statusCode: 404, dto: (StockAtDateDto?)null, error: $"Product '{productSymbol}' not found");
                 }
-            }
-        }
 
-        foreach (var stan in stany)
-        {
-            if (magazynFilterId.HasValue)
+                var magazyn = sfera.Magazyny().Dane.Wszystkie().FirstOrDefault(m => m.Symbol == warehouseSymbol);
+                if (magazyn == null)
+                {
+                    return (statusCode: 404, dto: (StockAtDateDto?)null, error: $"Warehouse '{warehouseSymbol}' not found");
+                }
+
+                var magazynier = sfera.PodajObiektTypu<IMagazynier>();
+                var dto = new StockAtDateDto
+                {
+                    ProductId = asortyment.Id,
+                    ProductSymbol = asortyment.Symbol,
+                    WarehouseSymbol = warehouseSymbol,
+                    Date = day.ToString(StockAtDate.DateFormat, System.Globalization.CultureInfo.InvariantCulture),
+                    IloscWolnaD = StockAtDate.Free(magazynier, day, asortyment, magazyn),
+                    IloscWolnaEndOfDay = StockAtDate.Free(magazynier, StockAtDate.EndOfDay(day), asortyment, magazyn),
+                    IloscDostepnaD = StockAtDate.Available(magazynier, day, asortyment, magazyn),
+                    IloscDostepnaToday = _stockHelper.GetAvailableStock(asortyment, warehouseSymbol),
+                    Unit = DynamicPropertyHelper.StockUnitSymbol(asortyment)
+                };
+                return (statusCode: 200, dto: (StockAtDateDto?)dto, error: (string?)"");
+            });
+
+            if (result.statusCode == 404)
             {
-                var magazynId = DynamicPropertyHelper.GetNullableInt(stan, "Magazyn_Id");
-                if (magazynId != magazynFilterId.Value)
-                    continue;
+                return NotFound(ApiResponse<StockAtDateDto>.Error(result.error ?? "Not found"));
             }
-            total += DynamicPropertyHelper.GetDecimal(stan, "IloscDostepna");
-        }
 
-        return total;
+            return Ok(ApiResponse<StockAtDateDto>.Ok(result.dto!));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reading stock of {Symbol} in {Warehouse} on {Date}", productSymbol, warehouseSymbol, date);
+            return StatusCode(500, ApiResponse<StockAtDateDto>.Error(
+                "Stock at the date could not be read; the bridge log has the details", new List<string>()));
+        }
     }
 
     #endregion
@@ -1706,7 +1717,11 @@ public class FreeQuantityDto
     public string? ProductSymbol { get; set; }
     public string? ProductName { get; set; }
     public string? WarehouseSymbol { get; set; }
+    /// <summary>The day the quantity is for (yyyy-MM-dd); null: the SDK's "na dowolny dzień".</summary>
+    public string? Date { get; set; }
     public decimal FreeQuantity { get; set; }
+    /// <summary>Where the figure comes from; always <c>IMagazynier.IloscWolna</c> (no silent fallback).</summary>
+    public string Source { get; set; } = "IMagazynier.IloscWolna";
     public string Unit { get; set; } = "szt.";
 }
 
